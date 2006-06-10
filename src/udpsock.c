@@ -37,7 +37,7 @@ int openUdpSocket( uint32 PeerInAdr, uint16 PeerPort )
   struct sockaddr_in SockAdr;
 
   if( (Sock = socket( AF_INET, SOCK_DGRAM, 0 )) < 0 )
-    log( LOG_ERR, errno, "UDP socket open" );
+    smclog( LOG_ERR, errno, "UDP socket open" );
   
   SockAdr.sin_family      = AF_INET;
   SockAdr.sin_port        = PeerPort;
@@ -45,7 +45,7 @@ int openUdpSocket( uint32 PeerInAdr, uint16 PeerPort )
   memset( &SockAdr.sin_zero, 0, sizeof( SockAdr.sin_zero ) );
 
   if( connect( Sock, (struct sockaddr *)&SockAdr, sizeof( SockAdr ) ) )
-    log( LOG_ERR, errno, "UDP socket connect" );
+    smclog( LOG_ERR, errno, "UDP socket connect" );
 
   return Sock;
 }

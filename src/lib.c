@@ -55,7 +55,7 @@ char *fmtSockAdr( char *St, const struct sockaddr_in *SockAdrPt )
   char *Pt = St;
 
   if( SockAdrPt->sin_family != AF_INET )
-    log( LOG_ERR, 0, "fmtSockAdr: not an INET address" );
+    smclog( LOG_ERR, 0, "fmtSockAdr: not an INET address" );
 
   Adr = SockAdrPt->sin_addr.s_addr;
   

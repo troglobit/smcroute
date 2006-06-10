@@ -30,7 +30,7 @@ int  LogLastServerity;
 int  LogLastErrno;
 char LogLastMsg[ 128 ];
 
-void log( int Serverity, int Errno, const char *FmtSt, ... )
+void smclog( int Serverity, int Errno, const char *FmtSt, ... )
 /*
 ** Writes the message 'FmtSt' with the parameters '...' to syslog.
 ** 'Serverity' is used for the syslog entry. For an 'Errno' value 

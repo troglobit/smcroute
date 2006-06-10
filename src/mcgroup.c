@@ -37,7 +37,7 @@ static int joinleave( int Cmd, int UdpSock, const char *IfName, struct in_addr M
   
 
   if( ! IfDp ) { 
-    log( LOG_WARNING, 0, "%sMcGroup, unknown interface %s", CmdSt, IfName );
+    smclog( LOG_WARNING, 0, "%sMcGroup, unknown interface %s", CmdSt, IfName );
     return 1;
   }
 
@@ -46,7 +46,7 @@ static int joinleave( int Cmd, int UdpSock, const char *IfName, struct in_addr M
 
   {
     char FmtBu[ 32 ];
-    log( LOG_NOTICE, 0, "%sMcGroup: %s on %s", CmdSt, 
+    smclog( LOG_NOTICE, 0, "%sMcGroup: %s on %s", CmdSt, 
 	 fmtInAdr( FmtBu, McAdr ), IfDp ? IfDp->Name : "<any>" );
   }
 
@@ -54,7 +54,7 @@ static int joinleave( int Cmd, int UdpSock, const char *IfName, struct in_addr M
 		  Cmd == 'j' ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP, 
 		  (void *)&CtlReq, sizeof( CtlReq ) ) ) 
   {
-    log( LOG_WARNING, errno, "MRT_%s_MEMBERSHIP failed", Cmd == 'j' ? "ADD" : "DROP" );
+    smclog( LOG_WARNING, errno, "MRT_%s_MEMBERSHIP failed", Cmd == 'j' ? "ADD" : "DROP" );
     return 1;
   }
 

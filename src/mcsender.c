@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <unistd.h>
 
 #include "mclab.h"
 
@@ -10,8 +12,6 @@ unsigned Ttl = 1;
 
 int main( int ArgCn, char *ArgVc[] )
 {
-  char *TargetArg;
-
   if( ArgCn < 2 ) {
 USAGE:
     printf( Usage );
@@ -53,11 +53,11 @@ USAGE:
 
     if( setsockopt( UdpSock, IPPROTO_IP, IP_MULTICAST_TTL, 
 		    &Ttl, sizeof( Ttl ) ) )
-      log( LOG_ERR, errno, "set IP_MULTICAST_TTL" );
+      smclog( LOG_ERR, errno, "set IP_MULTICAST_TTL" );
       
     while( 1 ) {
       if( send( UdpSock, McMsg, sizeof( McMsg ), 0 ) != sizeof( McMsg ) )
-	log( LOG_WARNING, errno, "send to UDP socket" );
+	smclog( LOG_WARNING, errno, "send to UDP socket" );
 
       sleep( 1 );
     }

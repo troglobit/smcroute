@@ -125,7 +125,7 @@ extern char LogLastMsg[ 128 ];    // last logged message
 
 
 
-void log( int Serverity, int Errno, const char *FmtSt, ... );
+void smclog( int Serverity, int Errno, const char *FmtSt, ... );
 
 /* udpsock.c
  */

@@ -22,6 +22,9 @@
 **
 */
 
+#include <unistd.h>
+#include <sys/ioctl.h>
+
 #include "mclab.h"
 #include <linux/sockios.h>
 
@@ -40,7 +43,7 @@ void buildIfVc()
   int Sock;
 
   if( (Sock = socket( AF_INET, SOCK_DGRAM, 0 )) < 0 )
-    log( LOG_ERR, errno, "RAW socket open" );
+    smclog( LOG_ERR, errno, "RAW socket open" );
 
   /* get If vector
    */
@@ -51,7 +54,7 @@ void buildIfVc()
     IoCtlReq.ifc_len = sizeof( IfVc );
 
     if( ioctl( Sock, SIOCGIFCONF, &IoCtlReq ) < 0 )
-      log( LOG_ERR, errno, "ioctl SIOCGIFCONF" );
+      smclog( LOG_ERR, errno, "ioctl SIOCGIFCONF" );
 
     IfEp = (void *)((char *)IfVc + IoCtlReq.ifc_len);
   }
@@ -60,7 +63,6 @@ void buildIfVc()
    */
   {
     struct ifreq  *IfPt;
-    struct IfDesc *IfDp;
 
     for( IfPt = IfVc; IfPt < IfEp; IfPt++ ) {
       char FmtBu[ 32 ];
@@ -92,12 +94,12 @@ void buildIfVc()
 	memcpy( IfReq.ifr_name, IfDescEp->Name, sizeof( IfReq.ifr_name ) );
 
 	if( ioctl( Sock, SIOCGIFFLAGS, &IfReq ) < 0 )
-	  log( LOG_ERR, errno, "ioctl SIOCGIFFLAGS" );
+	  smclog( LOG_ERR, errno, "ioctl SIOCGIFFLAGS" );
 
 	IfDescEp->Flags = IfReq.ifr_flags;
       }
 
-      log( LOG_DEBUG, 0, "buildIfVc: Interface %s Addr: %s, Flags: 0x%04x",
+      smclog( LOG_DEBUG, 0, "buildIfVc: Interface %s Addr: %s, Flags: 0x%04x",
 	   IfDescEp->Name,
 	   fmtInAdr( FmtBu, IfDescEp->InAdr ),
 	   IfDescEp->Flags );

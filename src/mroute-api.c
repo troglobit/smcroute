@@ -22,6 +22,8 @@
 **
 */
 
+#include <unistd.h>
+
 #define USE_LINUX_IN_H
 #include "mclab.h"
 
@@ -50,7 +52,7 @@ int enableMRouter()
   int Va = 1;
 
   if( (MRouterFD = socket( AF_INET, SOCK_RAW, IPPROTO_IGMP )) < 0 )
-    log( LOG_ERR, errno, "IGMP socket open" );
+    smclog( LOG_ERR, errno, "IGMP socket open" );
   
   if( setsockopt( MRouterFD, IPPROTO_IP, MRT_INIT, 
 		  (void *)&Va, sizeof( Va ) ) ) 
@@ -69,7 +71,7 @@ void disableMRouter()
       || close( MRouterFD )
   ) {
     MRouterFD = 0;
-    log( LOG_ERR, errno, "MRT_DONE/close" );
+    smclog( LOG_ERR, errno, "MRT_DONE/close" );
   }
   
   MRouterFD = 0;
@@ -94,7 +96,7 @@ void addVIF( struct IfDesc *IfDp )
   /* no more space
    */
   if( VifDp >= VCEP( VifDescVc ) )
-    log( LOG_ERR, ENOMEM, "addVIF, out of VIF space" );
+    smclog( LOG_ERR, ENOMEM, "addVIF, out of VIF space" );
 
   VifDp->IfDp = IfDp;
 
@@ -105,12 +107,12 @@ void addVIF( struct IfDesc *IfDp )
   VifCtl.vifc_lcl_addr.s_addr = VifDp->IfDp->InAdr.s_addr;
   VifCtl.vifc_rmt_addr.s_addr = INADDR_ANY;
 
-  log( LOG_NOTICE, 0, "adding VIF, Ix %d Fl 0x%x IP 0x%08x %s", 
+  smclog( LOG_NOTICE, 0, "adding VIF, Ix %d Fl 0x%x IP 0x%08x %s", 
        VifCtl.vifc_vifi, VifCtl.vifc_flags,  VifCtl.vifc_lcl_addr.s_addr, VifDp->IfDp->Name );
 
   if( setsockopt( MRouterFD, IPPROTO_IP, MRT_ADD_VIF, 
 		  (char *)&VifCtl, sizeof( VifCtl ) ) )
-    log( LOG_ERR, errno, "MRT_ADD_VIF" );
+    smclog( LOG_ERR, errno, "MRT_ADD_VIF" );
 }
 
 int addMRoute( struct MRouteDesc *Dp )
@@ -122,6 +124,7 @@ int addMRoute( struct MRouteDesc *Dp )
 */
 {
   struct mfcctl CtlReq;
+  int ret = 0;
   
   CtlReq.mfcc_origin    = Dp->OriginAdr;
   CtlReq.mfcc_mcastgrp  = Dp->McAdr;
@@ -132,14 +135,14 @@ int addMRoute( struct MRouteDesc *Dp )
   if(    sizeof( CtlReq.mfcc_ttls ) != sizeof( Dp->TtlVc ) 
       || VCMC( CtlReq.mfcc_ttls ) != VCMC( Dp->TtlVc )
   )
-    log( LOG_ERR, 0, "data types doesn't match in " __FILE__ ", source adaption needed !" );
+    smclog( LOG_ERR, 0, "data types doesn't match in " __FILE__ ", source adaption needed !" );
 
   memcpy( CtlReq.mfcc_ttls, Dp->TtlVc, sizeof( CtlReq.mfcc_ttls ) );
 
   {
     char FmtBuO[ 32 ], FmtBuM[ 32 ];
 
-    log( LOG_NOTICE, 0, "adding MFC: %s -> %s, InpVIf: %d", 
+    smclog( LOG_NOTICE, 0, "adding MFC: %s -> %s, InpVIf: %d", 
 	    fmtInAdr( FmtBuO, CtlReq.mfcc_origin ), 
 	    fmtInAdr( FmtBuM, CtlReq.mfcc_mcastgrp ),
 	    CtlReq.mfcc_parent == ALL_VIFS ? -1 : CtlReq.mfcc_parent
@@ -147,8 +150,13 @@ int addMRoute( struct MRouteDesc *Dp )
   }
 
   if( setsockopt( MRouterFD, IPPROTO_IP, MRT_ADD_MFC,
-		  (void *)&CtlReq, sizeof( CtlReq ) ) ) 
-    log( LOG_WARNING, errno, "MRT_ADD_MFC" );
+		  (void *)&CtlReq, sizeof( CtlReq ) ) )
+    {
+      ret = errno;
+      smclog( LOG_WARNING, errno, "MRT_ADD_MFC" );
+    }
+
+  return ret;
 }
 
 int delMRoute( struct MRouteDesc *Dp )
@@ -160,6 +168,7 @@ int delMRoute( struct MRouteDesc *Dp )
 */
 {
   struct mfcctl CtlReq;
+  int ret = 0;
   
   CtlReq.mfcc_origin    = Dp->OriginAdr;
   CtlReq.mfcc_mcastgrp  = Dp->McAdr;
@@ -172,7 +181,7 @@ int delMRoute( struct MRouteDesc *Dp )
   {
     char FmtBuO[ 32 ], FmtBuM[ 32 ];
 
-    log( LOG_NOTICE, 0, "removing MFC: %s -> %s, InpVIf: %d", 
+    smclog( LOG_NOTICE, 0, "removing MFC: %s -> %s, InpVIf: %d", 
 	    fmtInAdr( FmtBuO, CtlReq.mfcc_origin ), 
 	    fmtInAdr( FmtBuM, CtlReq.mfcc_mcastgrp ),
 	    CtlReq.mfcc_parent == ALL_VIFS ? -1 : CtlReq.mfcc_parent
@@ -180,8 +189,13 @@ int delMRoute( struct MRouteDesc *Dp )
   }
 
   if( setsockopt( MRouterFD, IPPROTO_IP, MRT_DEL_MFC,
-		  (void *)&CtlReq, sizeof( CtlReq ) ) ) 
-    log( LOG_WARNING, errno, "MRT_DEL_MFC" );
+		  (void *)&CtlReq, sizeof( CtlReq ) ) )
+    {
+      ret = errno;
+      smclog( LOG_WARNING, errno, "MRT_DEL_MFC" );
+    }
+
+  return ret;
 }
 
 int getVifIx( struct IfDesc *IfDp )

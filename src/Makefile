@@ -1,15 +1,14 @@
 
-BINDIR=../bin
-
-# CFLAGS=-g
-CFLAGS=-O
+BINDIR = /usr/sbin
+CC = gcc
+CFLAGS = -g -O2 -Wall
 
 default : build.h smcroute
 
 all	: smcroute mcsender
 
 clean	:
-	rm -f *.o *.asm build.h smcroute mcsender  
+	rm -f *~ *.o *.asm build.h smcroute mcsender  
 
 install : 
 	mkdir -p ${BINDIR}

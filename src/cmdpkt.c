@@ -22,6 +22,10 @@
 **
 */
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include "mclab.h"
 
 static int getVifIxfromArg( const char *ArgPt )
@@ -73,11 +77,11 @@ void *buildCmdPkt( char Cmd, const char *ArgVc[], int ParCn )
 
   // makes no sense
   if( PktSz > MX_CMDPKT_SZ ) 
-    log( LOG_ERR, 0, "option too big" );
+    smclog( LOG_ERR, 0, "option too big" );
 
   // build packet
   if( ! (PktPt = malloc( PktSz )) )
-    log( LOG_ERR, errno, "out of memory for option arguments" );
+    smclog( LOG_ERR, errno, "out of memory for option arguments" );
 
   PktPt->PktSz = PktSz;
   PktPt->Cmd   = Cmd;
@@ -142,7 +146,7 @@ convCmdPkt2MRouteDesc( struct MRouteDesc *MrDp, const struct CmdPkt *PktPt )
 	return "invalid output interface";
     
       if( VifIx == MrDp->InVif ) 
-	log( LOG_WARNING, 0, "forwarding multicast to the input interface may not make sense: %s", ArgSt );
+	smclog( LOG_WARNING, 0, "forwarding multicast to the input interface may not make sense: %s", ArgSt );
     
       MrDp->TtlVc[ VifIx ] = 1;           // !!! use a TTL threashold 	
       ArgSt += strlen( ArgSt ) +1;          

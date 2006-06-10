@@ -20,6 +20,17 @@
 **
 */
 
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+#include <unistd.h>
+
 #include "mclab.h"
 
 #include "version.h"
@@ -79,7 +90,7 @@ static void clean()
 ** 
 */        
 {
-  log( LOG_DEBUG, 0, "clean handler called" );
+  smclog( LOG_DEBUG, 0, "clean handler called" );
   disableMRouter();
   cleanIpc();
 }
@@ -97,8 +108,8 @@ static void initMRouter()
 
   switch( Err = enableMRouter() ) {
     case 0: break;
-    case EADDRINUSE: log( LOG_ERR, EADDRINUSE, "MC-Router API already in use" ); break;
-    default: log( LOG_ERR, Err, "MRT_INIT failed" );
+    case EADDRINUSE: smclog( LOG_ERR, EADDRINUSE, "MC-Router API already in use" ); break;
+    default: smclog( LOG_ERR, Err, "MRT_INIT failed" );
   }
       
   /* create VIFs for all IP, non-loop interfaces
@@ -107,7 +118,7 @@ static void initMRouter()
     unsigned Ix;
     struct IfDesc *Dp;
 
-    for( Ix = 0; Dp = getIfByIx( Ix ); Ix++ ) 
+    for( Ix = 0; (Dp = getIfByIx( Ix )); Ix++ ) 
       if( Dp->InAdr.s_addr && ! (Dp->Flags & IFF_LOOPBACK) )
 	addVIF( Dp );
   }  
@@ -229,7 +240,7 @@ BuildCmd:
 	  || open( "/dev/null", 0 ) != 0 || dup2( 0, 1 ) < 0 || dup2( 0, 2 ) < 0
 	  || setpgrp() < 0
       )
-	log( LOG_ERR, errno, "failed to detach deamon" );
+	smclog( LOG_ERR, errno, "failed to detach deamon" );
 
       while( 1 ) {
 	struct CmdPkt *PktPt;
@@ -249,7 +260,7 @@ BuildCmd:
 
 	  // log and ignore failures
 	  if( Rt <= 0 ) {
-	    log( LOG_WARNING, errno, "select() failure" );
+	    smclog( LOG_WARNING, errno, "select() failure" );
 	    continue;
 	  }
 	  
@@ -258,7 +269,7 @@ BuildCmd:
 	    char Bu[ 128 ];
 	    
 	    Rt = read( MRouterFD, Bu, sizeof( Bu ) ); 
-	    log( LOG_DEBUG, 0, "%d byte IGMP signaling dropped", Rt );
+	    smclog( LOG_DEBUG, 0, "%d byte IGMP signaling dropped", Rt );
 	  }
 
 	  // loop back to select if there is no smcroute command
@@ -276,7 +287,7 @@ BuildCmd:
           case 'a':
 	  case 'r':  
 	    if( (ErrSt = convCmdPkt2MRouteDesc( &MrDe, PktPt )) ) {
-	      log( LOG_WARNING, 0, ErrSt );
+	      smclog( LOG_WARNING, 0, ErrSt );
 	      sendIpc( LogLastMsg, strlen( LogLastMsg ) +1 );
 	      break;
 	    }
@@ -304,7 +315,7 @@ BuildCmd:
 	    if( ! *McAdrSt || ! inet_aton( McAdrSt, &McAdr ) 
 		|| ! IN_MULTICAST( ntohl( McAdr.s_addr ) ) 
 	    ) {
-	      log( LOG_WARNING, 0, "invalid multicast group address: '%s'", 
+	      smclog( LOG_WARNING, 0, "invalid multicast group address: '%s'", 
 		   McAdrSt );
 	      sendIpc( LogLastMsg, strlen( LogLastMsg ) +1 );
 	      break;
@@ -358,7 +369,7 @@ Retry:
 	  break;
 
 	case EACCES: 
-	  log( LOG_ERR, EACCES, "need super-user rights to connect to daemon" ); 
+	  smclog( LOG_ERR, EACCES, "need super-user rights to connect to daemon" ); 
 	  break;
 
 	case ENOENT:
@@ -370,24 +381,24 @@ Retry:
 	    goto Retry;
 	  }
 
-	  log( LOG_ERR, Err, "daemon not running ?" );
+	  smclog( LOG_ERR, Err, "daemon not running ?" );
 	  break;
 
 	default:
-	  log( LOG_ERR, Err, "can't connect to daemon" );
+	  smclog( LOG_ERR, Err, "can't connect to daemon" );
 	  break;
       }
     }
 
     for( PktPp = CmdVc; PktPp < CmdVcPt; PktPp++ ) {
-      int RdSz;
+      int RdSz = 0;
       
       if( (sendIpc( *PktPp, (*PktPp)->PktSz ) < 0) 
        || (RdSz = readIpc( Bu, sizeof( Bu ) )) < 0   
       )
-	log( LOG_ERR, errno, "read/write to daemon failed" );
+	smclog( LOG_ERR, errno, "read/write to daemon failed" );
 
-      log( LOG_DEBUG, 0, "RdSz: %d", RdSz );
+      smclog( LOG_DEBUG, 0, "RdSz: %d", RdSz );
 
       if( RdSz != 1 || *Bu != '\0' ) {
 	fprintf( stderr, "daemon error: %s\n", Bu );
