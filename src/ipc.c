@@ -47,7 +47,10 @@ int initIpcServer()
   struct sockaddr_un UnixAddr; 
 
   if( (ListenSock = socket( AF_UNIX, SOCK_STREAM, 0 )) < 0 )
-    smclog( LOG_ERR, errno, "initIpcServer, socket() failed" );
+    {
+      smclog( LOG_INIT, errno, "initIpcServer, socket() failed" );
+      return -1;
+    }
 
   UnixAddr.sun_family = AF_UNIX;
   strcpy( UnixAddr.sun_path, SOCKET_PATH );
@@ -57,7 +60,11 @@ int initIpcServer()
   if( bind( ListenSock, (struct sockaddr *)&UnixAddr, 
 	    sizeof( UnixAddr.sun_family ) + strlen( UnixAddr.sun_path )) < 0 
       || listen( ListenSock, 1 ) )
-    smclog( LOG_ERR, errno, "initIpcServer, bind()/listen() failed" );
+    {
+      smclog( LOG_INIT, errno, "initIpcServer, bind()/listen() failed" );
+      close(ListenSock);
+      return -1;
+    }
 
   return ListenSock;
 }

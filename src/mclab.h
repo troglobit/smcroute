@@ -118,6 +118,9 @@ int leaveMcGroup( int UdpSock, const char *IfName, struct in_addr McAdr );
 
 /* syslog.c
  */
+
+#define LOG_INIT 10
+
 extern int  Log2Stderr;    // Log threshold for stderr, LOG_WARNING .... LOG_DEBUG 
 extern int  LogLastServerity;     // last logged serverity
 extern int  LogLastErrno;         // last logged errno value

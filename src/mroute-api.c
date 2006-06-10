@@ -52,7 +52,11 @@ int enableMRouter()
   int Va = 1;
 
   if( (MRouterFD = socket( AF_INET, SOCK_RAW, IPPROTO_IGMP )) < 0 )
-    smclog( LOG_ERR, errno, "IGMP socket open" );
+    {
+      int err = errno;
+      smclog( LOG_INIT, errno, "IGMP socket open" );
+      return err;
+    }
   
   if( setsockopt( MRouterFD, IPPROTO_IP, MRT_INIT, 
 		  (void *)&Va, sizeof( Va ) ) ) 

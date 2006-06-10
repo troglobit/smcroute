@@ -96,7 +96,7 @@ static void clean()
 }
 
 
-static void initMRouter()
+static int initMRouter()
 /*
 ** Inits the necessary resources for MRouter.
 **
@@ -108,8 +108,8 @@ static void initMRouter()
 
   switch( Err = enableMRouter() ) {
     case 0: break;
-    case EADDRINUSE: smclog( LOG_ERR, EADDRINUSE, "MC-Router API already in use" ); break;
-    default: smclog( LOG_ERR, Err, "MRT_INIT failed" );
+    case EADDRINUSE: smclog( LOG_INIT, EADDRINUSE, "MC-Router API already in use" ); return -1;
+    default: smclog( LOG_INIT, Err, "MRT_INIT failed" ); return -1;
   }
       
   /* create VIFs for all IP, non-loop interfaces
@@ -121,9 +121,9 @@ static void initMRouter()
     for( Ix = 0; (Dp = getIfByIx( Ix )); Ix++ ) 
       if( Dp->InAdr.s_addr && ! (Dp->Flags & IFF_LOOPBACK) )
 	addVIF( Dp );
-  }  
+  }
 
-  atexit( clean );
+  return 0;
 }
 
 int main( int ArgCn, const char *ArgVc[] )
@@ -225,15 +225,24 @@ BuildCmd:
   // !!! signal( SIGINT, SIGQUIT, SIGTERM  
 
   if( StartDaemon ) {                       // only daemon parent enters
+      int IpcServerFD;
+
+      // Init everything before forking, so we can fail and return an
+      // error code in the parent and the initscript will fail
+      if (initMRouter() != 0)
+	exit(1);
+
+      IpcServerFD = initIpcServer();
+      if (IpcServerFD < 0)
+	{
+	  clean();
+	  exit(2);
+	}
 
     /* creat daemon process
      */
     if( ! fork() ) {                   // only daemon enters
-      int IpcServerFD;
-
-      // init before detach to see errors on the terminal
-      initMRouter();
-      IpcServerFD = initIpcServer();
+      atexit( clean );
 
       // detach deamon from terminal
       if( close( 0 ) < 0 || close( 1 ) < 0 || close( 2 ) < 0 
