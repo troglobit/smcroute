@@ -1,0 +1,157 @@
+.\" .br - line break (nothing else on the line)
+.\" .B  - bold
+.\" .I  - green or kursive (on HTML)
+.\" .TP - paragraph ? (header line, followed by indented lines)
+.\"
+.TH smcroute 8 "August, 2001"
+.LO 1
+.SH NAME
+SMCRoute \- Static Multicast Router (-Interface) - Version 0.9
+.SH SYNOPSIS
+smcroute <
+.I options
+> <
+.I commands
+>
+.TP
+.I options
+-d  -  start daemon
+.br
+-v  -  verbose output
+.TP
+.I commands  - common
+-h  -  print help
+.br
+-k  -  kill daemon
+.TP
+.I commands - multicast routing related
+-a <InputIntf> <OriginIpAdr> <McGroupAdr> <OutputIntf> [<OutputIntf>] ...
+.br  
+   -  add route
+.br
+-r <InputIntf> <OriginIpAdr> <McGroupAdr>
+.br
+   -  remove route
+.TP
+.I commands - multicast signaling related
+-j <InputIntf> <McGroupAdr>  - join MC group
+.br
+-l <InputIntf> <McGroupAdr>  - leave MC group
+.SH DESCRIPTION
+.B SMCRoute 
+is a command line tool to manipulate the multicast
+routes of the Linux kernel. It can be used as an alternative to dynamic
+multicast routers like 'mrouted' in situations where static multicast routes
+should be maintained and/or no proper IGMP signaling exists.
+
+Generaly multicast routes exists in the kernel only as long as smcroute or another multicast routing daemon is running. Only one multicast router daemon can be active, so it's impossible to run smcroute and e.g. 'mrouted' at the same time.
+
+The 
+.B -d
+option smcroute is used to start the smcroute daemon otherwise smcroute searches for an already running smcroute daemon and passes the commands to it. The 
+.B -k
+option will terminate a running daemon.
+
+Multicast routes can be added with the 
+.B -a 
+command and removed with the 
+.B -r
+command. A multicast route is defined by the input interface (<IntputIntf>), the multicast IP origin address (<OriginIpAdr>), the multicast group (<McGroupAdr>) and a list of output interfaces (<OutputIntf> ...). The output interfaces must not be given with the 
+.B -r
+as the first three parameter are sufficient to identify the route to remove.
+
+The intention of SMCRoute is to help in siutation where dynamic multicast routing does not work properly, but dynamic multicast routing is in nearly all cases the prefered solution. SMCRoute supports dynamic multicast routing with the multicast group 'join' 
+.B -j
+and 'leave' 
+.B -l
+commands. For both commands the input interface on which the multicast sessions should be received (<InputIntf>) and the multicast group address <McGroupAdr> must be given.
+
+.B Superuser rights 
+are necessary to start the smcroute daemon or to communicate with the daemon. 
+.SH OPTIONS
+.TP
+.B -d  
+Starts the smcroute daemon before any of the optional following commands are executed.
+
+.TP
+.B -v
+Gives verbose output in some error situations (don't expect too much, check syslog instead).
+.SH COMMANDS
+.TP
+.B -a 
+.I <InputIntf> <OriginIpAdr> <McGroupAdr> <OutputIntf> [<OutputIntf>] ...
+
+The command is passed to the daemon that adds the given multicast route to the kernel's routing table. 
+.I <InputIntf> 
+can be any network interface as listed by 'ifconfig' or 'ip link list' (incl. tunnel interfaces), but not the loopback interface.
+.I <OriginIpAdr>
+is the source IP address of the multicast packets that will be routed by this entry. It is a unicast IP address not a multicast IP address. 
+.I <McGroupAdr>
+is the IP address of the multicast group that will be forwarded.
+.I <OutputIntf> [<OutputIntf>] ...
+is a list of one or more network interfaces to which the multicast packets will be forwarded. The same rules for the selection of output interfaces applies as for the input interface. 
+
+.B Warning, 
+by using multiple output interfaces (traffic multiplication), using the input interface also as output interface (direct loop) or constructing some other forms of indirect loop you can flood you network.
+
+.TP
+.B -r
+.I <InputIntf> <OriginIpAdr> <McGroupAdr>
+
+The command is passed to the daemon that removes a multicast route previously added with the 
+.B -a
+command. The parameters are identical except to the omitted list of <OutputIntf>.
+
+.TP
+.B -j
+.I <InputIntf> <McGroupAdr>  
+
+The command is passed to the daemon that passes it to the kernel. The kernen then tries to join the multicast group 
+.I <McGroupAdr>
+on interface 
+.I <InputIntf>
+by starting IGMP signaling on 
+.I <InputIntf>.
+This signaling may be received by routers connected to 
+.I <InputIntf>'s
+network that support IGMP multicast signaling and then hopfuly start forwarding of the requested multicast session to 
+.I <InputIntf>'s
+network. 
+
+With this command smcroute allows the integration of nodes that needs static multicast routing into dynamic multicast routing networks. 
+
+.TP
+.B -l
+.I <InputIntf> <McGroupAdr>  
+
+The command is passed via the daemon to the kernel that initiate a 'leave' for a previously 'joined' multicast group.
+
+.SH LIMITS
+The current version compiles and runs fine with the Linux kernel version 2.4. The known limits are:
+
+.B Multicast routes:
+more then 200
+
+.B Multicast group membership:
+max. 20
+.SH FILES
+.TP
+.B proc/net/ip_mr_cache 
+- contains the active multicast routes
+.TP
+.B /proc/net/ip_mr_vif 
+- contains the 'virtual' interfaces used by the active multicast routing daemon
+.TP
+.B /var/lib/smcroute 
+- IPC socket created by the smcroute daemon
+.SH SEE ALSO
+mrouted
+.SH BUGS (known)
+* The English wording of this man page
+.SH AUTHOR
+Carsten Schill <carsten@cschill.de>
+
+The current version is available at: 
+.I http://www.cschill.de/smcroute	
+.SH TIPS
+* A lot of extra information are send under the daemon facility and the debug priority to the syslog daemon.
