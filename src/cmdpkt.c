@@ -149,7 +149,6 @@ convCmdPkt2MRouteDesc( struct MRouteDesc *MrDp, const struct CmdPkt *PktPt )
 	smclog( LOG_WARNING, 0, "forwarding multicast to the input interface may not make sense: %s", ArgSt );
     
       MrDp->TtlVc[ VifIx ] = 1;           // !!! use a TTL threashold 	
-      ArgSt += strlen( ArgSt ) +1;          
     }
   }
 
