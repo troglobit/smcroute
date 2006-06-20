@@ -1,3 +1,6 @@
+smcroute 0.92 -> 0.93
+ * fixed the "smcroute looses output interfaces" bug (Carsten Schill, 0.93
+    unreleased).
 
 smcroute 0.90 -> 0.92
   * fixed the 'mroute: pending queue full, dropping entries' error
