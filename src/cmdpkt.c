@@ -16,7 +16,7 @@
 **  along with this program; if not, write to the Free Software
 **  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 **
-**  $Id: cmdpkt.c,v 1.4 2001/08/27 09:33:22 cschill Exp $	
+**  $Id$	
 **
 **  This module contains the functions to build and convert IPC command packets
 **

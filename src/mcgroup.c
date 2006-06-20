@@ -16,7 +16,7 @@
 **  along with this program; if not, write to the Free Software
 **  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 **
-**  $Id: mcgroup.c,v 1.2 2001/08/26 19:56:08 cschill Exp $	
+**  $Id$	
 **
 **  This module contains the remaining functions that where not placed in 
 **  separate modules

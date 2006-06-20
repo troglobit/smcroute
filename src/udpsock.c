@@ -16,7 +16,7 @@
 **  along with this program; if not, write to the Free Software
 **  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 **
-**  $Id: udpsock.c,v 1.1 2001/07/11 15:55:42 cschill Exp $	
+**  $Id$	
 **
 **  This module contains UDP socket function(s)
 **

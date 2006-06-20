@@ -16,7 +16,7 @@
 **  along with this program; if not, write to the Free Software
 **  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 **
-**  $Id: ipc.c,v 1.7 2002/02/17 13:41:28 cschill Exp $	
+**  $Id$	
 **
 **  This module contains the IPC functions for client and server
 **
