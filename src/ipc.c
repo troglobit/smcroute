@@ -1,6 +1,6 @@
 /*
 **  smcroute - static multicast routing control 
-**  Copyright (C) 2001 Carsten Schill <carsten@cschill.de>
+**  Copyright (C) 2001-2005 Carsten Schill <carsten@cschill.de>
 **
 **  This program is free software; you can redistribute it and/or modify
 **  it under the terms of the GNU General Public License as published by

@@ -1,6 +1,6 @@
 /*
 **  smcroute - static multicast routing control 
-**  Copyright (C) 2001 Carsten Schill <carsten@cschill.de>
+**  Copyright (C) 2001-2005 Carsten Schill <carsten@cschill.de>
 **
 **  This program is free software; you can redistribute it and/or modify
 **  it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@
 
 static const char Version[] = 
 "smcroute, Version " VERSION ", Build" BUILD "\n"
-"Copyright 2001,2002 by Carsten Schill <carsten@cschill.de>\n"
+"Copyright 2001-2005 Carsten Schill <carsten@cschill.de>\n"
 "Distributed under the GNU GENERAL PUBLIC LICENSE, Version 2 - check GPL.txt\n"
 "\n";
 
