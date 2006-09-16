@@ -3,10 +3,10 @@
 .\" .I  - green or kursive (on HTML)
 .\" .TP - paragraph ? (header line, followed by indented lines)
 .\"
-.TH smcroute 8 "August, 2001"
+.TH smcroute 8 "September, 2006"
 .LO 1
 .SH NAME
-SMCRoute \- Static Multicast Router (-Interface) - Version 0.9
+SMCRoute \- Static Multicast Router (-Interface) - Version 0.93d
 .SH SYNOPSIS
 smcroute <
 .I options
@@ -146,12 +146,13 @@ max. 20
 - IPC socket created by the smcroute daemon
 .SH SEE ALSO
 mrouted
-.SH BUGS (known)
-* The English wording of this man page
-.SH AUTHOR
-Carsten Schill <carsten@cschill.de>
+.SH BUGS
+The English wording of this man page.
+.SH AUTHORS
+smcroute was originally written by Carsten Schill <carsten@cschill.de>,
+and is now maintained by Julien BLACHE <jblache@debian.org>
 
 The current version is available at: 
-.I http://www.cschill.de/smcroute	
+.I http://alioth.debian.org/projects/smcroute
 .SH TIPS
-* A lot of extra information are send under the daemon facility and the debug priority to the syslog daemon.
+A lot of extra information is sent under the daemon facility and the debug priority to the syslog daemon.
