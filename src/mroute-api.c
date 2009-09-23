@@ -24,25 +24,47 @@
 */
 
 #include <unistd.h>
+#include <arpa/inet.h>
 
-#define USE_LINUX_IN_H
 #include "mclab.h"
 
-// MAX_MC_VIFS from mclab.h must have same value as MAXVIFS from mroute.h
+/* MAX_MC_VIFS from mclab.h must have same value as MAXVIFS from mroute.h */
 #if MAX_MC_VIFS != MAXVIFS
 # error "constants don't match, correct mclab.h"
 #endif
 
-// need an IGMP socket as interface for the mrouted API
-// - receives the IGMP messages
-int MRouterFD;
+/* MAX_MC_MIFS from mclab.h must have same value as MAXVIFS from mroute6.h */
+#if MAX_MC_MIFS != MAXMIFS
+# error "constants don't match, correct mclab.h"
+#endif
 
-// my internal virtual interfaces descriptor vector  
+/*
+ * Need a raw IGMP socket as interface for the IPv4 mrouted API
+ * Receives IGMP packets and kernel upcall messages.
+ */
+int MRouterFD4;
+
+/*
+ * Need a raw ICMPv6 socket as interface for the IPv6 mrouted API
+ * Receives MLD packets and kernel upcall messages.
+ */
+int MRouterFD6;
+
+/* IPv4 internal virtual interfaces (VIF) descriptor vector */
 static struct VifDesc {
   struct IfDesc *IfDp;
 } VifDescVc[ MAXVIFS ];
 
-int enableMRouter()
+/* IPv6 internal virtual interfaces (VIF) descriptor vector */
+static struct MifDesc {
+  struct IfDesc *IfDp;
+} MifDescVc[ MAXMIFS ];
+
+/********************************************************************
+ * IPv4 
+ *******************************************************************/
+
+int enableMRouter4()
 /*
 ** Initialises the mrouted API and locks it by this exclusively.
 **     
@@ -52,34 +74,32 @@ int enableMRouter()
 {
   int Va = 1;
 
-  if( (MRouterFD = socket( AF_INET, SOCK_RAW, IPPROTO_IGMP )) < 0 )
-    {
-      int err = errno;
-      smclog( LOG_INIT, errno, "IGMP socket open" );
-      return err;
-    }
+  if( (MRouterFD4 = socket( AF_INET, SOCK_RAW, IPPROTO_IGMP )) < 0 ) {
+    int err = errno;
+    smclog( LOG_INIT, errno, "IGMP socket open" );
+    return err;
+  }
   
-  if( setsockopt( MRouterFD, IPPROTO_IP, MRT_INIT, 
+  if( setsockopt( MRouterFD4, IPPROTO_IP, MRT_INIT, 
 		  (void *)&Va, sizeof( Va ) ) ) 
     return errno;
 
   return 0;
 }
 
-void disableMRouter()
+void disableMRouter4()
 /*
 ** Diables the mrouted API and relases by this the lock.
 **          
 */
 {
-  if( setsockopt( MRouterFD, IPPROTO_IP, MRT_DONE, NULL, 0 ) 
-      || close( MRouterFD )
-  ) {
-    MRouterFD = 0;
+  if( setsockopt( MRouterFD4, IPPROTO_IP, MRT_DONE, NULL, 0 ) 
+      || close( MRouterFD4 ) ) {
+    MRouterFD4 = 0;
     smclog( LOG_ERR, errno, "MRT_DONE/close" );
   }
   
-  MRouterFD = 0;
+  MRouterFD4 = 0;
 }
 
 void addVIF( struct IfDesc *IfDp )
@@ -90,6 +110,8 @@ void addVIF( struct IfDesc *IfDp )
 {
   struct vifctl VifCtl;
   struct VifDesc *VifDp;
+
+  memset(&VifCtl, 0, sizeof(VifCtl));
 
   /* search free VifDesc
    */
@@ -105,22 +127,22 @@ void addVIF( struct IfDesc *IfDp )
 
   VifDp->IfDp = IfDp;
 
-  VifCtl.vifc_vifi  = VifDp - VifDescVc; 
+  VifCtl.vifc_vifi = VifDp - VifDescVc; 
   VifCtl.vifc_flags = 0;        /* no tunnel, no source routing, register ? */
   VifCtl.vifc_threshold = 1;    /* Packet TTL must be at least 1 to pass them */
   VifCtl.vifc_rate_limit = 0;   /* hopefully no limit */
   VifCtl.vifc_lcl_addr.s_addr = VifDp->IfDp->InAdr.s_addr;
   VifCtl.vifc_rmt_addr.s_addr = INADDR_ANY;
 
-  smclog( LOG_NOTICE, 0, "adding VIF, Ix %d Fl 0x%x IP 0x%08x %s", 
+  smclog( LOG_NOTICE, 0, "adding VIF, Vif-Ix %d Fl 0x%04x IP 0x%08x %s", 
        VifCtl.vifc_vifi, VifCtl.vifc_flags,  VifCtl.vifc_lcl_addr.s_addr, VifDp->IfDp->Name );
 
-  if( setsockopt( MRouterFD, IPPROTO_IP, MRT_ADD_VIF, 
-		  (char *)&VifCtl, sizeof( VifCtl ) ) )
-    smclog( LOG_ERR, errno, "MRT_ADD_VIF" );
+  if( setsockopt( MRouterFD4, IPPROTO_IP, MRT_ADD_VIF, 
+		  (void *)&VifCtl, sizeof( VifCtl ) ) )
+    smclog( LOG_ERR, errno, "MRT_ADD_VIF %s", IfDp->Name );
 }
 
-int addMRoute( struct MRouteDesc *Dp )
+int addMRoute4( struct MRoute4Desc *Dp )
 /*
 ** Adds the multicast routed '*Dp' to the kernel routes
 **
@@ -131,6 +153,8 @@ int addMRoute( struct MRouteDesc *Dp )
   struct mfcctl CtlReq;
   int ret = 0;
   
+  memset(&CtlReq, 0, sizeof(CtlReq));
+
   CtlReq.mfcc_origin    = Dp->OriginAdr;
   CtlReq.mfcc_mcastgrp  = Dp->McAdr;
   CtlReq.mfcc_parent    = Dp->InVif;
@@ -138,33 +162,31 @@ int addMRoute( struct MRouteDesc *Dp )
   /* copy the TTL vector
    */
   if(    sizeof( CtlReq.mfcc_ttls ) != sizeof( Dp->TtlVc ) 
-      || VCMC( CtlReq.mfcc_ttls ) != VCMC( Dp->TtlVc )
-  )
+      || VCMC( CtlReq.mfcc_ttls ) != VCMC( Dp->TtlVc ) )
     smclog( LOG_ERR, 0, "data types doesn't match in " __FILE__ ", source adaption needed !" );
 
   memcpy( CtlReq.mfcc_ttls, Dp->TtlVc, sizeof( CtlReq.mfcc_ttls ) );
 
   {
-    char FmtBuO[ 32 ], FmtBuM[ 32 ];
+    char FmtBuO[ INET_ADDRSTRLEN ], FmtBuM[ INET_ADDRSTRLEN ];
 
     smclog( LOG_NOTICE, 0, "adding MFC: %s -> %s, InpVIf: %d", 
-	    fmtInAdr( FmtBuO, CtlReq.mfcc_origin ), 
-	    fmtInAdr( FmtBuM, CtlReq.mfcc_mcastgrp ),
-	    CtlReq.mfcc_parent == ALL_VIFS ? -1 : CtlReq.mfcc_parent
+	    inet_ntop( AF_INET, &CtlReq.mfcc_origin,   FmtBuO, INET_ADDRSTRLEN ), 
+	    inet_ntop( AF_INET, &CtlReq.mfcc_mcastgrp, FmtBuM, INET_ADDRSTRLEN ), 
+	    CtlReq.mfcc_parent
 	    );
   }
 
-  if( setsockopt( MRouterFD, IPPROTO_IP, MRT_ADD_MFC,
-		  (void *)&CtlReq, sizeof( CtlReq ) ) )
-    {
-      ret = errno;
-      smclog( LOG_WARNING, errno, "MRT_ADD_MFC" );
-    }
+  if( setsockopt( MRouterFD4, IPPROTO_IP, MRT_ADD_MFC,
+		  (void *)&CtlReq, sizeof( CtlReq ) ) ) {
+    ret = errno;
+    smclog( LOG_WARNING, errno, "MRT_ADD_MFC" );
+  }
 
   return ret;
 }
 
-int delMRoute( struct MRouteDesc *Dp )
+int delMRoute4( struct MRoute4Desc *Dp )
 /*
 ** Removes the multicast routed '*Dp' from the kernel routes
 **
@@ -175,30 +197,25 @@ int delMRoute( struct MRouteDesc *Dp )
   struct mfcctl CtlReq;
   int ret = 0;
   
-  CtlReq.mfcc_origin    = Dp->OriginAdr;
-  CtlReq.mfcc_mcastgrp  = Dp->McAdr;
-  CtlReq.mfcc_parent    = Dp->InVif;
+  memset(&CtlReq, 0, sizeof(CtlReq));
 
-  /* clear the TTL vector
-   */
-  memset( CtlReq.mfcc_ttls, 0, sizeof( CtlReq.mfcc_ttls ) );
+  CtlReq.mfcc_origin   = Dp->OriginAdr;
+  CtlReq.mfcc_mcastgrp = Dp->McAdr;
 
   {
-    char FmtBuO[ 32 ], FmtBuM[ 32 ];
+    char FmtBuO[ INET_ADDRSTRLEN ], FmtBuM[ INET_ADDRSTRLEN ];
 
-    smclog( LOG_NOTICE, 0, "removing MFC: %s -> %s, InpVIf: %d", 
-	    fmtInAdr( FmtBuO, CtlReq.mfcc_origin ), 
-	    fmtInAdr( FmtBuM, CtlReq.mfcc_mcastgrp ),
-	    CtlReq.mfcc_parent == ALL_VIFS ? -1 : CtlReq.mfcc_parent
+    smclog( LOG_NOTICE, 0, "removing MFC: %s -> %s", 
+	    inet_ntop( AF_INET, &CtlReq.mfcc_origin,   FmtBuO, INET_ADDRSTRLEN ), 
+	    inet_ntop( AF_INET, &CtlReq.mfcc_mcastgrp, FmtBuM, INET_ADDRSTRLEN )
 	    );
   }
 
-  if( setsockopt( MRouterFD, IPPROTO_IP, MRT_DEL_MFC,
-		  (void *)&CtlReq, sizeof( CtlReq ) ) )
-    {
+  if( setsockopt( MRouterFD4, IPPROTO_IP, MRT_DEL_MFC,
+		  (void *)&CtlReq, sizeof( CtlReq ) ) ) {
       ret = errno;
       smclog( LOG_WARNING, errno, "MRT_DEL_MFC" );
-    }
+  }
 
   return ret;
 }
@@ -207,7 +224,7 @@ int getVifIx( struct IfDesc *IfDp )
 /*
 ** Returns for the virtual interface index for '*IfDp'
 **
-** returns: - the vitrual interface index if the interface is registered
+** returns: - the virtual interface index if the interface is registered
 **          - -1 if no virtual interface exists for the interface 
 **          
 */
@@ -221,4 +238,177 @@ int getVifIx( struct IfDesc *IfDp )
   return -1;
 }
 
+
+/********************************************************************
+ * IPv6 
+ *******************************************************************/
+
+int enableMRouter6()
+/*
+** Initialises the mrouted API and locks it by this exclusively.
+**     
+** returns: - 0 if the functions succeeds     
+**          - the errno value for non-fatal failure condition
+*/
+{
+  int Va = 1;
+
+  if( (MRouterFD6 = socket( AF_INET6, SOCK_RAW, IPPROTO_ICMPV6 )) < 0 ) {
+    int err = errno;
+    smclog( LOG_INIT, errno, "ICMPv6 socket open" );
+    return err;
+  }
+  
+  if( setsockopt( MRouterFD6, IPPROTO_IPV6, MRT6_INIT, 
+		  (void *)&Va, sizeof( Va ) ) ) 
+    return errno;
+
+  return 0;
+}
+
+void disableMRouter6()
+/*
+** Diables the mrouted API and relases by this the lock.
+**          
+*/
+{
+  if( setsockopt( MRouterFD6, IPPROTO_IPV6, MRT6_DONE, NULL, 0 ) 
+      || close( MRouterFD6 ) ) {
+    MRouterFD6 = 0;
+    smclog( LOG_ERR, errno, "MRT6_DONE/close" );
+  }
+  
+  MRouterFD6 = 0;
+}
+
+void addMIF( struct IfDesc *IfDp )
+/*
+** Adds the interface '*IfDp' as virtual interface to the mrouted API
+** 
+*/
+{
+  struct mif6ctl MifCtl;
+  struct MifDesc *MifDp;
+
+  memset(&MifCtl, 0, sizeof(MifCtl));
+
+  /* search free MifDesc
+   */
+  for( MifDp = MifDescVc; MifDp < VCEP( MifDescVc ); MifDp++ ) {
+    if( ! MifDp->IfDp )
+      break;
+  }
+    
+  /* no more space
+   */
+  if( MifDp >= VCEP( MifDescVc ) )
+    smclog( LOG_ERR, ENOMEM, "addMIF, out of MIF space" );
+
+  MifDp->IfDp = IfDp;
+
+  MifCtl.mif6c_mifi      = MifDp - MifDescVc; 
+  MifCtl.mif6c_flags     = 0;             /* no register */
+  MifCtl.vifc_threshold  = 1;             /* Packet TTL must be at least 1 to pass them */
+  MifCtl.mif6c_pifi      = IfDp->IfIndex; /* physical interface index */
+  MifCtl.vifc_rate_limit = 0;             /* hopefully no limit */
+
+  smclog( LOG_NOTICE, 0, "adding MIF, Mif-Ix %d PHY Ix %d Fl 0x%x %s", 
+	  MifCtl.mif6c_mifi, MifCtl.mif6c_pifi, MifCtl.mif6c_flags, MifDp->IfDp->Name );
+
+  if( setsockopt( MRouterFD6, IPPROTO_IPV6, MRT6_ADD_MIF, 
+		  (char *)&MifCtl, sizeof( MifCtl ) ) )
+    smclog( LOG_ERR, errno, "MRT6_ADD_MIF %s", IfDp->Name );
+}
+
+int addMRoute6( struct MRoute6Desc *Dp )
+/*
+** Adds the multicast routed '*Dp' to the kernel routes
+**
+** returns: - 0 if the function succeeds
+**          - the errno value for non-fatal failure condition
+*/
+{
+  struct mf6cctl CtlReq;
+  int ret = 0;
+  
+  memset(&CtlReq, 0, sizeof(CtlReq));
+
+  CtlReq.mf6cc_origin    = Dp->OriginAdr;
+  CtlReq.mf6cc_mcastgrp  = Dp->McAdr;
+  CtlReq.mf6cc_parent    = Dp->InMif;
+
+  /* copy the outgoing MIFs
+   */
+  memcpy( &CtlReq.mf6cc_ifset, &Dp->IfSet, sizeof( CtlReq.mf6cc_ifset ) );
+
+  {
+    char FmtBuO[ INET6_ADDRSTRLEN ], FmtBuM[ INET6_ADDRSTRLEN ];
+
+    smclog( LOG_NOTICE, 0, "adding MFC: %s -> %s, InpMIf: %d", 
+	    inet_ntop( AF_INET6, &CtlReq.mf6cc_origin.sin6_addr,   FmtBuO, INET6_ADDRSTRLEN ), 
+	    inet_ntop( AF_INET6, &CtlReq.mf6cc_mcastgrp.sin6_addr, FmtBuM, INET6_ADDRSTRLEN ), 
+	    CtlReq.mf6cc_parent
+	    );
+  }
+
+  if( setsockopt( MRouterFD6, IPPROTO_IPV6, MRT6_ADD_MFC,
+		  (void *)&CtlReq, sizeof( CtlReq ) ) ) {
+    ret = errno;
+    smclog( LOG_WARNING, errno, "MRT6_ADD_MFC" );
+  }
+
+  return ret;
+}
+
+int delMRoute6( struct MRoute6Desc *Dp )
+/*
+** Removes the multicast routed '*Dp' from the kernel routes
+**
+** returns: - 0 if the function succeeds
+**          - the errno value for non-fatal failure condition
+*/
+{
+  struct mf6cctl CtlReq;
+  int ret = 0;
+  
+  memset(&CtlReq, 0, sizeof(CtlReq));
+
+  CtlReq.mf6cc_origin   = Dp->OriginAdr;
+  CtlReq.mf6cc_mcastgrp = Dp->McAdr;
+
+  {
+    char FmtBuO[ INET_ADDRSTRLEN ], FmtBuM[ INET_ADDRSTRLEN ];
+
+    smclog( LOG_NOTICE, 0, "removing MFC: %s -> %s", 
+	    inet_ntop( AF_INET6, &CtlReq.mf6cc_origin.sin6_addr,   FmtBuO, INET6_ADDRSTRLEN ), 
+	    inet_ntop( AF_INET6, &CtlReq.mf6cc_mcastgrp.sin6_addr, FmtBuM, INET6_ADDRSTRLEN )
+	    );
+  }
+
+  if( setsockopt( MRouterFD6, IPPROTO_IPV6, MRT6_DEL_MFC,
+		  (void *)&CtlReq, sizeof( CtlReq ) ) ) {
+    ret = errno;
+    smclog( LOG_WARNING, errno, "MRT_DEL_MFC" );
+  }
+
+  return ret;
+}
+
+int getMifIx( struct IfDesc *IfDp )
+/*
+** Returns for the virtual interface index for '*IfDp'
+**
+** returns: - the virtual interface index if the interface is registered
+**          - -1 if no virtual interface exists for the interface 
+**          
+*/
+{
+  struct MifDesc *Dp;
+
+  for( Dp = MifDescVc; Dp < VCEP( MifDescVc ); Dp++ ) 
+    if( Dp->IfDp == IfDp )
+      return Dp - MifDescVc;
+
+  return -1;
+}
 
