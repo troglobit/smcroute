@@ -43,6 +43,8 @@ void buildIfVc()
 
   int Sock;
 
+  memset(IfVc, 0, sizeof(IfVc));
+
   if( (Sock = socket( AF_INET, SOCK_DGRAM, 0 )) < 0 )
     smclog( LOG_ERR, errno, "RAW socket open" );
 
@@ -100,10 +102,13 @@ void buildIfVc()
 	IfDescEp->Flags = IfReq.ifr_flags;
       }
 
-      smclog( LOG_DEBUG, 0, "buildIfVc: Interface %s Addr: %s, Flags: 0x%04x",
-	   IfDescEp->Name,
-	   fmtInAdr( FmtBu, IfDescEp->InAdr ),
-	   IfDescEp->Flags );
+      IfDescEp->IfIndex = if_nametoindex(IfDescEp->Name);
+
+      smclog( LOG_DEBUG, 0, "buildIfVc: Interface %s Phy-Ix %d Addr: %s, Flags: 0x%04x",
+	      IfDescEp->Name,
+	      IfDescEp->IfIndex,
+	      fmtInAdr( FmtBu, IfDescEp->InAdr ),
+	      IfDescEp->Flags );
 
       IfDescEp++; 
     } 
