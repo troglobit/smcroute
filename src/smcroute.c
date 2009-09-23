@@ -184,7 +184,6 @@ void ServerLoop(void)
 
   /* creat daemon process
    */
-#if 0
   if( ! fork() ) {                   /* only daemon enters */
     atexit( clean );
 
@@ -194,9 +193,7 @@ void ServerLoop(void)
 	|| setpgrp() < 0
 	)
       smclog( LOG_ERR, errno, "failed to detach deamon" );
-#else
-  if (1) {
-#endif
+
     while( 1 ) {
       struct CmdPkt *PktPt;
         
