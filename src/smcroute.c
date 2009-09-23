@@ -70,16 +70,16 @@ static int getArgOptLn( const char *ArgVc[] )
 {
   const char **Pp;
 
-  // end of vector 
+  /* end of vector */
   if( ArgVc == NULL || *ArgVc == NULL )
     return 0; 
 
-  // starting on wrong position
+  /* starting on wrong position */
   if( **ArgVc != '-' )
     return -1;
 
   for( Pp = ArgVc +1; *Pp && **Pp != '-'; Pp++ )
-    ;
+    /* */;
     
   return Pp - ArgVc;
 }
@@ -92,24 +92,23 @@ static void clean()
 */        
 {
   smclog( LOG_DEBUG, 0, "clean handler called" );
-  disableMRouter();
+  disableMRouter4();
+  disableMRouter6();
   cleanIpc();
 }
 
 
-static int initMRouter()
+static int initMRouter4()
 /*
-** Inits the necessary resources for MRouter.
+** Inits the necessary resources for IPv4 MRouter.
 **
 */
 {
   int Err;
 
-  buildIfVc();    
-
-  switch( Err = enableMRouter() ) {
+  switch( Err = enableMRouter4() ) {
     case 0: break;
-    case EADDRINUSE: smclog( LOG_INIT, EADDRINUSE, "MC-Router API already in use" ); return -1;
+    case EADDRINUSE: smclog( LOG_INIT, EADDRINUSE, "MC-Router IPv4 API already in use" ); return -1;
     default: smclog( LOG_INIT, Err, "MRT_INIT failed" ); return -1;
   }
       
@@ -127,6 +126,205 @@ static int initMRouter()
   return 0;
 }
 
+static int initMRouter6()
+/*
+** Inits the necessary resources for IPv6 MRouter.
+**
+*/
+{
+  int Err;
+
+  switch( Err = enableMRouter6() ) {
+    case 0: break;
+    case EADDRINUSE: smclog( LOG_INIT, EADDRINUSE, "MC-Router IPv6 API already in use" ); return -1;
+    default: smclog( LOG_INIT, Err, "MRT6_INIT failed" ); return -1;
+  }
+      
+  /* create MIFs for all IP, non-loop interfaces
+   */
+  {
+    unsigned Ix;
+    struct IfDesc *Dp;
+
+    for( Ix = 0; (Dp = getIfByIx( Ix )); Ix++ ) 
+      if( Dp->InAdr.s_addr && ! (Dp->Flags & IFF_LOOPBACK) )
+	addMIF( Dp );
+  }
+
+  return 0;
+}
+
+void ServerLoop(void)
+{
+  uint8 Bu[ MX_CMDPKT_SZ ];
+  int IpcServerFD;
+
+  /*
+   * Init everything before forking, so we can fail and return an
+   * error code in the parent and the initscript will fail
+   */
+
+  /* 
+   * Build list of multicast-capable physical interfaces that 
+   * are currently assigned an IP address.
+   */
+  buildIfVc();    
+
+  if (initMRouter4() != 0)
+    exit(1);
+
+  if (initMRouter6() != 0)
+    exit(1);
+
+  IpcServerFD = initIpcServer();
+  if (IpcServerFD < 0) {
+    clean();
+    exit(2);
+  }
+
+  /* creat daemon process
+   */
+#if 0
+  if( ! fork() ) {                   /* only daemon enters */
+    atexit( clean );
+
+    /* Detach deamon from terminal */
+    if( close( 0 ) < 0 || close( 1 ) < 0 || close( 2 ) < 0 
+	|| open( "/dev/null", 0 ) != 0 || dup2( 0, 1 ) < 0 || dup2( 0, 2 ) < 0
+	|| setpgrp() < 0
+	)
+      smclog( LOG_ERR, errno, "failed to detach deamon" );
+#else
+  if (1) {
+#endif
+    while( 1 ) {
+      struct CmdPkt *PktPt;
+        
+      /* watch the MRouter and the IPC socket to the smcroute client */
+      {
+	fd_set ReadFDS;
+	int MaxFD = MAX( IpcServerFD, MAX( MRouterFD4, MRouterFD6 ) );
+	int Rt;
+
+	FD_ZERO( &ReadFDS );
+	FD_SET( IpcServerFD, &ReadFDS );
+	FD_SET( MRouterFD4, &ReadFDS );
+	FD_SET( MRouterFD6, &ReadFDS );
+
+	/* wait for input */
+	Rt = select( MaxFD +1, &ReadFDS, NULL, NULL, NULL );
+
+	/* log and ignore failures */
+	if( Rt <= 0 ) {
+	  smclog( LOG_WARNING, errno, "select() failure" );
+	  continue;
+	}
+	  
+	/* 
+	 * Receive and drop IGMP stuff. This is either IGMP packets
+	 * or upcall messages sent up from the kernel.
+	 */
+	if( FD_ISSET( MRouterFD4, &ReadFDS ) ) {
+	  char Bu[ 128 ];
+	    
+	  Rt = read( MRouterFD4, Bu, sizeof( Bu ) ); 
+	  smclog( LOG_DEBUG, 0, "%d byte IGMP signaling dropped", Rt );
+	}
+
+	/* 
+	 * Receive and drop ICMPv6 stuff. This is either MLD packets
+	 * or upcall messages sent up from the kernel.
+	 */
+	if( FD_ISSET( MRouterFD6, &ReadFDS ) ) {
+	  char Bu[ 128 ];
+	    
+	  Rt = read( MRouterFD4, Bu, sizeof( Bu ) ); 
+	  smclog( LOG_DEBUG, 0, "%d byte MLD signaling dropped", Rt );
+	}
+
+	/* loop back to select if there is no smcroute command */
+	if( ! FD_ISSET( IpcServerFD, &ReadFDS ) ) 
+	  continue;
+      }
+
+      /* receive the command from the smcroute client */
+      PktPt = readIpcServer( Bu, sizeof( Bu ) );
+
+      switch( PktPt->Cmd ) {
+	struct MRouteDesc MrDe;
+	const char *ErrSt;
+
+      case 'a':
+      case 'r':  
+	if( (ErrSt = convCmdPkt2MRouteDesc( &MrDe, PktPt )) ) {
+	  smclog( LOG_WARNING, 0, ErrSt );
+	  sendIpc( LogLastMsg, strlen( LogLastMsg ) +1 );
+	  break;
+	}
+
+	if (MrDe.ipVersion == 4) {
+	  if( (PktPt->Cmd == 'a' && addMRoute4( &MrDe.u.mRoute4Desc )) || 
+	      (PktPt->Cmd == 'r' && delMRoute4( &MrDe.u.mRoute4Desc )) ) {
+	    sendIpc( LogLastMsg, strlen( LogLastMsg ) +1 );
+	    break;
+	  }
+	} else {
+	  if( (PktPt->Cmd == 'a' && addMRoute6( &MrDe.u.mRoute6Desc )) || 
+	      (PktPt->Cmd == 'r' && delMRoute6( &MrDe.u.mRoute6Desc )) ) {
+	    sendIpc( LogLastMsg, strlen( LogLastMsg ) +1 );
+	    break;
+	  }
+	}
+
+	sendIpc( "", 1 );
+	break;
+
+      case 'j':
+      case 'l': 
+	{
+	  const char *IfSt    = (const char *)(PktPt +1);
+	  const char *McAdrSt = IfSt + strlen( IfSt ) +1;
+	      
+	  struct in_addr McAdr;
+	  int Rt;
+
+	  /* check multicast address */
+	  if( ! *McAdrSt || ! inet_aton( McAdrSt, &McAdr ) 
+		|| ! IN_MULTICAST( ntohl( McAdr.s_addr ) ) ) {
+	    smclog( LOG_WARNING, 0, "invalid multicast group address: '%s'", 
+		    McAdrSt );
+	    sendIpc( LogLastMsg, strlen( LogLastMsg ) +1 );
+	    break;
+	  }
+
+	  /* create socket for IGMP as needed */
+	  if( ! McGroupSock ) 
+	    McGroupSock = openUdpSocket( INADDR_ANY, 0 );
+
+	  /* join or leave */
+	  if( PktPt->Cmd == 'j' )
+	    Rt = joinMcGroup( McGroupSock, IfSt, McAdr );
+	  else
+	    Rt = leaveMcGroup( McGroupSock, IfSt, McAdr );
+
+	  /* failed */
+	  if( Rt ) {
+	    sendIpc( LogLastMsg, strlen( LogLastMsg ) +1 );
+	    break;
+	  }
+
+	  sendIpc( "", 1 );
+	  break;
+	}
+
+      case 'k':
+	sendIpc( "", 1 );
+	exit( 0 );
+      }
+    }
+  }
+}
+
 int main( int ArgCn, const char *ArgVc[] )
 /*
 ** main programm
@@ -138,10 +336,10 @@ int main( int ArgCn, const char *ArgVc[] )
 {
   struct CmdPkt *CmdVc[ 16 ], **CmdVcPt = CmdVc;
   uint8 Bu[ MX_CMDPKT_SZ ];
-  int StartDaemon = 0,
-      ProgRt = 0;
+  int StartDaemon = 0;
+  int ProgRt = 0;
 
-  // init syslog
+  /* init syslog */
   openlog( ArgVc[ 0 ], LOG_PID, LOG_DAEMON );   
   
   if( ArgCn <= 1 ) {
@@ -151,223 +349,91 @@ Usage:
     return 1;
   }
 
-  // scan options
+  /* scan options */
   {
     int OptLn;
 
     for( OptLn = 1; (OptLn = getArgOptLn( ArgVc += OptLn )); ) {
   
-      if( OptLn < 0 )           // error
+      if( OptLn < 0 )           /* error */
 	goto Usage;
     
-      // handle option 
+      /* handle option */
       switch( *(*ArgVc +1) ) {
-        case 'a':                 // add route
-	  if( OptLn < 5 ) {
-	    fprintf( stderr, "not enough arguments for 'add' command\n" );
-	    goto Usage;
-	  }
+      case 'a':                 /* add route */
+	if( OptLn < 5 ) {
+	  fprintf( stderr, "not enough arguments for 'add' command\n" );
+	  goto Usage;
+	}
 
 BuildCmd:
-	  if( CmdVcPt >= VCEP( CmdVc ) ) {
-	    fprintf( stderr, "too much command options\n" );
-	    goto Usage;
-	  }
-	  
-	  *CmdVcPt++ = buildCmdPkt( *(*ArgVc +1), ArgVc +1, OptLn -1 );
-	  break;
-
-        case 'r':                 // remove route
-	  if( OptLn < 4 ) {
-	    fprintf( stderr, "wrong number of  arguments for 'remove' command\n" );
-	    goto Usage;
-	  }
-
-	  goto BuildCmd;
-
-        case 'j':                 // join
-        case 'l':                 // leave
-	  if( OptLn != 3 ) {
-	    fprintf( stderr, "wrong number of arguments for 'join'/'leave' command\n" );
-	    goto Usage;
-	  }
-	  
-	  goto BuildCmd;
-
-        case 'k':                 // kill daemon
-	  if( OptLn != 1 ) {
-	    fprintf( stderr, "no arguments allowed for 'k' option\n" );
-	    goto Usage;
-	  }
-
-	  goto BuildCmd;
-
-        case 'h':                 // help
-	  puts( Version );
-	  puts( Usage );
-	  break;
-
-        case 'v':                 // verbose
-	  fputs( Version, stderr );
-	  Log2Stderr = LOG_DEBUG;
-	  break;
-
-        case 'd':                 // daemon	
-	  StartDaemon = 1;
-	  break;
-
-        default:                  // unknown option
-	  fprintf( stderr, "unknown option: %s\n", *ArgVc );
+	if( CmdVcPt >= VCEP( CmdVc ) ) {
+	  fprintf( stderr, "too many command options\n" );
 	  goto Usage;
-      }
-    }
-  }
-
-  // !!! signal( SIGINT, SIGQUIT, SIGTERM  
-
-  if( StartDaemon ) {                       // only daemon parent enters
-      int IpcServerFD;
-
-      // Init everything before forking, so we can fail and return an
-      // error code in the parent and the initscript will fail
-      if (initMRouter() != 0)
-	exit(1);
-
-      IpcServerFD = initIpcServer();
-      if (IpcServerFD < 0)
-	{
-	  clean();
-	  exit(2);
 	}
-
-    /* creat daemon process
-     */
-    if( ! fork() ) {                   // only daemon enters
-      atexit( clean );
-
-      // detach deamon from terminal
-      if( close( 0 ) < 0 || close( 1 ) < 0 || close( 2 ) < 0 
-	  || open( "/dev/null", 0 ) != 0 || dup2( 0, 1 ) < 0 || dup2( 0, 2 ) < 0
-	  || setpgrp() < 0
-      )
-	smclog( LOG_ERR, errno, "failed to detach deamon" );
-
-      while( 1 ) {
-	struct CmdPkt *PktPt;
-        
-	// watch the MRouter and the IPC socket to the smcroute client
-	{
-	  fd_set ReadFDS;
-	  int MaxFD = MAX( IpcServerFD, MRouterFD );
-	  int Rt;
-
-	  FD_ZERO( &ReadFDS );
-	  FD_SET( IpcServerFD, &ReadFDS );
-	  FD_SET( MRouterFD, &ReadFDS );
-
-	  // wait for input
-	  Rt = select( MaxFD +1, &ReadFDS, NULL, NULL, NULL );
-
-	  // log and ignore failures
-	  if( Rt <= 0 ) {
-	    smclog( LOG_WARNING, errno, "select() failure" );
-	    continue;
-	  }
 	  
-	  // receive and drop IGMP stuff
-	  if( FD_ISSET( MRouterFD, &ReadFDS ) ) {
-	    char Bu[ 128 ];
-	    
-	    Rt = read( MRouterFD, Bu, sizeof( Bu ) ); 
-	    smclog( LOG_DEBUG, 0, "%d byte IGMP signaling dropped", Rt );
-	  }
+	*CmdVcPt++ = buildCmdPkt( *(*ArgVc +1), ArgVc +1, OptLn -1 );
+	break;
 
-	  // loop back to select if there is no smcroute command
-	  if( ! FD_ISSET( IpcServerFD, &ReadFDS ) ) 
-	    continue;
+      case 'r':                 /* remove route */
+	if( OptLn < 4 ) {
+	  fprintf( stderr, "wrong number of  arguments for 'remove' command\n" );
+	  goto Usage;
 	}
 
-	// receive the command from the smcroute client
-	PktPt = readIpcServer( Bu, sizeof( Bu ) );
+	goto BuildCmd;
 
-	switch( PktPt->Cmd ) {
-	  struct MRouteDesc MrDe;
-	  const char *ErrSt;
-
-          case 'a':
-	  case 'r':  
-	    if( (ErrSt = convCmdPkt2MRouteDesc( &MrDe, PktPt )) ) {
-	      smclog( LOG_WARNING, 0, ErrSt );
-	      sendIpc( LogLastMsg, strlen( LogLastMsg ) +1 );
-	      break;
-	    }
-
-	    if( (PktPt->Cmd == 'a' && addMRoute( &MrDe ))
-             || (PktPt->Cmd == 'r' && delMRoute( &MrDe )) 
-            ) {
-	      sendIpc( LogLastMsg, strlen( LogLastMsg ) +1 );
-	      break;
-	    }
-
-	    sendIpc( "", 1 );
-	    break;
-
-          case 'j':
-	  case 'l': 
-	  {
-	    const char *IfSt    = (const char *)(PktPt +1),
-	      *McAdrSt = IfSt + strlen( IfSt ) +1;
-	      
-	    struct in_addr McAdr;
-	    int Rt;
-
-	    // check multicast address
-	    if( ! *McAdrSt || ! inet_aton( McAdrSt, &McAdr ) 
-		|| ! IN_MULTICAST( ntohl( McAdr.s_addr ) ) 
-	    ) {
-	      smclog( LOG_WARNING, 0, "invalid multicast group address: '%s'", 
-		   McAdrSt );
-	      sendIpc( LogLastMsg, strlen( LogLastMsg ) +1 );
-	      break;
-	    }
-
-	    // create socket for IGMP as needed
-	    if( ! McGroupSock ) 
-	      McGroupSock = openUdpSocket( INADDR_ANY, 0 );
-
-	    // join or leave
-	    if( PktPt->Cmd == 'j' )
-	      Rt = joinMcGroup( McGroupSock, IfSt, McAdr );
-	    else
-	      Rt = leaveMcGroup( McGroupSock, IfSt, McAdr );
-
-	    // failed
-	    if( Rt ) {
-	      sendIpc( LogLastMsg, strlen( LogLastMsg ) +1 );
-	      break;
-	    }
-
-	    sendIpc( "", 1 );
-	    break;
-	  }
-
-          case 'k':
-	    sendIpc( "", 1 );
-	    exit( 0 );
+      case 'j':                 /* join */
+      case 'l':                 /* leave */
+	if( OptLn != 3 ) {
+	  fprintf( stderr, "wrong number of arguments for 'join'/'leave' command\n" );
+	  goto Usage;
 	}
+	  
+	goto BuildCmd;
+
+      case 'k':                 /* kill daemon */
+	if( OptLn != 1 ) {
+	  fprintf( stderr, "no arguments allowed for 'k' option\n" );
+	  goto Usage;
+	}
+
+	goto BuildCmd;
+
+      case 'h':                 /* help */
+	puts( Version );
+	puts( Usage );
+	break;
+
+      case 'v':                 /* verbose */
+	fputs( Version, stderr );
+	Log2Stderr = LOG_DEBUG;
+	break;
+
+      case 'd':                 /* daemon */
+	StartDaemon = 1;
+	break;
+
+      default:                  /* unknown option */
+	fprintf( stderr, "unknown option: %s\n", *ArgVc );
+	goto Usage;
       }
     }
   }
 
-  // Client or daemon parent only, the daemon never reach this point
+  if( StartDaemon ) {                       /* only daemon parent enters */
+    ServerLoop();
+  }
 
-  // send commands
+  /* Client or daemon parent only, the daemon never reaches this point */
+
+  /* send commands */
   if( CmdVcPt > CmdVc ) {        
     struct CmdPkt **PktPp; 
 
     openlog( ArgVc[ 0 ], LOG_PID, LOG_USER );
 
-    // connect to daemon
+    /* connect to daemon */
     {
       int Err;
       int RetryCn = 30;
@@ -384,8 +450,10 @@ Retry:
 
 	case ENOENT:
 	case ECONNREFUSED: 
-	  // if we started the daemon -> give it 30 times a 1/10 second to 
-	  // get ready
+	  /*
+	   * If we started the daemon -> give it 30 times a 1/10 second to 
+	   * get ready
+	   */
 	  if( StartDaemon && --RetryCn ) {
 	    usleep( 100000 );
 	    goto Retry;
