@@ -28,65 +28,149 @@
 
 #include "mclab.h"
 
-const char Usage[] = "mcsender [-t<n>]<target>\n";
+const char Usage[] = "mcsender [-t<n>] [-i<ifname>] <ip-address:port>\n";
 const char McMsg[] = "this is the test message from mclab/mcsender\n"; 
 
-uint32 TarInAdr;
-uint16 TarPort;
-unsigned Ttl = 1;
+static void usage(void);
+
+static void SetOif4(int, char *);
+static void SetTtl4(int, unsigned);
+
+static void SetOif6(int, char *);
+static void SetTtl6(int, unsigned);
 
 int main( int ArgCn, char *ArgVc[] )
 {
+  unsigned                TtlVal = 0;
+  char                  * OifVal = NULL;
+  char                  * AddrSt = NULL;
+  char                  * PortSt = NULL;
+  char                  * Pt;
+  void                    (*SetTtl)(int, unsigned) = NULL;
+  void                    (*SetOif)(int, char *)   = NULL;
+  struct sockaddr_storage TarAdr;
+
   if( ArgCn < 2 ) {
-USAGE:
-    printf( Usage );
-    return 1;
+    usage();
+    exit(1);
   }
 
   while( *++ArgVc ) {
-    char *Pt = *ArgVc;
+    Pt = *ArgVc;
 
-    // option
+    /* option */
     if( *Pt == '-' ) {
       switch( *++Pt ) {
 
-        case 't':
-	  if( sscanf( Pt +1, " %u", &Ttl ) != 1 || Ttl < 1 )
-	    goto USAGE;
-	  break;
+      case 't':
+	if( sscanf( Pt + 1, " %u", &TtlVal ) != 1 || TtlVal < 1 ) {
+	  usage();
+	  exit( 1 );
+	}
+	break;
 
-        default:
-	  goto USAGE;
+      case 'i':
+	OifVal = Pt + 1;
+	break;
+
+      default:
+	usage();
+	exit( 1 );
       }
-    }
-    // argument
-    else {
-      if( getInAdr( &TarInAdr, &TarPort, Pt ) != 2 ) {
-	printf( "not a valid UDP target (u.v.w.x:z): %s\n", *ArgVc );
-	return 2;
+    } else {  /* argument */
+
+      memset( &TarAdr, 0, sizeof( TarAdr ) );
+
+      AddrSt = Pt;
+
+      Pt = strrchr( AddrSt, ':' );
+      if ( Pt == NULL ) {
+	usage();
+	exit( 1 );
       }
+
+      *Pt++ = '\0';
+      PortSt = Pt;
+
+      getSockAdr( SA( &TarAdr ), AddrSt, PortSt );
+
+      SetTtl = ( TarAdr.ss_family == AF_INET ) ? SetTtl4 : SetTtl6;
+      SetOif = ( TarAdr.ss_family == AF_INET ) ? SetOif4 : SetOif6;
     }
   }
 
-  // need this argument
-  if( ! TarInAdr )
-    goto USAGE;
-
-
   {
-    int UdpSock = openUdpSocket( TarInAdr, TarPort );
+    int UdpSock = socket( TarAdr.ss_family, SOCK_DGRAM, IPPROTO_UDP );
+    if ( UdpSock < 0 ) 
+      smclog( LOG_ERR, errno, "UDP socket open" );
 
-    if( setsockopt( UdpSock, IPPROTO_IP, IP_MULTICAST_TTL, 
-		    &Ttl, sizeof( Ttl ) ) )
-      smclog( LOG_ERR, errno, "set IP_MULTICAST_TTL" );
-      
+    if (TtlVal) (*SetTtl)(UdpSock, TtlVal);
+    if (OifVal) (*SetOif)(UdpSock, OifVal);
+
     while( 1 ) {
-      if( send( UdpSock, McMsg, sizeof( McMsg ), 0 ) != sizeof( McMsg ) )
+      if( sendto( UdpSock, McMsg, sizeof( McMsg ), 0, 
+		  SA( &TarAdr ), sizeof( TarAdr ) ) != sizeof( McMsg ) )
 	smclog( LOG_WARNING, errno, "send to UDP socket" );
 
       sleep( 1 );
     }
   }
 
-  return 0;
+  exit( 0 );
+}
+
+static void usage( void )
+{
+  fprintf( stderr, "Usage: %s\n", Usage );
+}
+
+static void SetTtl4( int Sock, unsigned Ttl )
+{
+  if( setsockopt( Sock, IPPROTO_IP, IP_MULTICAST_TTL, 
+		  &Ttl, sizeof( Ttl ) ) )
+    smclog( LOG_ERR, errno, "set IP_MULTICAST_TTL" );
+}
+
+static void SetOif4( int Sock, char * IfName )
+{
+  struct ifreq         IfReq;
+  struct sockaddr_in * Sin4  = NULL;
+
+  memset( &IfReq, 0, sizeof( IfReq ) );
+  strncpy( IfReq.ifr_name, IfName, sizeof( IfReq.ifr_name ) );
+
+  if ( ioctl( Sock, SIOCGIFADDR, &IfReq ) < 0 )
+    smclog( LOG_ERR, errno, "ioctl SIOCGIFADDR" );
+
+  switch ( IfReq.ifr_addr.sa_family ) {
+  case AF_INET:
+    Sin4 = SIN4( &IfReq.ifr_addr );
+    break;
+
+  default:
+    fprintf( stderr, "SetOif4 - invalid address family: %d\n", IfReq.ifr_addr.sa_family );
+    exit(1);
+  }
+  
+  if( setsockopt( Sock, IPPROTO_IP, IP_MULTICAST_IF, 
+		  &Sin4->sin_addr, sizeof( struct in_addr ) ) )
+    smclog( LOG_ERR, errno, "set IP_MULTICAST_IF" );  
+}
+
+static void SetTtl6(int Sock, unsigned Ttl)
+{
+  if( setsockopt( Sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, 
+		  &Ttl, sizeof( Ttl ) ) )
+    smclog( LOG_ERR, errno, "set IPV6_MULTICAST_HOPS" );
+}
+
+static void SetOif6(int Sock, char * IfName)
+{
+  unsigned IfIndex;
+
+  IfIndex = if_nametoindex( IfName );
+
+  if( setsockopt( Sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, 
+		  &IfIndex, sizeof( IfIndex ) ) )
+    smclog( LOG_ERR, errno, "set IPV6_MULTICAST_IF" );  
 }
