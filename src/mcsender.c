@@ -24,6 +24,7 @@
 */
 
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "mclab.h"
@@ -49,6 +50,7 @@ int main( int ArgCn, char *ArgVc[] )
   void                    (*SetTtl)(int, unsigned) = NULL;
   void                    (*SetOif)(int, char *)   = NULL;
   struct sockaddr_storage TarAdr;
+  socklen_t               TarAdrLen;
 
   if( ArgCn < 2 ) {
     usage();
@@ -92,7 +94,7 @@ int main( int ArgCn, char *ArgVc[] )
       *Pt++ = '\0';
       PortSt = Pt;
 
-      getSockAdr( SA( &TarAdr ), AddrSt, PortSt );
+      getSockAdr( SA( &TarAdr ), &TarAdrLen, AddrSt, PortSt );
 
       SetTtl = ( TarAdr.ss_family == AF_INET ) ? SetTtl4 : SetTtl6;
       SetOif = ( TarAdr.ss_family == AF_INET ) ? SetOif4 : SetOif6;
@@ -109,7 +111,7 @@ int main( int ArgCn, char *ArgVc[] )
 
     while( 1 ) {
       if( sendto( UdpSock, McMsg, sizeof( McMsg ), 0, 
-		  SA( &TarAdr ), sizeof( TarAdr ) ) != sizeof( McMsg ) )
+		  SA( &TarAdr ), TarAdrLen ) != sizeof( McMsg ) )
 	smclog( LOG_WARNING, errno, "send to UDP socket" );
 
       sleep( 1 );
