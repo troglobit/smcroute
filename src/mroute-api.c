@@ -22,7 +22,6 @@
 **  This module contains the interface routines to the Linux mrouted API
 **
 */
-
 #include <unistd.h>
 #include <arpa/inet.h>
 
@@ -263,6 +262,21 @@ int enableMRouter6()
 		  (void *)&Va, sizeof( Va ) ) ) 
     return errno;
 
+  /* 
+   * On Linux pre 2.6.29 kernels net.ipv6.conf.all.mc_forwarding
+   * is not set on MRT6_INIT so we have to do this manually
+   */
+  {
+    int    fd;
+    char * file = "/proc/sys/net/ipv6/conf/all/mc_forwarding";
+    
+    fd = open( file, O_WRONLY );
+    if ( fd < 0 )  
+      smclog( LOG_ERR, errno, "open(%s)", file);  
+
+    (void) write( fd, "1", 1 );
+    (void) close( fd );
+  }
   return 0;
 }
 
@@ -329,8 +343,9 @@ int addMRoute6( struct MRoute6Desc *Dp )
 */
 {
   struct mf6cctl CtlReq;
-  int ret = 0;
-  
+  int            ret   = 0;
+  int            MifIx = 0;
+
   memset(&CtlReq, 0, sizeof(CtlReq));
 
   CtlReq.mf6cc_origin    = Dp->OriginAdr;
@@ -339,7 +354,10 @@ int addMRoute6( struct MRoute6Desc *Dp )
 
   /* copy the outgoing MIFs
    */
-  memcpy( &CtlReq.mf6cc_ifset, &Dp->IfSet, sizeof( CtlReq.mf6cc_ifset ) );
+  for ( MifIx = 0; MifIx < MAX_MC_MIFS; MifIx++ ) {
+    if ( Dp->TtlVc[ MifIx ] > 0 )
+      IF_SET( MifIx, &CtlReq.mf6cc_ifset );
+  }
 
   {
     char FmtBuO[ INET6_ADDRSTRLEN ], FmtBuM[ INET6_ADDRSTRLEN ];
