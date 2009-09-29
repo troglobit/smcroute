@@ -44,7 +44,7 @@ static const char Version[] =
 "\n";
 
 static const char Usage[] = 
-"usage: smcroute\t[-v] [-d]\n"
+"usage: smcroute\t[-v] [-d] [-k]\n"
 "\n" 
 "\t\t[-a <InputIntf> <OriginIpAdr> <McGroupAdr> <OutputIntf> [<OutputIntf>] ...]\n"
 "\t\t[-r <InputIntf> <OriginIpAdr> <McGroupAdr>]\n"
