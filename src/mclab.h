@@ -21,11 +21,17 @@
 **
 */
 
-#include <errno.h>
-#include <stdarg.h>
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <stdarg.h>
 #include <syslog.h>
+#include <errno.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -36,8 +42,13 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <linux/mroute.h>
-#include <linux/mroute6.h>
+#if defined(HOST_OS_LINUX)
+ #include <linux/mroute.h>
+#endif
+
+#ifdef HAVE_LINUX_MROUTE6_H
+ #include <linux/mroute6.h>
+#endif
 
 typedef u_int8_t   uint8;
 typedef u_int16_t  uint16;
@@ -90,7 +101,7 @@ struct MRoute6Desc {
   struct sockaddr_in6 OriginAdr; /* sender          */
   struct sockaddr_in6 McAdr;     /* multicast group */
   short InMif;                   /* incoming VIF    */
-  struct if_set IfSet;           /* outgoing VIFs   */
+  uint8 TtlVc[ MAX_MC_MIFS ];    /* outgoing VIFs   */
 };
 
 /*
@@ -162,7 +173,7 @@ const char *convCmdPkt2MRoute6Desc( struct MRoute6Desc *MrDp, const struct CmdPk
 char *fmtInAdr( char *St, struct in_addr InAdr );
 char *fmtSockAdr( char *St, const struct sockaddr_in *SockAdrPt );
 int getInAdr( uint32 *InAdrPt, uint16 *PortPt, char *St );
-void getSockAdr( struct sockaddr * SaPt, char * AddrSt, char * PortSt );
+void getSockAdr( struct sockaddr * SaPt, socklen_t * SaLenPt, char * AddrSt, char * PortSt );
 
 /* mcgroup.c
  */
@@ -187,7 +198,8 @@ int openUdpSocket( uint32 PeerInAdr, uint16 PeerPort );
 
 static inline int IN6_MULTICAST(const struct in6_addr *addr)
 {
-  return (addr->s6_addr32[0] & htonl(0xFF000000)) == htonl(0xFF000000);
+  uint32_t * addr32p = (uint32_t *)addr->s6_addr;
+  return (*addr32p & htonl(0xFF000000)) == htonl(0xFF000000);
 }
 
 
