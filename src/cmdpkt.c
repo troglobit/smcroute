@@ -300,7 +300,7 @@ convCmdPkt2MRoute6Desc( struct MRoute6Desc *MrDp, const struct CmdPkt *PktPt )
       if( MifIx == MrDp->InMif ) 
 	smclog( LOG_WARNING, 0, "forwarding multicast to the input interface may not make sense: %s", ArgSt );
     
-      IF_SET( MifIx, &MrDp->IfSet );
+      MrDp->TtlVc[ MifIx ] = 1;           /* Use a TTL threashold */
     }
   }
 
