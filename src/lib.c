@@ -131,8 +131,41 @@ int getInAdr( uint32 *InAdrPt, uint16 *PortPt, char *St )
   return 2;
 }
 
+void getSockAdr( struct sockaddr * SaPt, char * AddrSt, char * PortSt )
+/*
+** Converts the internet address plus port string in 'St' 
+** into their network byte order representations.
+**
+**  
+** returns: - 0 -> conversion failed
+**          - 1 -> only address part returned (InAdrPt)
+**          - 2 -> address and port returned
+**          
+*/
+{
+  struct sockaddr_in  * Sin4;
+  struct sockaddr_in6 * Sin6;
 
+  if ( strchr( AddrSt, ':' ) == NULL ) {
+    Sin4 = SIN4( SaPt );
+    memset( Sin4, 0, sizeof( *Sin4 ) );
 
+    Sin4->sin_family = AF_INET;
+    Sin4->sin_port   = htons( atoi( PortSt ) );
 
+    if ( inet_pton( AF_INET, AddrSt, &Sin4->sin_addr ) <= 0 )
+      smclog( LOG_ERR, errno, "inet_pton failed for address %s", AddrSt );
 
+  } else {
+    Sin6 = SIN6( SaPt );
+    memset( Sin6, 0, sizeof( *Sin6 ) );
 
+    Sin6->sin6_family = AF_INET6;
+    Sin6->sin6_port   = htons( atoi( PortSt ) );
+
+    if ( inet_pton( AF_INET6, AddrSt, &Sin6->sin6_addr ) <= 0 )
+      smclog( LOG_ERR, errno, "inet_pton failed for address %s", AddrSt );
+  }
+
+  return;
+}
