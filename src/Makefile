@@ -1,7 +1,9 @@
 
 BINDIR = /usr/sbin
 CC = gcc
-CFLAGS = -g -O2 -Wall
+#CFLAGS = -g -O2 -Wall
+CFLAGS = -g -Wall -DHOST_OS_LINUX -DHAVE_LINUX_MROUTE6_H
+
 
 default : build.h smcroute
 
@@ -14,7 +16,7 @@ install :
 	mkdir -p ${BINDIR}
 	cp smcroute mcsender ${BINDIR}
 
-mcsender:  mcsender.o udpsock.c syslog.c ifvc.o lib.o
+mcsender:  mcsender.o syslog.o lib.o
 
 smcroute:  smcroute.o mroute-api.o ifvc.o cmdpkt.o ipc.o syslog.o udpsock.o mcgroup.o lib.o 
 smcroute.c : build.h version.h 
