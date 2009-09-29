@@ -27,18 +27,25 @@
 #include <stdlib.h>
 #include <syslog.h>
 
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
 #include <net/if.h>
 
 #include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include <linux/mroute.h>
 #include <linux/mroute6.h>
 
 typedef u_int8_t   uint8;
 typedef u_int16_t  uint16;
 typedef u_int32_t  uint32;
+
+#define SA( x ) ((struct sockaddr *)x)
+#define SIN4( x ) ((struct sockaddr_in *)x)
+#define SIN6( x ) ((struct sockaddr_in6 *)x)
 
 #define MIN( a, b ) ((a) < (b) ? (a) : (b))
 #define MAX( a, b ) ((a) < (b) ? (b) : (a))
@@ -155,6 +162,7 @@ const char *convCmdPkt2MRoute6Desc( struct MRoute6Desc *MrDp, const struct CmdPk
 char *fmtInAdr( char *St, struct in_addr InAdr );
 char *fmtSockAdr( char *St, const struct sockaddr_in *SockAdrPt );
 int getInAdr( uint32 *InAdrPt, uint16 *PortPt, char *St );
+void getSockAdr( struct sockaddr * SaPt, char * AddrSt, char * PortSt );
 
 /* mcgroup.c
  */
