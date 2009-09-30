@@ -177,8 +177,11 @@ void getSockAdr( struct sockaddr * SaPt, socklen_t * SaLenPt, char * AddrSt, cha
 
 /* mcgroup.c
  */
-int joinMcGroup( int UdpSock, const char *IfName, struct in_addr McAdr );
-int leaveMcGroup( int UdpSock, const char *IfName, struct in_addr McAdr );
+int joinMcGroup4( int UdpSock, const char *IfName, struct in_addr McAdr );
+int leaveMcGroup4( int UdpSock, const char *IfName, struct in_addr McAdr );
+int joinMcGroup6( int UdpSock, const char *IfName, struct in6_addr McAdr );
+int leaveMcGroup6( int UdpSock, const char *IfName, struct in6_addr McAdr );
+
 
 /* syslog.c
  */
