@@ -55,7 +55,8 @@ static const char Usage[] =
 
 static const char MissingArgSt[] = "<missing argument>";
 
-int McGroupSock;
+int McGroupSock4 = -1;
+int McGroupSock6 = -1;
 
 static int getArgOptLn( const char *ArgVc[] )
 /*
@@ -276,33 +277,59 @@ void ServerLoop(void)
 	sendIpc( "", 1 );
 	break;
 
-      case 'j':
-      case 'l': 
+      case 'j': /* j <InputIntf> <McGroupAdr> */
+      case 'l': /* l <InputIntf> <McGroupAdr> */
 	{
 	  const char *IfSt    = (const char *)(PktPt +1);
 	  const char *McAdrSt = IfSt + strlen( IfSt ) +1;
-	      
-	  struct in_addr McAdr;
-	  int Rt;
+	  int         Rt;
 
-	  /* check multicast address */
-	  if( ! *McAdrSt || ! inet_aton( McAdrSt, &McAdr ) 
+	  if (strchr(McAdrSt, ':') == NULL) {
+	    struct in_addr McAdr;
+
+	    /* check multicast address */
+	    if( ! *McAdrSt || ! inet_aton( McAdrSt, &McAdr ) 
 		|| ! IN_MULTICAST( ntohl( McAdr.s_addr ) ) ) {
-	    smclog( LOG_WARNING, 0, "invalid multicast group address: '%s'", 
-		    McAdrSt );
-	    sendIpc( LogLastMsg, strlen( LogLastMsg ) +1 );
-	    break;
+	      smclog( LOG_WARNING, 0, "invalid multicast group address: '%s'", 
+		      McAdrSt );
+	      sendIpc( LogLastMsg, strlen( LogLastMsg ) +1 );
+	      break;
+	    }
+
+	    /* create socket for IGMP as needed */
+	    if( McGroupSock4 < 0 ) 
+	      McGroupSock4 = openUdpSocket( INADDR_ANY, 0 );
+
+	    /* join or leave */
+	    if( PktPt->Cmd == 'j' )
+	      Rt = joinMcGroup4( McGroupSock4, IfSt, McAdr );
+	    else
+	      Rt = leaveMcGroup4( McGroupSock4, IfSt, McAdr );
+	  } else { /* IPv6 */
+	    struct in6_addr McAdr;
+
+	    /* check multicast address */
+	    if( ! *McAdrSt || ( inet_pton( AF_INET6, McAdrSt, &McAdr ) <= 0 ) 
+		|| ! IN6_MULTICAST( &McAdr ) ) {
+	      smclog( LOG_WARNING, 0, "invalid multicast group address: '%s'", 
+		      McAdrSt );
+	      sendIpc( LogLastMsg, strlen( LogLastMsg ) +1 );
+	      break;
+	    }
+
+	    /* create socket for IGMP as needed */
+	    if( McGroupSock6 < 0 ) {
+	      McGroupSock6 = socket( AF_INET6, SOCK_DGRAM, IPPROTO_UDP );
+	      if (McGroupSock6 < 0) 
+		smclog( LOG_WARNING, errno, "socket failed" );
+	    }
+
+	    /* join or leave */
+	    if( PktPt->Cmd == 'j' )
+	      Rt = joinMcGroup6( McGroupSock6, IfSt, McAdr );
+	    else
+	      Rt = leaveMcGroup6( McGroupSock6, IfSt, McAdr );
 	  }
-
-	  /* create socket for IGMP as needed */
-	  if( ! McGroupSock ) 
-	    McGroupSock = openUdpSocket( INADDR_ANY, 0 );
-
-	  /* join or leave */
-	  if( PktPt->Cmd == 'j' )
-	    Rt = joinMcGroup( McGroupSock, IfSt, McAdr );
-	  else
-	    Rt = leaveMcGroup( McGroupSock, IfSt, McAdr );
 
 	  /* failed */
 	  if( Rt ) {
