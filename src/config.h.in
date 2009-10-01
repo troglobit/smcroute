@@ -18,6 +18,12 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
+/* Define to 1 if your OS supports acting as an IPv6 multicast host */
+#undef HAVE_IPV6_MULTICAST_HOST
+
+/* Define to 1 if your OS supports IPv6 multicast routing */
+#undef HAVE_IPV6_MULTICAST_ROUTING
+
 /* Define to 1 if you have the <linux/mroute6.h> header file. */
 #undef HAVE_LINUX_MROUTE6_H
 
