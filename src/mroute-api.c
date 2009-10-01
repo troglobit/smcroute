@@ -32,9 +32,11 @@
 # error "constants don't match, correct mclab.h"
 #endif
 
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
 /* MAX_MC_MIFS from mclab.h must have same value as MAXVIFS from mroute6.h */
 #if MAX_MC_MIFS != MAXMIFS
 # error "constants don't match, correct mclab.h"
+#endif
 #endif
 
 /*
@@ -250,6 +252,9 @@ int enableMRouter6()
 **          - the errno value for non-fatal failure condition
 */
 {
+#ifndef HAVE_IPV6_MULTICAST_ROUTING
+  return 0;
+#else
   int Va = 1;
 
   if( (MRouterFD6 = socket( AF_INET6, SOCK_RAW, IPPROTO_ICMPV6 )) < 0 ) {
@@ -278,6 +283,7 @@ int enableMRouter6()
     (void) close( fd );
   }
   return 0;
+#endif /* HAVE_IPV6_MULTICAST_ROUTING */
 }
 
 void disableMRouter6()
@@ -286,6 +292,9 @@ void disableMRouter6()
 **          
 */
 {
+#ifndef HAVE_IPV6_MULTICAST_ROUTING
+  return;
+#else
   if( setsockopt( MRouterFD6, IPPROTO_IPV6, MRT6_DONE, NULL, 0 ) 
       || close( MRouterFD6 ) ) {
     MRouterFD6 = 0;
@@ -293,6 +302,7 @@ void disableMRouter6()
   }
   
   MRouterFD6 = 0;
+#endif /* HAVE_IPV6_MULTICAST_ROUTING */
 }
 
 void addMIF( struct IfDesc *IfDp )
@@ -301,6 +311,9 @@ void addMIF( struct IfDesc *IfDp )
 ** 
 */
 {
+#ifndef HAVE_IPV6_MULTICAST_ROUTING
+  return;
+#else
   struct mif6ctl MifCtl;
   struct MifDesc *MifDp;
 
@@ -332,6 +345,7 @@ void addMIF( struct IfDesc *IfDp )
   if( setsockopt( MRouterFD6, IPPROTO_IPV6, MRT6_ADD_MIF, 
 		  (char *)&MifCtl, sizeof( MifCtl ) ) )
     smclog( LOG_ERR, errno, "MRT6_ADD_MIF %s", IfDp->Name );
+#endif /* HAVE_IPV6_MULTICAST_ROUTING */
 }
 
 int addMRoute6( struct MRoute6Desc *Dp )
@@ -342,6 +356,9 @@ int addMRoute6( struct MRoute6Desc *Dp )
 **          - the errno value for non-fatal failure condition
 */
 {
+#ifndef HAVE_IPV6_MULTICAST_ROUTING
+  return 0;
+#else
   struct mf6cctl CtlReq;
   int            ret   = 0;
   int            MifIx = 0;
@@ -376,6 +393,7 @@ int addMRoute6( struct MRoute6Desc *Dp )
   }
 
   return ret;
+#endif /* HAVE_IPV6_MULTICAST_ROUTING */
 }
 
 int delMRoute6( struct MRoute6Desc *Dp )
@@ -386,6 +404,9 @@ int delMRoute6( struct MRoute6Desc *Dp )
 **          - the errno value for non-fatal failure condition
 */
 {
+#ifndef HAVE_IPV6_MULTICAST_ROUTING
+  return 0;
+#else
   struct mf6cctl CtlReq;
   int ret = 0;
   
@@ -410,6 +431,7 @@ int delMRoute6( struct MRoute6Desc *Dp )
   }
 
   return ret;
+#endif /* HAVE_IPV6_MULTICAST_ROUTING */
 }
 
 int getMifIx( struct IfDesc *IfDp )
@@ -421,6 +443,9 @@ int getMifIx( struct IfDesc *IfDp )
 **          
 */
 {
+#ifndef HAVE_IPV6_MULTICAST_ROUTING
+  return -1;
+#else
   struct MifDesc *Dp;
 
   for( Dp = MifDescVc; Dp < VCEP( MifDescVc ); Dp++ ) 
@@ -428,5 +453,6 @@ int getMifIx( struct IfDesc *IfDp )
       return Dp - MifDescVc;
 
   return -1;
+#endif /* HAVE_IPV6_MULTICAST_ROUTING */
 }
 
