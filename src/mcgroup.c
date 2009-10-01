@@ -117,6 +117,9 @@ static int joinleave6( int Cmd, int UdpSock, const char *IfName, struct in6_addr
 **          
 */
 {
+#ifndef HAVE_IPV6_MULTICAST_HOST
+  return 0;
+#else
   struct ipv6_mreq CtlReq;
   struct IfDesc *IfDp = getIfByName( IfName );
   const char *CmdSt = Cmd == 'j' ? "join" : "leave";
@@ -145,5 +148,6 @@ static int joinleave6( int Cmd, int UdpSock, const char *IfName, struct in6_addr
   }
 
   return 0;
+#endif /* HAVE_IPV6_MULTICAST_HOST */
 }
 
