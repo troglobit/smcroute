@@ -42,7 +42,9 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#if defined(HOST_OS_LINUX)
+#include "config.h"
+
+#ifdef HAVE_LINUX_MROUTE_H
  #include <linux/mroute.h>
 #endif
 
