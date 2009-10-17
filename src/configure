@@ -3398,14 +3398,6 @@ if test `eval echo '${'$as_ac_Header'}'` = yes; then
 #define `echo "HAVE_$ac_header" | $as_tr_cpp` 1
 _ACEOF
 
-else
-  { { echo "$as_me:$LINENO: error: Could not find linux/mroute.h" >&5
-echo "$as_me: error: Could not find linux/mroute.h" >&2;}
-   { (exit 1); exit 1; }; }
-else
-  { { echo "$as_me:$LINENO: error: Could not find linux/mroute6.h" >&5
-echo "$as_me: error: Could not find linux/mroute6.h" >&2;}
-   { (exit 1); exit 1; }; }
 fi
 
 done
