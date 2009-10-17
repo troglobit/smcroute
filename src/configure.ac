@@ -16,7 +16,7 @@ AC_PROG_CC
 AC_HEADER_STDC
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h sys/ioctl.h sys/socket.h syslog.h unistd.h])
 
-AC_CHECK_HEADERS([linux/mroute.h], [], [], 
+AC_CHECK_HEADERS([linux/mroute.h], [], [AC_MSG_ERROR([Could not find linux/mroute.h])], 
 [
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
@@ -26,7 +26,7 @@ AC_CHECK_HEADERS([linux/mroute.h], [], [],
 #endif
 ])
 
-AC_CHECK_HEADERS([linux/mroute6.h], [], [], 
+AC_CHECK_HEADERS([linux/mroute6.h], [], [AC_MSG_ERROR([Could not find linux/mroute6.h])], 
 [
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
