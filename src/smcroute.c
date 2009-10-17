@@ -236,7 +236,7 @@ void ServerLoop(void)
 	if( FD_ISSET( MRouterFD6, &ReadFDS ) ) {
 	  char Bu[ 128 ];
 	    
-	  Rt = read( MRouterFD4, Bu, sizeof( Bu ) ); 
+	  Rt = read( MRouterFD6, Bu, sizeof( Bu ) ); 
 	  smclog( LOG_DEBUG, 0, "%d byte MLD signaling dropped", Rt );
 	}
 
