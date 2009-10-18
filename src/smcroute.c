@@ -110,7 +110,7 @@ static int initMRouter4()
   switch( Err = enableMRouter4() ) {
     case 0: break;
     case EADDRINUSE: smclog( LOG_INIT, EADDRINUSE, "MC-Router IPv4 API already in use" ); return -1;
-    case ENOPROTOOPT: smclog( LOG_DEBUG, 0, "Kernel does not support IPv4 multicast routing (skipping IPv4 routing)" ); return -1;
+    case ENOPROTOOPT: smclog( LOG_WARNING, 0, "Kernel does not support IPv4 multicast routing (skipping IPv4 routing)" ); return -1;
     default: smclog( LOG_INIT, Err, "MRT_INIT failed" ); return -1;
   }
       
@@ -139,7 +139,7 @@ static int initMRouter6()
   switch( Err = enableMRouter6() ) {
     case 0: break;
     case EADDRINUSE: smclog( LOG_INIT, EADDRINUSE, "MC-Router IPv6 API already in use" ); return -1;
-    case ENOPROTOOPT: smclog( LOG_DEBUG, 0, "Kernel does not support IPv6 multicast routing (skipping IPv6 routing)" ); return -1;
+    case ENOPROTOOPT: smclog( LOG_WARNING, 0, "Kernel does not support IPv6 multicast routing (skipping IPv6 routing)" ); return -1;
     default: smclog( LOG_INIT, Err, "MRT6_INIT failed" ); return -1;
   }
       
