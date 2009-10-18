@@ -94,6 +94,7 @@ void disableMRouter4()
 **          
 */
 {
+  if( MRouterFD4 < 0 ) return;
   if( setsockopt( MRouterFD4, IPPROTO_IP, MRT_DONE, NULL, 0 ) 
       || close( MRouterFD4 ) ) {
     MRouterFD4 = 0;
@@ -295,6 +296,7 @@ void disableMRouter6()
 #ifndef HAVE_IPV6_MULTICAST_ROUTING
   return;
 #else
+  if( MRouterFD6 < 0 ) return;
   if( setsockopt( MRouterFD6, IPPROTO_IPV6, MRT6_DONE, NULL, 0 ) 
       || close( MRouterFD6 ) ) {
     MRouterFD6 = 0;

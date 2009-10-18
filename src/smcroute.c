@@ -110,6 +110,7 @@ static int initMRouter4()
   switch( Err = enableMRouter4() ) {
     case 0: break;
     case EADDRINUSE: smclog( LOG_INIT, EADDRINUSE, "MC-Router IPv4 API already in use" ); return -1;
+    case ENOPROTOOPT: smclog( LOG_INIT, ENOPROTOOPT, "Kernel does not support IPv4 multicast routing" ); return -1;
     default: smclog( LOG_INIT, Err, "MRT_INIT failed" ); return -1;
   }
       
@@ -138,6 +139,7 @@ static int initMRouter6()
   switch( Err = enableMRouter6() ) {
     case 0: break;
     case EADDRINUSE: smclog( LOG_INIT, EADDRINUSE, "MC-Router IPv6 API already in use" ); return -1;
+    case ENOPROTOOPT: smclog( LOG_INIT, ENOPROTOOPT, "Kernel does not support IPv6 multicast routing" ); return -1;
     default: smclog( LOG_INIT, Err, "MRT6_INIT failed" ); return -1;
   }
       
@@ -159,6 +161,7 @@ void ServerLoop(void)
 {
   uint8 Bu[ MX_CMDPKT_SZ ];
   int IpcServerFD;
+  unsigned short initialized_api_count;
 
   /*
    * Init everything before forking, so we can fail and return an
@@ -171,10 +174,17 @@ void ServerLoop(void)
    */
   buildIfVc();    
 
-  if (initMRouter4() != 0)
-    exit(1);
+  initialized_api_count = 0;
+  if (initMRouter4() == 0)
+    initialized_api_count++;
 
-  if (initMRouter6() != 0)
+  if (initMRouter6() == 0)
+    initialized_api_count++;
+
+  /* At least one API (IPv4 or IPv6) must have initialized successfully
+   * otherwise we abort the server initialization.
+   */
+  if (initialized_api_count == 0)
     exit(1);
 
   IpcServerFD = initIpcServer();
