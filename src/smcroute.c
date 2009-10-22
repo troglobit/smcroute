@@ -44,7 +44,7 @@ static const char Version[] =
 "\n";
 
 static const char Usage[] = 
-"usage: smcroute\t[-v] [-d] [-k]\n"
+"usage: smcroute\t[-v] [-d] [-k] [-D]\n"
 "\n" 
 "\t\t[-a <InputIntf> <OriginIpAdr> <McGroupAdr> <OutputIntf> [<OutputIntf>] ...]\n"
 "\t\t[-r <InputIntf> <OriginIpAdr> <McGroupAdr>]\n"
@@ -57,6 +57,8 @@ static const char MissingArgSt[] = "<missing argument>";
 
 int McGroupSock4 = -1;
 int McGroupSock6 = -1;
+
+int do_debug_logging = 0;
 
 static int getArgOptLn( const char *ArgVc[] )
 /*
@@ -238,7 +240,8 @@ void ServerLoop(void)
 	  char Bu[ 128 ];
 	    
 	  Rt = read( MRouterFD4, Bu, sizeof( Bu ) ); 
-	  smclog( LOG_DEBUG, 0, "%d byte IGMP signaling dropped", Rt );
+	  if (do_debug_logging)
+            smclog( LOG_DEBUG, 0, "%d byte IGMP signaling dropped", Rt );
 	}
 
 	/* 
@@ -249,7 +252,8 @@ void ServerLoop(void)
 	  char Bu[ 128 ];
 	    
 	  Rt = read( MRouterFD6, Bu, sizeof( Bu ) ); 
-	  smclog( LOG_DEBUG, 0, "%d byte MLD signaling dropped", Rt );
+	  if (do_debug_logging)
+	    smclog( LOG_DEBUG, 0, "%d byte MLD signaling dropped", Rt );
 	}
 
 	/* loop back to select if there is no smcroute command */
@@ -450,6 +454,10 @@ BuildCmd:
 	StartDaemon = 1;
 	break;
 
+      case 'D':
+        do_debug_logging = 1;
+        break;
+
       default:                  /* unknown option */
 	fprintf( stderr, "unknown option: %s\n", *ArgVc );
 	goto Usage;
@@ -512,7 +520,8 @@ Retry:
       )
 	smclog( LOG_ERR, errno, "read/write to daemon failed" );
 
-      smclog( LOG_DEBUG, 0, "RdSz: %d", RdSz );
+      if (do_debug_logging)
+        smclog( LOG_DEBUG, 0, "RdSz: %d", RdSz );
 
       if( RdSz != 1 || *Bu != '\0' ) {
 	fprintf( stderr, "daemon error: %s\n", Bu );

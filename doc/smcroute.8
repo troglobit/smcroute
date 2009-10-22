@@ -17,6 +17,8 @@ smcroute <
 -d  -  start daemon
 .br
 -v  -  verbose output
+.br
+-D  -  enable debug logging
 .TP
 .I commands  - common
 -h  -  print help
@@ -75,6 +77,10 @@ Starts the smcroute daemon before any of the optional following commands are exe
 .TP
 .B -v
 Gives verbose output in some error situations (don't expect too much, check syslog instead).
+
+.TP
+.B -D
+Gives additional debug messages in normal use (don't expect too much, see syslog instead).
 .SH COMMANDS
 .TP
 .B -a 
