@@ -1,3 +1,15 @@
+smcroute 0.93 -> 0.94
+ * Added support for IPv6 multicast routing in smcroute. SMCRoute now
+	supports addition and removal of IPv6 multicast routes. It will
+	automatically detect which type of route to add or delete based
+	on the type (IPv4/IPv6) of addresses provided for the add and
+	remove commands.
+ * Added support for joins and leaves ('j'/'l') to IPv6 multicast groups.
+ * Added support for sending to IPv6 multicast addresses to mcsender tool.
+ * Added command line option to mcsender tool to allow user to specify the 
+	outgoing interface for datagrams sent.
+ * Added autoconf support for smcroute build.
+	
 smcroute 0.92 -> 0.93
  * fixed the "smcroute looses output interfaces" bug (Carsten Schill, 0.93
     unreleased).
