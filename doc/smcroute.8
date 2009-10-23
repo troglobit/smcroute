@@ -3,7 +3,7 @@
 .\" .I  - green or kursive (on HTML)
 .\" .TP - paragraph ? (header line, followed by indented lines)
 .\"
-.TH smcroute 8 "September, 2006"
+.TH smcroute 8 "October, 2009"
 .SH NAME
 SMCRoute \- Static Multicast Router (-Interface) - Version 0.93d
 .SH SYNOPSIS
@@ -41,15 +41,17 @@ smcroute <
 .SH DESCRIPTION
 .B SMCRoute 
 is a command line tool to manipulate the multicast
-routes of the Linux kernel. It can be used as an alternative to dynamic
-multicast routers like 'mrouted' in situations where static multicast routes
-should be maintained and/or no proper IGMP signaling exists.
+routes of the Linux kernel. It supports both IPv4 and IPv6 multicast routing. SMCRoute can be used as an 
+alternative to dynamic multicast routers like 'mrouted' in situations where static multicast routes should 
+be maintained and/or no proper IGMP or MLD signaling exists.
 
-Generaly multicast routes exists in the kernel only as long as smcroute or another multicast routing daemon is running. Only one multicast router daemon can be active, so it's impossible to run smcroute and e.g. 'mrouted' at the same time.
+Generally multicast routes exists in the kernel only as long as smcroute or another multicast routing daemon 
+is running. Only one multicast routing daemon can be active at a time, so it's impossible to run smcroute 
+and e.g. 'mrouted' at the same time.
 
 The 
 .B -d
-option smcroute is used to start the smcroute daemon otherwise smcroute searches for an already running smcroute daemon and passes the commands to it. The 
+option smcroute is used to start the smcroute daemon. Otherwise, smcroute searches for an already running smcroute daemon and passes the commands to it. The 
 .B -k
 option will terminate a running daemon.
 
@@ -57,15 +59,19 @@ Multicast routes can be added with the
 .B -a 
 command and removed with the 
 .B -r
-command. A multicast route is defined by the input interface (<IntputIntf>), the multicast IP origin address (<OriginIpAdr>), the multicast group (<McGroupAdr>) and a list of output interfaces (<OutputIntf> ...). The output interfaces must not be given with the 
-.B -r
-as the first three parameter are sufficient to identify the route to remove.
+command. 
 
-The intention of SMCRoute is to help in siutation where dynamic multicast routing does not work properly, but dynamic multicast routing is in nearly all cases the prefered solution. SMCRoute supports dynamic multicast routing with the multicast group 'join' 
+A multicast route is defined by an input interface (<IntputIntf>), a unicast IP origin address (<OriginIpAdr>), a multicast group (<McGroupAdr>) and a list of output interfaces (<OutputIntf> ...). 
+
+The origin and multicast group addresses must both be IPv4 addresses or IPv6 addresses. If IPv4 addresses are specified then SMCRoute will operate on the IPv4 multicast routes. If IPv6 addresses are specified then SMCRoute will operate on the IPv6 multicast routes. The output interfaces must not be given with the 
+.B -r
+as the first three parameter are sufficient to identify the route to remove. 
+
+The intention of SMCRoute is to help in situation where dynamic multicast routing does not work properly, but dynamic multicast routing is in nearly all cases the prefered solution. SMCRoute supports dynamic multicast routing with the multicast group 'join' 
 .B -j
 and 'leave' 
 .B -l
-commands. For both commands the input interface on which the multicast sessions should be received (<InputIntf>) and the multicast group address <McGroupAdr> must be given.
+commands. For both commands the input interface on which the multicast sessions should be received (<InputIntf>) and the multicast group address <McGroupAdr> must be given. The <McGroupAdr> may be an IPv4 or IPv6 address.
 
 .B Superuser rights 
 are necessary to start the smcroute daemon or to communicate with the daemon. 
@@ -90,9 +96,9 @@ The command is passed to the daemon that adds the given multicast route to the k
 .I <InputIntf> 
 can be any network interface as listed by 'ifconfig' or 'ip link list' (incl. tunnel interfaces), but not the loopback interface.
 .I <OriginIpAdr>
-is the source IP address of the multicast packets that will be routed by this entry. It is a unicast IP address not a multicast IP address. 
+is the source IP address of the multicast packets that will be routed by this entry. It is a unicast IPv4 or IPv6 address and not a multicast IP address. 
 .I <McGroupAdr>
-is the IP address of the multicast group that will be forwarded.
+is the IPv4 or IPv6 address of the multicast group that will be forwarded.
 .I <OutputIntf> [<OutputIntf>] ...
 is a list of one or more network interfaces to which the multicast packets will be forwarded. The same rules for the selection of output interfaces applies as for the input interface. 
 
@@ -111,15 +117,15 @@ command. The parameters are identical except to the omitted list of <OutputIntf>
 .B -j
 .I <InputIntf> <McGroupAdr>  
 
-The command is passed to the daemon that passes it to the kernel. The kernen then tries to join the multicast group 
+The command is passed to the daemon that passes it to the kernel. The kernel then tries to join the multicast group 
 .I <McGroupAdr>
 on interface 
 .I <InputIntf>
-by starting IGMP signaling on 
+by starting IGMP (or MLD if <McGroupAdr> is an IPv6 address) signaling on 
 .I <InputIntf>.
 This signaling may be received by routers connected to 
 .I <InputIntf>'s
-network that support IGMP multicast signaling and then hopfuly start forwarding of the requested multicast session to 
+network that support IGMP/MLD multicast signaling and then hopfuly start forwarding of the requested multicast session to 
 .I <InputIntf>'s
 network. 
 
@@ -142,10 +148,16 @@ max. 20
 .SH FILES
 .TP
 .B /proc/net/ip_mr_cache 
-- contains the active multicast routes
+- contains the active IPv4 multicast routes
 .TP
 .B /proc/net/ip_mr_vif 
-- contains the 'virtual' interfaces used by the active multicast routing daemon
+- contains the IPv4 'virtual' interfaces used by the active multicast routing daemon
+.TP
+.B /proc/net/ip6_mr_cache 
+- contains the active IPv6 multicast routes
+.TP
+.B /proc/net/ip6_mr_vif 
+- contains the IPv6 'virtual' interfaces used by the active multicast routing daemon
 .TP
 .B /var/lib/smcroute 
 - IPC socket created by the smcroute daemon
