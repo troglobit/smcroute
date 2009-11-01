@@ -1,7 +1,10 @@
 /*
 **  smcroute - static multicast routing control 
 **  Copyright (C) 2001-2005 Carsten Schill <carsten@cschill.de>
-**  Copyright (C) 2006 Julien BLACHE <jb@jblache.org>
+**  Copyright (C) 2006-2008 Julien BLACHE <jb@jblache.org>
+**  Copyright (C) 2009      Julien BLACHE <jb@jblache.org>,
+**                          Todd Hayton <todd.hayton@gmail.com>, and
+**                          Micha Lenk <micha@debian.org>
 **
 **  This program is free software; you can redistribute it and/or modify
 **  it under the terms of the GNU General Public License as published by
@@ -40,6 +43,9 @@
 static const char Version[] = 
 "smcroute, Version " VERSION ", Build" BUILD "\n"
 "Copyright 2001-2005 Carsten Schill <carsten@cschill.de>\n"
+"Copyright 2006-2009 Julien Blache <jb@jblache.org>,\n"
+"                    Todd Hayton <todd.hayton@gmail.com>, and\n"
+"                    Micha Lenk <micha@debian.org>\n"
 "Distributed under the GNU GENERAL PUBLIC LICENSE, Version 2 - check GPL.txt\n"
 "\n";
 
