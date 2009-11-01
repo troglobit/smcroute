@@ -16,12 +16,13 @@ install :
 	mkdir -p ${BINDIR}
 	cp smcroute mcsender ${BINDIR}
 
-mcsender:  mcsender.o syslog.o lib.o
+mcsender:  mcsender.o syslog.o lib.o config.h
 
 smcroute:  smcroute.o mroute-api.o ifvc.o cmdpkt.o ipc.o syslog.o udpsock.o mcgroup.o lib.o 
-smcroute.c : build.h version.h 
+smcroute.c : build.h config.h 
 
 build.h	:  
 	echo '#define BUILD "' `date +%y%m%d` '"' >build.h
 
-
+config.h:
+	@echo "Please run ./configure first"

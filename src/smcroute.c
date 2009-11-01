@@ -37,11 +37,11 @@
 
 #include "mclab.h"
 
-#include "version.h"
+#include "config.h"
 #include "build.h"
 
 static const char Version[] = 
-"smcroute, Version " VERSION ", Build" BUILD "\n"
+"smcroute, Version " PACKAGE_VERSION ", Build" BUILD "\n"
 "Copyright 2001-2005 Carsten Schill <carsten@cschill.de>\n"
 "Copyright 2006-2009 Julien Blache <jb@jblache.org>,\n"
 "                    Todd Hayton <todd.hayton@gmail.com>, and\n"
