@@ -1,3 +1,11 @@
+smcroute 0.94 -> 0.94.1
+ * Bugfix: In case the kernel refuses write access to the file
+   /proc/sys/net/ipv6/conf/all/mc_forwarding, don't let smcroute exit
+   with an error, but proceed with normal operation without writing a
+   "1" to this file.  Apparently newer Linux kernels take care for the
+   correct content of this file automatically whenever the IPv6
+   multicast routing API is initialized by a process.
+
 smcroute 0.93 -> 0.94
  * Added support for IPv6 multicast routing in smcroute. SMCRoute now
 	supports addition and removal of IPv6 multicast routes. It will
