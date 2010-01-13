@@ -277,11 +277,13 @@ int enableMRouter6()
     char * file = "/proc/sys/net/ipv6/conf/all/mc_forwarding";
     
     fd = open( file, O_WRONLY );
-    if ( fd < 0 )  
-      smclog( LOG_ERR, errno, "open(%s)", file);  
-
-    (void) write( fd, "1", 1 );
-    (void) close( fd );
+    if ( fd < 0 ) {
+      if ( errno != EACCES )
+        smclog( LOG_ERR, errno, "open(%s)", file);  
+    } else {
+      (void) write( fd, "1", 1 );
+      (void) close( fd );
+    }
   }
   return 0;
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
