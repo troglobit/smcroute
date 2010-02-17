@@ -27,7 +27,9 @@
 #include <sys/ioctl.h>
 
 #include "mclab.h"
+#ifdef HAVE_LINUX_SOCKIOS_H
 #include <linux/sockios.h>
+#endif
 
 struct IfDesc IfDescVc[ MAX_IF ], *IfDescEp = IfDescVc;
 

@@ -14,9 +14,11 @@ AC_PROG_CC
 
 # Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h sys/ioctl.h sys/socket.h syslog.h unistd.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h sys/types.h sys/ioctl.h sys/socket.h sys/param.h net/route.h syslog.h unistd.h])
 
-AC_CHECK_HEADERS([linux/mroute.h], [], [AC_MSG_ERROR([Could not find linux/mroute.h])], 
+AC_CHECK_HEADERS([linux/sockios.h])
+
+AC_CHECK_HEADERS([linux/mroute.h], [], [], 
 [
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
@@ -26,8 +28,37 @@ AC_CHECK_HEADERS([linux/mroute.h], [], [AC_MSG_ERROR([Could not find linux/mrout
 #endif
 ])
 
-AC_CHECK_HEADERS([linux/mroute6.h], [], [AC_MSG_ERROR([Could not find linux/mroute6.h])], 
+AC_CHECK_HEADERS([linux/mroute6.h], [], [], 
 [
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif
+])
+
+AC_CHECK_HEADERS([netinet/ip_mroute.h], [], [],
+[
+#ifdef HAVE_NET_ROUTE_H
+#include <net/route.h>
+#endif
+#ifdef HAVE_SYS_PARAM_H
+#include <sys/param.h>
+#endif
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif
+])
+
+AC_CHECK_HEADERS([netinet6/ip6_mroute.h], [], [],
+[
+#ifdef HAVE_SYS_PARAM_H
+#include <sys/param.h>
+#endif
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
 #endif

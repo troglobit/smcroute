@@ -49,10 +49,20 @@
 
 #ifdef HAVE_LINUX_MROUTE_H
  #include <linux/mroute.h>
+#else
+ #ifdef HAVE_NETINET_IP_MROUTE_H
+  #include <net/route.h>
+  #include <netinet/ip_mroute.h>
+ #endif
 #endif
 
 #ifdef HAVE_LINUX_MROUTE6_H
  #include <linux/mroute6.h>
+#else
+ #ifdef HAVE_NETINET6_IP6_MROUTE_H
+  #include <sys/param.h>
+  #include <netinet6/ip6_mroute.h>
+ #endif
 #endif
 
 typedef u_int8_t   uint8;
@@ -63,8 +73,12 @@ typedef u_int32_t  uint32;
 #define SIN4( x ) ((struct sockaddr_in *)x)
 #define SIN6( x ) ((struct sockaddr_in6 *)x)
 
+#ifndef MIN
 #define MIN( a, b ) ((a) < (b) ? (a) : (b))
+#endif
+#ifndef MAX
 #define MAX( a, b ) ((a) < (b) ? (b) : (a))
+#endif
 #define VCMC( Vc )  (sizeof( Vc ) / sizeof( (Vc)[ 0 ] ))
 #define VCEP( Vc )  (&(Vc)[ VCMC( Vc ) ])
 
