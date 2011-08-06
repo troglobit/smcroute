@@ -90,8 +90,12 @@ int enableMRouter4()
   }
   
   if( setsockopt( MRouterFD4, IPPROTO_IP, MRT_INIT, 
-		  (void *)&Va, sizeof( Va ) ) ) 
-    return errno;
+		  (void *)&Va, sizeof( Va ) ) ) {
+    int err = errno;
+    close( MRouterFD4 );
+    MRouterFD4 = 0;
+    return err;
+  }
 
   return 0;
 }
@@ -273,8 +277,12 @@ int enableMRouter6()
   }
   
   if( setsockopt( MRouterFD6, IPPROTO_IPV6, MRT6_INIT, 
-		  (void *)&Va, sizeof( Va ) ) ) 
-    return errno;
+		  (void *)&Va, sizeof( Va ) ) ) {
+    int err = errno;
+    close( MRouterFD6 );
+    MRouterFD6 = 0;
+    return err;
+  }
 
   /* 
    * On Linux pre 2.6.29 kernels net.ipv6.conf.all.mc_forwarding
