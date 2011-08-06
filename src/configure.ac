@@ -14,9 +14,7 @@ AC_PROG_CC
 
 # Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h sys/types.h sys/ioctl.h sys/socket.h sys/param.h net/route.h syslog.h unistd.h])
-
-AC_CHECK_HEADERS([linux/sockios.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h sys/ioctl.h sys/socket.h syslog.h unistd.h net/route.h sys/param.h])
 
 AC_CHECK_HEADERS([linux/mroute.h], [], [], 
 [
@@ -38,32 +36,24 @@ AC_CHECK_HEADERS([linux/mroute6.h], [], [],
 #endif
 ])
 
+AC_CHECK_HEADERS([linux/sockios.h])
+
 AC_CHECK_HEADERS([netinet/ip_mroute.h], [], [],
 [
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif
 #ifdef HAVE_NET_ROUTE_H
 #include <net/route.h>
 #endif
-#ifdef HAVE_SYS_PARAM_H
-#include <sys/param.h>
-#endif
-#ifdef HAVE_SYS_SOCKET_H
-#include <sys/socket.h>
-#endif
-#ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
-#endif
 ])
-
 AC_CHECK_HEADERS([netinet6/ip6_mroute.h], [], [],
 [
-#ifdef HAVE_SYS_PARAM_H
-#include <sys/param.h>
-#endif
-#ifdef HAVE_SYS_SOCKET_H
-#include <sys/socket.h>
-#endif
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
+#endif
+#ifdef HAVE_SYS_PARAM_H
+#include <sys/param.h>
 #endif
 ])
 
@@ -98,6 +88,12 @@ AC_COMPILE_IFELSE(
 #ifdef HAVE_LINUX_MROUTE6_H
 #include <linux/mroute6.h>
 #endif
+#ifdef HAVE_SYS_PARAM_H
+#include <sys/param.h>
+#endif
+#ifdef HAVE_NETINET6_IP6_MROUTE_H
+#include <netinet6/ip6_mroute.h>
+#endif
 ]],
 [[
   int dummy = MRT6_INIT;
@@ -111,6 +107,44 @@ AC_COMPILE_IFELSE(
 AC_C_CONST
 AC_C_INLINE
 AC_TYPE_UINT32_T
+
+AC_MSG_CHECKING(for vifc_threshold member in struct mif6ctl)
+AC_COMPILE_IFELSE(
+  [AC_LANG_PROGRAM(
+[[
+#ifdef HAVE_LINUX_MROUTE6_H
+#include <linux/mroute6.h>
+#endif
+#ifdef HAVE_NETINET6_IP6_MROUTE_H
+#include <netinet6/ip6_mroute.h>
+#endif
+]],
+[[
+  struct mif6ctl dummy;
+  dummy.vifc_threshold = 1;
+]])],
+  [AC_DEFINE(HAVE_MIF6CTL_VIFC_THRESHOLD, 1, [Define to 1 if the struct mif6ctl has a member vifc_threshold on your OS])
+   AC_MSG_RESULT(yes)],
+  [AC_MSG_RESULT(no)])
+
+AC_MSG_CHECKING(for vifc_rate_limit member in struct mif6ctl)
+AC_COMPILE_IFELSE(
+  [AC_LANG_PROGRAM(
+[[
+#ifdef HAVE_LINUX_MROUTE6_H
+#include <linux/mroute6.h>
+#endif
+#ifdef HAVE_NETINET6_IP6_MROUTE_H
+#include <netinet6/ip6_mroute.h>
+#endif
+]],
+[[
+  struct mif6ctl dummy;
+  dummy.vifc_rate_limit = 1;
+]])],
+  [AC_DEFINE(HAVE_MIF6CTL_VIFC_RATE_LIMIT, 1, [Define to 1 if the struct mif6ctl has a member vifc_rate_limit on your OS])
+   AC_MSG_RESULT(yes)],
+  [AC_MSG_RESULT(no)])
 
 # Checks for library functions.
 AC_FUNC_FORK

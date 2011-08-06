@@ -49,20 +49,25 @@
 
 #ifdef HAVE_LINUX_MROUTE_H
  #include <linux/mroute.h>
-#else
- #ifdef HAVE_NETINET_IP_MROUTE_H
-  #include <net/route.h>
-  #include <netinet/ip_mroute.h>
- #endif
 #endif
 
 #ifdef HAVE_LINUX_MROUTE6_H
  #include <linux/mroute6.h>
-#else
- #ifdef HAVE_NETINET6_IP6_MROUTE_H
+#endif
+
+#ifdef HAVE_NET_ROUTE_H
+ #include <net/route.h>
+#endif
+
+#ifdef HAVE_NETINET_IP_MROUTE_H
+ #include <netinet/ip_mroute.h>
+#endif
+
+#ifdef HAVE_NETINET6_IP6_MROUTE_H
+ #ifdef HAVE_SYS_PARAM_H
   #include <sys/param.h>
-  #include <netinet6/ip6_mroute.h>
  #endif
+ #include <netinet6/ip6_mroute.h>
 #endif
 
 typedef u_int8_t   uint8;
@@ -82,8 +87,8 @@ typedef u_int32_t  uint32;
 #define VCMC( Vc )  (sizeof( Vc ) / sizeof( (Vc)[ 0 ] ))
 #define VCEP( Vc )  (&(Vc)[ VCMC( Vc ) ])
 
-#define MAX_MC_VIFS    32     /* = to MAXVIFS from linux/mroute.h */
-#define MAX_MC_MIFS    32     /* = to MAXMIFS from linux/mroute6.h */
+#define MAX_MC_VIFS    MAXVIFS     /* = to MAXVIFS from linux/mroute.h */
+#define MAX_MC_MIFS    MAXMIFS     /* = to MAXMIFS from linux/mroute6.h */
 
 struct IfDesc {
   char Name[ sizeof( ((struct ifreq *)NULL)->ifr_name ) ];

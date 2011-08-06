@@ -43,6 +43,13 @@
 /* Define to 1 if you have the `memset' function. */
 #undef HAVE_MEMSET
 
+/* Define to 1 if the struct mif6ctl has a member vifc_rate_limit on your OS
+   */
+#undef HAVE_MIF6CTL_VIFC_RATE_LIMIT
+
+/* Define to 1 if the struct mif6ctl has a member vifc_threshold on your OS */
+#undef HAVE_MIF6CTL_VIFC_THRESHOLD
+
 /* Define to 1 if you have the <netinet6/ip6_mroute.h> header file. */
 #undef HAVE_NETINET6_IP6_MROUTE_H
 
@@ -130,6 +137,9 @@
 /* Define to the one symbol short name of this package. */
 #undef PACKAGE_TARNAME
 
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
+
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
 
@@ -149,7 +159,7 @@
 #undef STDC_HEADERS
 
 /* Define for Solaris 2.5.1 so the uint32_t typedef from <sys/synch.h>,
-   <pthread.h>, or <semaphore.h> is not used. If the typedef was allowed, the
+   <pthread.h>, or <semaphore.h> is not used. If the typedef were allowed, the
    #define below would cause a syntax error. */
 #undef _UINT32_T
 

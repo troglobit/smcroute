@@ -221,13 +221,19 @@ void ServerLoop(void)
       /* watch the MRouter and the IPC socket to the smcroute client */
       {
 	fd_set ReadFDS;
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
 	int MaxFD = MAX( IpcServerFD, MAX( MRouterFD4, MRouterFD6 ) );
+#else
+	int MaxFD = MAX( IpcServerFD, MRouterFD4 );
+#endif
 	int Rt;
 
 	FD_ZERO( &ReadFDS );
 	FD_SET( IpcServerFD, &ReadFDS );
 	FD_SET( MRouterFD4, &ReadFDS );
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
 	FD_SET( MRouterFD6, &ReadFDS );
+#endif
 
 	/* wait for input */
 	Rt = select( MaxFD +1, &ReadFDS, NULL, NULL, NULL );
@@ -254,6 +260,7 @@ void ServerLoop(void)
 	 * Receive and drop ICMPv6 stuff. This is either MLD packets
 	 * or upcall messages sent up from the kernel.
 	 */
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
 	if( FD_ISSET( MRouterFD6, &ReadFDS ) ) {
 	  char Bu[ 128 ];
 	    
@@ -261,6 +268,7 @@ void ServerLoop(void)
 	  if (do_debug_logging)
 	    smclog( LOG_DEBUG, 0, "%d byte MLD signaling dropped", Rt );
 	}
+#endif
 
 	/* loop back to select if there is no smcroute command */
 	if( ! FD_ISSET( IpcServerFD, &ReadFDS ) ) 

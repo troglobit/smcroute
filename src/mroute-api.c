@@ -24,8 +24,12 @@
 */
 #include <unistd.h>
 #include <arpa/inet.h>
-
+#include "config.h"
 #include "mclab.h"
+
+#ifdef HAVE_NETINET6_IP6_MROUTE_H
+ #include <netinet6/ip6_mroute.h>
+#endif
 
 /* MAX_MC_VIFS from mclab.h must have same value as MAXVIFS from mroute.h */
 #if MAX_MC_VIFS != MAXVIFS
@@ -45,21 +49,25 @@
  */
 int MRouterFD4;
 
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
 /*
  * Need a raw ICMPv6 socket as interface for the IPv6 mrouted API
  * Receives MLD packets and kernel upcall messages.
  */
 int MRouterFD6;
+#endif
 
 /* IPv4 internal virtual interfaces (VIF) descriptor vector */
 static struct VifDesc {
   struct IfDesc *IfDp;
 } VifDescVc[ MAXVIFS ];
 
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
 /* IPv6 internal virtual interfaces (VIF) descriptor vector */
 static struct MifDesc {
   struct IfDesc *IfDp;
 } MifDescVc[ MAXMIFS ];
+#endif
 
 /********************************************************************
  * IPv4 
@@ -339,9 +347,13 @@ void addMIF( struct IfDesc *IfDp )
 
   MifCtl.mif6c_mifi      = MifDp - MifDescVc; 
   MifCtl.mif6c_flags     = 0;             /* no register */
+#ifdef HAVE_MIF6CTL_VIFC_THRESHOLD
   MifCtl.vifc_threshold  = 1;             /* Packet TTL must be at least 1 to pass them */
+#endif
   MifCtl.mif6c_pifi      = IfDp->IfIndex; /* physical interface index */
+#ifdef HAVE_MIF6CTL_VIFC_RATE_LIMIT
   MifCtl.vifc_rate_limit = 0;             /* hopefully no limit */
+#endif
 
   smclog( LOG_NOTICE, 0, "adding MIF, Mif-Ix %d PHY Ix %d Fl 0x%x %s", 
 	  MifCtl.mif6c_mifi, MifCtl.mif6c_pifi, MifCtl.mif6c_flags, MifDp->IfDp->Name );
