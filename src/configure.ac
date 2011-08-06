@@ -108,6 +108,20 @@ AC_C_CONST
 AC_C_INLINE
 AC_TYPE_UINT32_T
 
+AC_MSG_CHECKING(for sun_len member in struct sockaddr_un)
+AC_COMPILE_IFELSE(
+  [AC_LANG_PROGRAM(
+[[
+#include <sys/un.h>
+]],
+[[
+  struct sockaddr_un dummy;
+  dummy.sun_len = 0;
+]])],
+  [AC_DEFINE(HAVE_SOCKADDR_UN_SUN_LEN, 1, [Define to 1 if the struct sockaddr_un has a member sun_len on your OS])
+   AC_MSG_RESULT(yes)],
+  [AC_MSG_RESULT(no)])
+
 AC_MSG_CHECKING(for vifc_threshold member in struct mif6ctl)
 AC_COMPILE_IFELSE(
   [AC_LANG_PROGRAM(

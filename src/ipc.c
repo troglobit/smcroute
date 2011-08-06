@@ -23,6 +23,7 @@
 **
 */
 
+#include <stddef.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -46,19 +47,23 @@ int initIpcServer()
 */
 {
   struct sockaddr_un UnixAddr; 
+  socklen_t UnixAddrLen;
 
   if( (ListenSock = socket( AF_UNIX, SOCK_STREAM, 0 )) < 0 ) {
     smclog( LOG_INIT, errno, "initIpcServer, socket() failed" );
     return -1;
   }
 
+#ifdef HAVE_SOCKADDR_UN_SUN_LEN
+  UnixAddr.sun_len = 0;    /* <- correct length is set by the OS */
+#endif
   UnixAddr.sun_family = AF_UNIX;
   strcpy( UnixAddr.sun_path, SOCKET_PATH );
  
   unlink( SOCKET_PATH );
 
-  if( bind( ListenSock, (struct sockaddr *)&UnixAddr, 
-	    sizeof( UnixAddr.sun_family ) + strlen( UnixAddr.sun_path )) < 0 
+  UnixAddrLen = offsetof(struct sockaddr_un, sun_path) + strlen(SOCKET_PATH);
+  if( bind( ListenSock, (struct sockaddr *)&UnixAddr, UnixAddrLen ) < 0
       || listen( ListenSock, 1 ) ) {
     smclog( LOG_INIT, errno, "initIpcServer, bind()/listen() failed" );
     close(ListenSock);
@@ -80,15 +85,19 @@ int initIpcClient()
 */
 {
   struct sockaddr_un UnixAddr; 
+  socklen_t UnixAddrLen;
 
   if( (ConSock = socket( AF_UNIX, SOCK_STREAM, 0 )) < 0 )
     smclog( LOG_ERR, errno, "initIpcClient, socket() failed" );
 
+#ifdef HAVE_SOCKADDR_UN_SUN_LEN
+  UnixAddr.sun_len = 0;    /* <- correct length is set by the OS */
+#endif
   UnixAddr.sun_family = AF_UNIX;
   strcpy( UnixAddr.sun_path, SOCKET_PATH );
 
-  if( connect( ConSock, (struct sockaddr *)&UnixAddr, 
-	       sizeof( UnixAddr.sun_family ) + strlen( UnixAddr.sun_path )) < 0 ) {
+  UnixAddrLen = offsetof(struct sockaddr_un, sun_path) + strlen(SOCKET_PATH);
+  if( connect( ConSock, (struct sockaddr *)&UnixAddr, UnixAddrLen ) < 0) {
     int Err = errno;
 
     close( ConSock ); ConSock = 0;
