@@ -14,7 +14,9 @@ AC_PROG_CC
 
 # Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h sys/ioctl.h sys/socket.h syslog.h unistd.h net/route.h sys/param.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h
+                  sys/ioctl.h sys/socket.h syslog.h unistd.h
+                  net/route.h sys/param.h ifaddrs.h])
 
 AC_CHECK_HEADERS([linux/mroute.h], [], [], 
 [

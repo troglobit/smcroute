@@ -24,12 +24,10 @@
 */
 
 #include <unistd.h>
-#include <sys/ioctl.h>
-
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <ifaddrs.h>
 #include "mclab.h"
-#ifdef HAVE_LINUX_SOCKIOS_H
-#include <linux/sockios.h>
-#endif
 
 struct IfDesc IfDescVc[ MAX_IF ], *IfDescEp = IfDescVc;
 
@@ -40,83 +38,32 @@ void buildIfVc()
 **          
 */
 {
-  struct ifreq IfVc[ sizeof( IfDescVc ) / sizeof( IfDescVc[ 0 ] )  ];
-  struct ifreq *IfEp;
+  struct ifaddrs *ifaddr, *ifa;
 
-  int Sock;
-
-  memset(IfVc, 0, sizeof(IfVc));
-
-  if( (Sock = socket( AF_INET, SOCK_DGRAM, 0 )) < 0 )
-    smclog( LOG_ERR, errno, "RAW socket open" );
-
-  /* get If vector
-   */
-  {
-    struct ifconf IoCtlReq;
-
-    IoCtlReq.ifc_buf = (void *)IfVc;
-    IoCtlReq.ifc_len = sizeof( IfVc );
-
-    if( ioctl( Sock, SIOCGIFCONF, &IoCtlReq ) < 0 )
-      smclog( LOG_ERR, errno, "ioctl SIOCGIFCONF" );
-
-    IfEp = (void *)((char *)IfVc + IoCtlReq.ifc_len);
-  }
-
-  /* loop over interfaces and copy interface info to IfDescVc
-   */
-  {
-    struct ifreq  *IfPt;
-
-    for( IfPt = IfVc; IfPt < IfEp; IfPt++ ) {
-      char FmtBu[ 32 ];
+  memset(IfDescVc, 0, sizeof(IfDescVc));
   
-      strncpy( IfDescEp->Name, IfPt->ifr_name, sizeof( IfDescEp->Name ) );
-
-      /* don't retrieve more info for non-IP interfaces
-       */
-      if( IfPt->ifr_addr.sa_family != AF_INET ) {
-	IfDescEp->InAdr.s_addr = 0;  /* mark as non-IP interface */
-	IfDescEp++;
-	continue;
-      }
-
-      IfDescEp->InAdr = ((struct sockaddr_in *)&IfPt->ifr_addr)->sin_addr;
-
-      /* get if flags
-      **
-      ** typical flags:
-      ** lo    0x0049 -> Running, Loopback, Up
-      ** ethx  0x1043 -> Multicast, Running, Broadcast, Up
-      ** ipppx 0x0091 -> NoArp, PointToPoint, Up 
-      ** grex  0x00C1 -> NoArp, Running, Up
-      ** ipipx 0x00C1 -> NoArp, Running, Up
-      */
-      {
-	struct ifreq IfReq;
-
-	memcpy( IfReq.ifr_name, IfDescEp->Name, sizeof( IfReq.ifr_name ) );
-
-	if( ioctl( Sock, SIOCGIFFLAGS, &IfReq ) < 0 )
-	  smclog( LOG_ERR, errno, "ioctl SIOCGIFFLAGS" );
-
-	IfDescEp->Flags = IfReq.ifr_flags;
-      }
-
-      IfDescEp->IfIndex = if_nametoindex(IfDescEp->Name);
-
-      smclog( LOG_DEBUG, 0, "buildIfVc: Interface %s Phy-Ix %d Addr: %s, Flags: 0x%04x",
-	      IfDescEp->Name,
-	      IfDescEp->IfIndex,
-	      fmtInAdr( FmtBu, IfDescEp->InAdr ),
-	      IfDescEp->Flags );
-
-      IfDescEp++; 
-    } 
+  if (getifaddrs(&ifaddr) == -1) {
+    smclog( LOG_ERR, errno, "Failed to retrieve interface addresses" );
+    return;
   }
 
-  close( Sock );
+  for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+    int family = ifa->ifa_addr->sa_family;
+
+    /* Skip non-IPv4 and non-IPv6 interfaces */
+    if ((family != AF_INET) && (family != AF_INET6)) continue;
+    /* Skip interface without internet address */
+    if (ifa->ifa_addr == NULL) continue;
+
+    /* Copy data from interface iterator 'ifa' */
+    strncpy(IfDescEp->Name, ifa->ifa_name, sizeof(IfDescEp->Name));
+    if (family == AF_INET)
+      IfDescEp->InAdr.s_addr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr.s_addr;
+    IfDescEp->Flags = ifa->ifa_flags;
+    IfDescEp->IfIndex = if_nametoindex(IfDescEp->Name);
+    IfDescEp++;
+  }
+  freeifaddrs(ifaddr);
 }
 
 
