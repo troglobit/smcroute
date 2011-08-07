@@ -3363,8 +3363,8 @@ fi
 done
 
 
-for ac_header in arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h
-                  sys/ioctl.h sys/socket.h syslog.h unistd.h
+for ac_header in arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h \
+                  sys/ioctl.h sys/socket.h syslog.h unistd.h \
                   net/route.h sys/param.h ifaddrs.h
 do :
   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
