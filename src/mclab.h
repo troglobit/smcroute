@@ -95,6 +95,7 @@ struct IfDesc {
   struct in_addr InAdr;          /* == 0 for non IP interfaces */            
   u_short IfIndex;               /* Physical interface index   */
   short Flags;
+  short VifIndex;
 };
 
 /* ifvc.c

@@ -157,6 +157,8 @@ void addVIF( struct IfDesc *IfDp )
   if( setsockopt( MRouterFD4, IPPROTO_IP, MRT_ADD_VIF, 
 		  (void *)&VifCtl, sizeof( VifCtl ) ) )
     smclog( LOG_ERR, errno, "MRT_ADD_VIF %s", IfDp->Name );
+  else
+    IfDp->VifIndex = VifIndex;
 }
 
 int addMRoute4( struct MRoute4Desc *Dp )
@@ -246,13 +248,8 @@ int getVifIx( struct IfDesc *IfDp )
 **          
 */
 {
-  struct VifDesc *Dp;
-
-  for( Dp = VifDescVc; Dp < VCEP( VifDescVc ); Dp++ ) 
-    if( Dp->IfDp == IfDp )
-      return Dp - VifDescVc;
-
-  return -1;
+  if (IfDp == NULL) return -1;
+  return IfDp->VifIndex;
 }
 
 

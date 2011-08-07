@@ -61,6 +61,7 @@ void buildIfVc()
       IfDescEp->InAdr.s_addr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr.s_addr;
     IfDescEp->Flags = ifa->ifa_flags;
     IfDescEp->IfIndex = if_nametoindex(IfDescEp->Name);
+    IfDescEp->VifIndex = -1;
     IfDescEp++;
   }
   freeifaddrs(ifaddr);
@@ -74,15 +75,20 @@ struct IfDesc *getIfByName( const char *IfName )
 ** returns: - pointer to the IfDesc of the requested interface
 **          - NULL if no interface 'IfName' exists
 **          
+**          - if more than one interface 'IfName' exists, chose the
+**            an interface that corresponds to a virtual interface
 */
 {
   struct IfDesc *Dp;
+  struct IfDesc *candidate = NULL;
 
   for( Dp = IfDescVc; Dp < IfDescEp; Dp++ ) 
-    if( ! strcmp( IfName, Dp->Name ) ) 
-      return Dp;
+    if( ! strcmp( IfName, Dp->Name ) ) {
+      if (Dp->VifIndex >= 0) return Dp;
+      candidate = Dp;
+  }
 
-  return NULL;
+  return candidate;
 }
 
 struct IfDesc *getIfByIx( unsigned Ix )
