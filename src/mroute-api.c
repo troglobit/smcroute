@@ -97,6 +97,9 @@ int enableMRouter4()
     return err;
   }
 
+  /* Initialize virtual interface table */
+  memset(&VifDescVc, 0, sizeof(VifDescVc));
+
   return 0;
 }
 
@@ -122,28 +125,31 @@ void addVIF( struct IfDesc *IfDp )
 {
   struct vifctl VifCtl;
   struct VifDesc *VifDp;
+  int VifIndex = -1;
+  int i;
 
-  memset(&VifCtl, 0, sizeof(VifCtl));
-
-  /* search free VifDesc
-   */
-  for( VifDp = VifDescVc; VifDp < VCEP( VifDescVc ); VifDp++ ) {
-    if( ! VifDp->IfDp )
+  /* search free VifDesc */
+  for (i=0; i < MAXVIFS; i++) {
+    if ( !VifDescVc[i].IfDp ) {
+      VifIndex = i;
       break;
+    }
   }
     
-  /* no more space
-   */
-  if( VifDp >= VCEP( VifDescVc ) )
+  /* no more space */
+  if( VifIndex == -1 ) {
     smclog( LOG_ERR, ENOMEM, "addVIF, out of VIF space" );
+    return;
+  }
 
-  VifDp->IfDp = IfDp;
+  VifDescVc[VifIndex].IfDp = IfDp;
 
-  VifCtl.vifc_vifi = VifDp - VifDescVc; 
+  memset(&VifCtl, 0, sizeof(VifCtl));
+  VifCtl.vifc_vifi = VifIndex; 
   VifCtl.vifc_flags = 0;        /* no tunnel, no source routing, register ? */
   VifCtl.vifc_threshold = 1;    /* Packet TTL must be at least 1 to pass them */
   VifCtl.vifc_rate_limit = 0;   /* hopefully no limit */
-  VifCtl.vifc_lcl_addr.s_addr = VifDp->IfDp->InAdr.s_addr;
+  VifCtl.vifc_lcl_addr.s_addr = IfDp->InAdr.s_addr;
   VifCtl.vifc_rmt_addr.s_addr = INADDR_ANY;
 
   smclog( LOG_NOTICE, 0, "adding VIF, Vif-Ix %d Fl 0x%04x IP 0x%08x %s", 
