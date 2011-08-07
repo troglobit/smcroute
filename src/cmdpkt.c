@@ -175,10 +175,10 @@ convCmdPkt2MRouteDesc( struct MRouteDesc *MrDp, const struct CmdPkt *PktPt )
 
     if (strchr(ArgSt, ':') != NULL) {
       MrDp->ipVersion = 6;
-      convCmdPkt2MRoute6Desc( &MrDp->u.mRoute6Desc, PktPt );
+      return convCmdPkt2MRoute6Desc( &MrDp->u.mRoute6Desc, PktPt );
     } else {
       MrDp->ipVersion = 4;
-      convCmdPkt2MRoute4Desc( &MrDp->u.mRoute4Desc, PktPt );
+      return convCmdPkt2MRoute4Desc( &MrDp->u.mRoute4Desc, PktPt );
     }
     break;
 
