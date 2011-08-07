@@ -124,7 +124,6 @@ void addVIF( struct IfDesc *IfDp )
 */
 {
   struct vifctl VifCtl;
-  struct VifDesc *VifDp;
   int VifIndex = -1;
   int i;
 
@@ -153,7 +152,7 @@ void addVIF( struct IfDesc *IfDp )
   VifCtl.vifc_rmt_addr.s_addr = INADDR_ANY;
 
   smclog( LOG_NOTICE, 0, "adding VIF, Vif-Ix %d Fl 0x%04x IP 0x%08x %s", 
-       VifCtl.vifc_vifi, VifCtl.vifc_flags,  VifCtl.vifc_lcl_addr.s_addr, VifDp->IfDp->Name );
+       VifCtl.vifc_vifi, VifCtl.vifc_flags,  VifCtl.vifc_lcl_addr.s_addr, IfDp->Name );
 
   if( setsockopt( MRouterFD4, IPPROTO_IP, MRT_ADD_VIF, 
 		  (void *)&VifCtl, sizeof( VifCtl ) ) )
