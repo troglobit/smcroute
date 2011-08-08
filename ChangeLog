@@ -1,3 +1,13 @@
+smcroute 0.94.1 -> 0.95
+ * Feature request #313278: Added support for FreeBSD
+   SMCRoute now builds and runs on FreeBSD kernels.  This was successfully
+   tested with the FreeBSD port of Debian using FreeBSD 8.1.  Other BSD
+   flavours or versions might work too.  Any feedback is appreciated.
+   https://alioth.debian.org/tracker/index.php?func=detail&aid=313278
+ * Feature request #313190: Debug logging is now disabled by default. If you
+   want to enable debug logging again, start the daemon with parameter '-D'.
+   https://alioth.debian.org/tracker/index.php?func=detail&aid=313190
+
 smcroute 0.94 -> 0.94.1
  * Bugfix: In case the kernel refuses write access to the file
    /proc/sys/net/ipv6/conf/all/mc_forwarding, don't let smcroute exit
