@@ -73,7 +73,7 @@ void smclog( int Serverity, int Errno, const char *FmtSt, ... )
       ServPt = ServVc[ Serverity ];
 
   // Skip logging for severities 'DEBUG' if do_debug_logging is false
-  if (Serverity == LOG_DEBUG) return;
+  if (Serverity == LOG_DEBUG && !do_debug_logging) return;
 
   {
     va_list ArgPt;
