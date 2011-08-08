@@ -258,8 +258,7 @@ void ServerLoop(void)
 	  char Bu[ 128 ];
 	    
 	  Rt = read( MRouterFD4, Bu, sizeof( Bu ) ); 
-	  if (do_debug_logging)
-            smclog( LOG_DEBUG, 0, "%d byte IGMP signaling dropped", Rt );
+          smclog( LOG_DEBUG, 0, "%d byte IGMP signaling dropped", Rt );
 	}
 
 	/* 
@@ -271,8 +270,7 @@ void ServerLoop(void)
 	  char Bu[ 128 ];
 	    
 	  Rt = read( MRouterFD6, Bu, sizeof( Bu ) ); 
-	  if (do_debug_logging)
-	    smclog( LOG_DEBUG, 0, "%d byte MLD signaling dropped", Rt );
+	  smclog( LOG_DEBUG, 0, "%d byte MLD signaling dropped", Rt );
 	}
 #endif
 
@@ -540,8 +538,7 @@ Retry:
       )
 	smclog( LOG_ERR, errno, "read/write to daemon failed" );
 
-      if (do_debug_logging)
-        smclog( LOG_DEBUG, 0, "RdSz: %d", RdSz );
+      smclog( LOG_DEBUG, 0, "RdSz: %d", RdSz );
 
       if( RdSz != 1 || *Bu != '\0' ) {
 	fprintf( stderr, "daemon error: %s\n", Bu );

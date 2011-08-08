@@ -31,6 +31,8 @@ int  LogLastServerity;
 int  LogLastErrno;
 char LogLastMsg[ 128 ];
 
+extern int do_debug_logging;
+
 void smclog( int Serverity, int Errno, const char *FmtSt, ... )
 /*
 ** Writes the message 'FmtSt' with the parameters '...' to syslog.
@@ -69,6 +71,9 @@ void smclog( int Serverity, int Errno, const char *FmtSt, ... )
     }
   else
       ServPt = ServVc[ Serverity ];
+
+  // Skip logging for severities 'DEBUG' if do_debug_logging is false
+  if (Serverity == LOG_DEBUG) return;
 
   {
     va_list ArgPt;
