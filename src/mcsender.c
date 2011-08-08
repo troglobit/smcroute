@@ -30,6 +30,8 @@
 
 #include "mclab.h"
 
+int do_debug_logging = 0;
+
 const char Usage[] = "mcsender [-t<n>] [-i<ifname>] <ip-address:port>\n";
 const char McMsg[] = "this is the test message from mclab/mcsender\n"; 
 
@@ -64,6 +66,10 @@ int main( int ArgCn, char *ArgVc[] )
     /* option */
     if( *Pt == '-' ) {
       switch( *++Pt ) {
+
+      case 'D':
+        do_debug_logging = 1;
+        break;
 
       case 't':
 	if( sscanf( Pt + 1, " %u", &TtlVal ) != 1 || TtlVal < 1 ) {
