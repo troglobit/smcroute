@@ -31,7 +31,7 @@
 #include <ifaddrs.h>
 #include "mclab.h"
 
-struct IfDesc IfDescVc[ MAX_IF ], *IfDescEp = IfDescVc;
+struct IfDesc IfDescVc[MAX_IF], *IfDescEp = IfDescVc;
 
 void buildIfVc()
 /*
@@ -40,37 +40,41 @@ void buildIfVc()
 **          
 */
 {
-  struct ifaddrs *ifaddr, *ifa;
+	struct ifaddrs *ifaddr, *ifa;
 
-  memset(IfDescVc, 0, sizeof(IfDescVc));
-  
-  if (getifaddrs(&ifaddr) == -1) {
-    smclog( LOG_ERR, errno, "Failed to retrieve interface addresses" );
-    return;
-  }
+	memset(IfDescVc, 0, sizeof(IfDescVc));
 
-  for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-    int family = ifa->ifa_addr->sa_family;
+	if (getifaddrs(&ifaddr) == -1) {
+		smclog(LOG_ERR, errno,
+		       "Failed to retrieve interface addresses");
+		return;
+	}
 
-    /* Skip non-IPv4 and non-IPv6 interfaces */
-    if ((family != AF_INET) && (family != AF_INET6)) continue;
-    /* Skip interface without internet address */
-    if (ifa->ifa_addr == NULL) continue;
+	for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+		int family = ifa->ifa_addr->sa_family;
 
-    /* Copy data from interface iterator 'ifa' */
-    strncpy(IfDescEp->Name, ifa->ifa_name, sizeof(IfDescEp->Name));
-    if (family == AF_INET)
-      IfDescEp->InAdr.s_addr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr.s_addr;
-    IfDescEp->Flags = ifa->ifa_flags;
-    IfDescEp->IfIndex = if_nametoindex(IfDescEp->Name);
-    IfDescEp->VifIndex = -1;
-    IfDescEp++;
-  }
-  freeifaddrs(ifaddr);
+		/* Skip non-IPv4 and non-IPv6 interfaces */
+		if ((family != AF_INET) && (family != AF_INET6))
+			continue;
+		/* Skip interface without internet address */
+		if (ifa->ifa_addr == NULL)
+			continue;
+
+		/* Copy data from interface iterator 'ifa' */
+		strncpy(IfDescEp->Name, ifa->ifa_name, sizeof(IfDescEp->Name));
+		if (family == AF_INET)
+			IfDescEp->InAdr.s_addr =
+			    ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr.
+			    s_addr;
+		IfDescEp->Flags = ifa->ifa_flags;
+		IfDescEp->IfIndex = if_nametoindex(IfDescEp->Name);
+		IfDescEp->VifIndex = -1;
+		IfDescEp++;
+	}
+	freeifaddrs(ifaddr);
 }
 
-
-struct IfDesc *getIfByName( const char *IfName )
+struct IfDesc *getIfByName(const char *IfName)
 /*
 ** Returns a pointer to the IfDesc of the interface 'IfName'
 **
@@ -81,19 +85,20 @@ struct IfDesc *getIfByName( const char *IfName )
 **            an interface that corresponds to a virtual interface
 */
 {
-  struct IfDesc *Dp;
-  struct IfDesc *candidate = NULL;
+	struct IfDesc *Dp;
+	struct IfDesc *candidate = NULL;
 
-  for( Dp = IfDescVc; Dp < IfDescEp; Dp++ ) 
-    if( ! strcmp( IfName, Dp->Name ) ) {
-      if (Dp->VifIndex >= 0) return Dp;
-      candidate = Dp;
-  }
+	for (Dp = IfDescVc; Dp < IfDescEp; Dp++)
+		if (!strcmp(IfName, Dp->Name)) {
+			if (Dp->VifIndex >= 0)
+				return Dp;
+			candidate = Dp;
+		}
 
-  return candidate;
+	return candidate;
 }
 
-struct IfDesc *getIfByIx( unsigned Ix )
+struct IfDesc *getIfByIx(unsigned Ix)
 /*
 ** Returns a pointer to the IfDesc of the interface 'Ix'
 **
@@ -102,9 +107,14 @@ struct IfDesc *getIfByIx( unsigned Ix )
 **          
 */
 {
-  struct IfDesc *Dp = &IfDescVc[ Ix ];
-  return Dp < IfDescEp ? Dp : NULL;
+	struct IfDesc *Dp = &IfDescVc[Ix];
+	return Dp < IfDescEp ? Dp : NULL;
 }
 
-
-
+/**
+ * Local Variables:
+ *  version-control: t
+ *  indent-tabs-mode: t
+ *  c-file-style: "linux"
+ * End:
+ */

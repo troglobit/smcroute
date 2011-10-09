@@ -27,7 +27,7 @@
 
 #include "mclab.h"
 
-char *fmtInAdr( char *St, struct in_addr InAdr )
+char *fmtInAdr(char *St, struct in_addr InAdr)
 /*
 ** Formats 'InAdr' into a dotted decimal string. 
 **
@@ -35,16 +35,15 @@ char *fmtInAdr( char *St, struct in_addr InAdr )
 **          
 */
 {
-  sprintf( St, "%u.%u.%u.%u", 
-	   ((uint8 *)&InAdr.s_addr)[ 0 ],
-	   ((uint8 *)&InAdr.s_addr)[ 1 ],
-	   ((uint8 *)&InAdr.s_addr)[ 2 ],
-	   ((uint8 *)&InAdr.s_addr)[ 3 ] );
+	sprintf(St, "%u.%u.%u.%u",
+		((uint8 *) & InAdr.s_addr)[0],
+		((uint8 *) & InAdr.s_addr)[1],
+		((uint8 *) & InAdr.s_addr)[2], ((uint8 *) & InAdr.s_addr)[3]);
 
-  return St;
+	return St;
 }
 
-char *fmtSockAdr( char *St, const struct sockaddr_in *SockAdrPt )
+char *fmtSockAdr(char *St, const struct sockaddr_in *SockAdrPt)
 /*
 ** Formats 'SockAdrPt' into a dotted decimal string.
 **
@@ -52,29 +51,29 @@ char *fmtSockAdr( char *St, const struct sockaddr_in *SockAdrPt )
 **          
 */
 {
-  uint32 Adr;
-  uint8  *AdrByPt;
-  char *Pt = St;
+	uint32 Adr;
+	uint8 *AdrByPt;
+	char *Pt = St;
 
-  if( SockAdrPt->sin_family != AF_INET )
-    smclog( LOG_ERR, 0, "fmtSockAdr: not an INET address" );
+	if (SockAdrPt->sin_family != AF_INET)
+		smclog(LOG_ERR, 0, "fmtSockAdr: not an INET address");
 
-  Adr = SockAdrPt->sin_addr.s_addr;
-  
-  for( AdrByPt = (uint8 *)&Adr; AdrByPt < (uint8 *)(&Adr +1); AdrByPt++ ) { 
-    Pt += sprintf( Pt, "%u", *AdrByPt );
-    *Pt++ = '.';
-  }
-  *--Pt ='\0';
-  
-  if( SockAdrPt->sin_port )
-    Pt += sprintf( Pt, ":%u", SockAdrPt->sin_port ); 
+	Adr = SockAdrPt->sin_addr.s_addr;
 
-  return St;
+	for (AdrByPt = (uint8 *) & Adr; AdrByPt < (uint8 *) (&Adr + 1);
+	     AdrByPt++) {
+		Pt += sprintf(Pt, "%u", *AdrByPt);
+		*Pt++ = '.';
+	}
+	*--Pt = '\0';
+
+	if (SockAdrPt->sin_port)
+		Pt += sprintf(Pt, ":%u", SockAdrPt->sin_port);
+
+	return St;
 }
 
-
-int getInAdr( uint32 *InAdrPt, uint16 *PortPt, char *St )
+int getInAdr(uint32 * InAdrPt, uint16 * PortPt, char *St)
 /*
 ** Converts the dotted decimal internet address plus port
 ** (xx.xx.xx.xx:pp) in 'St' into their integer 
@@ -92,47 +91,47 @@ int getInAdr( uint32 *InAdrPt, uint16 *PortPt, char *St )
 **          
 */
 {
-  unsigned AdrVc[ 4 ], Port;
+	unsigned AdrVc[4], Port;
 
-  /* read address + port
-   */
-  if( PortPt ) {
-    if( sscanf( St, "%u.%u.%u.%u:%us", &AdrVc[ 0 ], &AdrVc[ 1 ], 
-		&AdrVc[ 2 ], &AdrVc[ 3 ], &Port ) != 5 ) 
-      return 0;
+	/* read address + port
+	 */
+	if (PortPt) {
+		if (sscanf(St, "%u.%u.%u.%u:%us", &AdrVc[0], &AdrVc[1],
+			   &AdrVc[2], &AdrVc[3], &Port) != 5)
+			return 0;
 
-    Port = htons( Port );
-  }
-  else {
-    if( sscanf( St, "%u.%u.%u.%u", &AdrVc[ 0 ], &AdrVc[ 1 ], 
-		&AdrVc[ 2 ], &AdrVc[ 3 ]  ) != 4 ) 
-      return 0;
+		Port = htons(Port);
+	} else {
+		if (sscanf(St, "%u.%u.%u.%u", &AdrVc[0], &AdrVc[1],
+			   &AdrVc[2], &AdrVc[3]) != 4)
+			return 0;
 
-    Port = 0;
-  }
+		Port = 0;
+	}
 
-  {
-    int Ix;
+	{
+		int Ix;
 
-    for( Ix = 0; Ix < 4; Ix++ ) {
-      if( AdrVc[ Ix ] > 255 )
-	return 0;
+		for (Ix = 0; Ix < 4; Ix++) {
+			if (AdrVc[Ix] > 255)
+				return 0;
 
-      ((uint8 *)InAdrPt)[ Ix ] = AdrVc[ Ix ];
-    }
-  }
-  
-  if( ! PortPt ) 
-    return 1;
+			((uint8 *) InAdrPt)[Ix] = AdrVc[Ix];
+		}
+	}
 
-  if( Port > 0xffffu ) 
-    return 0;
+	if (!PortPt)
+		return 1;
 
-  *PortPt = Port;
-  return 2;
+	if (Port > 0xffffu)
+		return 0;
+
+	*PortPt = Port;
+	return 2;
 }
 
-void getSockAdr( struct sockaddr * SaPt, socklen_t * SaLenPt, char * AddrSt, char * PortSt )
+void getSockAdr(struct sockaddr *SaPt, socklen_t * SaLenPt, char *AddrSt,
+		char *PortSt)
 /*
 ** Converts the internet address plus port string in 'St' 
 ** into their network byte order representations.
@@ -144,34 +143,44 @@ void getSockAdr( struct sockaddr * SaPt, socklen_t * SaLenPt, char * AddrSt, cha
 **          
 */
 {
-  struct sockaddr_in  * Sin4;
-  struct sockaddr_in6 * Sin6;
+	struct sockaddr_in *Sin4;
+	struct sockaddr_in6 *Sin6;
 
-  if ( strchr( AddrSt, ':' ) == NULL ) {
-    Sin4 = SIN4( SaPt );
-    memset( Sin4, 0, sizeof( *Sin4 ) );
+	if (strchr(AddrSt, ':') == NULL) {
+		Sin4 = SIN4(SaPt);
+		memset(Sin4, 0, sizeof(*Sin4));
 
-    Sin4->sin_family = AF_INET;
-    Sin4->sin_port   = htons( atoi( PortSt ) );
+		Sin4->sin_family = AF_INET;
+		Sin4->sin_port = htons(atoi(PortSt));
 
-    if ( inet_pton( AF_INET, AddrSt, &Sin4->sin_addr ) <= 0 )
-      smclog( LOG_ERR, errno, "inet_pton failed for address %s", AddrSt );
+		if (inet_pton(AF_INET, AddrSt, &Sin4->sin_addr) <= 0)
+			smclog(LOG_ERR, errno,
+			       "inet_pton failed for address %s", AddrSt);
 
-    *SaLenPt = sizeof( struct sockaddr_in );
+		*SaLenPt = sizeof(struct sockaddr_in);
 
-  } else {
-    Sin6 = SIN6( SaPt );
-    memset( Sin6, 0, sizeof( *Sin6 ) );
+	} else {
+		Sin6 = SIN6(SaPt);
+		memset(Sin6, 0, sizeof(*Sin6));
 
-    Sin6->sin6_family = AF_INET6;
-    Sin6->sin6_port   = htons( atoi( PortSt ) );
+		Sin6->sin6_family = AF_INET6;
+		Sin6->sin6_port = htons(atoi(PortSt));
 
-    if ( inet_pton( AF_INET6, AddrSt, &Sin6->sin6_addr ) <= 0 )
-      smclog( LOG_ERR, errno, "inet_pton failed for address %s", AddrSt );
+		if (inet_pton(AF_INET6, AddrSt, &Sin6->sin6_addr) <= 0)
+			smclog(LOG_ERR, errno,
+			       "inet_pton failed for address %s", AddrSt);
 
-    *SaLenPt = sizeof( struct sockaddr_in6 );
+		*SaLenPt = sizeof(struct sockaddr_in6);
 
-  }
+	}
 
-  return;
+	return;
 }
+
+/**
+ * Local Variables:
+ *  version-control: t
+ *  indent-tabs-mode: t
+ *  c-file-style: "linux"
+ * End:
+ */

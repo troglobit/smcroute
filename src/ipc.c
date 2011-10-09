@@ -35,7 +35,7 @@
 #define SOCKET_PATH "/var/run/smcroute"
 
 /* server's listen socket */
-static int ListenSock; 
+static int ListenSock;
 
 /* connected server or client socket */
 static int ConSock = -1;
@@ -48,31 +48,32 @@ int initIpcServer()
 **
 */
 {
-  struct sockaddr_un UnixAddr; 
-  socklen_t UnixAddrLen;
+	struct sockaddr_un UnixAddr;
+	socklen_t UnixAddrLen;
 
-  if( (ListenSock = socket( AF_UNIX, SOCK_STREAM, 0 )) < 0 ) {
-    smclog( LOG_INIT, errno, "initIpcServer, socket() failed" );
-    return -1;
-  }
-
+	if ((ListenSock = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+		smclog(LOG_INIT, errno, "initIpcServer, socket() failed");
+		return -1;
+	}
 #ifdef HAVE_SOCKADDR_UN_SUN_LEN
-  UnixAddr.sun_len = 0;    /* <- correct length is set by the OS */
+	UnixAddr.sun_len = 0;	/* <- correct length is set by the OS */
 #endif
-  UnixAddr.sun_family = AF_UNIX;
-  strcpy( UnixAddr.sun_path, SOCKET_PATH );
- 
-  unlink( SOCKET_PATH );
+	UnixAddr.sun_family = AF_UNIX;
+	strcpy(UnixAddr.sun_path, SOCKET_PATH);
 
-  UnixAddrLen = offsetof(struct sockaddr_un, sun_path) + strlen(SOCKET_PATH);
-  if( bind( ListenSock, (struct sockaddr *)&UnixAddr, UnixAddrLen ) < 0
-      || listen( ListenSock, 1 ) ) {
-    smclog( LOG_INIT, errno, "initIpcServer, bind()/listen() failed" );
-    close(ListenSock);
-    return -1;
-  }
+	unlink(SOCKET_PATH);
 
-  return ListenSock;
+	UnixAddrLen =
+	    offsetof(struct sockaddr_un, sun_path)+strlen(SOCKET_PATH);
+	if (bind(ListenSock, (struct sockaddr *)&UnixAddr, UnixAddrLen) < 0
+	    || listen(ListenSock, 1)) {
+		smclog(LOG_INIT, errno,
+		       "initIpcServer, bind()/listen() failed");
+		close(ListenSock);
+		return -1;
+	}
+
+	return ListenSock;
 }
 
 int initIpcClient()
@@ -86,31 +87,33 @@ int initIpcClient()
 **            - ECONREFUSED - Connection refused
 */
 {
-  struct sockaddr_un UnixAddr; 
-  socklen_t UnixAddrLen;
+	struct sockaddr_un UnixAddr;
+	socklen_t UnixAddrLen;
 
-  if( (ConSock = socket( AF_UNIX, SOCK_STREAM, 0 )) < 0 )
-    smclog( LOG_ERR, errno, "initIpcClient, socket() failed" );
+	if ((ConSock = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
+		smclog(LOG_ERR, errno, "initIpcClient, socket() failed");
 
 #ifdef HAVE_SOCKADDR_UN_SUN_LEN
-  UnixAddr.sun_len = 0;    /* <- correct length is set by the OS */
+	UnixAddr.sun_len = 0;	/* <- correct length is set by the OS */
 #endif
-  UnixAddr.sun_family = AF_UNIX;
-  strcpy( UnixAddr.sun_path, SOCKET_PATH );
+	UnixAddr.sun_family = AF_UNIX;
+	strcpy(UnixAddr.sun_path, SOCKET_PATH);
 
-  UnixAddrLen = offsetof(struct sockaddr_un, sun_path) + strlen(SOCKET_PATH);
-  if( connect( ConSock, (struct sockaddr *)&UnixAddr, UnixAddrLen ) < 0) {
-    int Err = errno;
+	UnixAddrLen =
+	    offsetof(struct sockaddr_un, sun_path) + strlen(SOCKET_PATH);
+	if (connect(ConSock, (struct sockaddr *)&UnixAddr, UnixAddrLen) < 0) {
+		int Err = errno;
 
-    close( ConSock ); ConSock = 0;
-    return Err;
-  }
+		close(ConSock);
+		ConSock = 0;
+		return Err;
+	}
 
-  smclog( LOG_DEBUG, 0, "client connected, fd %d", ConSock );
-  return 0;
+	smclog(LOG_DEBUG, 0, "client connected, fd %d", ConSock);
+	return 0;
 }
 
-struct CmdPkt *readIpcServer( uint8 Bu[], int BuSz )
+struct CmdPkt *readIpcServer(uint8 Bu[], int BuSz)
 /*
 ** Reads a message from the IPC socket and stores in 'Bu' with a max. size of 'BuSz'. 
 ** Connects and resets connection as necessary.
@@ -119,43 +122,47 @@ struct CmdPkt *readIpcServer( uint8 Bu[], int BuSz )
 **
 */
 {
-  while( 1 ) {
-    size_t RdSz;
-    socklen_t AddrLn = 0;
+	while (1) {
+		size_t RdSz;
+		socklen_t AddrLn = 0;
 
-    /* wait for connections */
-    if( ConSock < 0 ) {
-      smclog( LOG_DEBUG, 0, "readIpcServer, waiting for connection..." );
+		/* wait for connections */
+		if (ConSock < 0) {
+			smclog(LOG_DEBUG, 0,
+			       "readIpcServer, waiting for connection...");
 
-      if( (ConSock = accept( ListenSock, NULL, &AddrLn )) < 0 )
-	smclog( LOG_ERR, errno, "readIpcServer, accept() failed" );
-    
-      smclog( LOG_DEBUG, 0, "readIpcServer, accepted connection" );
-    }
-  
-    /* read */
-    memset( Bu, 0, BuSz );             /* had some problems with buffer garbage */
-    RdSz = read( ConSock, Bu, BuSz );                       
-    smclog( LOG_DEBUG, 0, "readIpcServer, CmdPkt read (%d)", RdSz );
+			if ((ConSock = accept(ListenSock, NULL, &AddrLn)) < 0)
+				smclog(LOG_ERR, errno,
+				       "readIpcServer, accept() failed");
 
-    /* successfull read */
-    if( RdSz >= sizeof( struct CmdPkt ) && RdSz == ((struct CmdPkt *)Bu)->PktSz )   
-      return (struct CmdPkt *)Bu;
+			smclog(LOG_DEBUG, 0,
+			       "readIpcServer, accepted connection");
+		}
 
-    /* connection lost ? -> reset connection */
-    if( ! RdSz ) {       
-      smclog( LOG_DEBUG, 0, "readIpcServer, connection lost" );
-      close( ConSock );
-      ConSock = -1;
-      continue;
-    }
-    
-    /* error */
-    smclog( LOG_WARNING, errno, "readIpcServer, read() failed" );
-  }
+		/* read */
+		memset(Bu, 0, BuSz);	/* had some problems with buffer garbage */
+		RdSz = read(ConSock, Bu, BuSz);
+		smclog(LOG_DEBUG, 0, "readIpcServer, CmdPkt read (%d)", RdSz);
+
+		/* successfull read */
+		if (RdSz >= sizeof(struct CmdPkt)
+		    && RdSz == ((struct CmdPkt *)Bu)->PktSz)
+			return (struct CmdPkt *)Bu;
+
+		/* connection lost ? -> reset connection */
+		if (!RdSz) {
+			smclog(LOG_DEBUG, 0, "readIpcServer, connection lost");
+			close(ConSock);
+			ConSock = -1;
+			continue;
+		}
+
+		/* error */
+		smclog(LOG_WARNING, errno, "readIpcServer, read() failed");
+	}
 }
 
-int sendIpc( const void *Bu, int Sz )
+int sendIpc(const void *Bu, int Sz)
 /*
 ** Sends the IPC message in 'Bu' with the size 'Sz' to the peer.
 **
@@ -164,16 +171,15 @@ int sendIpc( const void *Bu, int Sz )
 **
 */
 {
-  if( write( ConSock, Bu, Sz ) != Sz ) {
-    smclog( LOG_ERR, errno, "sendIpc, write failed (%d)", Sz );
-    return -1;
-  }
+	if (write(ConSock, Bu, Sz) != Sz) {
+		smclog(LOG_ERR, errno, "sendIpc, write failed (%d)", Sz);
+		return -1;
+	}
 
-  return Sz;
+	return Sz;
 }
 
-
-int readIpc( uint8 Bu[], int BuSz )
+int readIpc(uint8 Bu[], int BuSz)
 /*
 ** Reads the next IPC message in 'Bu' with the max. size 'BuSz' from the peer.
 **
@@ -182,15 +188,14 @@ int readIpc( uint8 Bu[], int BuSz )
 ** 
 */
 {
-  int RdSz = read( ConSock, Bu, BuSz );                       
-  smclog( LOG_DEBUG, 0, "readIpc, read (%d)", RdSz );
+	int RdSz = read(ConSock, Bu, BuSz);
+	smclog(LOG_DEBUG, 0, "readIpc, read (%d)", RdSz);
 
-  if( RdSz < 1 )
-    smclog( LOG_WARNING, errno, "readIpc, read() failed" );
+	if (RdSz < 1)
+		smclog(LOG_WARNING, errno, "readIpc, read() failed");
 
-  return RdSz;
+	return RdSz;
 }
-
 
 void cleanIpc()
 /*
@@ -199,11 +204,11 @@ void cleanIpc()
 ** 
 */
 {
-  if( ListenSock ) {
-    close( ListenSock );
-    unlink( SOCKET_PATH );
-  }
+	if (ListenSock) {
+		close(ListenSock);
+		unlink(SOCKET_PATH);
+	}
 
-  if( ConSock >= 0 )
-    close( ConSock );
+	if (ConSock >= 0)
+		close(ConSock);
 }

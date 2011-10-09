@@ -27,15 +27,23 @@
 
 int main()
 {
-  int UdpSock = openUdpSocket( 0x010a0a0a, 7 );
-  
-  //  buildIfVc(); // brauch ich diesen Call ????
-  joinMcGroup( UdpSock, "eth0", 0xe1e1e1e1 );
+	int UdpSock = openUdpSocket(0x010a0a0a, 7);
 
-  printf( "\nEnter for end\n" );
-  getchar();
+	//  buildIfVc(); // brauch ich diesen Call ????
+	joinMcGroup(UdpSock, "eth0", 0xe1e1e1e1);
 
-  close( UdpSock );
- 
-  return 0;
+	printf("\nEnter for end\n");
+	getchar();
+
+	close(UdpSock);
+
+	return 0;
 }
+
+/**
+ * Local Variables:
+ *  version-control: t
+ *  indent-tabs-mode: t
+ *  c-file-style: "linux"
+ * End:
+ */

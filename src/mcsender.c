@@ -33,7 +33,7 @@
 int do_debug_logging = 0;
 
 const char Usage[] = "mcsender [-t<n>] [-i<ifname>] <ip-address:port>\n";
-const char McMsg[] = "this is the test message from mclab/mcsender\n"; 
+const char McMsg[] = "this is the test message from mclab/mcsender\n";
 
 static void usage(void);
 
@@ -43,143 +43,157 @@ static void SetTtl4(int, unsigned);
 static void SetOif6(int, char *);
 static void SetTtl6(int, unsigned);
 
-int main( int ArgCn, char *ArgVc[] )
+int main(int ArgCn, char *ArgVc[])
 {
-  unsigned                TtlVal = 0;
-  char                  * OifVal = NULL;
-  char                  * AddrSt = NULL;
-  char                  * PortSt = NULL;
-  char                  * Pt;
-  void                    (*SetTtl)(int, unsigned) = NULL;
-  void                    (*SetOif)(int, char *)   = NULL;
-  struct sockaddr_storage TarAdr;
-  socklen_t               TarAdrLen;
+	unsigned TtlVal = 0;
+	char *OifVal = NULL;
+	char *AddrSt = NULL;
+	char *PortSt = NULL;
+	char *Pt;
+	void (*SetTtl) (int, unsigned) = NULL;
+	void (*SetOif) (int, char *) = NULL;
+	struct sockaddr_storage TarAdr;
+	socklen_t TarAdrLen;
 
-  if( ArgCn < 2 ) {
-    usage();
-    exit(1);
-  }
-
-  while( *++ArgVc ) {
-    Pt = *ArgVc;
-
-    /* option */
-    if( *Pt == '-' ) {
-      switch( *++Pt ) {
-
-      case 'D':
-        do_debug_logging = 1;
-        break;
-
-      case 't':
-	if( sscanf( Pt + 1, " %u", &TtlVal ) != 1 || TtlVal < 1 ) {
-	  usage();
-	  exit( 1 );
+	if (ArgCn < 2) {
+		usage();
+		exit(1);
 	}
-	break;
 
-      case 'i':
-	OifVal = Pt + 1;
-	break;
+	while (*++ArgVc) {
+		Pt = *ArgVc;
 
-      default:
-	usage();
-	exit( 1 );
-      }
-    } else {  /* argument */
+		/* option */
+		if (*Pt == '-') {
+			switch (*++Pt) {
 
-      memset( &TarAdr, 0, sizeof( TarAdr ) );
+			case 'D':
+				do_debug_logging = 1;
+				break;
 
-      AddrSt = Pt;
+			case 't':
+				if (sscanf(Pt + 1, " %u", &TtlVal) != 1
+				    || TtlVal < 1) {
+					usage();
+					exit(1);
+				}
+				break;
 
-      Pt = strrchr( AddrSt, ':' );
-      if ( Pt == NULL ) {
-	usage();
-	exit( 1 );
-      }
+			case 'i':
+				OifVal = Pt + 1;
+				break;
 
-      *Pt++ = '\0';
-      PortSt = Pt;
+			default:
+				usage();
+				exit(1);
+			}
+		} else {	/* argument */
 
-      getSockAdr( SA( &TarAdr ), &TarAdrLen, AddrSt, PortSt );
+			memset(&TarAdr, 0, sizeof(TarAdr));
 
-      SetTtl = ( TarAdr.ss_family == AF_INET ) ? SetTtl4 : SetTtl6;
-      SetOif = ( TarAdr.ss_family == AF_INET ) ? SetOif4 : SetOif6;
-    }
-  }
+			AddrSt = Pt;
 
-  {
-    int UdpSock = socket( TarAdr.ss_family, SOCK_DGRAM, IPPROTO_UDP );
-    if ( UdpSock < 0 ) 
-      smclog( LOG_ERR, errno, "UDP socket open" );
+			Pt = strrchr(AddrSt, ':');
+			if (Pt == NULL) {
+				usage();
+				exit(1);
+			}
 
-    if (TtlVal) (*SetTtl)(UdpSock, TtlVal);
-    if (OifVal) (*SetOif)(UdpSock, OifVal);
+			*Pt++ = '\0';
+			PortSt = Pt;
 
-    while( 1 ) {
-      if( sendto( UdpSock, McMsg, sizeof( McMsg ), 0, 
-		  SA( &TarAdr ), TarAdrLen ) != sizeof( McMsg ) )
-	smclog( LOG_WARNING, errno, "send to UDP socket" );
+			getSockAdr(SA(&TarAdr), &TarAdrLen, AddrSt, PortSt);
 
-      sleep( 1 );
-    }
-  }
+			SetTtl =
+			    (TarAdr.ss_family == AF_INET) ? SetTtl4 : SetTtl6;
+			SetOif =
+			    (TarAdr.ss_family == AF_INET) ? SetOif4 : SetOif6;
+		}
+	}
 
-  exit( 0 );
+	{
+		int UdpSock = socket(TarAdr.ss_family, SOCK_DGRAM, IPPROTO_UDP);
+		if (UdpSock < 0)
+			smclog(LOG_ERR, errno, "UDP socket open");
+
+		if (TtlVal)
+			(*SetTtl) (UdpSock, TtlVal);
+		if (OifVal)
+			(*SetOif) (UdpSock, OifVal);
+
+		while (1) {
+			if (sendto(UdpSock, McMsg, sizeof(McMsg), 0,
+				   SA(&TarAdr), TarAdrLen) != sizeof(McMsg))
+				smclog(LOG_WARNING, errno,
+				       "send to UDP socket");
+
+			sleep(1);
+		}
+	}
+
+	exit(0);
 }
 
-static void usage( void )
+static void usage(void)
 {
-  fprintf( stderr, "Usage: %s\n", Usage );
+	fprintf(stderr, "Usage: %s\n", Usage);
 }
 
-static void SetTtl4( int Sock, unsigned Ttl )
+static void SetTtl4(int Sock, unsigned Ttl)
 {
-  if( setsockopt( Sock, IPPROTO_IP, IP_MULTICAST_TTL, 
-		  &Ttl, sizeof( Ttl ) ) )
-    smclog( LOG_ERR, errno, "set IP_MULTICAST_TTL" );
+	if (setsockopt(Sock, IPPROTO_IP, IP_MULTICAST_TTL, &Ttl, sizeof(Ttl)))
+		smclog(LOG_ERR, errno, "set IP_MULTICAST_TTL");
 }
 
-static void SetOif4( int Sock, char * IfName )
+static void SetOif4(int Sock, char *IfName)
 {
-  struct ifreq         IfReq;
-  struct sockaddr_in * Sin4  = NULL;
+	struct ifreq IfReq;
+	struct sockaddr_in *Sin4 = NULL;
 
-  memset( &IfReq, 0, sizeof( IfReq ) );
-  strncpy( IfReq.ifr_name, IfName, sizeof( IfReq.ifr_name ) );
+	memset(&IfReq, 0, sizeof(IfReq));
+	strncpy(IfReq.ifr_name, IfName, sizeof(IfReq.ifr_name));
 
-  if ( ioctl( Sock, SIOCGIFADDR, &IfReq ) < 0 )
-    smclog( LOG_ERR, errno, "ioctl SIOCGIFADDR" );
+	if (ioctl(Sock, SIOCGIFADDR, &IfReq) < 0)
+		smclog(LOG_ERR, errno, "ioctl SIOCGIFADDR");
 
-  switch ( IfReq.ifr_addr.sa_family ) {
-  case AF_INET:
-    Sin4 = SIN4( &IfReq.ifr_addr );
-    break;
+	switch (IfReq.ifr_addr.sa_family) {
+	case AF_INET:
+		Sin4 = SIN4(&IfReq.ifr_addr);
+		break;
 
-  default:
-    fprintf( stderr, "SetOif4 - invalid address family: %d\n", IfReq.ifr_addr.sa_family );
-    exit(1);
-  }
-  
-  if( setsockopt( Sock, IPPROTO_IP, IP_MULTICAST_IF, 
-		  &Sin4->sin_addr, sizeof( struct in_addr ) ) )
-    smclog( LOG_ERR, errno, "set IP_MULTICAST_IF" );  
+	default:
+		fprintf(stderr, "SetOif4 - invalid address family: %d\n",
+			IfReq.ifr_addr.sa_family);
+		exit(1);
+	}
+
+	if (setsockopt(Sock, IPPROTO_IP, IP_MULTICAST_IF,
+		       &Sin4->sin_addr, sizeof(struct in_addr)))
+		smclog(LOG_ERR, errno, "set IP_MULTICAST_IF");
 }
 
 static void SetTtl6(int Sock, unsigned Ttl)
 {
-  if( setsockopt( Sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, 
-		  &Ttl, sizeof( Ttl ) ) )
-    smclog( LOG_ERR, errno, "set IPV6_MULTICAST_HOPS" );
+	if (setsockopt(Sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS,
+		       &Ttl, sizeof(Ttl)))
+		smclog(LOG_ERR, errno, "set IPV6_MULTICAST_HOPS");
 }
 
-static void SetOif6(int Sock, char * IfName)
+static void SetOif6(int Sock, char *IfName)
 {
-  unsigned IfIndex;
+	unsigned IfIndex;
 
-  IfIndex = if_nametoindex( IfName );
+	IfIndex = if_nametoindex(IfName);
 
-  if( setsockopt( Sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, 
-		  &IfIndex, sizeof( IfIndex ) ) )
-    smclog( LOG_ERR, errno, "set IPV6_MULTICAST_IF" );  
+	if (setsockopt(Sock, IPPROTO_IPV6, IPV6_MULTICAST_IF,
+		       &IfIndex, sizeof(IfIndex)))
+		smclog(LOG_ERR, errno, "set IPV6_MULTICAST_IF");
 }
+
+/**
+ * Local Variables:
+ *  version-control: t
+ *  indent-tabs-mode: t
+ *  c-file-style: "linux"
+ * End:
+ */

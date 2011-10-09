@@ -25,7 +25,7 @@
 
 #include "mclab.h"
 
-int openUdpSocket( uint32 PeerInAdr, uint16 PeerPort )
+int openUdpSocket(uint32 PeerInAdr, uint16 PeerPort)
 /*
 ** Creates and connects a simple UDP socket to the target 
 ** 'PeerInAdr':'PeerPort'
@@ -34,19 +34,27 @@ int openUdpSocket( uint32 PeerInAdr, uint16 PeerPort )
 **          
 */
 {
-  int Sock;
-  struct sockaddr_in SockAdr;
+	int Sock;
+	struct sockaddr_in SockAdr;
 
-  if( (Sock = socket( AF_INET, SOCK_DGRAM, 0 )) < 0 )
-    smclog( LOG_ERR, errno, "UDP socket open" );
-  
-  SockAdr.sin_family      = AF_INET;
-  SockAdr.sin_port        = PeerPort;
-  SockAdr.sin_addr.s_addr = PeerInAdr;
-  memset( &SockAdr.sin_zero, 0, sizeof( SockAdr.sin_zero ) );
+	if ((Sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+		smclog(LOG_ERR, errno, "UDP socket open");
 
-  if( connect( Sock, (struct sockaddr *)&SockAdr, sizeof( SockAdr ) ) )
-    smclog( LOG_ERR, errno, "UDP socket connect" );
+	SockAdr.sin_family = AF_INET;
+	SockAdr.sin_port = PeerPort;
+	SockAdr.sin_addr.s_addr = PeerInAdr;
+	memset(&SockAdr.sin_zero, 0, sizeof(SockAdr.sin_zero));
 
-  return Sock;
+	if (connect(Sock, (struct sockaddr *)&SockAdr, sizeof(SockAdr)))
+		smclog(LOG_ERR, errno, "UDP socket connect");
+
+	return Sock;
 }
+
+/**
+ * Local Variables:
+ *  version-control: t
+ *  indent-tabs-mode: t
+ *  c-file-style: "linux"
+ * End:
+ */
