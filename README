@@ -1,0 +1,8 @@
+smcroute2 - A static multicast route tool
+=========================================
+
+SMCRoute2 is a fork of smcroute, or rather the continuation.  It adds dump and
+restore file possibilities, monitors interfaces coming UP/DOWN.  It can reload
+its config file on SIGHUP, etc.
+
+
