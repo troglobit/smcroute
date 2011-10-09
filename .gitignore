@@ -1,0 +1,8 @@
+build.h
+config.h
+Makefile
+mcsender
+smcroute
+*.o
+*.log
+*.status
