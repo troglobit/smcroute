@@ -1,0 +1,64 @@
+.\"                                      Hey, EMACS: -*- nroff -*-
+.TH MCSENDER 8 "August 08, 2011"
+.\" Please adjust this date whenever revising the manpage.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.SH NAME
+mcsender \- Multicast test tool to send multicast test packets
+.SH SYNOPSIS
+.B mcsender \fP[\fB-t\fP\fI<ttl>\fP] \fP[\fB-i\fP\fI<interface>\fP] \fBip:port\fP
+
+.SH DESCRIPTION
+
+\fBmcsender\fP sends multicast packets to the specified IPv4 or IPv6 multicast address and
+port. The packets sent contain the string "this is the test message
+from mclab/mcsender\\n".
+
+.SH OPTIONS
+
+.TP
+.B -t\fI<ttl>\fP
+Set the TTL (or hop limit for IPv6) to the specified value.
+
+.TP
+.B -i\fI<interface>\fP
+Specify the interface to use for outgoing multicast datagrams.
+
+.SH EXAMPLES
+
+To send datagrams to IPv4 multicast address 239.1.1.1 and port 12345
+with a TTL of 3:
+
+$ mcsender -t3 239.1.1.1:12345
+
+To send datagrams to IPv4 multicast address 239.1.1.1 and port 12345
+with a TTL of 3 out of interface eth1:
+
+$ mcsender -ieth1 -t3 239.1.1.1:12345
+
+To send datagrams to IPv6 multicast address ff15::1 and port 12345
+with a hop limit of 3:
+
+$ mcsender -t3 ff15::1:12345
+
+To send datagrams to IPv6 multicast address ff15::1 and port 12345
+with a hop limit of 3 out of interface eth1:
+
+$ mcsender -ieth1 -t3 ff15::1:12345
+
+.SH AUTHOR
+mcsender was written by Carsten Schill <carsten@cschill.de>.
+.PP
+Support for IPv6 was added by Todd Hayton <todd.hayton@gmail.com>.
+.PP
+This manual page was written by Julien BLACHE <jblache@debian.org>,
+for the Debian project (but may be used by others).
