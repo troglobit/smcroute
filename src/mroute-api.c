@@ -49,14 +49,14 @@
  * Need a raw IGMP socket as interface for the IPv4 mrouted API
  * Receives IGMP packets and kernel upcall messages.
  */
-int MRouterFD4;
+int MRouterFD4 = -1;
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 /*
  * Need a raw ICMPv6 socket as interface for the IPv6 mrouted API
  * Receives MLD packets and kernel upcall messages.
  */
-int MRouterFD6;
+int MRouterFD6 = -1;
 #endif
 
 /* IPv4 internal virtual interfaces (VIF) descriptor vector */

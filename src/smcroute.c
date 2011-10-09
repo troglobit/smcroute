@@ -238,7 +238,8 @@ void ServerLoop(void)
 	FD_SET( IpcServerFD, &ReadFDS );
 	FD_SET( MRouterFD4, &ReadFDS );
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
-	FD_SET( MRouterFD6, &ReadFDS );
+        if (-1 != MRouterFD6)
+           FD_SET( MRouterFD6, &ReadFDS );
 #endif
 
 	/* wait for input */
@@ -266,7 +267,7 @@ void ServerLoop(void)
 	 * or upcall messages sent up from the kernel.
 	 */
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
-	if( FD_ISSET( MRouterFD6, &ReadFDS ) ) {
+	if( -1 != MRouterFD6 && FD_ISSET( MRouterFD6, &ReadFDS ) ) {
 	  char Bu[ 128 ];
 	    
 	  Rt = read( MRouterFD6, Bu, sizeof( Bu ) ); 
@@ -551,13 +552,4 @@ Retry:
 
   return ProgRt;
 }
-
-
-
-
-
-
-
-
-
 
