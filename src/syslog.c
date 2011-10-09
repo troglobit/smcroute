@@ -62,7 +62,7 @@ void smclog( int Serverity, int Errno, const char *FmtSt, ... )
   // we daemonize, without the parent triggering the atexit() handlers in the
   // normal case (which would remove the socket...)
   // That gross, ugly hack or a complete rewrite, for now the hack will do.
-  if (Serverity < 0 || Serverity >= VCMC( ServVc ))
+  if (Serverity < 0 || Serverity >= (int)VCMC( ServVc ))
     {
       if (Serverity == LOG_INIT)
 	ServPt = "INIT";

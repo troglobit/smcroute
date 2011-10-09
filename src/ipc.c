@@ -120,7 +120,7 @@ struct CmdPkt *readIpcServer( uint8 Bu[], int BuSz )
 */
 {
   while( 1 ) {
-    int RdSz;
+    size_t RdSz;
     socklen_t AddrLn = 0;
 
     /* wait for connections */

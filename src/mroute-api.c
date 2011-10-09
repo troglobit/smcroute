@@ -299,7 +299,8 @@ int enableMRouter6()
       if ( errno != EACCES )
         smclog( LOG_ERR, errno, "open(%s)", file);  
     } else {
-      (void) write( fd, "1", 1 );
+       if (-1 == write( fd, "1", 1 ))
+          smclog( LOG_ERR, errno, "Failed enabling IPv6 mv_forwarding" );
       (void) close( fd );
     }
   }
