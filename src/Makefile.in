@@ -21,9 +21,9 @@ install:
 	@mkdir -p ${BINDIR}
 	@cp smcroute mcsender ${BINDIR}
 
-mcsender:  mcsender.o syslog.o lib.o config.h
+mcsender:  mcsender.o syslog.o config.h
 
-smcroute:  smcroute.o mroute-api.o ifvc.o cmdpkt.o ipc.o syslog.o udpsock.o mcgroup.o lib.o 
+smcroute:  smcroute.o mroute-api.o ifvc.o cmdpkt.o ipc.o syslog.o udpsock.o mcgroup.o
 smcroute.c: build.h config.h 
 
 build.h:  

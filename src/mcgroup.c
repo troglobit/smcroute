@@ -27,128 +27,136 @@
 
 #include "mclab.h"
 
-static int joinleave4(int, int, const char *, struct in_addr);
-static int joinleave6(int, int, const char *, struct in6_addr);
+static int mcgroup4_socket = -1;
+static int mcgroup6_socket = -1;
 
-int joinMcGroup4(int UdpSock, const char *IfName, struct in_addr McAdr)
+static void mcgroup4_init(void);
+static void mcgroup6_init(void);
+
+static int mcgroup_join_leave_ipv4(int, int, const char *, struct in_addr);
+static int mcgroup_join_leave_ipv6(int, int, const char *, struct in6_addr);
+
 /*
-** Joins the MC group with the address 'McAdr' on the interface 'IfName'. 
-** The join is bound to the UDP socket 'UdpSock', so if this socket is 
+** Joins the MC group with the address 'group' on the interface 'ifname'. 
+** The join is bound to the UDP socket 'sd', so if this socket is 
 ** closed the membership is dropped.
 **          
 ** returns: - 0 if the function succeeds
 **          - 1 if parameters are wrong or the join fails
 */
+int mcgroup4_join(const char *ifname, struct in_addr group)
 {
-	return joinleave4('j', UdpSock, IfName, McAdr);
+	mcgroup4_init();
+
+	return mcgroup_join_leave_ipv4(mcgroup4_socket, 'j', ifname, group);
 }
 
-int leaveMcGroup4(int UdpSock, const char *IfName, struct in_addr McAdr)
 /*
-** Leaves the MC group with the address 'McAdr' on the interface 'IfName'. 
+** Leaves the MC group with the address 'group' on the interface 'ifname'. 
 **          
 ** returns: - 0 if the function succeeds
 **          - 1 if parameters are wrong or the join fails
 */
+int mcgroup4_leave(const char *ifname, struct in_addr group)
 {
-	return joinleave4('l', UdpSock, IfName, McAdr);
+	mcgroup4_init();
+
+	return mcgroup_join_leave_ipv4(mcgroup4_socket, 'l', ifname, group);
 }
 
-int joinMcGroup6(int UdpSock, const char *IfName, struct in6_addr McAdr)
 /*
-** Joins the MC group with the address 'McAdr' on the interface 'IfName'. 
-** The join is bound to the UDP socket 'UdpSock', so if this socket is 
+** Joins the MC group with the address 'group' on the interface 'ifname'. 
+** The join is bound to the UDP socket 'sd', so if this socket is 
 ** closed the membership is dropped.
 **          
 ** returns: - 0 if the function succeeds
 **          - 1 if parameters are wrong or the join fails
 */
+int mcgroup6_join(const char *ifname, struct in6_addr group)
 {
-	return joinleave6('j', UdpSock, IfName, McAdr);
+	mcgroup6_init();
+
+	return mcgroup_join_leave_ipv6(mcgroup6_socket, 'j', ifname, group);
 }
 
-int leaveMcGroup6(int UdpSock, const char *IfName, struct in6_addr McAdr)
 /*
-** Leaves the MC group with the address 'McAdr' on the interface 'IfName'. 
+** Leaves the MC group with the address 'group' on the interface 'ifname'. 
 **          
 ** returns: - 0 if the function succeeds
 **          - 1 if parameters are wrong or the join fails
 */
+int mcgroup6_leave(const char *ifname, struct in6_addr group)
 {
-	return joinleave6('l', UdpSock, IfName, McAdr);
+	mcgroup6_init();
+
+	return mcgroup_join_leave_ipv6(mcgroup6_socket, 'l', ifname, group);
 }
 
-static int joinleave4(int Cmd, int UdpSock, const char *IfName,
-		      struct in_addr McAdr)
-/*
-**          
-*/
+static void mcgroup4_init(void)
 {
-	struct ip_mreq CtlReq;
-	struct IfDesc *IfDp = getIfByName(IfName);
-	const char *CmdSt = Cmd == 'j' ? "join" : "leave";
+	if (mcgroup4_socket < 0) {
+		mcgroup4_socket = udp_socket_open(INADDR_ANY, 0);
+	}
+}
 
-	if (!IfDp) {
-		smclog(LOG_WARNING, 0, "%sMcGroup, unknown interface %s", CmdSt,
-		       IfName);
+static void mcgroup6_init(void)
+{
+	if (mcgroup6_socket < 0) {
+		mcgroup6_socket = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+		if (mcgroup6_socket < 0)
+			smclog(LOG_WARNING, errno, "socket failed");
+	}
+}
+
+static int mcgroup_join_leave_ipv4(int sd, int cmd, const char *ifname, struct in_addr group)
+{
+	struct ip_mreq mreq;
+	struct iface *iface = iface_find_by_name(ifname);
+	const char *command = cmd == 'j' ? "Join" : "Leave";
+	char buf[INET_ADDRSTRLEN];
+
+	if (!iface) {
+		smclog(LOG_WARNING, 0, "%s multicast group, unknown interface %s", command, ifname);
 		return 1;
 	}
 
-	CtlReq.imr_multiaddr.s_addr = McAdr.s_addr;
-	CtlReq.imr_interface.s_addr = IfDp->InAdr.s_addr;
+	smclog(LOG_NOTICE, 0, "%s multicast group: %s on %s", command,
+	       inet_ntop(AF_INET, &group, buf, sizeof(buf)), iface ? iface->name : "<any>");
 
-	{
-		char FmtBu[INET_ADDRSTRLEN];
-		smclog(LOG_NOTICE, 0, "%sMcGroup: %s on %s", CmdSt,
-		       inet_ntop(AF_INET, &McAdr, FmtBu, sizeof(FmtBu)),
-		       IfDp ? IfDp->Name : "<any>");
-	}
-
-	if (setsockopt(UdpSock, IPPROTO_IP,
-		       Cmd == 'j' ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP,
-		       (void *)&CtlReq, sizeof(CtlReq))) {
-		smclog(LOG_WARNING, errno, "%s MEMBERSHIP failed",
-		       Cmd == 'j' ? "ADD" : "DROP");
+	mreq.imr_multiaddr.s_addr = group.s_addr;
+	mreq.imr_interface.s_addr = iface->inaddr.s_addr;
+	if (setsockopt(sd, IPPROTO_IP, cmd == 'j' ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP,
+		       (void *)&mreq, sizeof(mreq))) {
+		smclog(LOG_WARNING, errno, "%s MEMBERSHIP failed", cmd == 'j' ? "ADD" : "DROP");
 		return 1;
 	}
 
 	return 0;
 }
 
-static int joinleave6(int Cmd, int UdpSock, const char *IfName,
-		      struct in6_addr McAdr)
-/*
-**          
-*/
+static int mcgroup_join_leave_ipv6(int sd, int cmd, const char *ifname, struct in6_addr group)
 {
 #ifndef HAVE_IPV6_MULTICAST_HOST
 	return 0;
 #else
-	struct ipv6_mreq CtlReq;
-	struct IfDesc *IfDp = getIfByName(IfName);
-	const char *CmdSt = Cmd == 'j' ? "join" : "leave";
+	struct ipv6_mreq mreq;
+	struct iface *iface = iface_find_by_name(ifname);
+	const char *command = cmd == 'j' ? "Join" : "Leave";
+	char buf[INET6_ADDRSTRLEN];
 
-	if (!IfDp) {
-		smclog(LOG_WARNING, 0, "%sMcGroup, unknown interface %s", CmdSt,
-		       IfName);
+	if (!iface) {
+		smclog(LOG_WARNING, 0, "%s multicast group, unknown interface %s", command, ifname);
 		return 1;
 	}
 
-	CtlReq.ipv6mr_multiaddr = McAdr;
-	CtlReq.ipv6mr_interface = IfDp->IfIndex;
+	smclog(LOG_NOTICE, 0, "%s multicast group: %s on %s", command,
+	       inet_ntop(AF_INET6, &group, buf, sizeof(buf)), iface ? iface->name : "<any>");
 
-	{
-		char FmtBu[INET6_ADDRSTRLEN];
-		smclog(LOG_NOTICE, 0, "%sMcGroup: %s on %s", CmdSt,
-		       inet_ntop(AF_INET6, &McAdr, FmtBu, sizeof(FmtBu)),
-		       IfDp ? IfDp->Name : "<any>");
-	}
-
-	if (setsockopt(UdpSock, IPPROTO_IPV6,
-		       Cmd == 'j' ? IPV6_JOIN_GROUP : IPV6_LEAVE_GROUP,
-		       (void *)&CtlReq, sizeof(CtlReq))) {
-		smclog(LOG_WARNING, errno, "%s MEMBERSHIP failed",
-		       Cmd == 'j' ? "ADD" : "DROP");
+	mreq.ipv6mr_multiaddr = group;
+	mreq.ipv6mr_interface = iface->ifindex;
+	if (setsockopt(sd, IPPROTO_IPV6, cmd == 'j' ? IPV6_JOIN_GROUP : IPV6_LEAVE_GROUP,
+		       (void *)&mreq, sizeof(mreq))) {
+		smclog(LOG_WARNING, errno, "%s MEMBERSHIP failed", cmd == 'j' ? "ADD" : "DROP");
 		return 1;
 	}
 

@@ -31,22 +31,21 @@
 #include <ifaddrs.h>
 #include "mclab.h"
 
-struct IfDesc IfDescVc[MAX_IF], *IfDescEp = IfDescVc;
+static struct iface iface_list[MAX_IF], *last_iface = iface_list;
 
-void buildIfVc()
 /*
 ** Builds up a vector with the interface of the machine. Calls to the other functions of 
 ** the module will fail if they are called before the vector is build.
 **          
 */
+void iface_init(void)
 {
 	struct ifaddrs *ifaddr, *ifa;
 
-	memset(IfDescVc, 0, sizeof(IfDescVc));
+	memset(iface_list, 0, sizeof(iface_list));
 
 	if (getifaddrs(&ifaddr) == -1) {
-		smclog(LOG_ERR, errno,
-		       "Failed to retrieve interface addresses");
+		smclog(LOG_ERR, errno, "Failed to retrieve interface addresses");
 		return;
 	}
 
@@ -61,54 +60,136 @@ void buildIfVc()
 			continue;
 
 		/* Copy data from interface iterator 'ifa' */
-		strncpy(IfDescEp->Name, ifa->ifa_name, sizeof(IfDescEp->Name));
+		strncpy(last_iface->name, ifa->ifa_name, sizeof(last_iface->name));
 		if (family == AF_INET)
-			IfDescEp->InAdr.s_addr =
-			    ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr.
-			    s_addr;
-		IfDescEp->Flags = ifa->ifa_flags;
-		IfDescEp->IfIndex = if_nametoindex(IfDescEp->Name);
-		IfDescEp->VifIndex = -1;
-		IfDescEp++;
+			last_iface->inaddr.s_addr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr.s_addr;
+		last_iface->flags = ifa->ifa_flags;
+		last_iface->ifindex = if_nametoindex(last_iface->name);
+		last_iface->vif = -1;
+		last_iface->mif = -1;
+		last_iface++;
 	}
 	freeifaddrs(ifaddr);
 }
 
-struct IfDesc *getIfByName(const char *IfName)
 /*
-** Returns a pointer to the IfDesc of the interface 'IfName'
+** Returns a pointer to the iface of the interface 'ifname'
 **
-** returns: - pointer to the IfDesc of the requested interface
-**          - NULL if no interface 'IfName' exists
+** returns: - pointer to the iface of the requested interface
+**          - NULL if no interface 'ifname' exists
 **          
-**          - if more than one interface 'IfName' exists, chose the
+**          - if more than one interface 'ifname' exists, chose the
 **            an interface that corresponds to a virtual interface
 */
+struct iface *iface_find_by_name(const char *ifname)
 {
-	struct IfDesc *Dp;
-	struct IfDesc *candidate = NULL;
+	struct iface *iface;
+	struct iface *candidate = NULL;
 
-	for (Dp = IfDescVc; Dp < IfDescEp; Dp++)
-		if (!strcmp(IfName, Dp->Name)) {
-			if (Dp->VifIndex >= 0)
-				return Dp;
-			candidate = Dp;
+	for (iface = iface_list; iface < last_iface; iface++)
+		if (!strcmp(ifname, iface->name)) {
+			if (iface->vif >= 0)
+				return iface;
+			candidate = iface;
 		}
 
 	return candidate;
 }
 
-struct IfDesc *getIfByIx(unsigned Ix)
 /*
-** Returns a pointer to the IfDesc of the interface 'Ix'
+** Returns a pointer to the iface of the interface 'ifindex'
 **
-** returns: - pointer to the IfDesc of the requested interface
-**          - NULL if no interface 'Ix' exists
+** returns: - pointer to the iface of the requested interface
+**          - NULL if no interface 'ifindex' exists
 **          
 */
+struct iface *iface_find_by_index(unsigned ifindex)
 {
-	struct IfDesc *Dp = &IfDescVc[Ix];
-	return Dp < IfDescEp ? Dp : NULL;
+	struct iface *iface;
+
+	if (ifindex < 0 || ifindex >= ARRAY_ELEMENTS(iface_list))
+		return NULL;
+
+	iface = &iface_list[ifindex];
+	return iface < last_iface ? iface : NULL;
+}
+
+
+/*
+** Returns for the virtual interface index for '*iface'
+**
+** returns: - the virtual interface index if the interface is registered
+**          - -1 if no virtual interface exists for the interface 
+**          
+*/
+int iface_get_vif(struct iface *iface)
+{
+	if (iface == NULL)
+		return -1;
+
+	return iface->vif;
+}
+
+/*
+** Returns for the virtual interface index for '*iface'
+**
+** returns: - the virtual interface index if the interface is registered
+**          - -1 if no virtual interface exists for the interface 
+**          
+*/
+int iface_get_mif(struct iface *iface)
+{
+#ifndef HAVE_IPV6_MULTICAST_ROUTING
+	return -1;
+#else
+	return iface->mif;
+#endif				/* HAVE_IPV6_MULTICAST_ROUTING */
+}
+
+/*
+** Gets the VIF index for a given interface name
+**
+** returns: - index of the VIF
+**          - -1 if no VIF can be found for the interface name
+**          
+*/
+int iface_get_vif_by_name(const char *ifname)
+{
+	int vif;
+	struct iface *iface;
+
+	iface = iface_find_by_name(ifname);
+	if (!iface)
+		return -1;
+
+	vif = iface_get_vif(iface);
+	if (vif < 0)
+		return -1;
+
+	return vif;
+}
+
+/*
+** Gets the MIF index for a given interface name
+**
+** returns: - index of the MIF
+**          - -1 if no MIF can be found for the interface name
+**          
+*/
+int iface_get_mif_by_name(const char *ifname)
+{
+	int vif;
+	struct iface *iface;
+
+	iface = iface_find_by_name(ifname);
+	if (!iface)
+		return -1;
+
+	vif = iface_get_mif(iface);
+	if (vif < 0)
+		return -1;
+
+	return vif;
 }
 
 /**

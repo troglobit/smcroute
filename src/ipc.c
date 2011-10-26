@@ -35,48 +35,43 @@
 #define SOCKET_PATH "/var/run/smcroute"
 
 /* server's listen socket */
-static int ListenSock;
+static int server_sd;
 
 /* connected server or client socket */
-static int ConSock = -1;
+static int client_sd = -1;
 
-int initIpcServer()
 /*
 ** Inits an IPC listen socket 
 **
 ** returns: - the socket descriptor
-**
 */
+int ipc_server_init(void)
 {
-	struct sockaddr_un UnixAddr;
-	socklen_t UnixAddrLen;
+	struct sockaddr_un sa;
+	socklen_t len;
 
-	if ((ListenSock = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-		smclog(LOG_INIT, errno, "initIpcServer, socket() failed");
+	if ((server_sd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+           smclog(LOG_INIT, errno, "%s: socket() failed", __FUNCTION__);
 		return -1;
 	}
 #ifdef HAVE_SOCKADDR_UN_SUN_LEN
-	UnixAddr.sun_len = 0;	/* <- correct length is set by the OS */
+	sa.sun_len = 0;	/* <- correct length is set by the OS */
 #endif
-	UnixAddr.sun_family = AF_UNIX;
-	strcpy(UnixAddr.sun_path, SOCKET_PATH);
+	sa.sun_family = AF_UNIX;
+	strcpy(sa.sun_path, SOCKET_PATH);
 
 	unlink(SOCKET_PATH);
 
-	UnixAddrLen =
-	    offsetof(struct sockaddr_un, sun_path)+strlen(SOCKET_PATH);
-	if (bind(ListenSock, (struct sockaddr *)&UnixAddr, UnixAddrLen) < 0
-	    || listen(ListenSock, 1)) {
-		smclog(LOG_INIT, errno,
-		       "initIpcServer, bind()/listen() failed");
-		close(ListenSock);
-		return -1;
+	len = offsetof(struct sockaddr_un, sun_path)+strlen(SOCKET_PATH);
+	if (bind(server_sd, (struct sockaddr *)&sa, len) < 0 || listen(server_sd, 1)) {
+           smclog(LOG_INIT, errno, "%s: bind()/listen() failed", __FUNCTION__);
+           close(server_sd);
+           return -1;
 	}
 
-	return ListenSock;
+	return server_sd;
 }
 
-int initIpcClient()
 /*
 ** Connects to the IPC socket of the server
 **
@@ -86,129 +81,134 @@ int initIpcClient()
 **            - ENOENT - No such file or directory
 **            - ECONREFUSED - Connection refused
 */
+int ipc_client_init(void)
 {
-	struct sockaddr_un UnixAddr;
-	socklen_t UnixAddrLen;
+	int err;
+	struct sockaddr_un sa;
+	socklen_t len;
 
-	if ((ConSock = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
-		smclog(LOG_ERR, errno, "initIpcClient, socket() failed");
+	if ((client_sd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
+		smclog(LOG_ERR, errno, "%s: socket() failed", __FUNCTION__);
 
 #ifdef HAVE_SOCKADDR_UN_SUN_LEN
-	UnixAddr.sun_len = 0;	/* <- correct length is set by the OS */
+	sa.sun_len = 0;	/* <- correct length is set by the OS */
 #endif
-	UnixAddr.sun_family = AF_UNIX;
-	strcpy(UnixAddr.sun_path, SOCKET_PATH);
+	sa.sun_family = AF_UNIX;
+	strcpy(sa.sun_path, SOCKET_PATH);
 
-	UnixAddrLen =
-	    offsetof(struct sockaddr_un, sun_path) + strlen(SOCKET_PATH);
-	if (connect(ConSock, (struct sockaddr *)&UnixAddr, UnixAddrLen) < 0) {
-		int Err = errno;
+	len = offsetof(struct sockaddr_un, sun_path) + strlen(SOCKET_PATH);
+	if (connect(client_sd, (struct sockaddr *)&sa, len) < 0) {
+		err = errno;
 
-		close(ConSock);
-		ConSock = 0;
-		return Err;
+		close(client_sd);
+		client_sd = -1;
+
+		return err;
 	}
 
-	smclog(LOG_DEBUG, 0, "client connected, fd %d", ConSock);
+	smclog(LOG_DEBUG, 0, "%s: client connected, sd %d", __FUNCTION__, client_sd);
+
 	return 0;
 }
 
-struct CmdPkt *readIpcServer(uint8 Bu[], int BuSz)
 /*
-** Reads a message from the IPC socket and stores in 'Bu' with a max. size of 'BuSz'. 
+** Reads a message from the IPC socket and stores in 'buf' with a max. size of 'len'. 
 ** Connects and resets connection as necessary.
 **
-** returns: Pointer to a successfuly read command packet in 'Bu' 
-**
+** returns: Pointer to a successfuly read command packet in 'buf' 
 */
+struct cmd *ipc_server_read(uint8 buf[], int len)
 {
 	while (1) {
-		size_t RdSz;
-		socklen_t AddrLn = 0;
+		size_t size;
+		socklen_t len = 0;
 
 		/* wait for connections */
-		if (ConSock < 0) {
-			smclog(LOG_DEBUG, 0,
-			       "readIpcServer, waiting for connection...");
+		if (client_sd < 0) {
+			smclog(LOG_DEBUG, 0, "%s: waiting for connection...", __FUNCTION__);
 
-			if ((ConSock = accept(ListenSock, NULL, &AddrLn)) < 0)
-				smclog(LOG_ERR, errno,
-				       "readIpcServer, accept() failed");
+			if ((client_sd = accept(server_sd, NULL, &len)) < 0)
+				smclog(LOG_ERR, errno, "%s: accept() failed", __FUNCTION__);
 
-			smclog(LOG_DEBUG, 0,
-			       "readIpcServer, accepted connection");
+			smclog(LOG_DEBUG, 0, "%s: accepted connection", __FUNCTION__);
 		}
 
 		/* read */
-		memset(Bu, 0, BuSz);	/* had some problems with buffer garbage */
-		RdSz = read(ConSock, Bu, BuSz);
-		smclog(LOG_DEBUG, 0, "readIpcServer, CmdPkt read (%d)", RdSz);
+		memset(buf, 0, len);	/* had some problems with buffer garbage */
+		size = read(client_sd, buf, len);
+		smclog(LOG_DEBUG, 0, "%s: command read (%zu)", __FUNCTION__, size);
 
 		/* successfull read */
-		if (RdSz >= sizeof(struct CmdPkt)
-		    && RdSz == ((struct CmdPkt *)Bu)->PktSz)
-			return (struct CmdPkt *)Bu;
+		if (size >= sizeof(struct cmd) && size == ((struct cmd *)buf)->len)
+			return (struct cmd *)buf;
 
 		/* connection lost ? -> reset connection */
-		if (!RdSz) {
-			smclog(LOG_DEBUG, 0, "readIpcServer, connection lost");
-			close(ConSock);
-			ConSock = -1;
+		if (!size) {
+			smclog(LOG_DEBUG, 0, "%s: connection lost", __FUNCTION__);
+			close(client_sd);
+			client_sd = -1;
 			continue;
 		}
 
 		/* error */
-		smclog(LOG_WARNING, errno, "readIpcServer, read() failed");
+		smclog(LOG_WARNING, errno, "%s: read() failed", __FUNCTION__);
 	}
 }
 
-int sendIpc(const void *Bu, int Sz)
 /*
-** Sends the IPC message in 'Bu' with the size 'Sz' to the peer.
+** Sends the IPC message in 'buf' with the size 'Sz' to the peer.
 **
 ** returns: - number of bytes written (Sz)
 **          - -1 if write failed
-**
 */
+int ipc_send(const void *buf, int len)
 {
-	if (write(ConSock, Bu, Sz) != Sz) {
-		smclog(LOG_ERR, errno, "sendIpc, write failed (%d)", Sz);
+	if (write(client_sd, buf, len) != len) {
+		smclog(LOG_ERR, errno, "%s: write failed (%d)", __FUNCTION__, len);
 		return -1;
 	}
 
-	return Sz;
+	return len;
 }
 
-int readIpc(uint8 Bu[], int BuSz)
 /*
-** Reads the next IPC message in 'Bu' with the max. size 'BuSz' from the peer.
+** Reads the next IPC message in 'buf' with the max. size 'len' from the peer.
 **
-** returns: - number of bytes read (0..BuSz)
+** returns: - number of bytes read (0..len)
 **          - -1 if read failed
 ** 
 */
+int ipc_receive(uint8 buf[], int len)
 {
-	int RdSz = read(ConSock, Bu, BuSz);
-	smclog(LOG_DEBUG, 0, "readIpc, read (%d)", RdSz);
+	int size = read(client_sd, buf, len);
 
-	if (RdSz < 1)
-		smclog(LOG_WARNING, errno, "readIpc, read() failed");
+	smclog(LOG_DEBUG, 0, "%s: read (%d)", __FUNCTION__, size);
 
-	return RdSz;
+	if (size < 1)
+		smclog(LOG_WARNING, errno, "%s: read() failed", __FUNCTION__);
+
+	return size;
 }
 
-void cleanIpc()
 /*
 ** Clean up IPC.
-**
 ** 
 */
+void ipc_exit(void)
 {
-	if (ListenSock) {
-		close(ListenSock);
+	if (server_sd) {
+		close(server_sd);
 		unlink(SOCKET_PATH);
 	}
 
-	if (ConSock >= 0)
-		close(ConSock);
+	if (client_sd >= 0)
+		close(client_sd);
 }
+
+/**
+ * Local Variables:
+ *  version-control: t
+ *  indent-tabs-mode: t
+ *  c-file-style: "linux"
+ * End:
+ */

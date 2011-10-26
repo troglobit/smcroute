@@ -25,30 +25,30 @@
 
 #include "mclab.h"
 
-int openUdpSocket(uint32 PeerInAdr, uint16 PeerPort)
 /*
 ** Creates and connects a simple UDP socket to the target 
-** 'PeerInAdr':'PeerPort'
+** 'inaddr':'Port'
 **
 ** returns: - the opened socket
-**          
 */
+int udp_socket_open(uint32 inaddr, uint16 port)
 {
-	int Sock;
-	struct sockaddr_in SockAdr;
+	int sd;
+	struct sockaddr_in sa;
 
-	if ((Sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+	sd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (sd < 0)
 		smclog(LOG_ERR, errno, "UDP socket open");
 
-	SockAdr.sin_family = AF_INET;
-	SockAdr.sin_port = PeerPort;
-	SockAdr.sin_addr.s_addr = PeerInAdr;
-	memset(&SockAdr.sin_zero, 0, sizeof(SockAdr.sin_zero));
+	sa.sin_family = AF_INET;
+	sa.sin_port = port;
+	sa.sin_addr.s_addr = inaddr;
+	memset(&sa.sin_zero, 0, sizeof(sa.sin_zero));
 
-	if (connect(Sock, (struct sockaddr *)&SockAdr, sizeof(SockAdr)))
+	if (connect(sd, (struct sockaddr *)&sa, sizeof(sa)))
 		smclog(LOG_ERR, errno, "UDP socket connect");
 
-	return Sock;
+	return sd;
 }
 
 /**

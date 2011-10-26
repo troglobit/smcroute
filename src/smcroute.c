@@ -39,27 +39,22 @@
 #include "config.h"
 #include "build.h"
 
-static const char Version[] =
+static const char version_info[] =
     "smcroute, Version " PACKAGE_VERSION ", Build" BUILD "\n"
-    "Copyright 2001-2005 Carsten Schill <carsten@cschill.de>\n"
-    "Copyright 2006-2009 Julien Blache <jb@jblache.org>,\n"
-    "                    Todd Hayton <todd.hayton@gmail.com>, and\n"
-    "                    Micha Lenk <micha@debian.org>\n"
-    "Distributed under the GNU GENERAL PUBLIC LICENSE, Version 2 - check GPL.txt\n"
+    "Copyright (c) 2001-2005  Carsten Schill <carsten@cschill.de>\n"
+    "Copyright (c) 2006-2009  Julien Blache <jb@jblache.org>,\n"
+    "                   2009  Todd Hayton <todd.hayton@gmail.com>, and\n"
+    "              2009-2011  Micha Lenk <micha@debian.org>\n"
+    "Distributed under the GNU GENERAL PUBLIC LICENSE, Version 2\n"
     "\n";
 
-static const char Usage[] =
+static const char usage_info[] =
     "usage: smcroute\t[-v] [-d] [-k] [-D]\n"
     "\n"
     "\t\t[-a <InputIntf> <OriginIpAdr> <McGroupAdr> <OutputIntf> [<OutputIntf>] ...]\n"
     "\t\t[-r <InputIntf> <OriginIpAdr> <McGroupAdr>]\n"
     "\n"
     "\t\t[-j <InputIntf> <McGroupAdr>]\n" "\t\t[-l <InputIntf> <McGroupAdr>]\n";
-
-static const char MissingArgSt[] = "<missing argument>";
-
-int McGroupSock4 = -1;
-int McGroupSock6 = -1;
 
 int do_debug_logging = 0;
 
@@ -71,45 +66,42 @@ int do_debug_logging = 0;
 **          - 0, if we start already from the end of the argument vector
 **          - -1, if we start not from an option
 */
-static int getArgOptLn(const char *ArgVc[])
+static int num_option_arguments(const char *argv[])
 {
-	const char **Pp;
+	const char **ptr;
 
 	/* end of vector */
-	if (ArgVc == NULL || *ArgVc == NULL)
+	if (argv == NULL || *argv == NULL)
 		return 0;
 
 	/* starting on wrong position */
-	if (**ArgVc != '-')
+	if (**argv != '-')
 		return -1;
 
-	for (Pp = ArgVc + 1; *Pp && **Pp != '-'; Pp++)
-		/* */ ;
+	for (ptr = argv + 1; *ptr && **ptr != '-'; ptr++)
+		;
 
-	return Pp - ArgVc;
+	return ptr - argv;
 }
 
-/*
-** Cleans up, i.e. releases allocated resources. Called via atexit().
-** 
-*/
-static void clean()
+/* Cleans up, i.e. releases allocated resources. Called via atexit() */
+static void clean(void)
 {
 	smclog(LOG_DEBUG, 0, "clean handler called");
-	disableMRouter4();
-	disableMRouter6();
-	cleanIpc();
+	mroute4_disable();
+	mroute6_disable();
+	ipc_exit();
 }
 
-/*
-** Inits the necessary resources for IPv4 MRouter.
-**
-*/
-static int initMRouter4()
+/* Inits the necessary resources for IPv4 MRouter. */
+static int mroute4_init(void)
 {
-	int Err;
+	int code;
+	unsigned i;
+	struct iface *iface;
 
-	switch (Err = enableMRouter4()) {
+	code = mroute4_enable();
+	switch (code) {
 	case 0:
 		break;
 	case EADDRINUSE:
@@ -122,34 +114,27 @@ static int initMRouter4()
 		smclog(LOG_WARNING, 0, "Kernel does not support IPv4 multicast routing (skipping IPv4 routing)");
 		return -1;
 	default:
-		smclog(LOG_INIT, Err, "MRT_INIT failed");
+		smclog(LOG_INIT, code, "MRT_INIT failed");
 		return -1;
 	}
 
 	/* create VIFs for all IP, non-loop interfaces */
-	{
-		unsigned Ix;
-		struct IfDesc *Dp;
-
-		for (Ix = 0; (Dp = getIfByIx(Ix)); Ix++)
-			if (Dp->InAdr.s_addr && !(Dp->Flags & IFF_LOOPBACK))
-				addVIF(Dp);
-	}
+	for (i = 0; (iface = iface_find_by_index(i)); i++)
+		if (iface->inaddr.s_addr && !(iface->flags & IFF_LOOPBACK))
+			mroute4_add_vif(iface);
 
 	return 0;
 }
 
-/*
-** Inits the necessary resources for IPv6 MRouter.
-**
-*/
-static int initMRouter6()
+/* Inits the necessary resources for IPv6 MRouter. */
+static int mroute6_init(void)
 {
-	int Err;
-	unsigned Ix;
-	struct IfDesc *Dp;
+	int code;
+	unsigned i;
+	struct iface *iface;
 
-	switch (Err = enableMRouter6()) {
+	code = mroute6_enable();
+	switch (code) {
 	case 0:
 		break;
 	case EADDRINUSE:
@@ -162,14 +147,14 @@ static int initMRouter6()
 		smclog(LOG_WARNING, 0, "Kernel does not support IPv6 multicast routing (skipping IPv6 routing)");
 		return -1;
 	default:
-		smclog(LOG_INIT, Err, "MRT6_INIT failed");
+		smclog(LOG_INIT, code, "MRT6_INIT failed");
 		return -1;
 	}
 
 	/* create MIFs for all IP, non-loop interfaces */
-	for (Ix = 0; (Dp = getIfByIx(Ix)); Ix++)
-		if (Dp->InAdr.s_addr && !(Dp->Flags & IFF_LOOPBACK))
-			addMIF(Dp);
+	for (i = 0; (iface = iface_find_by_index(i)); i++)
+		if (iface->inaddr.s_addr && !(iface->flags & IFF_LOOPBACK))
+			mroute6_add_mif(iface);
 
 	return 0;
 }
@@ -194,33 +179,33 @@ static int daemonize(void)
 	return pid;
 }
 
-static void ServerLoop(int IpcServerFD)
+static void server_loop(int sd)
 {
-	int Rt;
-	uint8 Bu[MX_CMDPKT_SZ];
-	fd_set ReadFDS;
+	int result;
+	uint8 buf[MX_CMDPKT_SZ];
+	fd_set fds;
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
-	int MaxFD = MAX(IpcServerFD, MAX(MRouterFD4, MRouterFD6));
+	int max_fd_num = MAX(sd, MAX(mroute4_socket, mroute6_socket));
 #else
-	int MaxFD = MAX(IpcServerFD, MRouterFD4);
+	int max_fd_num = MAX(sd, mroute4_socket);
 #endif
-	const char *ErrSt;
-	struct CmdPkt *PktPt;
-	struct MRouteDesc MrDe;
+	const char *str;
+	struct cmd *packet;
+	struct mroute mroute;
 
 	/* Watch the MRouter and the IPC socket to the smcroute client */
 	while (1) {
-		FD_ZERO(&ReadFDS);
-		FD_SET(IpcServerFD, &ReadFDS);
-		FD_SET(MRouterFD4, &ReadFDS);
+		FD_ZERO(&fds);
+		FD_SET(sd, &fds);
+		FD_SET(mroute4_socket, &fds);
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
-		if (-1 != MRouterFD6)
-			FD_SET(MRouterFD6, &ReadFDS);
+		if (-1 != mroute6_socket)
+			FD_SET(mroute6_socket, &fds);
 #endif
 
 		/* wait for input */
-		Rt = select(MaxFD + 1, &ReadFDS, NULL, NULL, NULL);
-		if (Rt <= 0) {
+		result = select(max_fd_num + 1, &fds, NULL, NULL, NULL);
+		if (result <= 0) {
 			/* log and ignore failures */
 			smclog(LOG_WARNING, errno, "select() failure");
 			continue;
@@ -229,123 +214,112 @@ static void ServerLoop(int IpcServerFD)
 		/* Receive and drop IGMP stuff. This is either IGMP packets
 		 * or upcall messages sent up from the kernel.
 		 */
-		if (FD_ISSET(MRouterFD4, &ReadFDS)) {
-			char Bu[128];
+		if (FD_ISSET(mroute4_socket, &fds)) {
+			char tmp[128];
 
-			Rt = read(MRouterFD4, Bu, sizeof(Bu));
-			smclog(LOG_DEBUG, 0, "%d byte IGMP signaling dropped", Rt);
+			result = read(mroute4_socket, tmp, sizeof(tmp));
+			smclog(LOG_DEBUG, 0, "%d byte IGMP signaling dropped", result);
 		}
 
 		/* Receive and drop ICMPv6 stuff. This is either MLD packets
 		 * or upcall messages sent up from the kernel.
 		 */
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
-		if (-1 != MRouterFD6 && FD_ISSET(MRouterFD6, &ReadFDS)) {
-			char Bu[128];
+		if (-1 != mroute6_socket && FD_ISSET(mroute6_socket, &fds)) {
+			char tmp[128];
 
-			Rt = read(MRouterFD6, Bu, sizeof(Bu));
-			smclog(LOG_DEBUG, 0, "%d byte MLD signaling dropped", Rt);
+			result = read(mroute6_socket, tmp, sizeof(tmp));
+			smclog(LOG_DEBUG, 0, "%d byte MLD signaling dropped", result);
 		}
 #endif
 
 		/* loop back to select if there is no smcroute command */
-		if (!FD_ISSET(IpcServerFD, &ReadFDS))
+		if (!FD_ISSET(sd, &fds))
 			continue;
 
 		/* receive the command from the smcroute client */
-		PktPt = readIpcServer(Bu, sizeof(Bu));
-		switch (PktPt->Cmd) {
+		packet = ipc_server_read(buf, sizeof(buf));
+		switch (packet->cmd) {
 		case 'a':
 		case 'r':
-			if ((ErrSt = convCmdPkt2MRouteDesc(&MrDe, PktPt))) {
-				smclog(LOG_WARNING, 0, ErrSt);
-				sendIpc(LogLastMsg, strlen(LogLastMsg) + 1);
+			if ((str = cmd_convert_to_mroute(&mroute, packet))) {
+				smclog(LOG_WARNING, 0, str);
+				ipc_send(log_last_message, strlen(log_last_message) + 1);
 				break;
 			}
 
-			if (MrDe.ipVersion == 4) {
-				if ((PktPt->Cmd == 'a' && addMRoute4(&MrDe.u.mRoute4Desc))
-				    || (PktPt->Cmd == 'r' && delMRoute4(&MrDe.u.mRoute4Desc))) {
-					sendIpc(LogLastMsg, strlen(LogLastMsg) + 1);
+			if (mroute.version == 4) {
+				if ((packet->cmd == 'a' && mroute4_add(&mroute.u.mroute4))
+				    || (packet->cmd == 'r' && mroute4_del(&mroute.u.mroute4))) {
+					ipc_send(log_last_message, strlen(log_last_message) + 1);
 					break;
 				}
 			} else {
-				if ((PktPt->Cmd == 'a' && addMRoute6(&MrDe.u.mRoute6Desc))
-				    || (PktPt->Cmd == 'r' && delMRoute6(&MrDe.u.mRoute6Desc))) {
-					sendIpc(LogLastMsg, strlen(LogLastMsg) + 1);
+				if ((packet->cmd == 'a' && mroute6_add(&mroute.u.mroute6))
+				    || (packet->cmd == 'r' && mroute6_del(&mroute.u.mroute6))) {
+					ipc_send(log_last_message, strlen(log_last_message) + 1);
 					break;
 				}
 			}
 
-			sendIpc("", 1);
+			ipc_send("", 1);
 			break;
 
 		case 'j':	/* j <InputIntf> <McGroupAdr> */
 		case 'l':	/* l <InputIntf> <McGroupAdr> */
 		{
-			int Rt;
-			const char *IfSt = (const char *)(PktPt + 1);
-			const char *McAdrSt = IfSt + strlen(IfSt) + 1;
+			int result;
+			const char *ifname = (const char *)(packet + 1);
+			const char *groupstr = ifname + strlen(ifname) + 1;
 
-			if (strchr(McAdrSt, ':') == NULL) {
-				struct in_addr McAdr;
+			if (strchr(groupstr, ':') == NULL) {
+				struct in_addr group;
 
 				/* check multicast address */
-				if (!*McAdrSt
-				    || !inet_aton(McAdrSt, &McAdr)
-				    || !IN_MULTICAST(ntohl(McAdr.s_addr))) {
-					smclog(LOG_WARNING, 0, "invalid multicast group address: '%s'", McAdrSt);
-					sendIpc(LogLastMsg, strlen(LogLastMsg) + 1);
+				if (!*groupstr
+				    || !inet_aton(groupstr, &group)
+				    || !IN_MULTICAST(ntohl(group.s_addr))) {
+					smclog(LOG_WARNING, 0, "invalid multicast group address: '%s'", groupstr);
+					ipc_send(log_last_message, strlen(log_last_message) + 1);
 					break;
 				}
 
-				/* create socket for IGMP as needed */
-				if (McGroupSock4 < 0)
-					McGroupSock4 = openUdpSocket(INADDR_ANY, 0);
-
 				/* join or leave */
-				if (PktPt->Cmd == 'j')
-					Rt = joinMcGroup4(McGroupSock4, IfSt, McAdr);
+				if (packet->cmd == 'j')
+					result = mcgroup4_join(ifname, group);
 				else
-					Rt = leaveMcGroup4(McGroupSock4, IfSt, McAdr);
+					result = mcgroup4_leave(ifname, group);
 			} else {	/* IPv6 */
-				struct in6_addr McAdr;
+				struct in6_addr group;
 
 				/* check multicast address */
-				if (!*McAdrSt
-				    || (inet_pton(AF_INET6, McAdrSt, &McAdr) <= 0)
-				    || !IN6_MULTICAST(&McAdr)) {
-					smclog(LOG_WARNING, 0, "invalid multicast group address: '%s'", McAdrSt);
-					sendIpc(LogLastMsg, strlen(LogLastMsg) + 1);
+				if (!*groupstr
+				    || (inet_pton(AF_INET6, groupstr, &group) <= 0)
+				    || !IN6_MULTICAST(&group)) {
+					smclog(LOG_WARNING, 0, "invalid multicast group address: '%s'", groupstr);
+					ipc_send(log_last_message, strlen(log_last_message) + 1);
 					break;
 				}
 
-				/* create socket for IGMP as needed */
-				if (McGroupSock6 < 0) {
-					McGroupSock6 = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
-					if (McGroupSock6 < 0)
-						smclog(LOG_WARNING, errno, "socket failed");
-				}
-
 				/* join or leave */
-				if (PktPt->Cmd == 'j')
-					Rt = joinMcGroup6(McGroupSock6, IfSt, McAdr);
+				if (packet->cmd == 'j')
+					result = mcgroup6_join(ifname, group);
 				else
-					Rt = leaveMcGroup6(McGroupSock6, IfSt, McAdr);
+					result = mcgroup6_leave(ifname, group);
 			}
 
 			/* failed */
-			if (Rt) {
-				sendIpc(LogLastMsg, strlen(LogLastMsg) + 1);
+			if (result) {
+				ipc_send(log_last_message, strlen(log_last_message) + 1);
 				break;
 			}
 
-			sendIpc("", 1);
+			ipc_send("", 1);
 			break;
 		}
 
 		case 'k':
-			sendIpc("", 1);
+			ipc_send("", 1);
 			exit(0);
 		}
 	}
@@ -353,20 +327,20 @@ static void ServerLoop(int IpcServerFD)
 
 /* Init everything before forking, so we can fail and return an
  * error code in the parent and the initscript will fail */
-static void StartServer(void)
+static void start_server(void)
 {
-	int IpcServerFD;
+	int sd;
 	unsigned short initialized_api_count;
 
 	/* Build list of multicast-capable physical interfaces that 
 	 * are currently assigned an IP address. */
-	buildIfVc();
+	iface_init();
 
 	initialized_api_count = 0;
-	if (initMRouter4() == 0)
+	if (mroute4_init() == 0)
 		initialized_api_count++;
 
-	if (initMRouter6() == 0)
+	if (mroute6_init() == 0)
 		initialized_api_count++;
 
 	/* At least one API (IPv4 or IPv6) must have initialized successfully
@@ -376,21 +350,21 @@ static void StartServer(void)
 		exit(1);
 	}
 
-	IpcServerFD = initIpcServer();
-	if (IpcServerFD < 0) {
+	sd = ipc_server_init();
+	if (sd < 0) {
 		clean();
 		exit(2);
 	}
 
 	if (!daemonize()) {
-		ServerLoop(IpcServerFD);
+		server_loop(sd);
 	}
 }
 
 static int usage(void)
 {
-	fputs(Version, stderr);
-	fputs(Usage, stderr);
+	fputs(version_info, stderr);
+	fputs(usage_info, stderr);
 
 	return 1;
 }
@@ -403,11 +377,10 @@ static int usage(void)
 */
 int main(int argc, const char *argv[])
 {
-	struct CmdPkt *CmdVc[16], **CmdVcPt = CmdVc;
-	uint8 Bu[MX_CMDPKT_SZ];
-	int StartDaemon = 0;
-	int ProgRt = 0;
-	int OptLn;
+	int opt, result = 0;
+	int start_daemon = 0;
+	uint8 buf[MX_CMDPKT_SZ];
+	struct cmd *cmdv[16], **cmdptr = cmdv;
 
 	/* init syslog */
 	openlog(argv[0], LOG_PID, LOG_DAEMON);
@@ -416,92 +389,90 @@ int main(int argc, const char *argv[])
 		return usage();
 
 	/* Parse command line options */
-	for (OptLn = 1; (OptLn = getArgOptLn(argv += OptLn));) {
-		if (OptLn < 0)	/* error */
+	for (opt = 1; (opt = num_option_arguments(argv += opt));) {
+		if (opt < 0)	/* error */
 			return usage();
 
 		/* handle option */
 		switch (*(*argv + 1)) {
 		case 'a':	/* add route */
-			if (OptLn < 5) {
+			if (opt < 5) {
 				fprintf(stderr, "not enough arguments for 'add' command\n");
 				return usage();
 			}
-
-		BuildCmd:
-			if (CmdVcPt >= VCEP(CmdVc)) {
-				fprintf(stderr, "too many command options\n");
-				return usage();
-			}
-
-			*CmdVcPt++ = buildCmdPkt(*(*argv + 1), argv + 1, OptLn - 1);
 			break;
 
 		case 'r':	/* remove route */
-			if (OptLn < 4) {
+			if (opt < 4) {
 				fprintf(stderr, "wrong number of  arguments for 'remove' command\n");
 				return usage();
 			}
-			goto BuildCmd;
+			break;
 
 		case 'j':	/* join */
 		case 'l':	/* leave */
-			if (OptLn != 3) {
+			if (opt != 3) {
 				fprintf(stderr, "wrong number of arguments for 'join'/'leave' command\n");
 				return usage();
 			}
-			goto BuildCmd;
+			break;
 
 		case 'k':	/* kill daemon */
-			if (OptLn != 1) {
+			if (opt != 1) {
 				fprintf(stderr, "no arguments allowed for 'k' option\n");
 				return usage();
 			}
-			goto BuildCmd;
+			break;
 
 		case 'h':	/* help */
-			puts(Version);
-			puts(Usage);
-			break;
+			return usage();
 
 		case 'v':	/* verbose */
-			fputs(Version, stderr);
-			Log2Stderr = LOG_DEBUG;
-			break;
+			fputs(version_info, stderr);
+			log_stderr = LOG_DEBUG;
+			continue;
 
 		case 'd':	/* daemon */
-			StartDaemon = 1;
-			break;
+			start_daemon = 1;
+			continue;
 
 		case 'D':
 			do_debug_logging = 1;
-			break;
+			continue;
 
 		default:	/* unknown option */
 			fprintf(stderr, "unknown option: %s\n", *argv);
 			return usage();
 		}
+
+		/* Check and build command argument list. */
+		if (cmdptr >= VCEP(cmdv)) {
+			fprintf(stderr, "too many command options\n");
+			return usage();
+		}
+
+		*cmdptr++ = cmd_build(*(*argv + 1), argv + 1, opt - 1);
 	}
 
-	if (StartDaemon) {	/* only daemon parent enters */
-		StartServer();
+	if (start_daemon) {	/* only daemon parent enters */
+		start_server();
 	}
 
 	/* Client or daemon parent only, the daemon never reaches this point */
 
 	/* send commands */
-	if (CmdVcPt > CmdVc) {
-		int Err;
-		int RetryCn = 30;
-		struct CmdPkt **PktPp;
+	if (cmdptr > cmdv) {
+		int code;
+		int retry_count = 30;
+		struct cmd **ptr;
 
 		openlog(argv[0], LOG_PID, LOG_USER);
 
-	Retry:
+	retry:
 		/* connect to daemon */
-		Err = initIpcClient();
-		if (Err) {
-			switch (Err) {
+		code = ipc_client_init();
+		if (code) {
+			switch (code) {
 			case EACCES:
 				smclog(LOG_ERR, EACCES, "need super-user rights to connect to daemon");
 				break;
@@ -509,39 +480,39 @@ int main(int argc, const char *argv[])
 			case ENOENT:
 			case ECONNREFUSED:
 				/* When starting daemon, give it 30 times a 1/10 second to get ready */
-				if (StartDaemon && --RetryCn) {
+				if (start_daemon && --retry_count) {
 					usleep(100000);
-					goto Retry;
+					goto retry;
 				}
-				smclog(LOG_ERR, Err, "daemon not running ?");
+				smclog(LOG_ERR, code, "daemon not running ?");
 				break;
 
 			default:
-				smclog(LOG_ERR, Err, "Failed connecting to daemon");
+				smclog(LOG_ERR, code, "Failed connecting to daemon");
 				break;
 			}
 		}
 
-		for (PktPp = CmdVc; PktPp < CmdVcPt; PktPp++) {
-			int SdSz = 0, RdSz = 0;
+		for (ptr = cmdv; ptr < cmdptr; ptr++) {
+			int slen = 0, rlen = 0;
 
-			SdSz = sendIpc(*PktPp, (*PktPp)->PktSz);
-			RdSz = readIpc(Bu, sizeof(Bu));
-			if (SdSz < 0 || RdSz < 0)
+			slen = ipc_send(*ptr, (*ptr)->len);
+			rlen = ipc_receive(buf, sizeof(buf));
+			if (slen < 0 || rlen < 0)
 				smclog(LOG_ERR, errno, "read/write to daemon failed");
 
-			smclog(LOG_DEBUG, 0, "RdSz: %d", RdSz);
+			smclog(LOG_DEBUG, 0, "rlen: %d", rlen);
 
-			if (RdSz != 1 || *Bu != '\0') {
-				fprintf(stderr, "daemon error: %s\n", Bu);
-				ProgRt = 1;
+			if (rlen != 1 || *buf != '\0') {
+				fprintf(stderr, "daemon error: %s\n", buf);
+				result = 1;
 			}
 
-			free(*PktPp);
+			free(*ptr);
 		}
 	}
 
-	return ProgRt;
+	return result;
 }
 
 /**

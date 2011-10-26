@@ -25,86 +25,76 @@
 
 #include "mclab.h"
 
-int Log2Stderr = LOG_WARNING;
+int  log_stderr = LOG_WARNING;
+int  log_last_severity;
+int  log_last_error;
+char log_last_message[128];
 
-int LogLastServerity;
-int LogLastErrno;
-char LogLastMsg[128];
-
-extern int do_debug_logging;
-
-void smclog(int Serverity, int Errno, const char *FmtSt, ...)
 /*
-** Writes the message 'FmtSt' with the parameters '...' to syslog.
-** 'Serverity' is used for the syslog entry. For an 'Errno' value 
+** Writes the message 'fmt' with the parameters '...' to syslog.
+** 'severity' is used for the syslog entry. For an 'code' value 
 ** other then 0, the correponding error string is appended to the
 ** message.
 **
-** For a 'Serverity' more important then 'LOG_WARNING' the message is 
+** For a 'severity' more important then 'LOG_WARNING' the message is 
 ** also logged to 'stderr' and the program is finished with a call to 
 ** 'exit()'.
 **
-** If the 'Serverity' is more important then 'Log2Stderr' the message
+** If the 'severity' is more important then 'log_stderr' the message
 ** is logged to 'stderr'.
 **          
 */
+void smclog(int severity, int code, const char *fmt, ...)
 {
-	const char ServVc[][5] = { "EMER", "ALER", "CRIT", "ERRO",
+	unsigned arg_len;
+	va_list args;
+	const char severity_list[][5] = {
+		"EMER", "ALER", "CRIT", "ERRO",
 		"Warn", "Note", "Info", "Debu"
 	};
+	const char *severity_string;
+	const char *error_string = (code <= 0) ? NULL : (const char *)strerror(code);
 
-	const char *ServPt;
-
-	const char *ErrSt = (Errno <= 0) ? NULL : (const char *)strerror(Errno);
-
-	// LOG_INIT is a gross hack to work around smcroute's bad architecture
-	// During daemon init, we do not want to trigger the exit() call at the end
-	// of the function to be able to return an exit code from the parent before
-	// we daemonize, without the parent triggering the atexit() handlers in the
-	// normal case (which would remove the socket...)
-	// That gross, ugly hack or a complete rewrite, for now the hack will do.
-	if (Serverity < 0 || Serverity >= (int)VCMC(ServVc)) {
-		if (Serverity == LOG_INIT)
-			ServPt = "INIT";
+	/* LOG_INIT is a gross hack to work around smcroute's bad architecture
+	 * During daemon init, we do not want to trigger the exit() call at the end
+	 * of the function to be able to return an exit code from the parent before
+	 * we daemonize, without the parent triggering the atexit() handlers in the
+	 * normal case (which would remove the socket...)
+	 * That gross, ugly hack or a complete rewrite, for now the hack will do. */
+	if (severity < 0 || severity >= (int)VCMC(severity_list)) {
+		if (severity == LOG_INIT)
+			severity_string = "INIT";
 		else
-			ServPt = "!unknown serverity!";
-	} else
-		ServPt = ServVc[Serverity];
-
-	// Skip logging for severities 'DEBUG' if do_debug_logging is false
-	if (Serverity == LOG_DEBUG && !do_debug_logging)
-		return;
-
-	{
-		va_list ArgPt;
-		unsigned Ln;
-
-		va_start(ArgPt, FmtSt);
-		Ln = snprintf(LogLastMsg, sizeof(LogLastMsg), "%s: ", ServPt);
-		Ln +=
-		    vsnprintf(LogLastMsg + Ln, sizeof(LogLastMsg) - Ln, FmtSt,
-			      ArgPt);
-		if (ErrSt)
-			snprintf(LogLastMsg + Ln, sizeof(LogLastMsg) - Ln,
-				 "; Errno(%d): %s", Errno, ErrSt);
-
-		va_end(ArgPt);
+			severity_string = "!unknown serverity!";
+	} else {
+		severity_string = severity_list[severity];
 	}
 
-	// update our global Last... variables
-	LogLastServerity = Serverity;
-	LogLastErrno = Errno;
+	/* Skip logging for severities 'DEBUG' if do_debug_logging is false */
+	if (severity == LOG_DEBUG && !do_debug_logging)
+		return;
 
-	// control logging to stderr
-	if (Serverity < LOG_WARNING || Serverity < Log2Stderr
-	    || Serverity == LOG_INIT)
-		fprintf(stderr, "%s\n", LogLastMsg);
+	va_start(args, fmt);
+	arg_len  = snprintf(log_last_message, sizeof(log_last_message), "%s: ", severity_string);
+	arg_len += snprintf(log_last_message + arg_len, sizeof(log_last_message) - arg_len, fmt, args);
+	if (error_string)
+		snprintf(log_last_message + arg_len, sizeof(log_last_message) - arg_len,
+			 "; code(%d): %s", code, error_string);
+	va_end(args);
 
-	// always to syslog
-	syslog((Serverity == LOG_INIT) ? LOG_ERR : Serverity, "%s", LogLastMsg);
+	/* update our global Last... variables */
+	log_last_severity = severity;
+	log_last_error = code;
 
-	// LOG_INIT doesn't trigger that
-	if (Serverity <= LOG_ERR)
+	/* control logging to stderr */
+	if (severity < LOG_WARNING || severity < log_stderr || severity == LOG_INIT)
+		fprintf(stderr, "%s\n", log_last_message);
+
+	/* always to syslog */
+	syslog((severity == LOG_INIT) ? LOG_ERR : severity, "%s", log_last_message);
+
+	/* LOG_INIT doesn't trigger that */
+	if (severity <= LOG_ERR)
 		exit(-1);
 }
 

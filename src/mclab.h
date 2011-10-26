@@ -85,56 +85,66 @@ typedef u_int32_t uint32;
 #define VCMC( Vc )  (sizeof( Vc ) / sizeof( (Vc)[ 0 ] ))
 #define VCEP( Vc )  (&(Vc)[ VCMC( Vc ) ])
 
+/* http://stackoverflow.com/questions/1598773/is-there-a-standard-function-in-c-that-would-return-the-length-of-an-array/1598827#1598827 
+ * Evidently Google uses it in Chromium.  It is actually intended to look like 0[arr], read the link, or search the web.
+ */
+#define ARRAY_ELEMENTS(arr) ((sizeof(arr)/sizeof(0[arr])) / ((size_t)(!(sizeof(arr) % sizeof(0[arr])))))
+
 #define MAX_MC_VIFS    MAXVIFS	/* = to MAXVIFS from linux/mroute.h */
 #define MAX_MC_MIFS    MAXMIFS	/* = to MAXMIFS from linux/mroute6.h */
 
-struct IfDesc {
-	char Name[sizeof(((struct ifreq *) NULL)->ifr_name)];
-	struct in_addr InAdr;	/* == 0 for non IP interfaces */
-	u_short IfIndex;	/* Physical interface index   */
-	short Flags;
-	short VifIndex;
+struct iface {
+	char name[IFNAMSIZ];
+	struct in_addr inaddr;	/* == 0 for non IP interfaces */
+	u_short ifindex;	/* Physical interface index   */
+	short flags;
+	short vif;
+	short mif;
 };
 
-/* ifvc.c
- */
+extern int do_debug_logging;
+
+/* ifvc.c */
 #define MAX_IF         40	// max. number of interfaces recognized
 
-void buildIfVc(void);
-struct IfDesc *getIfByName(const char *IfName);
-struct IfDesc *getIfByIx(unsigned Ix);
+void          iface_init            (void);
+struct iface *iface_find_by_name    (const char *ifname);
+struct iface *iface_find_by_index   (unsigned ifindex);
+int           iface_get_vif         (struct iface *iface);
+int           iface_get_mif         (struct iface *iface);
+int           iface_get_vif_by_name (const char *ifname);
+int           iface_get_mif_by_name (const char *ifname);
 
-/* mroute-api.c
- */
+/* mroute-api.c */
 
 /*
  * IPv4 multicast route
  */
-struct MRoute4Desc {
-	struct in_addr OriginAdr;	/* sender          */
-	struct in_addr McAdr;	/* multicast group */
-	short InVif;		/* incoming VIF    */
-	uint8 TtlVc[MAX_MC_VIFS];	/* outgoing VIFs   */
+struct mroute4 {
+	struct in_addr sender;
+	struct in_addr group;           /* multicast group */
+	short inbound;                  /* incoming VIF    */
+	uint8 ttl[MAX_MC_VIFS];         /* outgoing VIFs   */
 };
 
 /*
  * IPv6 multicast route
  */
-struct MRoute6Desc {
-	struct sockaddr_in6 OriginAdr;	/* sender          */
-	struct sockaddr_in6 McAdr;	/* multicast group */
-	short InMif;		/* incoming VIF    */
-	uint8 TtlVc[MAX_MC_MIFS];	/* outgoing VIFs   */
+struct mroute6 {
+	struct sockaddr_in6 sender;
+	struct sockaddr_in6 group;      /* multicast group */
+	short inbound;                  /* incoming VIF    */
+	uint8 ttl[MAX_MC_MIFS];         /* outgoing VIFs   */
 };
 
 /*
  * Generic multicast route (wrapper for IPv4/IPv6 mroute) 
  */
-struct MRouteDesc {
-	int ipVersion;		/* 4 or 6 */
+struct mroute {
+	int version;		/* 4 or 6 */
 	union {
-		struct MRoute4Desc mRoute4Desc;
-		struct MRoute6Desc mRoute6Desc;
+		struct mroute4 mroute4;
+		struct mroute6 mroute6;
 	} u;
 };
 
@@ -142,88 +152,70 @@ struct MRouteDesc {
  * Raw IGMP socket used as interface for the IPv4 mrouted API.
  * Receives IGMP packets and upcall messages from the kernel.
  */
-extern int MRouterFD4;
+extern int mroute4_socket;
 
 /*
  * Raw ICMPv6 socket used as interface for the IPv6 mrouted API.
  * Receives MLD packets and upcall messages from the kenrel.
  */
-extern int MRouterFD6;
+extern int mroute6_socket;
 
-int enableMRouter4(void);
-void disableMRouter4(void);
-int addMRoute4(struct MRoute4Desc *Dp);
-int delMRoute4(struct MRoute4Desc *Dp);
-void addVIF(struct IfDesc *Dp);
-int getVifIx(struct IfDesc *IfDp);
+int  mroute4_enable  (void);
+void mroute4_disable (void);
+int  mroute4_add     (struct mroute4 *mroute);
+int  mroute4_del     (struct mroute4 *mroute);
+void mroute4_add_vif (struct iface *iface);
 
-int enableMRouter6(void);
-void disableMRouter6(void);
-int addMRoute6(struct MRoute6Desc *Dp);
-int delMRoute6(struct MRoute6Desc *Dp);
-void addMIF(struct IfDesc *Dp);
-int getMifIx(struct IfDesc *IfDp);
+int  mroute6_enable  (void);
+void mroute6_disable (void);
+int  mroute6_add     (struct mroute6 *mroute);
+int  mroute6_del     (struct mroute6 *mroute);
+void mroute6_add_mif (struct iface *iface);
 
-/* ipc.c
- */
-int initIpcServer(void);
-struct CmdPkt *readIpcServer(uint8 Bu[], int BuSz);
-int initIpcClient(void);
-int sendIpc(const void *Bu, int Sz);
-int readIpc(uint8 Bu[], int BuSz);
-void cleanIpc(void);
+/* ipc.c */
+int         ipc_server_init (void);
+struct cmd *ipc_server_read (uint8 buf[], int len);
+int         ipc_client_init (void);
+int         ipc_send        (const void *buf, int len);
+int         ipc_receive     (uint8 buf[], int len);
+void        ipc_exit        (void);
 
 /* cmdpkt.c
  *
- * XXX show sample packet layouts
+ * XXX: Add example packet layouts
  */
-struct CmdPkt {
-	unsigned PktSz;		/* total size of packet including CmdPkt header */
-	uint16 Cmd;		/* 'a'=Add,'r'=Remove,'j'=Join,'l'=Leave,'k'=Kill */
-	uint16 ParCn;		/* command argument count */
-	/* 'ParCn' * '\0' terminated strings + '\0' */
+struct cmd {
+	unsigned len;		/* total size of packet including cmd header */
+	uint16   cmd;		/* 'a'=Add,'r'=Remove,'j'=Join,'l'=Leave,'k'=Kill */
+	uint16   count;		/* command argument count */
+	/* 'count' * '\0' terminated strings + '\0' */
 };
 
-#define MX_CMDPKT_SZ 1024	/* CmdPkt size including appended strings */
+#define MX_CMDPKT_SZ 1024	/* command size including appended strings */
 
-void *buildCmdPkt(char Cmd, const char *ArgVc[], int ParCn);
-const char *convCmdPkt2MRouteDesc(struct MRouteDesc *MrDp,
-				  const struct CmdPkt *PktPt);
-const char *convCmdPkt2MRoute4Desc(struct MRoute4Desc *MrDp,
-				   const struct CmdPkt *PktPt);
-const char *convCmdPkt2MRoute6Desc(struct MRoute6Desc *MrDp,
-				   const struct CmdPkt *PktPt);
+void       *cmd_build              (char cmd, const char *argv[], int count);
+const char *cmd_convert_to_mroute  (struct mroute  *mroute, const struct cmd *packet);
+const char *cmd_convert_to_mroute4 (struct mroute4 *mroute, const struct cmd *packet);
+const char *cmd_convert_to_mroute6 (struct mroute6 *mroute, const struct cmd *packet);
 
-/* lib.c
- */
-char *fmtInAdr(char *St, struct in_addr InAdr);
-char *fmtSockAdr(char *St, const struct sockaddr_in *SockAdrPt);
-int getInAdr(uint32 * InAdrPt, uint16 * PortPt, char *St);
-void getSockAdr(struct sockaddr *SaPt, socklen_t * SaLenPt, char *AddrSt,
-		char *PortSt);
+/* mcgroup.c */
+int mcgroup4_join  (const char *ifname, struct in_addr  group);
+int mcgroup4_leave (const char *ifname, struct in_addr  group);
+int mcgroup6_join  (const char *ifname, struct in6_addr group);
+int mcgroup6_leave (const char *ifname, struct in6_addr group);
 
-/* mcgroup.c
- */
-int joinMcGroup4(int UdpSock, const char *IfName, struct in_addr McAdr);
-int leaveMcGroup4(int UdpSock, const char *IfName, struct in_addr McAdr);
-int joinMcGroup6(int UdpSock, const char *IfName, struct in6_addr McAdr);
-int leaveMcGroup6(int UdpSock, const char *IfName, struct in6_addr McAdr);
-
-/* syslog.c
- */
-
+/* syslog.c */
 #define LOG_INIT 10
 
-extern int Log2Stderr;		/* Log threshold for stderr, LOG_WARNING .... LOG_DEBUG */
-extern int LogLastServerity;	/* last logged serverity   */
-extern int LogLastErrno;	/* last logged errno value */
-extern char LogLastMsg[128];	/* last logged message     */
+extern int log_stderr;		/* Log threshold for stderr, LOG_WARNING .... LOG_DEBUG */
+extern int log_last_severity;	/* last logged serverity   */
+extern int log_last_error;	/* last logged errno value */
+extern char log_last_message[128];	/* last logged message     */
 
-void smclog(int Serverity, int Errno, const char *FmtSt, ...);
+void smclog(int severity, int code, const char *fmt, ...);
 
-/* udpsock.c
- */
-int openUdpSocket(uint32 PeerInAdr, uint16 PeerPort);
+/* udpsock.c */
+int udp_socket_open(uint32 inaddr, uint16 port);
 
 static inline int IN6_MULTICAST(const struct in6_addr *addr)
 {

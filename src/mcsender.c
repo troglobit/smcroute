@@ -43,6 +43,8 @@ static void SetTtl4(int, unsigned);
 static void SetOif6(int, char *);
 static void SetTtl6(int, unsigned);
 
+static void getSockAdr(struct sockaddr *SaPt, socklen_t * SaLenPt, char *AddrSt, char *PortSt);
+
 int main(int ArgCn, char *ArgVc[])
 {
 	unsigned TtlVal = 0;
@@ -104,10 +106,8 @@ int main(int ArgCn, char *ArgVc[])
 
 			getSockAdr(SA(&TarAdr), &TarAdrLen, AddrSt, PortSt);
 
-			SetTtl =
-			    (TarAdr.ss_family == AF_INET) ? SetTtl4 : SetTtl6;
-			SetOif =
-			    (TarAdr.ss_family == AF_INET) ? SetOif4 : SetOif6;
+			SetTtl = (TarAdr.ss_family == AF_INET) ? SetTtl4 : SetTtl6;
+			SetOif = (TarAdr.ss_family == AF_INET) ? SetOif4 : SetOif6;
 		}
 	}
 
@@ -145,13 +145,13 @@ static void SetTtl4(int Sock, unsigned Ttl)
 		smclog(LOG_ERR, errno, "set IP_MULTICAST_TTL");
 }
 
-static void SetOif4(int Sock, char *IfName)
+static void SetOif4(int Sock, char *ifname)
 {
 	struct ifreq IfReq;
 	struct sockaddr_in *Sin4 = NULL;
 
 	memset(&IfReq, 0, sizeof(IfReq));
-	strncpy(IfReq.ifr_name, IfName, sizeof(IfReq.ifr_name));
+	strncpy(IfReq.ifr_name, ifname, sizeof(IfReq.ifr_name));
 
 	if (ioctl(Sock, SIOCGIFADDR, &IfReq) < 0)
 		smclog(LOG_ERR, errno, "ioctl SIOCGIFADDR");
@@ -179,15 +179,54 @@ static void SetTtl6(int Sock, unsigned Ttl)
 		smclog(LOG_ERR, errno, "set IPV6_MULTICAST_HOPS");
 }
 
-static void SetOif6(int Sock, char *IfName)
+static void SetOif6(int Sock, char *ifname)
 {
-	unsigned IfIndex;
+	unsigned ifindex;
 
-	IfIndex = if_nametoindex(IfName);
+	ifindex = if_nametoindex(ifname);
 
 	if (setsockopt(Sock, IPPROTO_IPV6, IPV6_MULTICAST_IF,
-		       &IfIndex, sizeof(IfIndex)))
+		       &ifindex, sizeof(ifindex)))
 		smclog(LOG_ERR, errno, "set IPV6_MULTICAST_IF");
+}
+
+/*
+** Converts the internet address plus port string in 'St' 
+** into their network byte order representations.
+**
+** returns: - 0 -> conversion failed
+**          - 1 -> only address part returned (inaddrPt)
+**          - 2 -> address and port returned
+**          
+*/
+static void getSockAdr(struct sockaddr *SaPt, socklen_t * SaLenPt, char *AddrSt, char *PortSt)
+{
+	struct sockaddr_in *Sin4;
+	struct sockaddr_in6 *Sin6;
+
+	if (strchr(AddrSt, ':') == NULL) {
+		Sin4 = SIN4(SaPt);
+		memset(Sin4, 0, sizeof(*Sin4));
+
+		Sin4->sin_family = AF_INET;
+		Sin4->sin_port = htons(atoi(PortSt));
+
+		if (inet_pton(AF_INET, AddrSt, &Sin4->sin_addr) <= 0)
+			smclog(LOG_ERR, errno, "inet_pton failed for address %s", AddrSt);
+
+		*SaLenPt = sizeof(struct sockaddr_in);
+	} else {
+		Sin6 = SIN6(SaPt);
+		memset(Sin6, 0, sizeof(*Sin6));
+
+		Sin6->sin6_family = AF_INET6;
+		Sin6->sin6_port = htons(atoi(PortSt));
+
+		if (inet_pton(AF_INET6, AddrSt, &Sin6->sin6_addr) <= 0)
+			smclog(LOG_ERR, errno, "inet_pton failed for address %s", AddrSt);
+
+		*SaLenPt = sizeof(struct sockaddr_in6);
+	}
 }
 
 /**

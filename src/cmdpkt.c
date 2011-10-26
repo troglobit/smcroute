@@ -31,122 +31,68 @@
 
 #include "mclab.h"
 
-static int getVifIxfromArg(const char *ArgPt)
 /*
-** Gets the VIF index for a given interface name '*ArgPt'
-**
-** returns: - index of the VIF
-**          - -1 if no VIF can be found for the interface name
-**          
-*/
-{
-	struct IfDesc *IfDp;
-	int Rt;
-
-	/* get input interface index -> InpVifIx
-	 */
-	if (!(IfDp = getIfByName(ArgPt)))
-		return -1;
-
-	if ((Rt = getVifIx(IfDp)) < 0)
-		return -1;
-
-	return Rt;
-}
-
-static int getMifIxfromArg(const char *ArgPt)
-/*
-** Gets the MIF index for a given interface name '*ArgPt'
-**
-** returns: - index of the MIF
-**          - -1 if no MIF can be found for the interface name
-**          
-*/
-{
-	struct IfDesc *IfDp;
-	int Rt;
-
-	/* get input interface index -> InpVifIx
-	 */
-	if (!(IfDp = getIfByName(ArgPt)))
-		return -1;
-
-	if ((Rt = getMifIx(IfDp)) < 0)
-		return -1;
-
-	return Rt;
-}
-
-void *buildCmdPkt(char Cmd, const char *ArgVc[], int ParCn)
-/*
-** Builds an command packet with the command 'Cmd' and 'ParCn' arguments
-** from 'ArgVc'.
+** Builds an command packet with the command 'cmd' and 'count' arguments
+** from 'argv'.
 **
 ** returns: - pointer to the dyn. allocated command packet
-**          
 */
+void *cmd_build(char cmd, const char *argv[], int count)
 {
-	unsigned AccStSz, PktSz;
-	struct CmdPkt *PktPt;
+	int num;
+	char *ptr;
+	const char **arg = argv;
+	unsigned arg_len = 0, packet_len;
+	struct cmd *packet;
 
-	/* accumulate space for arg strings */
-	{
-		const char **Pp;
-		int Cn;
-
-		for (Cn = ParCn, Pp = ArgVc, AccStSz = 0; Cn; Cn--, Pp++)
-			AccStSz += strlen(*Pp) + 1;
+	/* Summarize length of all arguments/commands */
+	for (num = count; num; num--) {
+		arg_len += strlen(*arg) + 1;
+		arg++;
 	}
 
 	/* resulting packet size */
-	PktSz = sizeof(struct CmdPkt) + AccStSz + 1;
-
-	/* makes no sense */
-	if (PktSz > MX_CMDPKT_SZ)
+	packet_len = sizeof(struct cmd) + arg_len + 1;
+	if (packet_len > MX_CMDPKT_SZ)
 		smclog(LOG_ERR, 0, "option too big");
 
 	/* build packet */
-	if (!(PktPt = malloc(PktSz)))
+	if (!(packet = malloc(packet_len)))
 		smclog(LOG_ERR, errno, "out of memory for option arguments");
 
-	PktPt->PktSz = PktSz;
-	PktPt->Cmd = Cmd;
-	PktPt->ParCn = ParCn;
+	packet->len = packet_len;
+	packet->cmd = cmd;
+	packet->count = count;
 
 	/* copy args */
-	{
-		char *FillPt;
-
-		for (FillPt = (char *)(PktPt + 1); ParCn; ParCn--, ArgVc++) {
-			int Sz = strlen(*ArgVc) + 1;
-
-			memcpy(FillPt, *ArgVc, Sz);
-			FillPt += Sz;
-		}
-
-		*FillPt = '\0';	/* '\0' behind last string */
+	ptr = (char *)(packet + 1);
+	arg = argv;
+	for (num = count; num; num--) {
+		arg_len = strlen(*arg) + 1;
+		memcpy(ptr, *arg, arg_len);
+		ptr += arg_len;
+		arg++;
 	}
+	*ptr = '\0';	/* '\0' behind last string */
 
-	return PktPt;
+	return packet;
 }
 
-const char *convCmdPkt2MRouteDesc(struct MRouteDesc *MrDp,
-				  const struct CmdPkt *PktPt)
 /*
-** Converts a command packet 'PktPt' to an MRouteDesc struct 'MrDp' for the
+** Converts a command packet 'packet' to an mroute struct 'mroute' for the
 ** 'add' and 'remove' command. The IP version is determined by searching
 ** for ':' in the address strings to indicate IPv6 addresses.
 **
 ** returns: - NULL if the conversion succeeded
 **          - an error string with a hint why the conversion failed
-**          
 */
+const char *cmd_convert_to_mroute(struct mroute *mroute, const struct cmd *packet)
 {
-	char *ArgSt = (char *)(PktPt + 1);
+	char *arg = (char *)(packet + 1);
 
-	memset(MrDp, 0, sizeof(*MrDp));
+	memset(mroute, 0, sizeof(*mroute));
 
-	switch (PktPt->Cmd) {
+	switch (packet->cmd) {
 	case 'a':
 	case 'r':
 		/* -a eth0 1.1.1.1 239.1.1.1 eth1 eth2
@@ -157,7 +103,7 @@ const char *convCmdPkt2MRouteDesc(struct MRouteDesc *MrDp,
 		 *  ^              ^
 		 *  |              |
 		 *  |              |
-		 *  +---CmdPkt-----+
+		 *  +-----cmd------+
 		 *
 		 * -r 1.1.1.1 239.1.1.1
 		 *
@@ -167,19 +113,19 @@ const char *convCmdPkt2MRouteDesc(struct MRouteDesc *MrDp,
 		 *  ^              ^
 		 *  |              |
 		 *  |              |
-		 *  +---CmdPkt-----+
+		 *  +-----cmd------+
 		 */
-		if (PktPt->Cmd == 'a' || PktPt->ParCn > 2)
-			ArgSt += strlen(ArgSt) + 1;
+		if (packet->cmd == 'a' || packet->count > 2)
+			arg += strlen(arg) + 1;
 
-		if (strchr(ArgSt, ':') != NULL) {
-			MrDp->ipVersion = 6;
-			return convCmdPkt2MRoute6Desc(&MrDp->u.mRoute6Desc,
-						      PktPt);
+		if (strchr(arg, ':') != NULL) {
+			mroute->version = 6;
+			return cmd_convert_to_mroute6(&mroute->u.mroute6,
+						      packet);
 		} else {
-			MrDp->ipVersion = 4;
-			return convCmdPkt2MRoute4Desc(&MrDp->u.mRoute4Desc,
-						      PktPt);
+			mroute->version = 4;
+			return cmd_convert_to_mroute4(&mroute->u.mroute4,
+						      packet);
 		}
 		break;
 
@@ -190,20 +136,19 @@ const char *convCmdPkt2MRouteDesc(struct MRouteDesc *MrDp,
 	return NULL;
 }
 
-const char *convCmdPkt2MRoute4Desc(struct MRoute4Desc *MrDp,
-				   const struct CmdPkt *PktPt)
 /*
-** Converts a command packet 'PktPt' to an MRoute4Desc struct 'MrDp' for the
+** Converts a command packet 'packet' to an mroute4 struct 'mroute' for the
 ** 'add' and 'remove' command.
 **
 ** returns: - NULL if the conversion succeeded
 **          - an error string with a hint why the conversion failed
 **          
 */
+const char *cmd_convert_to_mroute4(struct mroute4 *mroute, const struct cmd *packet)
 {
-	const char *ArgSt = (const char *)(PktPt + 1);
+	const char *arg = (const char *)(packet + 1);
 
-	memset(MrDp, 0, sizeof(*MrDp));
+	memset(mroute, 0, sizeof(*mroute));
 
 	/* -a eth0 1.1.1.1 239.1.1.1 eth1 eth2
 	 *
@@ -213,99 +158,89 @@ const char *convCmdPkt2MRoute4Desc(struct MRoute4Desc *MrDp,
 	 *  ^              ^
 	 *  |              |
 	 *  |              |
-	 *  +---CmdPkt-----+
+	 *  +-----cmd------+
 	 */
 
 	/* get input interface index */
-	if (!*ArgSt || (MrDp->InVif = getVifIxfromArg(ArgSt)) < 0)
+	if (!*arg || (mroute->inbound = iface_get_vif_by_name(arg)) < 0)
 		return "invalid input interface";
 
 	/* get origin */
-	ArgSt += strlen(ArgSt) + 1;
-	if (!*ArgSt || (inet_pton(AF_INET, ArgSt, &MrDp->OriginAdr) <= 0))
+	arg += strlen(arg) + 1;
+	if (!*arg || (inet_pton(AF_INET, arg, &mroute->sender) <= 0))
 		return "invalid origin IP address";
 
 	/* get multicast group */
-	ArgSt += strlen(ArgSt) + 1;
-	if (!*ArgSt || (inet_pton(AF_INET, ArgSt, &MrDp->McAdr) <= 0)
-	    || !IN_MULTICAST(ntohl(MrDp->McAdr.s_addr))
-	    )
+	arg += strlen(arg) + 1;
+	if (!*arg || (inet_pton(AF_INET, arg, &mroute->group) <= 0) || !IN_MULTICAST(ntohl(mroute->group.s_addr)))
 		return "invalid multicast group address";
 
 	/*
 	 * Scan output interfaces for the 'add' command only, just ignore it
 	 * for the 'remove' command to be compatible to the first release.
 	 */
-	if (PktPt->Cmd == 'a') {
-		for (ArgSt += strlen(ArgSt) + 1; *ArgSt;
-		     ArgSt += strlen(ArgSt) + 1) {
-			int VifIx;
+	if (packet->cmd == 'a') {
+		for (arg += strlen(arg) + 1; *arg; arg += strlen(arg) + 1) {
+			int vif;
 
-			if ((VifIx = getVifIxfromArg(ArgSt)) < 0)
+			if ((vif = iface_get_vif_by_name(arg)) < 0)
 				return "invalid output interface";
 
-			if (VifIx == MrDp->InVif)
-				smclog(LOG_WARNING, 0,
-				       "forwarding multicast to the input interface may not make sense: %s",
-				       ArgSt);
+			if (vif == mroute->inbound)
+				smclog(LOG_WARNING, 0, "Forwarding multicast to the input interface may not make sense: %s", arg);
 
-			MrDp->TtlVc[VifIx] = 1;	/* Use a TTL threashold */
+			mroute->ttl[vif] = 1;	/* Use a TTL threashold */
 		}
 	}
 
 	return NULL;
 }
 
-const char *convCmdPkt2MRoute6Desc(struct MRoute6Desc *MrDp,
-				   const struct CmdPkt *PktPt)
 /*
-** Converts a command packet 'PktPt' to an MRoute6Desc struct 'MrDp' for the
+** Converts a command packet 'packet' to an mroute6 struct 'mroute' for the
 ** 'add' and 'remove' command.
 **
 ** returns: - NULL if the conversion succeeded
 **          - an error string with a hint why the conversion failed
 **          
 */
+const char *cmd_convert_to_mroute6(struct mroute6 *mroute, const struct cmd *packet)
 {
-	const char *ArgSt = (const char *)(PktPt + 1);
+	const char *arg = (const char *)(packet + 1);
 
-	memset(MrDp, 0, sizeof(*MrDp));
+	memset(mroute, 0, sizeof(*mroute));
 
 	/* get input interface index */
-	if (!*ArgSt || (MrDp->InMif = getMifIxfromArg(ArgSt)) < 0)
-		return "invalid input interface";
+	if (!*arg || (mroute->inbound = iface_get_mif_by_name(arg)) < 0)
+		return "Invalid input interface";
 
 	/* get origin */
-	ArgSt += strlen(ArgSt) + 1;
-	if (!*ArgSt
-	    || (inet_pton(AF_INET6, ArgSt, &MrDp->OriginAdr.sin6_addr) <= 0))
-		return "invalid origin IP address";
+	arg += strlen(arg) + 1;
+	if (!*arg || (inet_pton(AF_INET6, arg, &mroute->sender.sin6_addr) <= 0))
+		return "Invalid origin IP address";
 
 	/* get multicast group */
-	ArgSt += strlen(ArgSt) + 1;
+	arg += strlen(arg) + 1;
 
-	if (!*ArgSt || (inet_pton(AF_INET6, ArgSt, &MrDp->McAdr.sin6_addr) <= 0)
-	    || !IN6_MULTICAST(&MrDp->McAdr.sin6_addr))
-		return "invalid multicast group address";
+	if (!*arg || (inet_pton(AF_INET6, arg, &mroute->group.sin6_addr) <= 0)
+	    || !IN6_MULTICAST(&mroute->group.sin6_addr))
+		return "Invalid multicast group address";
 
 	/*
 	 * Scan output interfaces for the 'add' command only, just ignore it
 	 * for the 'remove' command to be compatible to the first release.
 	 */
-	if (PktPt->Cmd == 'a') {
-		for (ArgSt += strlen(ArgSt) + 1; *ArgSt;
-		     ArgSt += strlen(ArgSt) + 1) {
-			int MifIx;
+	if (packet->cmd == 'a') {
+ 		for (arg += strlen(arg) + 1; *arg; arg += strlen(arg) + 1) {
+			int mif;
 
-			if ((MifIx = getMifIxfromArg(ArgSt)) < 0)
-				return "invalid output interface";
+			if ((mif = iface_get_mif_by_name(arg)) < 0)
+				return "Invalid output interface";
 
-			if (MifIx == MrDp->InMif)
-				smclog(LOG_WARNING, 0,
-				       "forwarding multicast to the input interface may not make sense: %s",
-				       ArgSt);
+			if (mif == mroute->inbound)
+				smclog(LOG_WARNING, 0, "Forwarding multicast to the input interface may not make sense: %s", arg);
 
-			MrDp->TtlVc[MifIx] = 1;	/* Use a TTL threashold */
+			mroute->ttl[mif] = 1;	/* Use a TTL threashold */
 		}
 	}
 
