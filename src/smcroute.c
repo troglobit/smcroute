@@ -49,7 +49,7 @@ static const char version_info[] =
     "\n";
 
 static const char usage_info[] =
-    "usage: smcroute\t[-v] [-d] [-k] [-D]\n"
+    "usage: smcroute\t[-v] [-d] [-n] [-k] [-D]\n"
     "\n"
     "\t\t[-a <InputIntf> <OriginIpAdr> <McGroupAdr> <OutputIntf> [<OutputIntf>] ...]\n"
     "\t\t[-r <InputIntf> <OriginIpAdr> <McGroupAdr>]\n"
@@ -163,17 +163,15 @@ static int daemonize(void)
 {
 	int pid;
 
-	/* create daemon process */
+	smclog(LOG_NOTICE, 0, "Forking daemon process.");
+
 	pid = fork();
 	if (!pid) {
-		/* only daemon enters */
-		atexit(clean);
-
 		/* Detach deamon from terminal */
 		if (close(0) < 0 || close(1) < 0 || close(2) < 0
 		    || open("/dev/null", 0) != 0 || dup2(0, 1) < 0
 		    || dup2(0, 2) < 0 || setpgrp() < 0)
-			smclog(LOG_ERR, errno, "failed to detach deamon");
+			smclog(LOG_ERR, errno, "Failed to detach deamon");
 	}
 
 	return pid;
@@ -327,14 +325,16 @@ static void server_loop(int sd)
 
 /* Init everything before forking, so we can fail and return an
  * error code in the parent and the initscript will fail */
-static void start_server(void)
+static void start_server(int background)
 {
-	int sd;
+	int sd, pid = 0;
 	unsigned short initialized_api_count;
 
 	/* Build list of multicast-capable physical interfaces that 
 	 * are currently assigned an IP address. */
 	iface_init();
+
+	smclog(LOG_NOTICE, 0, "Starting daemon. Background:%d", background);
 
 	initialized_api_count = 0;
 	if (mroute4_init() == 0)
@@ -356,7 +356,12 @@ static void start_server(void)
 		exit(2);
 	}
 
-	if (!daemonize()) {
+	if (background)
+		pid = daemonize();
+
+	if (!pid) {
+		smclog(LOG_NOTICE, 0, "Entering smcroute daemon main loop.");
+		atexit(clean);
 		server_loop(sd);
 	}
 }
@@ -379,6 +384,7 @@ int main(int argc, const char *argv[])
 {
 	int opt, result = 0;
 	int start_daemon = 0;
+	int background = 1;
 	uint8 buf[MX_CMDPKT_SZ];
 	struct cmd *cmdv[16], **cmdptr = cmdv;
 
@@ -436,6 +442,10 @@ int main(int argc, const char *argv[])
 			start_daemon = 1;
 			continue;
 
+		case 'n':	/* run daemon in foreground, i.e., do not fork */
+			background = 0;
+			continue;
+
 		case 'D':
 			do_debug_logging = 1;
 			continue;
@@ -455,7 +465,7 @@ int main(int argc, const char *argv[])
 	}
 
 	if (start_daemon) {	/* only daemon parent enters */
-		start_server();
+		start_server(background);
 	}
 
 	/* Client or daemon parent only, the daemon never reaches this point */
