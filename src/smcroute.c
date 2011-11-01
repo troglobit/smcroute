@@ -382,11 +382,13 @@ static int usage(void)
 */
 int main(int argc, const char *argv[])
 {
-	int opt, result = 0;
+	int num_opts, result = 0;
 	int start_daemon = 0;
 	int background = 1;
 	uint8 buf[MX_CMDPKT_SZ];
-	struct cmd *cmdv[16], **cmdptr = cmdv;
+	const char *arg;
+	int cmdnum = 0;
+	struct cmd *cmdv[16];
 
 	/* init syslog */
 	openlog(argv[0], LOG_PID, LOG_DAEMON);
@@ -395,21 +397,22 @@ int main(int argc, const char *argv[])
 		return usage();
 
 	/* Parse command line options */
-	for (opt = 1; (opt = num_option_arguments(argv += opt));) {
-		if (opt < 0)	/* error */
+	for (num_opts = 1; (num_opts = num_option_arguments(argv += num_opts));) {
+		if (num_opts < 0)	/* error */
 			return usage();
 
 		/* handle option */
-		switch (*(*argv + 1)) {
+		arg = argv[0];
+		switch (arg[1]) {
 		case 'a':	/* add route */
-			if (opt < 5) {
+			if (num_opts < 5) {
 				fprintf(stderr, "not enough arguments for 'add' command\n");
 				return usage();
 			}
 			break;
 
 		case 'r':	/* remove route */
-			if (opt < 4) {
+			if (num_opts < 4) {
 				fprintf(stderr, "wrong number of  arguments for 'remove' command\n");
 				return usage();
 			}
@@ -417,14 +420,14 @@ int main(int argc, const char *argv[])
 
 		case 'j':	/* join */
 		case 'l':	/* leave */
-			if (opt != 3) {
+			if (num_opts != 3) {
 				fprintf(stderr, "wrong number of arguments for 'join'/'leave' command\n");
 				return usage();
 			}
 			break;
 
 		case 'k':	/* kill daemon */
-			if (opt != 1) {
+			if (num_opts != 1) {
 				fprintf(stderr, "no arguments allowed for 'k' option\n");
 				return usage();
 			}
@@ -456,25 +459,26 @@ int main(int argc, const char *argv[])
 		}
 
 		/* Check and build command argument list. */
-		if (cmdptr >= VCEP(cmdv)) {
-			fprintf(stderr, "too many command options\n");
+		if (cmdnum >= ARRAY_ELEMENTS(cmdv)) {
+			fprintf(stderr, "Too many command options\n");
 			return usage();
 		}
 
-		*cmdptr++ = cmd_build(*(*argv + 1), argv + 1, opt - 1);
+		cmdv[cmdnum++] = cmd_build(arg[1], argv + 1, num_opts - 1);
 	}
 
 	if (start_daemon) {	/* only daemon parent enters */
 		start_server(background);
+		if (!background)
+			exit (0); /* Exit if non-backgrounded daemon exits this way. */
 	}
 
 	/* Client or daemon parent only, the daemon never reaches this point */
 
 	/* send commands */
-	if (cmdptr > cmdv) {
-		int code;
+	if (cmdnum) {
+		int i, code;
 		int retry_count = 30;
-		struct cmd **ptr;
 
 		openlog(argv[0], LOG_PID, LOG_USER);
 
@@ -503,10 +507,11 @@ int main(int argc, const char *argv[])
 			}
 		}
 
-		for (ptr = cmdv; ptr < cmdptr; ptr++) {
+		for (i = 0; i < cmdnum; i++) {
 			int slen = 0, rlen = 0;
+			struct cmd *command = cmdv[i];
 
-			slen = ipc_send(*ptr, (*ptr)->len);
+			slen = ipc_send(command, command->len);
 			rlen = ipc_receive(buf, sizeof(buf));
 			if (slen < 0 || rlen < 0)
 				smclog(LOG_ERR, errno, "read/write to daemon failed");
@@ -518,7 +523,7 @@ int main(int argc, const char *argv[])
 				result = 1;
 			}
 
-			free(*ptr);
+			free(command);
 		}
 	}
 

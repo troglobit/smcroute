@@ -135,7 +135,7 @@ void mroute4_add_vif(struct iface *iface)
 	int i;
 
 	/* search free vif */
-	for (i = 0; i < MAXVIFS; i++) {
+	for (i = 0; i < ARRAY_ELEMENTS(vif_list); i++) {
 		if (!vif_list[i].iface) {
 			vif = i;
 			break;
@@ -148,24 +148,24 @@ void mroute4_add_vif(struct iface *iface)
 		return;
 	}
 
-	vif_list[vif].iface = iface;
-
 	memset(&VifCtl, 0, sizeof(VifCtl));
 	VifCtl.vifc_vifi = vif;
-	VifCtl.vifc_flags = 0;	/* no tunnel, no source routing, register ? */
+	VifCtl.vifc_flags = 0;	        /* no tunnel, no source routing, register ? */
 	VifCtl.vifc_threshold = 1;	/* Packet TTL must be at least 1 to pass them */
 	VifCtl.vifc_rate_limit = 0;	/* hopefully no limit */
 	VifCtl.vifc_lcl_addr.s_addr = iface->inaddr.s_addr;
 	VifCtl.vifc_rmt_addr.s_addr = INADDR_ANY;
 
-	smclog(LOG_NOTICE, 0, "%s: adding VIF, Vif-Ix %d Fl 0x%04x IP 0x%08x %s", __FUNCTION__,
+	smclog(LOG_NOTICE, 0, "Add VIF: %d Flags: 0x%04x IP: 0x%08x Ifname: %s",
 	       VifCtl.vifc_vifi, VifCtl.vifc_flags, VifCtl.vifc_lcl_addr.s_addr,
 	       iface->name);
 
-	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_VIF, (void *)&VifCtl, sizeof(VifCtl)))
+	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_VIF, (void *)&VifCtl, sizeof(VifCtl))) {
 		smclog(LOG_ERR, errno, "MRT_ADD_VIF %s", iface->name);
-	else
+	} else {
 		iface->vif = vif;
+		vif_list[vif].iface = iface;
+	}
 }
 
 /*
@@ -187,12 +187,12 @@ int mroute4_add(struct mroute4 *ptr)
 	mc.mfcc_parent = ptr->inbound;
 
 	/* copy the TTL vector */
-	if (sizeof(mc.mfcc_ttls) != sizeof(ptr->ttl) || VCMC(mc.mfcc_ttls) != VCMC(ptr->ttl))
+	if (sizeof(mc.mfcc_ttls) != sizeof(ptr->ttl) || ARRAY_ELEMENTS(mc.mfcc_ttls) != ARRAY_ELEMENTS(ptr->ttl))
 		smclog(LOG_ERR, 0, "Data types does not match in %s, source adaption needed!", __FILE__);
 
 	memcpy(mc.mfcc_ttls, ptr->ttl, sizeof(mc.mfcc_ttls));
 
-	smclog(LOG_NOTICE, 0, "Adding MFC: %s -> %s, inbound VIF: %d",
+	smclog(LOG_NOTICE, 0, "Add MFC: %s -> %s, inbound VIF: %d",
 	       inet_ntop(AF_INET, &mc.mfcc_origin,   origin, INET_ADDRSTRLEN),
 	       inet_ntop(AF_INET, &mc.mfcc_mcastgrp, group,  INET_ADDRSTRLEN), mc.mfcc_parent);
 
@@ -220,7 +220,7 @@ int mroute4_del(struct mroute4 *ptr)
 	mc.mfcc_origin = ptr->sender;
 	mc.mfcc_mcastgrp = ptr->group;
 
-	smclog(LOG_NOTICE, 0, "Removing MFC: %s -> %s",
+	smclog(LOG_NOTICE, 0, "Del MFC: %s -> %s",
 	       inet_ntop(AF_INET, &mc.mfcc_origin,  origin, INET_ADDRSTRLEN),
 	       inet_ntop(AF_INET, &mc.mfcc_mcastgrp, group, INET_ADDRSTRLEN));
 
@@ -283,6 +283,9 @@ int mroute6_enable(void)
 		return err;
 	}
 
+	/* Initialize virtual interface table */
+	memset(&mif_list, 0, sizeof(mif_list));
+
 	/* On Linux pre 2.6.29 kernels net.ipv6.conf.all.mc_forwarding
 	 * is not set on MRT6_INIT so we have to do this manually */
 	if (proc_set_val (IPV6_ALL_MC_FORWARD, 1)) {
@@ -323,24 +326,25 @@ void mroute6_add_mif(struct iface *iface)
 	return;
 #else
 	struct mif6ctl mc;
-	struct mif *mif;
-
-	memset(&mc, 0, sizeof(mc));
+	int mif = -1;
+	int i;
 
 	/* find a free mif */
-	for (mif = mif_list; mif < VCEP(mif_list); mif++) {
-		if (!mif->iface)
+	for (i = 0; i < ARRAY_ELEMENTS(mif_list); i++) {
+		if (!mif_list[i].iface) {
+			mif = i;
 			break;
+		}
 	}
 
 	/* no more space */
-	if (mif >= VCEP(mif_list))
+	if (mif == -1) {
 		smclog(LOG_ERR, ENOMEM, "%s: out of MIF space", __FUNCTION__);
+		return;
+	}
 
-	mif->iface = iface;
-	iface->mif = mif - mif_list;
-
-	mc.mif6c_mifi = iface->mif;
+	memset(&mc, 0, sizeof(mc));
+	mc.mif6c_mifi = mif;
 	mc.mif6c_flags = 0;	/* no register */
 #ifdef HAVE_MIF6CTL_VIFC_THRESHOLD
 	mc.vifc_threshold = 1;	/* Packet TTL must be at least 1 to pass them */
@@ -350,11 +354,15 @@ void mroute6_add_mif(struct iface *iface)
 	mc.vifc_rate_limit = 0;	/* hopefully no limit */
 #endif
 
-	smclog(LOG_NOTICE, 0, "Adding MIF, Mif-Ix %d PHY Ix %d Fl 0x%x %s",
-	       mc.mif6c_mifi, mc.mif6c_pifi, mc.mif6c_flags, mif->iface->name);
+	smclog(LOG_NOTICE, 0, "Add MIF: %d Ifindex: %d Flags: 0x%x Ifname: %s",
+	       mc.mif6c_mifi, mc.mif6c_pifi, mc.mif6c_flags, iface->name);
 
-	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MIF, (char *)&mc, sizeof(mc)))
+	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MIF, (char *)&mc, sizeof(mc))) {
 		smclog(LOG_ERR, errno, "MRT6_ADD_MIF %s", iface->name);
+	} else {
+		iface->mif = mif;
+		mif_list[mif].iface = iface;
+	}
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
 }
 
@@ -384,7 +392,7 @@ int mroute6_add(struct mroute6 *ptr)
 			IF_SET(i, &mc.mf6cc_ifset);
 	}
 
-	smclog(LOG_NOTICE, 0, "Adding MFC: %s -> %s, InpMIf: %d",
+	smclog(LOG_NOTICE, 0, "Add MFC: %s -> %s, Inbound MIF: %d",
 	       inet_ntop(AF_INET6, &mc.mf6cc_origin.sin6_addr,
 			 origin, INET6_ADDRSTRLEN),
 	       inet_ntop(AF_INET6, &mc.mf6cc_mcastgrp.sin6_addr,
@@ -418,7 +426,7 @@ int mroute6_del(struct mroute6 *ptr)
 	mc.mf6cc_origin = ptr->sender;
 	mc.mf6cc_mcastgrp = ptr->group;
 
-	smclog(LOG_NOTICE, 0, "removing MFC: %s -> %s",
+	smclog(LOG_NOTICE, 0, "Del MFC: %s -> %s",
 	       inet_ntop(AF_INET6, &mc.mf6cc_origin.sin6_addr,
 			 origin, INET6_ADDRSTRLEN),
 	       inet_ntop(AF_INET6, &mc.mf6cc_mcastgrp.sin6_addr,

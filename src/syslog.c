@@ -61,7 +61,7 @@ void smclog(int severity, int code, const char *fmt, ...)
 	 * we daemonize, without the parent triggering the atexit() handlers in the
 	 * normal case (which would remove the socket...)
 	 * That gross, ugly hack or a complete rewrite, for now the hack will do. */
-	if (severity < 0 || severity >= (int)VCMC(severity_list)) {
+	if (severity < 0 || severity >= (int)ARRAY_ELEMENTS(severity_list)) {
 		if (severity == LOG_INIT)
 			severity_string = "INIT";
 		else
@@ -78,7 +78,7 @@ void smclog(int severity, int code, const char *fmt, ...)
 	arg_len  = snprintf(log_last_message, sizeof(log_last_message), "%s: ", severity_string);
 	arg_len += vsnprintf(log_last_message + arg_len, sizeof(log_last_message) - arg_len, fmt, args);
 	if (error_string)
-		snprintf(log_last_message + arg_len, sizeof(log_last_message) - arg_len, ";code(%d): %s", code, error_string);
+		snprintf(log_last_message + arg_len, sizeof(log_last_message) - arg_len, ". Error %d: %s", code, error_string);
 	va_end(args);
 
 	/* update our global Last... variables */

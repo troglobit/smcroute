@@ -31,7 +31,8 @@
 #include <ifaddrs.h>
 #include "mclab.h"
 
-static struct iface iface_list[MAX_IF], *last_iface = iface_list;
+static int num_ifaces = 0;
+static struct iface iface_list[MAX_IF];
 
 /*
 ** Builds up a vector with the interface of the machine. Calls to the other functions of 
@@ -40,6 +41,8 @@ static struct iface iface_list[MAX_IF], *last_iface = iface_list;
 */
 void iface_init(void)
 {
+	int family;
+	struct iface *iface;
 	struct ifaddrs *ifaddr, *ifa;
 
 	memset(iface_list, 0, sizeof(iface_list));
@@ -49,8 +52,9 @@ void iface_init(void)
 		return;
 	}
 
-	for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-		int family = ifa->ifa_addr->sa_family;
+	for (ifa = ifaddr; ifa != NULL && num_ifaces < ARRAY_ELEMENTS(iface_list); ifa = ifa->ifa_next) {
+		iface  = &iface_list[num_ifaces++];
+		family = ifa->ifa_addr->sa_family;
 
 		/* Skip non-IPv4 and non-IPv6 interfaces */
 		if ((family != AF_INET) && (family != AF_INET6))
@@ -60,14 +64,13 @@ void iface_init(void)
 			continue;
 
 		/* Copy data from interface iterator 'ifa' */
-		strncpy(last_iface->name, ifa->ifa_name, sizeof(last_iface->name));
+		strncpy(iface->name, ifa->ifa_name, sizeof(iface->name));
 		if (family == AF_INET)
-			last_iface->inaddr.s_addr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr.s_addr;
-		last_iface->flags = ifa->ifa_flags;
-		last_iface->ifindex = if_nametoindex(last_iface->name);
-		last_iface->vif = -1;
-		last_iface->mif = -1;
-		last_iface++;
+			iface->inaddr.s_addr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr.s_addr;
+		iface->flags = ifa->ifa_flags;
+		iface->ifindex = if_nametoindex(iface->name);
+		iface->vif = -1;
+		iface->mif = -1;
 	}
 	freeifaddrs(ifaddr);
 }
@@ -83,15 +86,18 @@ void iface_init(void)
 */
 struct iface *iface_find_by_name(const char *ifname)
 {
+	int i;
 	struct iface *iface;
 	struct iface *candidate = NULL;
 
-	for (iface = iface_list; iface < last_iface; iface++)
+	for (i = 0; i < num_ifaces; i++) {
+		iface = &iface_list[i];
 		if (!strcmp(ifname, iface->name)) {
 			if (iface->vif >= 0)
 				return iface;
 			candidate = iface;
 		}
+	}
 
 	return candidate;
 }
@@ -105,13 +111,10 @@ struct iface *iface_find_by_name(const char *ifname)
 */
 struct iface *iface_find_by_index(unsigned ifindex)
 {
-	struct iface *iface;
-
-	if (ifindex < 0 || ifindex >= ARRAY_ELEMENTS(iface_list))
+	if (ifindex < 0 || ifindex >= num_ifaces)
 		return NULL;
 
-	iface = &iface_list[ifindex];
-	return iface < last_iface ? iface : NULL;
+	return &iface_list[ifindex];
 }
 
 
@@ -142,6 +145,9 @@ int iface_get_mif(struct iface *iface)
 #ifndef HAVE_IPV6_MULTICAST_ROUTING
 	return -1;
 #else
+	if (iface == NULL)
+		return -1;
+
 	return iface->mif;
 #endif				/* HAVE_IPV6_MULTICAST_ROUTING */
 }

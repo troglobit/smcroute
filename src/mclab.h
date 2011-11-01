@@ -72,18 +72,16 @@ typedef u_int8_t uint8;
 typedef u_int16_t uint16;
 typedef u_int32_t uint32;
 
-#define SA( x ) ((struct sockaddr *)x)
-#define SIN4( x ) ((struct sockaddr_in *)x)
-#define SIN6( x ) ((struct sockaddr_in6 *)x)
+#define SA(x)   ((struct sockaddr *)x)
+#define SIN4(x) ((struct sockaddr_in *)x)
+#define SIN6(x) ((struct sockaddr_in6 *)x)
 
 #ifndef MIN
-#define MIN( a, b ) ((a) < (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
 #endif
 #ifndef MAX
-#define MAX( a, b ) ((a) < (b) ? (b) : (a))
+#define MAX(a, b) ((a) < (b) ? (b) : (a))
 #endif
-#define VCMC( Vc )  (sizeof( Vc ) / sizeof( (Vc)[ 0 ] ))
-#define VCEP( Vc )  (&(Vc)[ VCMC( Vc ) ])
 
 /* http://stackoverflow.com/questions/1598773/is-there-a-standard-function-in-c-that-would-return-the-length-of-an-array/1598827#1598827 
  * Evidently Google uses it in Chromium.  It is actually intended to look like 0[arr], read the link, or search the web.
