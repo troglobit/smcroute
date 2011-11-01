@@ -46,7 +46,7 @@ char log_last_message[128];
 */
 void smclog(int severity, int code, const char *fmt, ...)
 {
-	unsigned arg_len;
+	int arg_len;
 	va_list args;
 	const char severity_list[][5] = {
 		"EMER", "ALER", "CRIT", "ERRO",
@@ -76,10 +76,9 @@ void smclog(int severity, int code, const char *fmt, ...)
 
 	va_start(args, fmt);
 	arg_len  = snprintf(log_last_message, sizeof(log_last_message), "%s: ", severity_string);
-	arg_len += snprintf(log_last_message + arg_len, sizeof(log_last_message) - arg_len, fmt, args);
+	arg_len += vsnprintf(log_last_message + arg_len, sizeof(log_last_message) - arg_len, fmt, args);
 	if (error_string)
-		snprintf(log_last_message + arg_len, sizeof(log_last_message) - arg_len,
-			 "; code(%d): %s", code, error_string);
+		snprintf(log_last_message + arg_len, sizeof(log_last_message) - arg_len, ";code(%d): %s", code, error_string);
 	va_end(args);
 
 	/* update our global Last... variables */
