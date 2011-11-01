@@ -5,6 +5,7 @@
 **  Copyright (C) 2006-2009 Julien BLACHE <jb@jblache.org>
 **  Copyright (C) 2009      Todd Hayton <todd.hayton@gmail.com>
 **  Copyright (C) 2009-2011 Micha Lenk <micha@debian.org>
+**  Copyright (C) 2011      Joachim Nilsson <troglobit@gmail.com>
 **
 **  This program is free software; you can redistribute it and/or modify
 **  it under the terms of the GNU General Public License as published by
@@ -40,21 +41,39 @@
 #include "build.h"
 
 static const char version_info[] =
-    "smcroute, Version " PACKAGE_VERSION ", Build" BUILD "\n"
-    "Copyright (c) 2001-2005  Carsten Schill <carsten@cschill.de>\n"
-    "Copyright (c) 2006-2009  Julien Blache <jb@jblache.org>,\n"
-    "                   2009  Todd Hayton <todd.hayton@gmail.com>, and\n"
-    "              2009-2011  Micha Lenk <micha@debian.org>\n"
-    "Distributed under the GNU GENERAL PUBLIC LICENSE, Version 2\n"
-    "\n";
+	"smcroute, Version " PACKAGE_VERSION ", Build" BUILD "\n"
+	"Copyright (c) 2001-2005  Carsten Schill <carsten@cschill.de>\n"
+	"Copyright (c) 2006-2009  Julien Blache <jb@jblache.org>,\n"
+	"                   2009  Todd Hayton <todd.hayton@gmail.com>, and\n"
+	"              2009-2011  Micha Lenk <micha@debian.org>\n"
+	"                   2011  Joachim Nilsson <troglobit@gmail.com>\n"
+	"Distributed under the GNU GENERAL PUBLIC LICENSE, Version 2\n"
+	"\n";
 
 static const char usage_info[] =
-    "usage: smcroute\t[-v] [-d] [-n] [-k] [-D]\n"
-    "\n"
-    "\t\t[-a <InputIntf> <OriginIpAdr> <McGroupAdr> <OutputIntf> [<OutputIntf>] ...]\n"
-    "\t\t[-r <InputIntf> <OriginIpAdr> <McGroupAdr>]\n"
-    "\n"
-    "\t\t[-j <InputIntf> <McGroupAdr>]\n" "\t\t[-l <InputIntf> <McGroupAdr>]\n";
+	"Usage: smcroute [OPTIONS]... [ARGS]...\n"
+	"\n"
+	"  -d       Start smcroute daemon.\n"
+	"  -n       Run daemon in foreground, i.e., do not fork.\n"
+	"  -f FILE  Use FILE as daemon configuration. Default: " SMCROUTE_SYSTEM_CONF "\n"
+	"  -k       Stop (kill) a running daemon.\n"
+	"\n"
+	"  -h       Display this help text.\n"
+	"  -D       Debug logging.\n"
+	"  -v       Display version information and enable verbose logging.\n"
+	"\n"
+	"  -a ARGS  Add a multicast route, full syntax below.\n"
+	"  -r ARGS  Remove a multicast route, full syntax below.\n"
+	"\n"
+	"  -j ARGS  Join a multicast group on an interface, useful for testing.\n"
+	"  -l ARGS  Leave a multicast group on an interface, useful for testing.\n"
+	"\n"
+	"     <------------- INBOUND -------------->  <----- OUTBOUND ------>\n"
+	"  -a <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>  <IFNAME> [<IFNAME> ...]\n"
+	"  -r <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>\n"
+	"\n"
+	"  -j <IFNAME> <MULTICAST-GROUP>\n"
+	"  -l <IFNAME> <MULTICAST-GROUP>\n";
 
 int do_debug_logging = 0;
 
@@ -111,7 +130,7 @@ static int mroute4_init(void)
 	case EOPNOTSUPP:
 #endif
 	case ENOPROTOOPT:
-		smclog(LOG_WARNING, 0, "Kernel does not support IPv4 multicast routing (skipping IPv4 routing)");
+		smclog(LOG_WARNING, 0, "Kernel does not support IPv4 multicast routing, skipping...");
 		return -1;
 	default:
 		smclog(LOG_INIT, code, "MRT_INIT failed");
@@ -144,7 +163,7 @@ static int mroute6_init(void)
 	case EOPNOTSUPP:
 #endif
 	case ENOPROTOOPT:
-		smclog(LOG_WARNING, 0, "Kernel does not support IPv6 multicast routing (skipping IPv6 routing)");
+		smclog(LOG_WARNING, 0, "Kernel does not support IPv6 multicast routing, skipping...");
 		return -1;
 	default:
 		smclog(LOG_INIT, code, "MRT6_INIT failed");
@@ -177,7 +196,7 @@ static int daemonize(void)
 	return pid;
 }
 
-static void server_loop(int sd)
+static void server_loop(int sd, const char *conf_file)
 {
 	int result;
 	uint8 buf[MX_CMDPKT_SZ];
@@ -190,6 +209,15 @@ static void server_loop(int sd)
 	const char *str;
 	struct cmd *packet;
 	struct mroute mroute;
+
+	/* Parse .conf file and setup routes */
+	if (access(conf_file, R_OK)) {
+		smclog(LOG_WARNING, errno, "Configuration file %s", conf_file);
+	} else {
+		smclog(LOG_NOTICE, 0, "Using configuration file %s", conf_file);
+		if (parse_conf_file(conf_file))
+			smclog(LOG_WARNING, errno, "Failed reading file %s", conf_file);
+	}
 
 	/* Watch the MRouter and the IPC socket to the smcroute client */
 	while (1) {
@@ -325,7 +353,7 @@ static void server_loop(int sd)
 
 /* Init everything before forking, so we can fail and return an
  * error code in the parent and the initscript will fail */
-static void start_server(int background)
+static void start_server(int background, const char *conf_file)
 {
 	int sd, pid = 0;
 	unsigned short initialized_api_count;
@@ -333,8 +361,6 @@ static void start_server(int background)
 	/* Build list of multicast-capable physical interfaces that 
 	 * are currently assigned an IP address. */
 	iface_init();
-
-	smclog(LOG_NOTICE, 0, "Starting daemon. Background:%d", background);
 
 	initialized_api_count = 0;
 	if (mroute4_init() == 0)
@@ -362,7 +388,7 @@ static void start_server(int background)
 	if (!pid) {
 		smclog(LOG_NOTICE, 0, "Entering smcroute daemon main loop.");
 		atexit(clean);
-		server_loop(sd);
+		server_loop(sd, conf_file);
 	}
 }
 
@@ -386,7 +412,7 @@ int main(int argc, const char *argv[])
 	int start_daemon = 0;
 	int background = 1;
 	uint8 buf[MX_CMDPKT_SZ];
-	const char *arg;
+	const char *arg, *conf_file = SMCROUTE_SYSTEM_CONF;
 	int cmdnum = 0;
 	struct cmd *cmdv[16];
 
@@ -406,14 +432,14 @@ int main(int argc, const char *argv[])
 		switch (arg[1]) {
 		case 'a':	/* add route */
 			if (num_opts < 5) {
-				fprintf(stderr, "not enough arguments for 'add' command\n");
+				fprintf(stderr, "Not enough arguments for 'add' command\n");
 				return usage();
 			}
 			break;
 
 		case 'r':	/* remove route */
 			if (num_opts < 4) {
-				fprintf(stderr, "wrong number of  arguments for 'remove' command\n");
+				fprintf(stderr, "Wrong number of  arguments for 'remove' command\n");
 				return usage();
 			}
 			break;
@@ -421,14 +447,14 @@ int main(int argc, const char *argv[])
 		case 'j':	/* join */
 		case 'l':	/* leave */
 			if (num_opts != 3) {
-				fprintf(stderr, "wrong number of arguments for 'join'/'leave' command\n");
+				fprintf(stderr, "Wrong number of arguments for %s command\n", arg[1] == 'j' ? "'join'" : "'leave'");
 				return usage();
 			}
 			break;
 
 		case 'k':	/* kill daemon */
 			if (num_opts != 1) {
-				fprintf(stderr, "no arguments allowed for 'k' option\n");
+				fprintf(stderr, "No arguments allowed for 'k' option\n");
 				return usage();
 			}
 			break;
@@ -447,6 +473,14 @@ int main(int argc, const char *argv[])
 
 		case 'n':	/* run daemon in foreground, i.e., do not fork */
 			background = 0;
+			continue;
+
+		case 'f':
+			if (num_opts != 2) {
+				fprintf(stderr, "Missing configuration file arguments for 'f' option\n");
+				return usage();
+			}
+			conf_file = argv[1];
 			continue;
 
 		case 'D':
@@ -468,7 +502,7 @@ int main(int argc, const char *argv[])
 	}
 
 	if (start_daemon) {	/* only daemon parent enters */
-		start_server(background);
+		start_server(background, conf_file);
 		if (!background)
 			exit (0); /* Exit if non-backgrounded daemon exits this way. */
 	}

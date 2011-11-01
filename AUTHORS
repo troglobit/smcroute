@@ -4,7 +4,9 @@ smcroute's authors
 smcroute was originally (2001-2005) developed by 
 Carsten Schill <carsten@cschill.de>.
 
-It is now (2006-) maintained by Julien BLACHE <jb@jblache.org>, 
-Todd Hayton <todd.hayton@gmail.com> and Micha Lenk <micha@debian.org>.
+The 0.9x series of smcroute is (since 2006-) maintained by Julien BLACHE <jb@jblache.org>,
+Todd Hayton <todd.hayton@gmail.com> and Micha Lenk <micha@debian.org>. It is maintained
+at http://alioth.debian.org/projects/smcroute
 
 SMCRoute2 was forked on Oct 9, 2011 by Joachim Nilsson <troglobit@gmail.com>
+

@@ -1,0 +1,20 @@
+* Support for a) disabling conf file, and b) user supplied conf file
+* Support for IPv6 to conf file parser, should be very simple!
+Basically just check if source/group contains ':' and call the
+mroute6 API.
+
+* Support for reloading/restarting server config on SIGHUP
+Optimal behavior would be to handle this without losing any traffic
+over established/active routing rules. This is however not required,
+like in link up/down below...
+
+* Support for graceful shutdown of server on SIGTERM/SIGQUIT
+Maybe not necessary, kernel does all cleanup anyway?
+
+* Support for detecting link up/down on interfaces
+Also requires updating VIF/MIFs and mroutes accordingly.
+
+Optimal, and almost required, behavior would be to handle such
+transitions  without losing any traffic over established/active
+routing rules.
+

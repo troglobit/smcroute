@@ -221,6 +221,11 @@ static inline int IN6_MULTICAST(const struct in6_addr *addr)
 	return (*addr32p & htonl(0xFF000000)) == htonl(0xFF000000);
 }
 
+/* parse-conf.c */
+#define SMCROUTE_SYSTEM_CONF "/etc/smcroute.conf"
+
+int parse_conf_file(const char *file);
+
 /**
  * Local Variables:
  *  version-control: t

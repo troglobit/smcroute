@@ -3,6 +3,7 @@ config.h
 Makefile
 mcsender
 smcroute
+unittest
 *.o
 *.log
 *.status
