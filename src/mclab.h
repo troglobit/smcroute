@@ -220,6 +220,9 @@ static inline int IN6_MULTICAST(const struct in6_addr *addr)
 	uint32_t *addr32p = (uint32_t *) addr->s6_addr;
 	return (*addr32p & htonl(0xFF000000)) == htonl(0xFF000000);
 }
+#ifndef IN6_IS_ADDR_MULTICAST
+#define IN6_IS_ADDR_MULTICAST IN6_MULTICAST
+#endif
 
 /* parse-conf.c */
 #define SMCROUTE_SYSTEM_CONF "/etc/smcroute.conf"

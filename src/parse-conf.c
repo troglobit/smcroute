@@ -63,6 +63,145 @@ static int match(char *keyword, char *token)
 	return !strncmp(keyword, token, len);
 }
 
+static int join_mgroup (int lineno, char *ifname, char *group)
+{
+	int result;
+
+	if (!ifname || !group) {
+		errno = EINVAL;
+		return 1;
+	}
+
+	if (strchr(group, ':')) {
+#ifndef HAVE_IPV6_MULTICAST_HOST
+		smclog(LOG_WARNING, 0, "Line %02: Sadly this build of smcroute does not support IPv6.", lineno);
+		result = 0;
+#else
+		struct in6_addr grp;
+
+		if (inet_pton(AF_INET6, group, &grp) <= 0 || !IN6_IS_ADDR_MULTICAST(&grp)) {
+			smclog(LOG_WARNING, 0, "Line %02d: invalid IPv6 multicast group address: %s", lineno, group);
+			return 1;
+		}
+
+		result = mcgroup6_join(ifname, grp);
+#endif
+	} else {
+		struct in_addr grp;
+
+		if ((inet_pton(AF_INET, group, &grp) <= 0) || !IN_MULTICAST(ntohl(grp.s_addr))) {
+			smclog(LOG_WARNING, 0, "Line %02d: invalid IPv4 multicast group address: %s", lineno, group);
+			return 1;
+		}
+
+		result = mcgroup4_join(ifname, grp);
+	}
+
+	return result;
+}
+
+static int add_mroute (int lineno, char *ifname, char *group, char *source, char *outbound[], int num)
+{
+	int i, total, result;
+
+	if (!ifname || !group || !source || !outbound || !num) {
+		errno = EINVAL;
+		return 1;
+	}
+
+	if (strchr(group, ':')) {
+#ifndef HAVE_IPV6_MULTICAST_HOST
+		smclog(LOG_WARNING, 0, "Line %02: Sadly this build of smcroute does not support IPv6.", lineno);
+		result = 0;
+#else
+		struct mroute6 mroute;
+
+		mroute.inbound = iface_get_mif_by_name(ifname);
+		if (mroute.inbound < 0) {
+			smclog(LOG_WARNING, 0, "Line %02d: Invalid inbound IPv6 interface: %s", lineno, ifname);
+			return 1;
+		}
+		if (inet_pton(AF_INET6, source, &mroute.sender) <= 0) {
+			smclog(LOG_WARNING, 0, "Line %02d: Invalid source IPv6 address: %s", lineno, source);
+			return 1;
+		}
+
+		if (inet_pton(AF_INET6, group, &mroute.group) <= 0 || !IN6_IS_ADDR_MULTICAST(&mroute.group)) {
+			smclog(LOG_WARNING, 0, "Line %02d: Invalid IPv6 multicast group: %s", lineno, group);
+			return 1;
+		}
+
+		total = num;
+		for (i = 0; i < num; i++) {
+			int mif = iface_get_mif_by_name(outbound[i]);
+
+			if (mif < 0) {
+				total--;
+				smclog(LOG_WARNING, 0, "Line %02d: Invalid outbound IPv6 interface: %s", lineno, outbound[i]);
+				continue; /* Try next, if any. */
+			}
+
+			if (mif == mroute.inbound)
+				smclog(LOG_WARNING, 0, "Line %02d: Same outbound IPv6 interface (%s) as inbound (%s)?", lineno, outbound[i], ifname);
+
+			mroute.ttl[mif] = 1;	/* Use a TTL threshold to indicate the list of outbound interfaces. */
+		}
+
+		if (!total) {
+			smclog(LOG_WARNING, 0, "Line %02d: No valid outbound interfaces, skipping mroute rule.", lineno);
+			result = 1;
+		} else {
+			result = mroute6_add(&mroute);
+		}
+#endif
+	} else {
+		int vif;
+		struct mroute4 mroute;
+
+		memset(&mroute, 0, sizeof(mroute));
+		mroute.inbound = iface_get_vif_by_name(ifname);
+		if (mroute.inbound < 0) {
+			smclog(LOG_WARNING, 0, "Line %02d: Invalid inbound IPv4 interface: %s", lineno, ifname);
+			return 1;
+		}
+
+		if (inet_pton(AF_INET, source, &mroute.sender) <= 0) {
+			smclog(LOG_WARNING, 0, "Line %02d: Invalid source IPv4 address: %s", lineno, source);
+			return 1;
+		}
+
+		if ((inet_pton(AF_INET, group, &mroute.group) <= 0) || !IN_MULTICAST(ntohl(mroute.group.s_addr))) {
+			smclog(LOG_WARNING, 0, "Line %02d: Invalid IPv4 multicast group: %s", lineno, group);
+			return 1;
+		}
+
+		total = num;
+		for (i = 0; i < num; i++) {
+			int vif = iface_get_vif_by_name(outbound[i]);
+
+			if (vif < 0) {
+				total--;
+				smclog(LOG_WARNING, 0, "Line %02d: Invalid outbound IPv4 interface: %s", lineno, outbound[i]);
+				continue; /* Try next, if any. */
+			}
+
+			if (vif == mroute.inbound)
+				smclog(LOG_WARNING, 0, "Line %02d: Same outbound IPv4 interface (%s) as inbound (%s)?", lineno, outbound[i], ifname);
+
+			mroute.ttl[vif] = 1;	/* Use a TTL threshold to indicate the list of outbound interfaces. */
+		}
+
+		if (!total) {
+			smclog(LOG_WARNING, 0, "Line %02d: No valid outbound IPv4 interfaces, skipping mroute rule.", lineno);
+			result = 1;
+		} else {
+			result = mroute4_add(&mroute);
+		}
+	}
+
+	return result;
+}
+
 /* Format:
  *    mgroup from IFNAME group MCGROUP
  *    mroute from IFNAME source ADDRESS group MCGROUP to IFNAME [IFNAME ...]
@@ -142,60 +281,10 @@ int parse_conf_file(const char *file)
 			printf("%02d: DUMP: %s\n", lineno, linebuf);
 		}
 #else
-		do {
-			if (op == 1 && ifname && group) {
-				/* XXX: Todo, add support for IPv6 too, see cmdpkt.c */
-				struct in_addr grp;
-
-				if ((inet_pton(AF_INET, group, &grp) <= 0) || !IN_MULTICAST(ntohl(grp.s_addr))) {
-					smclog(LOG_WARNING, 0, "Line %02d: invalid multicast group address: %s", lineno, group);
-					break;
-				}
-				mcgroup4_join(ifname, grp);
-			} else if (op == 2 && ifname && source && group && num) {
-				/* XXX: Todo, add support for IPv6 too, see cmdpkt.c */
-				int vif;
-				struct mroute4 mroute;
-
-				memset(&mroute, 0, sizeof(mroute));
-				mroute.inbound = iface_get_vif_by_name(ifname);
-				if (mroute.inbound < 0) {
-					smclog(LOG_WARNING, 0, "Line %02d: invalid inbound interface: %s", lineno, ifname);
-					break;
-				}
-
-				if (inet_pton(AF_INET, source, &mroute.sender) <= 0) {
-					smclog(LOG_WARNING, 0, "Line %02d: invalid source IP address: %s", lineno, source);
-					break;
-				}
-
-				if ((inet_pton(AF_INET, group, &mroute.group) <= 0) || !IN_MULTICAST(ntohl(mroute.group.s_addr))) {
-					smclog(LOG_WARNING, 0, "Line %02d: invalid multicast group address: %s", lineno, group);
-					break;
-				}
-
-				for (i = 0; i < num; i++) {
-					int vif = iface_get_vif_by_name(dest[i]);
-
-					if (vif < 0) {
-						num--;
-						smclog(LOG_WARNING, 0, "Line %02d: invalid outbound interface: %s", lineno, dest[i]);
-						continue; /* Try next, if any. */
-					}
-
-					if (vif == mroute.inbound)
-						smclog(LOG_WARNING, 0, "Line %02d: Same outbound interface (%s) as inbound (%s)?", lineno, dest[i], ifname);
-
-					mroute.ttl[vif] = 1;	/* Use a TTL threshold to indicate the list of outbound interfaces. */
-				}
-
-				if (!num) {
-					smclog(LOG_WARNING, 0, "Line %02d: No valid outbound interfaces, skipping mroute rule.", lineno);
-				} else {
-					mroute4_add(&mroute);
-				}
-			}
-		} while (0);
+		if (op == 1)
+			join_mgroup (lineno, ifname, group);
+		else if (op == 2)
+			add_mroute (lineno, ifname, group, source, dest, num);
 #endif	/* UNITTEST */
 		
 		lineno++;

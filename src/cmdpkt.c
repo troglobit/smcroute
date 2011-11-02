@@ -222,7 +222,7 @@ const char *cmd_convert_to_mroute6(struct mroute6 *mroute, const struct cmd *pac
 
 	if (!*arg || (inet_pton(AF_INET6, arg, &mroute->group.sin6_addr) <= 0)
 	    || !IN6_MULTICAST(&mroute->group.sin6_addr))
-		return "Invalid multicast group address";
+		return "Invalid multicast group";
 
 	/*
 	 * Scan output interfaces for the 'add' command only, just ignore it
