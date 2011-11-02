@@ -223,10 +223,36 @@ More than 200
 Max. 20
 .El
 .Pp
+.Sh SIGNALS
+.Nm
+responds to the following signals:
+.Pp
+.Bl -tag -width TERM -compact
+.It HUP
+Restarts
+.Nm .
+The configuration file is reread every time this signal is received.
+.It INT
+Terminates execution gracefully.
+.It TERM
+The same as INT.
+.El
+.Pp
+For convenience in sending signals,
+.Nm
+writes its process ID to
+.Pa /var/run/smcroute.pid
+upon startup.
+.Pp
 .Sh FILES
 .Bl -tag -width /proc/net/ip6_mr_cache -compact
 .It Pa /etc/smcroute.conf
-Routes to be added/restored when starting, or restarting the daemon on SIGHUP.
+Routes to be added/restored when starting, or restarting the daemon on
+SIGHUP.
+.It Pa /var/run/smcroute.pid
+Pidfile (re)created by
+.Nm
+daemon when it has started up and is ready to receive commands.
 .It Pa /proc/net/ip_mr_cache 
 Holds active IPv4 multicast routes.
 .It Pa /proc/net/ip_mr_vif 

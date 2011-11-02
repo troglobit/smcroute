@@ -75,6 +75,41 @@ static struct mif {
  * IPv4 
  *******************************************************************/
 
+/* Inits the necessary resources for IPv4 MRouter. */
+int mroute4_init(void)
+{
+	int code;
+	unsigned i;
+	struct iface *iface;
+
+	memset(vif_list, 0, sizeof(vif_list));
+
+	code = mroute4_enable();
+	switch (code) {
+	case 0:
+		break;
+	case EADDRINUSE:
+		smclog(LOG_INIT, EADDRINUSE, "MC-Router IPv4 API already in use");
+		return -1;
+#ifdef EOPNOTSUPP
+	case EOPNOTSUPP:
+#endif
+	case ENOPROTOOPT:
+		smclog(LOG_WARNING, 0, "Kernel does not support IPv4 multicast routing, skipping...");
+		return -1;
+	default:
+		smclog(LOG_INIT, code, "MRT_INIT failed");
+		return -1;
+	}
+
+	/* create VIFs for all IP, non-loop interfaces */
+	for (i = 0; (iface = iface_find_by_index(i)); i++)
+		if (iface->inaddr.s_addr && !(iface->flags & IFF_LOOPBACK))
+			mroute4_add_vif(iface);
+
+	return 0;
+}
+
 /*
 ** Initialises the mrouted API and locks it by this exclusively.
 **     
@@ -251,6 +286,41 @@ static int proc_set_val (char *file, int val)
 		}
 		(void)close(fd);
 	}
+
+	return 0;
+}
+
+/* Inits the necessary resources for IPv6 MRouter. */
+int mroute6_init(void)
+{
+	int code;
+	unsigned i;
+	struct iface *iface;
+
+	memset(mif_list, 0, sizeof(vif_list));
+
+	code = mroute6_enable();
+	switch (code) {
+	case 0:
+		break;
+	case EADDRINUSE:
+		smclog(LOG_INIT, EADDRINUSE, "MC-Router IPv6 API already in use");
+		return -1;
+#ifdef EOPNOTSUPP
+	case EOPNOTSUPP:
+#endif
+	case ENOPROTOOPT:
+		smclog(LOG_WARNING, 0, "Kernel does not support IPv6 multicast routing, skipping...");
+		return -1;
+	default:
+		smclog(LOG_INIT, code, "MRT6_INIT failed");
+		return -1;
+	}
+
+	/* create MIFs for all IP, non-loop interfaces */
+	for (i = 0; (iface = iface_find_by_index(i)); i++)
+		if (iface->inaddr.s_addr && !(iface->flags & IFF_LOOPBACK))
+			mroute6_add_mif(iface);
 
 	return 0;
 }

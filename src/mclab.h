@@ -158,12 +158,14 @@ extern int mroute4_socket;
  */
 extern int mroute6_socket;
 
+int  mroute4_init    (void);
 int  mroute4_enable  (void);
 void mroute4_disable (void);
 int  mroute4_add     (struct mroute4 *mroute);
 int  mroute4_del     (struct mroute4 *mroute);
 void mroute4_add_vif (struct iface *iface);
 
+int  mroute6_init    (void);
 int  mroute6_enable  (void);
 void mroute6_disable (void);
 int  mroute6_add     (struct mroute6 *mroute);
@@ -228,6 +230,9 @@ static inline int IN6_MULTICAST(const struct in6_addr *addr)
 #define SMCROUTE_SYSTEM_CONF "/etc/smcroute.conf"
 
 int parse_conf_file(const char *file);
+
+/* pidfile.c */
+int pidfile(const char *basename);
 
 /**
  * Local Variables:

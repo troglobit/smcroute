@@ -110,10 +110,11 @@ static void mcgroup6_init(void)
 
 static int mcgroup_join_leave_ipv4(int sd, int cmd, const char *ifname, struct in_addr group)
 {
+	int joinleave = cmd == 'j' ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP;
+	char buf[INET_ADDRSTRLEN];
+	const char *command = cmd == 'j' ? "Join" : "Leave";
 	struct ip_mreq mreq;
 	struct iface *iface = iface_find_by_name(ifname);
-	const char *command = cmd == 'j' ? "Join" : "Leave";
-	char buf[INET_ADDRSTRLEN];
 
 	if (!iface) {
 		smclog(LOG_WARNING, 0, "%s multicast group, unknown interface %s", command, ifname);
@@ -125,9 +126,9 @@ static int mcgroup_join_leave_ipv4(int sd, int cmd, const char *ifname, struct i
 
 	mreq.imr_multiaddr.s_addr = group.s_addr;
 	mreq.imr_interface.s_addr = iface->inaddr.s_addr;
-	if (setsockopt(sd, IPPROTO_IP, cmd == 'j' ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP,
-		       (void *)&mreq, sizeof(mreq))) {
-		smclog(LOG_WARNING, errno, "%s MEMBERSHIP failed", cmd == 'j' ? "ADD" : "DROP");
+	if (setsockopt(sd, IPPROTO_IP, joinleave, (void *)&mreq, sizeof(mreq))) {
+		if (EADDRINUSE != errno)
+			smclog(LOG_WARNING, errno, "%s MEMBERSHIP failed", cmd == 'j' ? "ADD" : "DROP");
 		return 1;
 	}
 
@@ -139,10 +140,11 @@ static int mcgroup_join_leave_ipv6(int sd, int cmd, const char *ifname, struct i
 #ifndef HAVE_IPV6_MULTICAST_HOST
 	return 0;
 #else
+	int joinleave = cmd == 'j' ? IPV6_JOIN_GROUP : IPV6_LEAVE_GROUP;
+	char buf[INET6_ADDRSTRLEN];
+	const char *command = cmd == 'j' ? "Join" : "Leave";
 	struct ipv6_mreq mreq;
 	struct iface *iface = iface_find_by_name(ifname);
-	const char *command = cmd == 'j' ? "Join" : "Leave";
-	char buf[INET6_ADDRSTRLEN];
 
 	if (!iface) {
 		smclog(LOG_WARNING, 0, "%s multicast group, unknown interface %s", command, ifname);
@@ -154,9 +156,9 @@ static int mcgroup_join_leave_ipv6(int sd, int cmd, const char *ifname, struct i
 
 	mreq.ipv6mr_multiaddr = group;
 	mreq.ipv6mr_interface = iface->ifindex;
-	if (setsockopt(sd, IPPROTO_IPV6, cmd == 'j' ? IPV6_JOIN_GROUP : IPV6_LEAVE_GROUP,
-		       (void *)&mreq, sizeof(mreq))) {
-		smclog(LOG_WARNING, errno, "%s MEMBERSHIP failed", cmd == 'j' ? "ADD" : "DROP");
+	if (setsockopt(sd, IPPROTO_IPV6, joinleave, (void *)&mreq, sizeof(mreq))) {
+		if (EADDRINUSE != errno)
+			smclog(LOG_WARNING, errno, "%s MEMBERSHIP failed", cmd == 'j' ? "ADD" : "DROP");
 		return 1;
 	}
 

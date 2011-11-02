@@ -45,6 +45,7 @@ void iface_init(void)
 	struct iface *iface;
 	struct ifaddrs *ifaddr, *ifa;
 
+	num_ifaces = 0;
 	memset(iface_list, 0, sizeof(iface_list));
 
 	if (getifaddrs(&ifaddr) == -1) {
@@ -59,6 +60,7 @@ void iface_init(void)
 		/* Skip non-IPv4 and non-IPv6 interfaces */
 		if ((family != AF_INET) && (family != AF_INET6))
 			continue;
+
 		/* Skip interface without internet address */
 		if (ifa->ifa_addr == NULL)
 			continue;

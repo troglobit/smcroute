@@ -33,6 +33,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include <signal.h>
 #include <unistd.h>
 
 #include "mclab.h"
@@ -75,7 +76,41 @@ static const char usage_info[] =
 	"  -j <IFNAME> <MULTICAST-GROUP>\n"
 	"  -l <IFNAME> <MULTICAST-GROUP>\n";
 
+static int sighandled = 0;
+#define	GOT_SIGINT	0x01
+#define	GOT_SIGHUP	0x02
+
 int do_debug_logging = 0;
+
+/*
+ * Signal handler.  Take note of the fact that the signal arrived
+ * so that the main loop can take care of it.
+ */
+static void handler(int sig)
+{
+    switch (sig) {
+    case SIGINT:
+    case SIGTERM:
+	sighandled |= GOT_SIGINT;
+	break;
+
+    case SIGHUP:
+	sighandled |= GOT_SIGHUP;
+	break;
+    }
+}
+
+static void signal_init(void)
+{
+	struct sigaction sa;
+
+	sa.sa_handler = handler;
+	sa.sa_flags = 0;	/* Interrupt system calls */
+	sigemptyset(&sa.sa_mask);
+	sigaction(SIGHUP, &sa, NULL);
+	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGINT, &sa, NULL);
+}
 
 /*
 ** Counts the number of arguments belonging to an option. Option is any argument
@@ -103,6 +138,17 @@ static int num_option_arguments(const char *argv[])
 	return ptr - argv;
 }
 
+/* Parse .conf file and setup routes */
+static void read_conf_file(const char *conf_file)
+{
+	if (access(conf_file, R_OK)) {
+		smclog(LOG_WARNING, errno, "Failed loading %s", conf_file);
+	} else {
+		if (parse_conf_file(conf_file))
+			smclog(LOG_WARNING, errno, "Failed reading %s", conf_file);
+	}
+}
+
 /* Cleans up, i.e. releases allocated resources. Called via atexit() */
 static void clean(void)
 {
@@ -112,70 +158,17 @@ static void clean(void)
 	ipc_exit();
 }
 
-/* Inits the necessary resources for IPv4 MRouter. */
-static int mroute4_init(void)
+static void restart(void)
 {
-	int code;
-	unsigned i;
-	struct iface *iface;
+	smclog(LOG_DEBUG, 0, "Restart handler called");
+	mroute4_disable();
+	mroute6_disable();
+	/* No need to close the IPC, only at cleanup. */
 
-	code = mroute4_enable();
-	switch (code) {
-	case 0:
-		break;
-	case EADDRINUSE:
-		smclog(LOG_INIT, EADDRINUSE, "MC-Router IPv4 API already in use");
-		return -1;
-#ifdef EOPNOTSUPP
-	case EOPNOTSUPP:
-#endif
-	case ENOPROTOOPT:
-		smclog(LOG_WARNING, 0, "Kernel does not support IPv4 multicast routing, skipping...");
-		return -1;
-	default:
-		smclog(LOG_INIT, code, "MRT_INIT failed");
-		return -1;
-	}
-
-	/* create VIFs for all IP, non-loop interfaces */
-	for (i = 0; (iface = iface_find_by_index(i)); i++)
-		if (iface->inaddr.s_addr && !(iface->flags & IFF_LOOPBACK))
-			mroute4_add_vif(iface);
-
-	return 0;
-}
-
-/* Inits the necessary resources for IPv6 MRouter. */
-static int mroute6_init(void)
-{
-	int code;
-	unsigned i;
-	struct iface *iface;
-
-	code = mroute6_enable();
-	switch (code) {
-	case 0:
-		break;
-	case EADDRINUSE:
-		smclog(LOG_INIT, EADDRINUSE, "MC-Router IPv6 API already in use");
-		return -1;
-#ifdef EOPNOTSUPP
-	case EOPNOTSUPP:
-#endif
-	case ENOPROTOOPT:
-		smclog(LOG_WARNING, 0, "Kernel does not support IPv6 multicast routing, skipping...");
-		return -1;
-	default:
-		smclog(LOG_INIT, code, "MRT6_INIT failed");
-		return -1;
-	}
-
-	/* create MIFs for all IP, non-loop interfaces */
-	for (i = 0; (iface = iface_find_by_index(i)); i++)
-		if (iface->inaddr.s_addr && !(iface->flags & IFF_LOOPBACK))
-			mroute6_add_mif(iface);
-
-	return 0;
+	/* Update list of interfaces and create new virtual interface mappings in kernel. */
+	iface_init();
+	mroute4_init();
+	mroute6_init();
 }
 
 static int daemonize(void)
@@ -198,7 +191,7 @@ static int daemonize(void)
 
 static void server_loop(int sd, const char *conf_file)
 {
-	int result;
+	int result, once = 1;
 	uint8 buf[MX_CMDPKT_SZ];
 	fd_set fds;
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
@@ -210,17 +203,28 @@ static void server_loop(int sd, const char *conf_file)
 	struct cmd *packet;
 	struct mroute mroute;
 
-	/* Parse .conf file and setup routes */
-	if (access(conf_file, R_OK)) {
-		smclog(LOG_WARNING, errno, "Configuration file %s", conf_file);
-	} else {
-		smclog(LOG_NOTICE, 0, "Using configuration file %s", conf_file);
-		if (parse_conf_file(conf_file))
-			smclog(LOG_WARNING, errno, "Failed reading file %s", conf_file);
-	}
+	smclog(LOG_NOTICE, 0, "Attempting to load %s", conf_file);
+	read_conf_file (conf_file);
+
+	/* Ready for input, tell clients that by creating the pidfile */
+	if (pidfile(NULL))
+		smclog(LOG_WARNING, errno, "Failed creating pidfile");
 
 	/* Watch the MRouter and the IPC socket to the smcroute client */
 	while (1) {
+		if (sighandled) {
+			if (sighandled & GOT_SIGINT) {
+				sighandled &= ~GOT_SIGINT;
+				break;
+			}
+			if (sighandled & GOT_SIGHUP) {
+				sighandled &= ~GOT_SIGHUP;
+				restart();
+				smclog(LOG_NOTICE, 0, "Got SIGHUP, reloading %s ...", conf_file);
+				read_conf_file (conf_file);
+			}
+		}
+
 		FD_ZERO(&fds);
 		FD_SET(sd, &fds);
 		FD_SET(mroute4_socket, &fds);
@@ -232,8 +236,9 @@ static void server_loop(int sd, const char *conf_file)
 		/* wait for input */
 		result = select(max_fd_num + 1, &fds, NULL, NULL, NULL);
 		if (result <= 0) {
-			/* log and ignore failures */
-			smclog(LOG_WARNING, errno, "select() failure");
+			/* Log all errors, except when signalled, ignore failures. */
+			if (EINTR != errno)
+				smclog(LOG_WARNING, errno, "select() failure");
 			continue;
 		}
 
@@ -388,6 +393,7 @@ static void start_server(int background, const char *conf_file)
 	if (!pid) {
 		smclog(LOG_NOTICE, 0, "Entering smcroute daemon main loop.");
 		atexit(clean);
+		signal_init();
 		server_loop(sd, conf_file);
 	}
 }

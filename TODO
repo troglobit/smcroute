@@ -1,10 +1,4 @@
-* Support for reloading/restarting server config on SIGHUP
-Optimal behavior would be to handle this without losing any traffic
-over established/active routing rules. This is however not required,
-like in link up/down below...
-
-* Support for graceful shutdown of server on SIGTERM/SIGQUIT
-Maybe not necessary, kernel does all cleanup anyway?
+                                                                       -*-org-*-
 
 * Support for detecting link up/down on interfaces
 Also requires updating VIF/MIFs and mroutes accordingly.
