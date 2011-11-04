@@ -1,3 +1,18 @@
+smcroute 0.95 -> 1.98
+ * SMCRoute2 Announced!
+ * Feature: Support for smcroute.conf file for daemon
+   Add support for reading mroutes and mgroups from a configuration file.
+	mgroup from IFNAME group MCGROUP
+	mroute from IFNAME source ADDRESS group MCGROUP to IFNAME [IFNAME ...]
+   Both IPv4 and IPv6 address formats are supported.
+ * Feature: Support for signals, reload conf file on SIGHUP
+ * Refactor: Insecure handling of pointers potentially outside array boundaries.
+ * Bugfix: Invalid use of varargs in call to snprintf(), use vsnprintf() instead.
+ * Feature: Add -n switch to support running smcroute in foreground.
+ * Refactor: Major cleanup, reindent to Linux C-style, for improved maintainability.
+ * Bugfix: Invalid MRouterFD6 fd crashes smcroute, always check for valid fd.
+ * Bugfix: Several minor bugfixes; type mismatches and unused return values.
+
 smcroute 0.94.1 -> 0.95
  * Feature request #313278: Added support for FreeBSD
    SMCRoute now builds and runs on FreeBSD kernels.  This was successfully
@@ -24,36 +39,36 @@ smcroute 0.93 -> 0.94
 	remove commands.
  * Added support for joins and leaves ('j'/'l') to IPv6 multicast groups.
  * Added support for sending to IPv6 multicast addresses to mcsender tool.
- * Added command line option to mcsender tool to allow user to specify the 
+ * Added command line option to mcsender tool to allow user to specify the
 	outgoing interface for datagrams sent.
  * Added autoconf support for smcroute build.
-	
+
 smcroute 0.92 -> 0.93
  * fixed the "smcroute looses output interfaces" bug (Carsten Schill, 0.93
     unreleased).
 
 smcroute 0.90 -> 0.92
   * fixed the 'mroute: pending queue full, dropping entries' error
-    Smcroute 0.90 didn't care about the IGMP messages delivered to the 
-    UDP socket that establish the MC-Router API. After some time the 
+    Smcroute 0.90 didn't care about the IGMP messages delivered to the
+    UDP socket that establish the MC-Router API. After some time the
     queue for the sockets filled up and the 'pending queue full' message
     was send from the kernel. To my knowledge this didn't affect smcroute
     or the operating system.
-    - version 0.92 reads the ICMP messages now from the UDP socket and 
+    - version 0.92 reads the ICMP messages now from the UDP socket and
       logs them to syslog with daemon/debug
     - smcroute does no further processing of this messages
-  * increased the number of supported interfaces 
-    The 16 interface limit of version 0.90 (interfaces as listed with 
-    ifconfig) was to small, especially when alias interfaces where 
+  * increased the number of supported interfaces
+    The 16 interface limit of version 0.90 (interfaces as listed with
+    ifconfig) was to small, especially when alias interfaces where
     defined.
-    - up to 40 interfaces are no recognized by smcroute  
-    - this does not change the number of 'virtual interfaces' supported 
+    - up to 40 interfaces are no recognized by smcroute
+    - this does not change the number of 'virtual interfaces' supported
       by the kernel (32)
-    - not all interfaces recognized by smcroute (40) results in a 
+    - not all interfaces recognized by smcroute (40) results in a
       'virtual interface' of the kernel (32)
 
 smcroute 0.80 -> 0.90
-  * added MC group join (-j) and leave (-l) functionality 
+  * added MC group join (-j) and leave (-l) functionality
     - the options enable/disable the sending of IGMP join messages for
       a multicast group on a specific interface
   * removed the '<OutputIntf> [<OutputIntf>] ...' for the '-r' option
