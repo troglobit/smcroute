@@ -1,0 +1,16 @@
+##  smcroute - static multicast routing control 
+
+DOCS          = smcroute.8 mcsender.8
+MANDIR        = $(DESTDIR)$(mandir)/man8
+
+install: 
+	@install -d $(MANDIR)
+	@for file in $(DOCS); do \
+		install -m 0644 $$file $(MANDIR)/$$file; \
+	done
+
+uninstall:
+	-@for file in $(DOCS); do \
+		$(RM) $(MANDIR)/$$file; \
+	done
+

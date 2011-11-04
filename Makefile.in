@@ -1,0 +1,50 @@
+##  smcroute - static multicast routing control 
+.EXPORT_ALL_VARIABLES:
+
+PACKAGE_VERSION = @PACKAGE_VERSION@
+PACKAGE_TARNAME = @PACKAGE_TARNAME@
+CONFIG          = $(PACKAGE_TARNAME).conf
+PKG             = $(PACKAGE_TARNAME)-$(PACKAGE_VERSION)
+ARCHIVE         = $(PKG).tar.bz2
+DISTFILES       = $(CONFIG) README AUTHORS TODO ChangeLog
+DOCDIR          = $(DESTDIR)$(docdir)
+
+RM             ?= rm -f
+CC             ?= @CC@
+CFLAGS         += @CFLAGS@
+
+prefix         ?= @prefix@
+exec_prefix    ?= @exec_prefix@
+datarootdir    ?= @datarootdir@
+docdir         ?= @docdir@
+mandir         ?= @mandir@
+sbindir        ?= @sbindir@
+
+all:
+	@make -C src $@
+
+install: 
+	@make -C doc $@
+	@make -C src $@
+	@install -d $(DOCDIR)
+	@for file in $(DISTFILES); do \
+		install -b -m 0644 $$file $(DOCDIR)/$$file; \
+	done
+
+uninstall: 
+	@make -C doc $@
+	@make -C src $@
+	-@$(RM) -r $(DESTDIR)$(docdir)
+
+clean:
+	@make -C src $@
+
+distclean:
+	@make -C src $@
+	-@$(RM) -rf config.status config.log doc/Makefile Makefile autom4te.cache
+
+dist: distclean
+	@echo "Building bzip2 tarball of $(PKG) in parent dir..."
+	git archive --format=tar --prefix=$(PKG)/ $(PACKAGE_VERSION) | bzip2 >../$(ARCHIVE)
+	@(cd ..; md5sum $(ARCHIVE) | tee $(ARCHIVE).md5)
+
