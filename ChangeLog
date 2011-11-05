@@ -1,4 +1,8 @@
-smcroute 0.95 -> 1.98
+smcroute 1.98.0 -> 1.98.1
+ * Bugfix: Client failed to send commands to daemon.
+ * Bugfix: Several FTBFS fixed for GCC 4.6.x and -W -Wall
+
+smcroute 0.95 -> 1.98.0
  * SMCRoute2 Announced!
  * Feature: Support for smcroute.conf file for daemon
    Add support for reading mroutes and mgroups from a configuration file.
