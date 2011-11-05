@@ -1,3 +1,12 @@
+smcroute 1.98.1 -> 1.98.2
+ * Cleanup IPv6 #ifdefs and replace IN6_MULTICAST() with IN6_IS_ADDR_MULTICAST()
+   This commit cleans up a lot of the IPv6 related #ifdefs, some minor
+   function name refactoring and squash of some _init and _enable funcs
+   into one for clarity and clearer error messages to the user.
+ * Check for existence of asprintf() to pidfile() and add -D_GNU_SOURCE to CPPFLAGS
+   using AC_GNU_SOURCE in configure.ac
+ * Fixes FTBFS when host lacks IPv6 support.
+
 smcroute 1.98.0 -> 1.98.1
  * Bugfix: Client failed to send commands to daemon.
  * Bugfix: Several FTBFS fixed for GCC 4.6.x and -W -Wall
