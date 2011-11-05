@@ -167,7 +167,7 @@ void mroute4_add_vif(struct iface *iface)
 {
 	struct vifctl VifCtl;
 	int vif = -1;
-	int i;
+	size_t i;
 
 	/* search free vif */
 	for (i = 0; i < ARRAY_ELEMENTS(vif_list); i++) {
@@ -272,7 +272,7 @@ int mroute4_del(struct mroute4 *ptr)
  *******************************************************************/
 #define IPV6_ALL_MC_FORWARD "/proc/sys/net/ipv6/conf/all/mc_forwarding"
 
-static int proc_set_val (char *file, int val)
+static int proc_set_val(char *file, int val)
 {
 	int fd;
 
@@ -280,7 +280,7 @@ static int proc_set_val (char *file, int val)
 	if (fd < 0) {
 		return 1;
 	} else {
-		if (-1 == write(fd, "1", 1)) {
+		if (-1 == write(fd, "1", val)) {
 			(void)close(fd);
 			return 1;
 		}
@@ -358,7 +358,7 @@ int mroute6_enable(void)
 
 	/* On Linux pre 2.6.29 kernels net.ipv6.conf.all.mc_forwarding
 	 * is not set on MRT6_INIT so we have to do this manually */
-	if (proc_set_val (IPV6_ALL_MC_FORWARD, 1)) {
+	if (proc_set_val(IPV6_ALL_MC_FORWARD, 1)) {
 		if (errno != EACCES)
 			smclog(LOG_ERR, errno, "Failed enabling IPv6 mc_forwarding");
 	}
@@ -397,7 +397,7 @@ void mroute6_add_mif(struct iface *iface)
 #else
 	struct mif6ctl mc;
 	int mif = -1;
-	int i;
+	size_t i;
 
 	/* find a free mif */
 	for (i = 0; i < ARRAY_ELEMENTS(mif_list); i++) {
@@ -447,7 +447,8 @@ int mroute6_add(struct mroute6 *ptr)
 #ifndef HAVE_IPV6_MULTICAST_ROUTING
 	return 0;
 #else
-	int i, result = 0;
+	int result = 0;
+	size_t i;
 	char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
 	struct mf6cctl mc;
 

@@ -31,7 +31,7 @@
 #include <ifaddrs.h>
 #include "mclab.h"
 
-static int num_ifaces = 0;
+static unsigned int num_ifaces = 0;
 static struct iface iface_list[MAX_IF];
 
 /*
@@ -88,7 +88,7 @@ void iface_init(void)
 */
 struct iface *iface_find_by_name(const char *ifname)
 {
-	int i;
+	unsigned int i;
 	struct iface *iface;
 	struct iface *candidate = NULL;
 
@@ -111,9 +111,9 @@ struct iface *iface_find_by_name(const char *ifname)
 **          - NULL if no interface 'ifindex' exists
 **          
 */
-struct iface *iface_find_by_index(unsigned ifindex)
+struct iface *iface_find_by_index(unsigned int ifindex)
 {
-	if (ifindex < 0 || ifindex >= num_ifaces)
+	if (ifindex >= num_ifaces)
 		return NULL;
 
 	return &iface_list[ifindex];

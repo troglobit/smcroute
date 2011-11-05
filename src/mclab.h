@@ -107,7 +107,7 @@ extern int do_debug_logging;
 
 void          iface_init            (void);
 struct iface *iface_find_by_name    (const char *ifname);
-struct iface *iface_find_by_index   (unsigned ifindex);
+struct iface *iface_find_by_index   (unsigned int ifindex);
 int           iface_get_vif         (struct iface *iface);
 int           iface_get_mif         (struct iface *iface);
 int           iface_get_vif_by_name (const char *ifname);

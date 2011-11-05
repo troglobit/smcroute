@@ -121,13 +121,13 @@ struct cmd *ipc_server_read(uint8 buf[], int len)
 {
 	while (1) {
 		size_t size;
-		socklen_t len = 0;
+		socklen_t socklen = 0;
 
 		/* wait for connections */
 		if (client_sd < 0) {
 			smclog(LOG_DEBUG, 0, "%s: waiting for connection...", __FUNCTION__);
 
-			if ((client_sd = accept(server_sd, NULL, &len)) < 0)
+			if ((client_sd = accept(server_sd, NULL, &socklen)) < 0)
 				smclog(LOG_ERR, errno, "%s: accept() failed", __FUNCTION__);
 
 			smclog(LOG_DEBUG, 0, "%s: accepted connection", __FUNCTION__);

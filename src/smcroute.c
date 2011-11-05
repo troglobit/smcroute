@@ -191,7 +191,7 @@ static int daemonize(void)
 
 static void server_loop(int sd, const char *conf_file)
 {
-	int result, once = 1;
+	int result;
 	uint8 buf[MX_CMDPKT_SZ];
 	fd_set fds;
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
@@ -419,7 +419,7 @@ int main(int argc, const char *argv[])
 	int background = 1;
 	uint8 buf[MX_CMDPKT_SZ];
 	const char *arg, *conf_file = SMCROUTE_SYSTEM_CONF;
-	int cmdnum = 0;
+	unsigned int cmdnum = 0;
 	struct cmd *cmdv[16];
 
 	/* init syslog */
@@ -517,8 +517,8 @@ int main(int argc, const char *argv[])
 
 	/* send commands */
 	if (cmdnum) {
-		int i, code;
-		int retry_count = 30;
+		unsigned int i;
+		int code, retry_count = 30;
 
 		openlog(argv[0], LOG_PID, LOG_USER);
 

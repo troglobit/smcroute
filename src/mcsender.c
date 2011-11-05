@@ -55,7 +55,7 @@ int main(int ArgCn, char *ArgVc[])
 	void (*SetTtl) (int, unsigned) = NULL;
 	void (*SetOif) (int, char *) = NULL;
 	struct sockaddr_storage TarAdr;
-	socklen_t TarAdrLen;
+	socklen_t TarAdrLen = 0;
 
 	if (ArgCn < 2) {
 		usage();
@@ -74,8 +74,7 @@ int main(int ArgCn, char *ArgVc[])
 				break;
 
 			case 't':
-				if (sscanf(Pt + 1, " %u", &TtlVal) != 1
-				    || TtlVal < 1) {
+				if (sscanf(Pt + 1, " %u", &TtlVal) != 1 || TtlVal < 1) {
 					usage();
 					exit(1);
 				}
@@ -111,8 +110,10 @@ int main(int ArgCn, char *ArgVc[])
 		}
 	}
 
+	if (TarAdrLen)
 	{
 		int UdpSock = socket(TarAdr.ss_family, SOCK_DGRAM, IPPROTO_UDP);
+
 		if (UdpSock < 0)
 			smclog(LOG_ERR, errno, "UDP socket open");
 
@@ -122,16 +123,14 @@ int main(int ArgCn, char *ArgVc[])
 			(*SetOif) (UdpSock, OifVal);
 
 		while (1) {
-			if (sendto(UdpSock, McMsg, sizeof(McMsg), 0,
-				   SA(&TarAdr), TarAdrLen) != sizeof(McMsg))
-				smclog(LOG_WARNING, errno,
-				       "send to UDP socket");
+			if (sendto(UdpSock, McMsg, sizeof(McMsg), 0, SA(&TarAdr), TarAdrLen) != sizeof(McMsg))
+				smclog(LOG_WARNING, errno, "send to UDP socket");
 
 			sleep(1);
 		}
 	}
 
-	exit(0);
+	return 0;
 }
 
 static void usage(void)

@@ -155,7 +155,6 @@ static int add_mroute (int lineno, char *ifname, char *group, char *source, char
 		}
 #endif
 	} else {
-		int vif;
 		struct mroute4 mroute;
 
 		memset(&mroute, 0, sizeof(mroute));
@@ -225,15 +224,15 @@ int parse_conf_file(const char *file)
 		return 1;
 	}
 
-	while (line = fgets(linebuf, MAX_LINE_LEN, fp)) {
+	while ((line = fgets(linebuf, MAX_LINE_LEN, fp))) {
 		char *token;
 		char *ifname = NULL;
 		char *source = NULL;
 		char *group  = NULL;
-		int   i, op = 0, num = 0;
+		int   op = 0, num = 0;
 		char *dest[32];
 
-		while (token = pop_token(&line)) {
+		while ((token = pop_token(&line))) {
 			/* Strip comments. */
 			if (match ("#", token)) {
 #ifdef UNITTEST
@@ -264,7 +263,7 @@ int parse_conf_file(const char *file)
 			} else if (match("group", token)) {
 				group = pop_token(&line);
 			} else if (match("to", token)) {
-				while (dest[num] = pop_token(&line))
+				while ((dest[num] = pop_token(&line)))
 					num++;
 			}
 		}
@@ -273,6 +272,8 @@ int parse_conf_file(const char *file)
 		if (op == 1) {
 			printf("%02d: Found: %s %s\n", lineno, ifname, group);
 		} else if (op == 2) {
+			int i;
+
 			printf("%02d: Found: %s %s %s ", lineno, ifname, source, group);
 			for (i = 0; i < num; i++)
 				printf("%s ", dest[i]);
@@ -282,9 +283,9 @@ int parse_conf_file(const char *file)
 		}
 #else
 		if (op == 1)
-			join_mgroup (lineno, ifname, group);
+			join_mgroup(lineno, ifname, group);
 		else if (op == 2)
-			add_mroute (lineno, ifname, group, source, dest, num);
+			add_mroute(lineno, ifname, group, source, dest, num);
 #endif	/* UNITTEST */
 		
 		lineno++;
