@@ -30,6 +30,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "config.h"
 #include <sys/param.h>
 #include <errno.h>
 #include <paths.h>

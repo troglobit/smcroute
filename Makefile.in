@@ -11,7 +11,7 @@ DOCDIR          = $(DESTDIR)$(docdir)
 
 RM             ?= rm -f
 CC             ?= @CC@
-CFLAGS         += -D_GNU_SOURCE @CFLAGS@
+CFLAGS         += @CFLAGS@
 
 prefix         ?= @prefix@
 exec_prefix    ?= @exec_prefix@
