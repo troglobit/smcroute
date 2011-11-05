@@ -158,19 +158,15 @@ extern int mroute4_socket;
  */
 extern int mroute6_socket;
 
-int  mroute4_init    (void);
 int  mroute4_enable  (void);
 void mroute4_disable (void);
 int  mroute4_add     (struct mroute4 *mroute);
 int  mroute4_del     (struct mroute4 *mroute);
-void mroute4_add_vif (struct iface *iface);
 
-int  mroute6_init    (void);
 int  mroute6_enable  (void);
 void mroute6_disable (void);
 int  mroute6_add     (struct mroute6 *mroute);
 int  mroute6_del     (struct mroute6 *mroute);
-void mroute6_add_mif (struct iface *iface);
 
 /* ipc.c */
 int         ipc_server_init (void);
@@ -217,13 +213,8 @@ void smclog(int severity, int code, const char *fmt, ...);
 /* udpsock.c */
 int udp_socket_open(uint32 inaddr, uint16 port);
 
-static inline int IN6_MULTICAST(const struct in6_addr *addr)
-{
-	uint32_t *addr32p = (uint32_t *) addr->s6_addr;
-	return (*addr32p & htonl(0xFF000000)) == htonl(0xFF000000);
-}
 #ifndef IN6_IS_ADDR_MULTICAST
-#define IN6_IS_ADDR_MULTICAST IN6_MULTICAST
+#define IN6_IS_ADDR_MULTICAST(a) (((__const uint8_t *) (a))[0] == 0xff)
 #endif
 
 /* parse-conf.c */

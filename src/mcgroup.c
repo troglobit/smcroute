@@ -28,83 +28,11 @@
 #include "mclab.h"
 
 static int mcgroup4_socket = -1;
-static int mcgroup6_socket = -1;
-
-static void mcgroup4_init(void);
-static void mcgroup6_init(void);
-
-static int mcgroup_join_leave_ipv4(int, int, const char *, struct in_addr);
-static int mcgroup_join_leave_ipv6(int, int, const char *, struct in6_addr);
-
-/*
-** Joins the MC group with the address 'group' on the interface 'ifname'. 
-** The join is bound to the UDP socket 'sd', so if this socket is 
-** closed the membership is dropped.
-**          
-** returns: - 0 if the function succeeds
-**          - 1 if parameters are wrong or the join fails
-*/
-int mcgroup4_join(const char *ifname, struct in_addr group)
-{
-	mcgroup4_init();
-
-	return mcgroup_join_leave_ipv4(mcgroup4_socket, 'j', ifname, group);
-}
-
-/*
-** Leaves the MC group with the address 'group' on the interface 'ifname'. 
-**          
-** returns: - 0 if the function succeeds
-**          - 1 if parameters are wrong or the join fails
-*/
-int mcgroup4_leave(const char *ifname, struct in_addr group)
-{
-	mcgroup4_init();
-
-	return mcgroup_join_leave_ipv4(mcgroup4_socket, 'l', ifname, group);
-}
-
-/*
-** Joins the MC group with the address 'group' on the interface 'ifname'. 
-** The join is bound to the UDP socket 'sd', so if this socket is 
-** closed the membership is dropped.
-**          
-** returns: - 0 if the function succeeds
-**          - 1 if parameters are wrong or the join fails
-*/
-int mcgroup6_join(const char *ifname, struct in6_addr group)
-{
-	mcgroup6_init();
-
-	return mcgroup_join_leave_ipv6(mcgroup6_socket, 'j', ifname, group);
-}
-
-/*
-** Leaves the MC group with the address 'group' on the interface 'ifname'. 
-**          
-** returns: - 0 if the function succeeds
-**          - 1 if parameters are wrong or the join fails
-*/
-int mcgroup6_leave(const char *ifname, struct in6_addr group)
-{
-	mcgroup6_init();
-
-	return mcgroup_join_leave_ipv6(mcgroup6_socket, 'l', ifname, group);
-}
 
 static void mcgroup4_init(void)
 {
 	if (mcgroup4_socket < 0) {
 		mcgroup4_socket = udp_socket_open(INADDR_ANY, 0);
-	}
-}
-
-static void mcgroup6_init(void)
-{
-	if (mcgroup6_socket < 0) {
-		mcgroup6_socket = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
-		if (mcgroup6_socket < 0)
-			smclog(LOG_WARNING, errno, "socket failed");
 	}
 }
 
@@ -135,11 +63,48 @@ static int mcgroup_join_leave_ipv4(int sd, int cmd, const char *ifname, struct i
 	return 0;
 }
 
+/*
+** Joins the MC group with the address 'group' on the interface 'ifname'. 
+** The join is bound to the UDP socket 'sd', so if this socket is 
+** closed the membership is dropped.
+**          
+** returns: - 0 if the function succeeds
+**          - 1 if parameters are wrong or the join fails
+*/
+int mcgroup4_join(const char *ifname, struct in_addr group)
+{
+	mcgroup4_init();
+
+	return mcgroup_join_leave_ipv4(mcgroup4_socket, 'j', ifname, group);
+}
+
+/*
+** Leaves the MC group with the address 'group' on the interface 'ifname'. 
+**          
+** returns: - 0 if the function succeeds
+**          - 1 if parameters are wrong or the join fails
+*/
+int mcgroup4_leave(const char *ifname, struct in_addr group)
+{
+	mcgroup4_init();
+
+	return mcgroup_join_leave_ipv4(mcgroup4_socket, 'l', ifname, group);
+}
+
+#ifdef HAVE_IPV6_MULTICAST_HOST
+static int mcgroup6_socket = -1;
+
+static void mcgroup6_init(void)
+{
+	if (mcgroup6_socket < 0) {
+		mcgroup6_socket = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+		if (mcgroup6_socket < 0)
+			smclog(LOG_WARNING, errno, "socket failed");
+	}
+}
+
 static int mcgroup_join_leave_ipv6(int sd, int cmd, const char *ifname, struct in6_addr group)
 {
-#ifndef HAVE_IPV6_MULTICAST_HOST
-	return 0;
-#else
 	int joinleave = cmd == 'j' ? IPV6_JOIN_GROUP : IPV6_LEAVE_GROUP;
 	char buf[INET6_ADDRSTRLEN];
 	const char *command = cmd == 'j' ? "Join" : "Leave";
@@ -163,8 +128,36 @@ static int mcgroup_join_leave_ipv6(int sd, int cmd, const char *ifname, struct i
 	}
 
 	return 0;
-#endif				/* HAVE_IPV6_MULTICAST_HOST */
 }
+
+/*
+** Joins the MC group with the address 'group' on the interface 'ifname'.
+** The join is bound to the UDP socket 'sd', so if this socket is
+** closed the membership is dropped.
+**
+** returns: - 0 if the function succeeds
+**          - 1 if parameters are wrong or the join fails
+*/
+int mcgroup6_join(const char *ifname, struct in6_addr group)
+{
+	mcgroup6_init();
+
+	return mcgroup_join_leave_ipv6(mcgroup6_socket, 'j', ifname, group);
+}
+
+/*
+** Leaves the MC group with the address 'group' on the interface 'ifname'.
+**
+** returns: - 0 if the function succeeds
+**          - 1 if parameters are wrong or the join fails
+*/
+int mcgroup6_leave(const char *ifname, struct in6_addr group)
+{
+	mcgroup6_init();
+
+	return mcgroup_join_leave_ipv6(mcgroup6_socket, 'l', ifname, group);
+}
+#endif				/* HAVE_IPV6_MULTICAST_HOST */
 
 /**
  * Local Variables:

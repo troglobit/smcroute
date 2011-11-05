@@ -64,43 +64,63 @@ static struct vif {
 	struct iface *iface;
 } vif_list[MAXVIFS];
 
+static void mroute4_add_vif(struct iface *iface);
+
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 /* IPv6 internal virtual interfaces (VIF) descriptor vector */
 static struct mif {
 	struct iface *iface;
 } mif_list[MAXMIFS];
+
+static void mroute6_add_mif(struct iface *iface);
 #endif
 
-/********************************************************************
- * IPv4 
- *******************************************************************/
-
-/* Inits the necessary resources for IPv4 MRouter. */
-int mroute4_init(void)
+/*
+** Initialise the mrouted API and locks the multicast routing
+** socket to this program (only!).
+**     
+** returns: - 0 if the functions succeeds     
+**          - the errno value for non-fatal failure condition
+*/
+int mroute4_enable(void)
 {
-	int code;
-	unsigned i;
+	int arg = 1;
+	unsigned int i;
 	struct iface *iface;
 
-	memset(vif_list, 0, sizeof(vif_list));
+	mroute4_socket = socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
+	if (mroute4_socket < 0) {
+		if (ENOPROTOOPT == errno)
+			smclog(LOG_WARNING, 0, "Kernel does not support IPv4 multicast routing, skipping...");
 
-	code = mroute4_enable();
-	switch (code) {
-	case 0:
-		break;
-	case EADDRINUSE:
-		smclog(LOG_INIT, EADDRINUSE, "MC-Router IPv4 API already in use");
-		return -1;
-#ifdef EOPNOTSUPP
-	case EOPNOTSUPP:
-#endif
-	case ENOPROTOOPT:
-		smclog(LOG_WARNING, 0, "Kernel does not support IPv4 multicast routing, skipping...");
-		return -1;
-	default:
-		smclog(LOG_INIT, code, "MRT_INIT failed");
 		return -1;
 	}
+
+	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_INIT, (void *)&arg, sizeof(arg))) {
+		switch (errno) {
+		case EADDRINUSE:
+			smclog(LOG_INIT, errno, "IPv4 multicast routing API already in use");
+			break;
+
+#ifdef EOPNOTSUPP
+		case EOPNOTSUPP:
+			smclog(LOG_INIT, errno, "Unknown socket option MRT_INIT");
+			break;
+#endif
+
+		default:
+			smclog(LOG_INIT, errno, "Failed initializing IPv4 multicast routing API");
+			break;
+		}
+
+		close(mroute4_socket);
+		mroute4_socket = -1;
+
+		return -1;
+	}
+
+	/* Initialize virtual interface table */
+	memset(&vif_list, 0, sizeof(vif_list));
 
 	/* create VIFs for all IP, non-loop interfaces */
 	for (i = 0; (iface = iface_find_by_index(i)); i++)
@@ -111,40 +131,7 @@ int mroute4_init(void)
 }
 
 /*
-** Initialises the mrouted API and locks it by this exclusively.
-**     
-** returns: - 0 if the functions succeeds     
-**          - the errno value for non-fatal failure condition
-*/
-int mroute4_enable(void)
-{
-	int err, arg = 1;
-
-	mroute4_socket = socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
-	if (mroute4_socket < 0) {
-		err = errno;
-		smclog(LOG_INIT, errno, "IGMP socket open");
-
-		return err;
-	}
-
-	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_INIT, (void *)&arg, sizeof(arg))) {
-		err = errno;
-		close(mroute4_socket);
-		mroute4_socket = -1;
-
-		return err;
-	}
-
-	/* Initialize virtual interface table */
-	memset(&vif_list, 0, sizeof(vif_list));
-
-	return 0;
-}
-
-/*
-** Diables the mrouted API and relases by this the lock.
-**          
+** Diable the mrouted API and relase the kernel lock.
 */
 void mroute4_disable(void)
 {
@@ -161,9 +148,8 @@ void mroute4_disable(void)
 
 /*
 ** Adds the interface '*iface' as virtual interface to the mrouted API
-** 
 */
-void mroute4_add_vif(struct iface *iface)
+static void mroute4_add_vif(struct iface *iface)
 {
 	struct vifctl VifCtl;
 	int vif = -1;
@@ -267,9 +253,8 @@ int mroute4_del(struct mroute4 *ptr)
 	return result;
 }
 
-/********************************************************************
- * IPv6 
- *******************************************************************/
+
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
 #define IPV6_ALL_MC_FORWARD "/proc/sys/net/ipv6/conf/all/mc_forwarding"
 
 static int proc_set_val(char *file, int val)
@@ -289,41 +274,7 @@ static int proc_set_val(char *file, int val)
 
 	return 0;
 }
-
-/* Inits the necessary resources for IPv6 MRouter. */
-int mroute6_init(void)
-{
-	int code;
-	unsigned i;
-	struct iface *iface;
-
-	memset(mif_list, 0, sizeof(vif_list));
-
-	code = mroute6_enable();
-	switch (code) {
-	case 0:
-		break;
-	case EADDRINUSE:
-		smclog(LOG_INIT, EADDRINUSE, "MC-Router IPv6 API already in use");
-		return -1;
-#ifdef EOPNOTSUPP
-	case EOPNOTSUPP:
-#endif
-	case ENOPROTOOPT:
-		smclog(LOG_WARNING, 0, "Kernel does not support IPv6 multicast routing, skipping...");
-		return -1;
-	default:
-		smclog(LOG_INIT, code, "MRT6_INIT failed");
-		return -1;
-	}
-
-	/* create MIFs for all IP, non-loop interfaces */
-	for (i = 0; (iface = iface_find_by_index(i)); i++)
-		if (iface->inaddr.s_addr && !(iface->flags & IFF_LOOPBACK))
-			mroute6_add_mif(iface);
-
-	return 0;
-}
+#endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
 /*
 ** Initialises the mrouted API and locks it by this exclusively.
@@ -334,23 +285,39 @@ int mroute6_init(void)
 int mroute6_enable(void)
 {
 #ifndef HAVE_IPV6_MULTICAST_ROUTING
-	return 0;
+	return -1;
 #else
-	int err, arg = 1;
+	int arg = 1;
+	unsigned int i;
+	struct iface *iface;
 
 	if ((mroute6_socket = socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6)) < 0) {
-		err = errno;
-		smclog(LOG_INIT, errno, "ICMPv6 socket open");
+		if (ENOPROTOOPT == errno)
+			smclog(LOG_WARNING, 0, "Kernel does not support IPv6 multicast routing, skipping...");
 
-		return err;
+		return -1;
 	}
-
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_INIT, (void *)&arg, sizeof(arg))) {
-		err = errno;
+		switch (errno) {
+		case EADDRINUSE:
+			smclog(LOG_INIT, errno, "IPv6 multicast routing API already in use");
+			break;
+
+#ifdef EOPNOTSUPP
+		case EOPNOTSUPP:
+			smclog(LOG_INIT, errno, "Unknown socket option MRT6_INIT");
+			break;
+#endif
+
+		default:
+			smclog(LOG_INIT, errno, "Failed initializing IPv6 multicast routing API");
+			break;
+		}
+
 		close(mroute6_socket);
 		mroute6_socket = -1;
 
-		return err;
+		return -1;
 	}
 
 	/* Initialize virtual interface table */
@@ -363,8 +330,13 @@ int mroute6_enable(void)
 			smclog(LOG_ERR, errno, "Failed enabling IPv6 mc_forwarding");
 	}
 
+	/* create MIFs for all IP, non-loop interfaces */
+	for (i = 0; (iface = iface_find_by_index(i)); i++)
+		if (iface->inaddr.s_addr && !(iface->flags & IFF_LOOPBACK))
+			mroute6_add_mif(iface);
+
 	return 0;
-#endif				/* HAVE_IPV6_MULTICAST_ROUTING */
+#endif /* HAVE_IPV6_MULTICAST_ROUTING */
 }
 
 /*
@@ -373,9 +345,7 @@ int mroute6_enable(void)
 */
 void mroute6_disable(void)
 {
-#ifndef HAVE_IPV6_MULTICAST_ROUTING
-	return;
-#else
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
 	if (mroute6_socket < 0)
 		return;
 
@@ -384,17 +354,15 @@ void mroute6_disable(void)
 
 	close(mroute6_socket);
 	mroute6_socket = -1;
-#endif				/* HAVE_IPV6_MULTICAST_ROUTING */
+#endif /* HAVE_IPV6_MULTICAST_ROUTING */
 }
 
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
 /*
 ** Adds the interface '*iface' as virtual interface to the mrouted API
 */
-void mroute6_add_mif(struct iface *iface)
+static void mroute6_add_mif(struct iface *iface)
 {
-#ifndef HAVE_IPV6_MULTICAST_ROUTING
-	return;
-#else
 	struct mif6ctl mc;
 	int mif = -1;
 	size_t i;
@@ -433,7 +401,6 @@ void mroute6_add_mif(struct iface *iface)
 		iface->mif = mif;
 		mif_list[mif].iface = iface;
 	}
-#endif /* HAVE_IPV6_MULTICAST_ROUTING */
 }
 
 /*
@@ -444,9 +411,6 @@ void mroute6_add_mif(struct iface *iface)
 */
 int mroute6_add(struct mroute6 *ptr)
 {
-#ifndef HAVE_IPV6_MULTICAST_ROUTING
-	return 0;
-#else
 	int result = 0;
 	size_t i;
 	char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
@@ -475,7 +439,6 @@ int mroute6_add(struct mroute6 *ptr)
 	}
 
 	return result;
-#endif				/* HAVE_IPV6_MULTICAST_ROUTING */
 }
 
 /*
@@ -486,9 +449,6 @@ int mroute6_add(struct mroute6 *ptr)
 */
 int mroute6_del(struct mroute6 *ptr)
 {
-#ifndef HAVE_IPV6_MULTICAST_ROUTING
-	return 0;
-#else
 	int result = 0;
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	struct mf6cctl mc;
@@ -509,8 +469,8 @@ int mroute6_del(struct mroute6 *ptr)
 	}
 
 	return result;
-#endif				/* HAVE_IPV6_MULTICAST_ROUTING */
 }
+#endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
 /**
  * Local Variables:

@@ -167,8 +167,8 @@ static void restart(void)
 
 	/* Update list of interfaces and create new virtual interface mappings in kernel. */
 	iface_init();
-	mroute4_init();
-	mroute6_init();
+	mroute4_enable();
+	mroute6_enable();
 }
 
 static int daemonize(void)
@@ -286,11 +286,15 @@ static void server_loop(int sd, const char *conf_file)
 					break;
 				}
 			} else {
+#ifndef HAVE_IPV6_MULTICAST_ROUTING
+				smclog(LOG_WARNING, 0, "Not built with IPv6 routing support.");
+#else
 				if ((packet->cmd == 'a' && mroute6_add(&mroute.u.mroute6))
 				    || (packet->cmd == 'r' && mroute6_del(&mroute.u.mroute6))) {
 					ipc_send(log_last_message, strlen(log_last_message) + 1);
 					break;
 				}
+#endif				/* HAVE_IPV6_MULTICAST_ROUTING */
 			}
 
 			ipc_send("", 1);
@@ -299,7 +303,7 @@ static void server_loop(int sd, const char *conf_file)
 		case 'j':	/* j <InputIntf> <McGroupAdr> */
 		case 'l':	/* l <InputIntf> <McGroupAdr> */
 		{
-			int result;
+			int result = -1;
 			const char *ifname = (const char *)(packet + 1);
 			const char *groupstr = ifname + strlen(ifname) + 1;
 
@@ -321,12 +325,15 @@ static void server_loop(int sd, const char *conf_file)
 				else
 					result = mcgroup4_leave(ifname, group);
 			} else {	/* IPv6 */
+#ifndef HAVE_IPV6_MULTICAST_HOST
+				smclog(LOG_WARNING, 0, "Not built with IPv6 support.");
+#else
 				struct in6_addr group;
 
 				/* check multicast address */
 				if (!*groupstr
 				    || (inet_pton(AF_INET6, groupstr, &group) <= 0)
-				    || !IN6_MULTICAST(&group)) {
+				    || !IN6_IS_ADDR_MULTICAST(&group)) {
 					smclog(LOG_WARNING, 0, "invalid multicast group address: '%s'", groupstr);
 					ipc_send(log_last_message, strlen(log_last_message) + 1);
 					break;
@@ -337,6 +344,7 @@ static void server_loop(int sd, const char *conf_file)
 					result = mcgroup6_join(ifname, group);
 				else
 					result = mcgroup6_leave(ifname, group);
+#endif				/* HAVE_IPV6_MULTICAST_HOST */
 			}
 
 			/* failed */
@@ -368,10 +376,10 @@ static void start_server(int background, const char *conf_file)
 	iface_init();
 
 	initialized_api_count = 0;
-	if (mroute4_init() == 0)
+	if (mroute4_enable() == 0)
 		initialized_api_count++;
 
-	if (mroute6_init() == 0)
+	if (mroute6_enable() == 0)
 		initialized_api_count++;
 
 	/* At least one API (IPv4 or IPv6) must have initialized successfully

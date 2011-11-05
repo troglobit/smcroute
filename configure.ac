@@ -10,6 +10,9 @@ AC_CONFIG_FILES([Makefile src/Makefile doc/Makefile])
 # Checks for programs.
 AC_PROG_CC
 
+# The pidfile() code needs asprintf(), which relies on -D_GNU_SOURCE
+AC_GNU_SOURCE
+
 # Checks for libraries.
 
 # Checks for header files.
@@ -168,6 +171,6 @@ AC_PROG_GCC_TRADITIONAL
 AC_FUNC_MALLOC
 AC_FUNC_SELECT_ARGTYPES
 AC_FUNC_SETPGRP
-AC_CHECK_FUNCS([atexit dup2 memset select socket strchr strerror strrchr])
+AC_CHECK_FUNCS([atexit dup2 memset select socket strchr strerror strrchr asprintf])
 
 AC_OUTPUT

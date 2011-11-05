@@ -142,7 +142,7 @@ int iface_get_vif(struct iface *iface)
 **          - -1 if no virtual interface exists for the interface 
 **          
 */
-int iface_get_mif(struct iface *iface)
+int iface_get_mif(struct iface *iface __attribute__ ((unused)))
 {
 #ifndef HAVE_IPV6_MULTICAST_ROUTING
 	return -1;
