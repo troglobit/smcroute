@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(smcroute, 1.98.0, troglobit@gmail.com)
+AC_INIT(smcroute, 1.98.1, troglobit@gmail.com)
 AC_CONFIG_SRCDIR([src/mclab.h])
 AC_CONFIG_HEADER([src/config.h])
 AC_CONFIG_FILES([Makefile src/Makefile doc/Makefile])
