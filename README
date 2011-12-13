@@ -1,8 +1,16 @@
-smcroute2 - A static multicast route tool
-=========================================
+SMCRoute - A static multicast route tool
+========================================
 
-SMCRoute2 is a fork of smcroute, or rather the continuation.  It adds dump and
-restore file possibilities, monitors interfaces coming UP/DOWN.  It can reload
-its config file on SIGHUP, etc.
+SMCRoute is a command line tool to manipulate the multicast routes of a UNIX
+kernel. It supports both IPv4 and IPv6 multicast routing. SMCRoute can be
+used as an alternative to dynamic multicast routers like mrouted or pimd in
+setups where static multicast routes should be maintained and/or no proper
+IGMP or MLD signaling exists.
 
+Generally multicast routes exists in the kernel only as long as smcroute
+or another multicast routing daemon is running. Only one multicast routing
+daemon can be active at a time, so it's impossible to run smcroute and, e.g.,
+mrouted at the same time.
 
+SMCRoute is maintained at GitHub. Previously the code has been hosted by
+Debian at Alioth and before that by Carsten Schill, the original author.

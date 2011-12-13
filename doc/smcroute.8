@@ -3,7 +3,7 @@
 .Os
 .Sh NAME
 .Nm smcroute
-.Nd SMCRoute, a static multicast router - Version 1.98
+.Nd SMCRoute, a static multicast router
 .Sh SYNOPSIS
 .Nm smcroute
 .Op OPTIONS
@@ -167,8 +167,8 @@ allows the integration of nodes that need static multicast routing into
 dynamic multicast routing domains.
 .Pp
 .Sh CONFIGURATION FILE
-SMCRoute2 supports reading and setting up multicast routes from a config
-file. The default location is
+From version 1.98.0 smcroute supports reading and setting up multicast
+routes from a config file. The default location is
 .Ar /etc/smcroute.conf ,
 but this can be overridden using the
 .Fl f Ar FILE
@@ -275,17 +275,15 @@ Holds active MLD joins.
 .Sh BUGS
 The English wording of this man page.
 .Sh AUTHORS
-smcroute was originally written by Carsten Schill <carsten@cschill.de>.
+Originally written by Carsten Schill <carsten@cschill.de>.
 Support for IPv6 was added by Todd Hayton <todd.hayton@gmail.com>.
 Support for FreeBSD was added by Micha Lenk <micha@debian.org>.
 .Pp
-The 0.9x series is maintained by Todd Hayton <todd.hayton@gmail.com>, 
-Micha Lenk <micha@debian.org> and Julien BLACHE <jblache@debian.org> at
-.Ar http://alioth.debian.org/projects/smcroute
-.Pp
-SMCRoute2 is maintained by Joachim Nilsson <troglobit@gmail.com>
-and hosted at GitHub
+SMCRoute is maintained by Joachim Nilsson <troglobit@gmail.com>, Todd Hayton
+<todd.hayton@gmail.com>, Micha Lenk <micha@debian.org> and Julien BLACHE
+<jblache@debian.org> at
 .Ar https://github.com/troglobit/smcroute
+.
 .Sh TIPS
 A lot of extra information is sent under the daemon facility and the
 debug priority to the syslog daemon.
