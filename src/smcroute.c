@@ -41,6 +41,7 @@
 #include "config.h"
 #include "build.h"
 
+extern char *__progname;
 static const char version_info[] =
 	"smcroute, Version " PACKAGE_VERSION ", Build" BUILD "\n"
 	"Copyright (c) 2001-2005  Carsten Schill <carsten@cschill.de>\n"
@@ -397,6 +398,8 @@ static void start_server(int background, const char *conf_file)
 
 	if (background)
 		pid = daemonize();
+	else
+		smclog(LOG_NOTICE, 0, "Starting daemon in foreground.");
 
 	if (!pid) {
 		smclog(LOG_NOTICE, 0, "Entering smcroute daemon main loop.");
@@ -431,7 +434,7 @@ int main(int argc, const char *argv[])
 	struct cmd *cmdv[16];
 
 	/* init syslog */
-	openlog(argv[0], LOG_PID, LOG_DAEMON);
+	openlog(__progname, LOG_PID, LOG_DAEMON);
 
 	if (argc <= 1)
 		return usage();
@@ -502,7 +505,7 @@ int main(int argc, const char *argv[])
 			continue;
 
 		default:	/* unknown option */
-			fprintf(stderr, "unknown option: %s\n", *argv);
+			fprintf(stderr, "Unknown option: %s\n", *argv);
 			return usage();
 		}
 
@@ -516,6 +519,10 @@ int main(int argc, const char *argv[])
 	}
 
 	if (start_daemon) {	/* only daemon parent enters */
+		if (geteuid() != 0) {
+			smclog(LOG_ERR, 0, "Must have super-user permissions to start %s.", __progname);
+			exit(1);
+		}
 		start_server(background, conf_file);
 		if (!background)
 			exit (0); /* Exit if non-backgrounded daemon exits this way. */
@@ -536,7 +543,7 @@ int main(int argc, const char *argv[])
 		if (code) {
 			switch (code) {
 			case EACCES:
-				smclog(LOG_ERR, EACCES, "need super-user rights to connect to daemon");
+				smclog(LOG_ERR, EACCES, "Need super-user permissions to connect to daemon");
 				break;
 
 			case ENOENT:
@@ -546,7 +553,7 @@ int main(int argc, const char *argv[])
 					usleep(100000);
 					goto retry;
 				}
-				smclog(LOG_ERR, code, "daemon not running ?");
+				smclog(LOG_ERR, code, "Daemon not running");
 				break;
 
 			default:
@@ -562,12 +569,12 @@ int main(int argc, const char *argv[])
 			slen = ipc_send(command, command->len);
 			rlen = ipc_receive(buf, sizeof(buf));
 			if (slen < 0 || rlen < 0)
-				smclog(LOG_ERR, errno, "read/write to daemon failed");
+				smclog(LOG_ERR, errno, "Read/Write to daemon failed");
 
 			smclog(LOG_DEBUG, 0, "rlen: %d", rlen);
 
 			if (rlen != 1 || *buf != '\0') {
-				fprintf(stderr, "daemon error: %s\n", buf);
+				fprintf(stderr, "Daemon error: %s\n", buf);
 				result = 1;
 			}
 
