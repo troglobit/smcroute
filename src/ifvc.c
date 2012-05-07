@@ -54,15 +54,15 @@ void iface_init(void)
 	}
 
 	for (ifa = ifaddr; ifa != NULL && num_ifaces < ARRAY_ELEMENTS(iface_list); ifa = ifa->ifa_next) {
+		/* Skip interface without internet address */
+		if (ifa->ifa_addr == NULL)
+			continue;
+
 		iface  = &iface_list[num_ifaces++];
 		family = ifa->ifa_addr->sa_family;
 
 		/* Skip non-IPv4 and non-IPv6 interfaces */
 		if ((family != AF_INET) && (family != AF_INET6))
-			continue;
-
-		/* Skip interface without internet address */
-		if (ifa->ifa_addr == NULL)
 			continue;
 
 		/* Copy data from interface iterator 'ifa' */
