@@ -37,6 +37,7 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/queue.h>
 
 #include <net/if.h>
 
@@ -108,6 +109,7 @@ extern int do_debug_logging;
 void          iface_init            (void);
 struct iface *iface_find_by_name    (const char *ifname);
 struct iface *iface_find_by_index   (unsigned int ifindex);
+struct iface *iface_find_by_vif     (int vif);
 int           iface_get_vif         (struct iface *iface);
 int           iface_get_mif         (struct iface *iface);
 int           iface_get_vif_by_name (const char *ifname);
@@ -119,6 +121,8 @@ int           iface_get_mif_by_name (const char *ifname);
  * IPv4 multicast route
  */
 struct mroute4 {
+	LIST_ENTRY(mroute4) link;
+
 	struct in_addr sender;
 	struct in_addr group;           /* multicast group */
 	short inbound;                  /* incoming VIF    */
@@ -163,6 +167,7 @@ extern int mroute6_socket;
 
 int  mroute4_enable  (void);
 void mroute4_disable (void);
+int  mroute4_dyn_add (mroute4_t *mroute);
 int  mroute4_add     (mroute4_t *mroute);
 int  mroute4_del     (mroute4_t *mroute);
 

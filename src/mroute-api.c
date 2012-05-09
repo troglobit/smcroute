@@ -51,6 +51,15 @@
  */
 int mroute4_socket = -1;
 
+/* All user added/configured (*,G) routes that are matched on-demand
+ * at runtime. See the mroute4_dyn_list for the actual (S,G) routes
+ * set from this "template". */
+LIST_HEAD(, mroute4) mroute4_conf_list = LIST_HEAD_INITIALIZER();
+
+/* For dynamically/on-demand set (S,G) routes that we must track
+ * if the user removes the configured (*,G) route. */
+LIST_HEAD(, mroute4) mroute4_dyn_list = LIST_HEAD_INITIALIZER();
+
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 /*
  * Need a raw ICMPv6 socket as interface for the IPv6 mrouted API
@@ -131,6 +140,9 @@ int mroute4_enable(void)
 		mroute4_add_vif(iface);
 	}
 
+	LIST_INIT(&mroute4_conf_list);
+	LIST_INIT(&mroute4_dyn_list);
+
 	return 0;
 }
 
@@ -139,6 +151,8 @@ int mroute4_enable(void)
 */
 void mroute4_disable(void)
 {
+	mroute4_t *entry;
+
 	if (mroute4_socket < 0)
 		return;
 
@@ -148,6 +162,16 @@ void mroute4_disable(void)
 
 	close(mroute4_socket);
 	mroute4_socket = -1;
+
+	/* Free list of (*,G) routes on SIGHUP */
+	LIST_FOREACH(entry, &mroute4_conf_list, link) {
+		LIST_REMOVE(entry, link);
+		free(entry);
+	}
+	LIST_FOREACH(entry, &mroute4_dyn_list, link) {
+		LIST_REMOVE(entry, link);
+		free(entry);
+	}
 }
 
 
@@ -196,13 +220,8 @@ static void mroute4_add_vif(struct iface *iface)
 	}
 }
 
-/*
-** Adds the multicast routed '*ptr' to the kernel routes
-**
-** returns: - 0 if the function succeeds
-**          - the errno value for non-fatal failure condition
-*/
-int mroute4_add(mroute4_t *ptr)
+/* Actually set in kernel - called by mroute4_add() and mroute4_check_add() */
+static int __mroute4_add (mroute4_t *ptr)
 {
 	int result = 0;
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
@@ -232,13 +251,8 @@ int mroute4_add(mroute4_t *ptr)
 	return result;
 }
 
-/*
-** Removes the multicast routed '*ptr' from the kernel routes
-**
-** returns: - 0 if the function succeeds
-**          - the errno value for non-fatal failure condition
-*/
-int mroute4_del(mroute4_t *ptr)
+/* Actually remove from kernel - called by mroute4_del() */
+static int __mroute4_del (mroute4_t *ptr)
 {
 	int result = 0;
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
@@ -258,6 +272,111 @@ int mroute4_del(mroute4_t *ptr)
 	}
 
 	return result;
+}
+
+/*
+** Add mcroute to kernel if it matches a known (*,G) route.
+**
+** returns: - 0 if the function succeeds
+**          - the errno value for non-fatal failure condition
+*/
+int mroute4_dyn_add(mroute4_t *ptr)
+{
+	mroute4_t *entry;
+
+	LIST_FOREACH(entry, &mroute4_conf_list, link) {
+		/* Find matching (*,G) ... and interface. */
+		if (!memcmp (&entry->group, &ptr->group, sizeof(entry->group)) && entry->inbound == ptr->inbound) {
+			smclog(LOG_DEBUG, 0, "Found (*,G) match for (0x%x, 0x%x)!", ptr->sender.s_addr, ptr->group.s_addr);
+
+			/* Add to list of dynamically added routes. Necessary if the user
+			 * removes the (*,G) using the command line interface rather than
+			 * updating the conf file and SIGHUP. Note: if we fail to alloc()
+			 * memory we don't do anything, just add kernel route silently. */
+			entry = malloc(sizeof(mroute4_t));
+			if (entry) {
+				memcpy(entry, ptr, sizeof(mroute4_t));
+				LIST_INSERT_HEAD(&mroute4_dyn_list, entry, link);
+			}
+
+			return __mroute4_add(ptr);
+		}
+	}
+
+	smclog(LOG_DEBUG, 0, "No (*,G) match for (0x%x, 0x%x)!", ptr->sender.s_addr, ptr->group.s_addr);
+
+	errno = ENOENT;
+	return -1;
+}
+
+/*
+** Adds the multicast route '*ptr' to the kernel multicast routing table
+** unless the source IP is INADDR_ANY, i.e., a (*,G) route. Those we save
+** for later and check against at runtime when the kernel signals us.
+**
+** returns: - 0 if the function succeeds
+**          - the errno value for non-fatal failure condition
+*/
+int mroute4_add(mroute4_t *ptr)
+{
+	/* For (*,G) we save to a linked list to be added on-demand
+	 * when the kernel sends IGMPMSG_NOCACHE. */
+	if (ptr->sender.s_addr == INADDR_ANY) {
+		mroute4_t *entry = malloc(sizeof(mroute4_t));
+
+		if (!entry) {
+			smclog(LOG_WARNING, errno, "Failed allocating (*,G) entry to linked list");
+			return errno;
+		}
+
+		memcpy(entry, ptr, sizeof(mroute4_t));
+		smclog(LOG_DEBUG, 0, "Adding (*,G) mroute to dynamic list => (0x%x, 0x%x) vif:%d ",
+		       ptr->sender.s_addr, ptr->group.s_addr, ptr->inbound);
+		LIST_INSERT_HEAD(&mroute4_conf_list, entry, link);
+
+		return 0;
+	}
+
+	return __mroute4_add (ptr);
+}
+
+/*
+** Removes the multicast routed '*ptr' from the kernel routes
+**
+** returns: - 0 if the function succeeds
+**          - the errno value for non-fatal failure condition
+*/
+int mroute4_del(mroute4_t *ptr)
+{
+	/* For (*,G) we have saved all dynamically added kernel routes
+	 * to a linked list which we need to traverse again and remove
+	 * all matches. From kernel dyn list before we remove the conf
+	 * entry. */
+	if (ptr->sender.s_addr == INADDR_ANY) {
+		mroute4_t *entry;
+
+		LIST_FOREACH(entry, &mroute4_conf_list, link) {
+			/* Find matching (*,G) ... and interface. */
+			if (!memcmp (&entry->group, &ptr->group, sizeof(entry->group)) && entry->inbound == ptr->inbound) {
+				mroute4_t *set;
+
+				smclog(LOG_DEBUG, 0, "Found (*,G) match for (0x%x, 0x%x) - now find any set routes!", ptr->sender.s_addr, ptr->group.s_addr);
+				LIST_FOREACH(set, &mroute4_dyn_list, link) {
+					if (!memcmp (&entry->group, &set->group, sizeof(entry->group)) && entry->inbound == set->inbound) {
+						smclog(LOG_DEBUG, 0, "Found match (0x%x, 0x%x) - removing, unlinking and freeing.", set->sender.s_addr, set->group.s_addr);
+						__mroute4_del(set);
+						LIST_REMOVE(set, link);
+						free(set);
+					}
+				}
+
+				LIST_REMOVE(entry, link);
+				free(entry);
+			}
+		}
+	}
+
+	return __mroute4_del(ptr);
 }
 
 

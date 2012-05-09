@@ -31,6 +31,7 @@
 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/ip.h>
 #include <arpa/inet.h>
 
 #include <signal.h>
@@ -243,14 +244,40 @@ static void server_loop(int sd, const char *conf_file)
 			continue;
 		}
 
-		/* Receive and drop IGMP stuff. This is either IGMP packets
-		 * or upcall messages sent up from the kernel.
-		 */
+		/* Check for kernel IGMPMSG_NOCACHE for (*,G) hits. I.e., source-less routes. */
 		if (FD_ISSET(mroute4_socket, &fds)) {
 			char tmp[128];
+			struct ip *ip;
+			struct igmpmsg *igmpctl;
 
+			memset (tmp, 0, sizeof(tmp));
 			result = read(mroute4_socket, tmp, sizeof(tmp));
-			smclog(LOG_DEBUG, 0, "%d byte IGMP signaling dropped", result);
+
+			/* packets sent up from kernel to daemon have ip->ip_p = 0 */
+			ip = (struct ip *)tmp;
+			igmpctl = (struct igmpmsg *)tmp;
+
+			/* Check for IGMPMSG_NOCACHE to do (*,G) based routing. */
+			if (ip->ip_p == 0 && igmpctl->im_msgtype == IGMPMSG_NOCACHE) {
+				char sbuf[16], gbuf[16];
+				struct iface *iface;
+				mroute4_t mroute;
+
+				mroute.group.s_addr  = igmpctl->im_dst.s_addr;
+				mroute.sender.s_addr = igmpctl->im_src.s_addr;
+				mroute.inbound       = igmpctl->im_vif;
+				iface = iface_find_by_vif (mroute.inbound);
+
+				/* Find any matching route for this group on that iif. */
+				smclog(LOG_DEBUG, 0, "Cache miss for group %s from %s on interface %s(%d) ifindex:%d",
+				       inet_ntop (AF_INET, &mroute.group, gbuf, sizeof(gbuf)),
+				       inet_ntop (AF_INET, &mroute.sender, sbuf, sizeof(sbuf)),
+				       iface ? iface->name : "unknown", mroute.inbound,
+				       iface ? iface->ifindex : -1);
+				mroute4_dyn_add(&mroute);
+			} else {
+				smclog(LOG_DEBUG, 0, "%d byte IGMP signaling dropped", result);
+			}
 		}
 
 		/* Receive and drop ICMPv6 stuff. This is either MLD packets

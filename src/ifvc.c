@@ -108,6 +108,29 @@ struct iface *iface_find_by_name(const char *ifname)
 }
 
 /*
+** Returns a pointer to the iface matching the given 'vif'
+**
+** returns: - pointer to the iface of the requested interface
+**          - NULL if no interface matching 'vif' exists
+**
+**          - if more than one interface 'ifname' exists, chose the
+**            an interface that corresponds to a virtual interface
+*/
+struct iface *iface_find_by_vif(int vif)
+{
+	unsigned int i;
+	struct iface *iface;
+
+	for (i = 0; i < num_ifaces; i++) {
+		iface = &iface_list[i];
+		if (iface->vif >= 0 && iface->vif == vif)
+			return iface;
+	}
+
+	return NULL;
+}
+
+/*
 ** Returns a pointer to the iface of the interface 'ifindex'
 **
 ** returns: - pointer to the iface of the requested interface
