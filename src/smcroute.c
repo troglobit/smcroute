@@ -566,6 +566,7 @@ int main(int argc, const char *argv[])
 			int slen = 0, rlen = 0;
 			struct cmd *command = cmdv[i];
 
+			smclog(LOG_DEBUG, 0, "Sending command %c len:%zu count:%d", command->cmd, command->len, command->count);
 			slen = ipc_send(command, command->len);
 			rlen = ipc_receive(buf, sizeof(buf));
 			if (slen < 0 || rlen < 0)

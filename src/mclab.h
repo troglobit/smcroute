@@ -124,6 +124,7 @@ struct mroute4 {
 	short inbound;                  /* incoming VIF    */
 	uint8 ttl[MAX_MC_VIFS];         /* outgoing VIFs   */
 };
+typedef struct mroute4 mroute4_t;
 
 /*
  * IPv6 multicast route
@@ -134,6 +135,7 @@ struct mroute6 {
 	short inbound;                  /* incoming VIF    */
 	uint8 ttl[MAX_MC_MIFS];         /* outgoing VIFs   */
 };
+typedef struct mroute6 mroute6_t;
 
 /*
  * Generic multicast route (wrapper for IPv4/IPv6 mroute) 
@@ -141,10 +143,11 @@ struct mroute6 {
 struct mroute {
 	int version;		/* 4 or 6 */
 	union {
-		struct mroute4 mroute4;
-		struct mroute6 mroute6;
+		mroute4_t mroute4;
+		mroute6_t mroute6;
 	} u;
 };
+typedef struct mroute mroute_t;
 
 /* 
  * Raw IGMP socket used as interface for the IPv4 mrouted API.
@@ -160,13 +163,13 @@ extern int mroute6_socket;
 
 int  mroute4_enable  (void);
 void mroute4_disable (void);
-int  mroute4_add     (struct mroute4 *mroute);
-int  mroute4_del     (struct mroute4 *mroute);
+int  mroute4_add     (mroute4_t *mroute);
+int  mroute4_del     (mroute4_t *mroute);
 
 int  mroute6_enable  (void);
 void mroute6_disable (void);
-int  mroute6_add     (struct mroute6 *mroute);
-int  mroute6_del     (struct mroute6 *mroute);
+int  mroute6_add     (mroute6_t *mroute);
+int  mroute6_del     (mroute6_t *mroute);
 
 /* ipc.c */
 int         ipc_server_init (void);
@@ -181,18 +184,18 @@ void        ipc_exit        (void);
  * XXX: Add example packet layouts
  */
 struct cmd {
-	unsigned len;		/* total size of packet including cmd header */
+	size_t   len;		/* total size of packet including cmd header */
 	uint16   cmd;		/* 'a'=Add,'r'=Remove,'j'=Join,'l'=Leave,'k'=Kill */
 	uint16   count;		/* command argument count */
-	/* 'count' * '\0' terminated strings + '\0' */
+	char    *argv[0]; 	/* 'count' * '\0' terminated strings + '\0' */
 };
 
 #define MX_CMDPKT_SZ 1024	/* command size including appended strings */
 
 void       *cmd_build              (char cmd, const char *argv[], int count);
-const char *cmd_convert_to_mroute  (struct mroute  *mroute, const struct cmd *packet);
-const char *cmd_convert_to_mroute4 (struct mroute4 *mroute, const struct cmd *packet);
-const char *cmd_convert_to_mroute6 (struct mroute6 *mroute, const struct cmd *packet);
+const char *cmd_convert_to_mroute  (mroute_t *mroute, const struct cmd *packet);
+const char *cmd_convert_to_mroute4 (mroute4_t *mroute, const struct cmd *packet);
+const char *cmd_convert_to_mroute6 (mroute6_t *mroute, const struct cmd *packet);
 
 /* mcgroup.c */
 int mcgroup4_join  (const char *ifname, struct in_addr  group);

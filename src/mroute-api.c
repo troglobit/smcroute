@@ -123,9 +123,13 @@ int mroute4_enable(void)
 	memset(&vif_list, 0, sizeof(vif_list));
 
 	/* create VIFs for all IP, non-loop interfaces */
-	for (i = 0; (iface = iface_find_by_index(i)); i++)
-		if (iface->inaddr.s_addr && !(iface->flags & IFF_LOOPBACK))
-			mroute4_add_vif(iface);
+	for (i = 0; (iface = iface_find_by_index(i)); i++) {
+		if (iface->flags & IFF_LOOPBACK) {
+			iface->vif = -1;
+			continue;
+		}
+		mroute4_add_vif(iface);
+	}
 
 	return 0;
 }
@@ -138,6 +142,7 @@ void mroute4_disable(void)
 	if (mroute4_socket < 0)
 		return;
 
+	/* Drop all kernel routes set by smcroute */
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_DONE, NULL, 0))
 		smclog(LOG_ERR, errno, "MRT_DONE");
 
@@ -151,8 +156,9 @@ void mroute4_disable(void)
 */
 static void mroute4_add_vif(struct iface *iface)
 {
-	struct vifctl VifCtl;
+	struct vifctl vc;
 	int vif = -1;
+	char buf[16];
 	size_t i;
 
 	/* search free vif */
@@ -169,19 +175,20 @@ static void mroute4_add_vif(struct iface *iface)
 		return;
 	}
 
-	memset(&VifCtl, 0, sizeof(VifCtl));
-	VifCtl.vifc_vifi = vif;
-	VifCtl.vifc_flags = 0;	        /* no tunnel, no source routing, register ? */
-	VifCtl.vifc_threshold = 1;	/* Packet TTL must be at least 1 to pass them */
-	VifCtl.vifc_rate_limit = 0;	/* hopefully no limit */
-	VifCtl.vifc_lcl_addr.s_addr = iface->inaddr.s_addr;
-	VifCtl.vifc_rmt_addr.s_addr = INADDR_ANY;
+	memset(&vc, 0, sizeof(vc));
+	vc.vifc_vifi = vif;
+	vc.vifc_flags = 0;      /* no tunnel, no source routing, register ? */
+	vc.vifc_threshold = 1;  /* Packet TTL must be at least 1 to pass them */
+	vc.vifc_rate_limit = 0;	/* hopefully no limit */
+	vc.vifc_lcl_addr.s_addr = iface->inaddr.s_addr;
+	vc.vifc_rmt_addr.s_addr = INADDR_ANY;
 
-	smclog(LOG_NOTICE, 0, "Add VIF: %d Flags: 0x%04x IP: 0x%08x Ifname: %s",
-	       VifCtl.vifc_vifi, VifCtl.vifc_flags, VifCtl.vifc_lcl_addr.s_addr,
+	smclog(LOG_NOTICE, 0, "Add VIF: %d Ifindex: %d Flags: 0x%04x IP: %s Ifname: %s",
+	       vc.vifc_vifi, iface->ifindex, vc.vifc_flags,
+	       inet_ntop (AF_INET, &vc.vifc_lcl_addr, buf, sizeof(buf)),
 	       iface->name);
 
-	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_VIF, (void *)&VifCtl, sizeof(VifCtl))) {
+	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_VIF, (void *)&vc, sizeof(vc))) {
 		smclog(LOG_ERR, errno, "MRT_ADD_VIF %s", iface->name);
 	} else {
 		iface->vif = vif;
@@ -195,7 +202,7 @@ static void mroute4_add_vif(struct iface *iface)
 ** returns: - 0 if the function succeeds
 **          - the errno value for non-fatal failure condition
 */
-int mroute4_add(struct mroute4 *ptr)
+int mroute4_add(mroute4_t *ptr)
 {
 	int result = 0;
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
@@ -231,7 +238,7 @@ int mroute4_add(struct mroute4 *ptr)
 ** returns: - 0 if the function succeeds
 **          - the errno value for non-fatal failure condition
 */
-int mroute4_del(struct mroute4 *ptr)
+int mroute4_del(mroute4_t *ptr)
 {
 	int result = 0;
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
@@ -331,9 +338,13 @@ int mroute6_enable(void)
 	}
 
 	/* create MIFs for all IP, non-loop interfaces */
-	for (i = 0; (iface = iface_find_by_index(i)); i++)
-		if (iface->inaddr.s_addr && !(iface->flags & IFF_LOOPBACK))
-			mroute6_add_mif(iface);
+	for (i = 0; (iface = iface_find_by_index(i)); i++) {
+		if (iface->flags & IFF_LOOPBACK) {
+			iface->vif = -1;
+			continue;
+		}
+		mroute6_add_mif(iface);
+	}
 
 	return 0;
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
@@ -392,10 +403,10 @@ static void mroute6_add_mif(struct iface *iface)
 	mc.vifc_rate_limit = 0;	/* hopefully no limit */
 #endif
 
-	smclog(LOG_NOTICE, 0, "Add MIF: %d Ifindex: %d Flags: 0x%x Ifname: %s",
+	smclog(LOG_NOTICE, 0, "Add MIF: %d Ifindex: %d Flags: 0x%04x Ifname: %s",
 	       mc.mif6c_mifi, mc.mif6c_pifi, mc.mif6c_flags, iface->name);
 
-	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MIF, (char *)&mc, sizeof(mc))) {
+	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MIF, (void *)&mc, sizeof(mc))) {
 		smclog(LOG_ERR, errno, "MRT6_ADD_MIF %s", iface->name);
 	} else {
 		iface->mif = mif;
@@ -409,7 +420,7 @@ static void mroute6_add_mif(struct iface *iface)
 ** returns: - 0 if the function succeeds
 **          - the errno value for non-fatal failure condition
 */
-int mroute6_add(struct mroute6 *ptr)
+int mroute6_add(mroute6_t *ptr)
 {
 	int result = 0;
 	size_t i;
@@ -447,7 +458,7 @@ int mroute6_add(struct mroute6 *ptr)
 ** returns: - 0 if the function succeeds
 **          - the errno value for non-fatal failure condition
 */
-int mroute6_del(struct mroute6 *ptr)
+int mroute6_del(mroute6_t *ptr)
 {
 	int result = 0;
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];

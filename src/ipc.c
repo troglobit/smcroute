@@ -128,19 +128,24 @@ struct cmd *ipc_server_read(uint8 buf[], int len)
 			smclog(LOG_DEBUG, 0, "%s: waiting for connection...", __FUNCTION__);
 
 			if ((client_sd = accept(server_sd, NULL, &socklen)) < 0)
-				smclog(LOG_ERR, errno, "%s: accept() failed", __FUNCTION__);
+				smclog(LOG_ERR, errno, "%s: accept() failed incoming connection", __FUNCTION__);
 
-			smclog(LOG_DEBUG, 0, "%s: accepted connection", __FUNCTION__);
+			smclog(LOG_DEBUG, 0, "%s: connection accepted", __FUNCTION__);
 		}
 
 		/* read */
 		memset(buf, 0, len);	/* had some problems with buffer garbage */
 		size = read(client_sd, buf, len);
-		smclog(LOG_DEBUG, 0, "%s: command read (%zu)", __FUNCTION__, size);
+		smclog(LOG_DEBUG, 0, "%s: command read(%d, %p, %d) => %zu should be at least %zu", __FUNCTION__,
+		       client_sd, buf, len, size, sizeof(struct cmd));
 
-		/* successfull read */
-		if (size >= sizeof(struct cmd) && size == ((struct cmd *)buf)->len)
-			return (struct cmd *)buf;
+		/* successful read */
+		if (size >= sizeof(struct cmd)) {
+			struct cmd *p = (struct cmd *)buf;
+
+			if (size == p->len)
+				return p;
+		}
 
 		/* connection lost ? -> reset connection */
 		if (!size) {

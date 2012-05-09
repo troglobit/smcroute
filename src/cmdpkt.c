@@ -39,17 +39,15 @@
 */
 void *cmd_build(char cmd, const char *argv[], int count)
 {
-	int num;
+	int i;
 	char *ptr;
 	const char **arg = argv;
 	unsigned arg_len = 0, packet_len;
 	struct cmd *packet;
 
 	/* Summarize length of all arguments/commands */
-	for (num = count; num; num--) {
-		arg_len += strlen(*arg) + 1;
-		arg++;
-	}
+	for (i = 0; i < count; i++)
+		arg_len += strlen(argv[i]) + 1;
 
 	/* resulting packet size */
 	packet_len = sizeof(struct cmd) + arg_len + 1;
@@ -65,13 +63,11 @@ void *cmd_build(char cmd, const char *argv[], int count)
 	packet->count = count;
 
 	/* copy args */
-	ptr = (char *)(packet + 1);
-	arg = argv;
-	for (num = count; num; num--) {
-		arg_len = strlen(*arg) + 1;
-		memcpy(ptr, *arg, arg_len);
+	ptr = (char *)(packet->argv);
+	for (i = 0; i < count; i++) {
+		arg_len = strlen(argv[i]) + 1;
+		memcpy(ptr, argv[i], arg_len);
 		ptr += arg_len;
-		arg++;
 	}
 	*ptr = '\0';	/* '\0' behind last string */
 
@@ -88,7 +84,7 @@ void *cmd_build(char cmd, const char *argv[], int count)
 */
 const char *cmd_convert_to_mroute(struct mroute *mroute, const struct cmd *packet)
 {
-	char *arg = (char *)(packet + 1);
+	char *arg = (char *)packet->argv;
 
 	memset(mroute, 0, sizeof(*mroute));
 
@@ -144,7 +140,7 @@ const char *cmd_convert_to_mroute(struct mroute *mroute, const struct cmd *packe
 */
 const char *cmd_convert_to_mroute4(struct mroute4 *mroute, const struct cmd *packet)
 {
-	const char *arg = (const char *)(packet + 1);
+	char *arg = (char *)packet->argv;
 
 	memset(mroute, 0, sizeof(*mroute));
 

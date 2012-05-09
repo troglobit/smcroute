@@ -58,14 +58,17 @@ void iface_init(void)
 		if (ifa->ifa_addr == NULL)
 			continue;
 
-		iface  = &iface_list[num_ifaces++];
-		family = ifa->ifa_addr->sa_family;
-
 		/* Skip non-IPv4 and non-IPv6 interfaces */
+		family = ifa->ifa_addr->sa_family;
 		if ((family != AF_INET) && (family != AF_INET6))
 			continue;
 
+		/* Check if already added? */
+		if (iface_find_by_name (ifa->ifa_name))
+			continue;
+
 		/* Copy data from interface iterator 'ifa' */
+		iface = &iface_list[num_ifaces++];
 		strncpy(iface->name, ifa->ifa_name, sizeof(iface->name));
 		if (family == AF_INET)
 			iface->inaddr.s_addr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr.s_addr;

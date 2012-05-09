@@ -114,7 +114,7 @@ static int add_mroute (int lineno, char *ifname, char *group, char *source, char
 		smclog(LOG_WARNING, 0, "Line %02: Sadly this build of smcroute does not support IPv6.", lineno);
 		result = 0;
 #else
-		struct mroute6 mroute;
+		mroute6_t mroute;
 
 		mroute.inbound = iface_get_mif_by_name(ifname);
 		if (mroute.inbound < 0) {
