@@ -1,9 +1,11 @@
+autom4te.cache
 build.h
 config.h
 Makefile
 mcsender
 smcroute
 unittest
+.*.d
 *.o
 *.log
 *.status

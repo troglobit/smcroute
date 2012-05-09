@@ -7,9 +7,3 @@ Optimal, and almost required, behavior would be to handle such
 transitions  without losing any traffic over established/active
 routing rules.
 
-* Why do we need to specify source address and inbound interface?
-We should be able to use reverse-path-forwarding to determine the
-source of incoming multicast. Maybe even in the kernel.
-
-If that's not possible we should be able to at least try and support
-ADDRESS/LEN syntax as source.
