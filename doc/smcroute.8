@@ -188,7 +188,7 @@ command line option.
 #
 # Syntax:
 #   mgroup from IFNAME group MCGROUP
-#   mroute from IFNAME source ADDRESS group MCGROUP to IFNAME [IFNAME ...]
+#   mroute from IFNAME [source ADDRESS] group MCGROUP to IFNAME [IFNAME ...]
 #
 # The following example instructs the kernel to join the multicast
 # group 225.1.2.3 on interface eth0.  Followed by setting up an
@@ -197,6 +197,9 @@ command line option.
 #
 mgroup from eth0 group 225.1.2.3
 mroute from eth0 group 225.1.2.3 source 192.168.1.42 to eth1 eth2
+
+mgroup from eth0 group 225.3.2.1
+mroute from eth0 group 225.3.2.1 to eth1 eth2
 .Ed
 .Pp
 Fairly simple. As usual, to identify the origin of the inbound multicast
@@ -205,6 +208,13 @@ we need the
 the sender's IP address and, of course, the multicast group address,
 .Ar MCGROUP .
 The last argument is a list of outbound interfaces.
+.Pp
+From 1.99.0 the sender's IP address is actually optional for IPv4
+multicast routes. If omitted it defaults to 0.0.0.0 (INADDR_ANY) and
+will cause
+.Nm
+to dynamically at runtime add new routes, matching the group and inbound
+interface, to the kernel. This feauture is experimental.
 .Pp
 Following the standard UNIX tradition the file format support comments
 at the beginning of the line using a hash sign.  It is untested to have

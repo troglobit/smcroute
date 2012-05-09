@@ -104,7 +104,7 @@ static int add_mroute (int lineno, char *ifname, char *group, char *source, char
 {
 	int i, total, result;
 
-	if (!ifname || !group || !source || !outbound || !num) {
+	if (!ifname || !group || !outbound || !num) {
 		errno = EINVAL;
 		return 1;
 	}
@@ -121,8 +121,8 @@ static int add_mroute (int lineno, char *ifname, char *group, char *source, char
 			smclog(LOG_WARNING, 0, "Line %02d: Invalid inbound IPv6 interface: %s", lineno, ifname);
 			return 1;
 		}
-		if (inet_pton(AF_INET6, source, &mroute.sender) <= 0) {
-			smclog(LOG_WARNING, 0, "Line %02d: Invalid source IPv6 address: %s", lineno, source);
+		if (!source || inet_pton(AF_INET6, source, &mroute.sender) <= 0) {
+			smclog(LOG_WARNING, 0, "Line %02d: Invalid source IPv6 address: %s", lineno, source ?: "NONE");
 			return 1;
 		}
 
@@ -164,7 +164,9 @@ static int add_mroute (int lineno, char *ifname, char *group, char *source, char
 			return 1;
 		}
 
-		if (inet_pton(AF_INET, source, &mroute.sender) <= 0) {
+		if (!source) {
+			mroute.sender.s_addr = INADDR_ANY;
+		} else if (inet_pton(AF_INET, source, &mroute.sender) <= 0) {
 			smclog(LOG_WARNING, 0, "Line %02d: Invalid source IPv4 address: %s", lineno, source);
 			return 1;
 		}
