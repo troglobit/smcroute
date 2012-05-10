@@ -91,6 +91,17 @@ int mcgroup4_leave(const char *ifname, struct in_addr group)
 	return mcgroup_join_leave_ipv4(mcgroup4_socket, 'l', ifname, group);
 }
 
+/*
+** Close IPv4 multicast socket to kernel to leave any joined groups
+*/
+void mcgroup4_disable(void)
+{
+	if (mcgroup4_socket != -1) {
+		close (mcgroup4_socket);
+		mcgroup4_socket = -1;
+	}
+}
+
 #ifdef HAVE_IPV6_MULTICAST_HOST
 static int mcgroup6_socket = -1;
 
@@ -157,7 +168,20 @@ int mcgroup6_leave(const char *ifname, struct in6_addr group)
 
 	return mcgroup_join_leave_ipv6(mcgroup6_socket, 'l', ifname, group);
 }
-#endif				/* HAVE_IPV6_MULTICAST_HOST */
+#endif /* HAVE_IPV6_MULTICAST_HOST */
+
+/*
+** Close IPv6 multicast socket to kernel to leave any joined groups
+*/
+void mcgroup6_disable(void)
+{
+#ifdef HAVE_IPV6_MULTICAST_HOST
+	if (mcgroup6_socket != -1) {
+		close (mcgroup6_socket);
+		mcgroup6_socket = -1;
+	}
+#endif /* HAVE_IPV6_MULTICAST_HOST */
+}
 
 /**
  * Local Variables:

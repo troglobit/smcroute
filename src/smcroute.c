@@ -165,6 +165,8 @@ static void restart(void)
 	smclog(LOG_DEBUG, 0, "Restart handler called");
 	mroute4_disable();
 	mroute6_disable();
+	mcgroup4_disable();
+	mcgroup6_disable();
 	/* No need to close the IPC, only at cleanup. */
 
 	/* Update list of interfaces and create new virtual interface mappings in kernel. */
