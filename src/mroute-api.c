@@ -131,9 +131,11 @@ int mroute4_enable(void)
 	/* Initialize virtual interface table */
 	memset(&vif_list, 0, sizeof(vif_list));
 
-	/* create VIFs for all IP, non-loop interfaces */
+	/* Create virtual interfaces, VIFs, for all non-loopback interfaces
+	 * that have a valid IPv4 address. */
 	for (i = 0; (iface = iface_find_by_index(i)); i++) {
-		if (iface->flags & IFF_LOOPBACK) {
+		if (iface->flags & IFF_LOOPBACK ||
+		    iface->inaddr.s_addr == INADDR_ANY) {
 			iface->vif = -1;
 			continue;
 		}
