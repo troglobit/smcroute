@@ -236,10 +236,10 @@ static int __mroute4_add (mroute4_t *ptr)
 	mc.mfcc_parent = ptr->inbound;
 
 	/* copy the TTL vector */
-	if (sizeof(mc.mfcc_ttls) != sizeof(ptr->ttl) || ARRAY_ELEMENTS(mc.mfcc_ttls) != ARRAY_ELEMENTS(ptr->ttl))
+	if (sizeof(mc.mfcc_ttls[0]) != sizeof(ptr->ttl[0]) || ARRAY_ELEMENTS(mc.mfcc_ttls) != ARRAY_ELEMENTS(ptr->ttl))
 		smclog(LOG_ERR, 0, "Data types does not match in %s, source adaption needed!", __FILE__);
 
-	memcpy(mc.mfcc_ttls, ptr->ttl, sizeof(mc.mfcc_ttls));
+	memcpy(mc.mfcc_ttls, ptr->ttl, ARRAY_ELEMENTS(mc.mfcc_ttls) * sizeof(mc.mfcc_ttls[0]));
 
 	smclog(LOG_NOTICE, 0, "Add MFC: %s -> %s, inbound VIF: %d",
 	       inet_ntop(AF_INET, &mc.mfcc_origin,   origin, INET_ADDRSTRLEN),
@@ -290,6 +290,9 @@ int mroute4_dyn_add(mroute4_t *ptr)
 		/* Find matching (*,G) ... and interface. */
 		if (!memcmp (&entry->group, &ptr->group, sizeof(entry->group)) && entry->inbound == ptr->inbound) {
 			smclog(LOG_DEBUG, 0, "Found (*,G) match for (0x%x, 0x%x)!", ptr->sender.s_addr, ptr->group.s_addr);
+
+			/* Use configured template (*,G) outbound interfaces. */
+			memcpy(ptr->ttl, entry->ttl, ARRAY_ELEMENTS(ptr->ttl) * sizeof(ptr->ttl[0]));
 
 			/* Add to list of dynamically added routes. Necessary if the user
 			 * removes the (*,G) using the command line interface rather than
