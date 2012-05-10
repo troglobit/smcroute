@@ -41,8 +41,7 @@ void *cmd_build(char cmd, const char *argv[], int count)
 {
 	int i;
 	char *ptr;
-	const char **arg = argv;
-	unsigned arg_len = 0, packet_len;
+	size_t arg_len = 0, packet_len;
 	struct cmd *packet;
 
 	/* Summarize length of all arguments/commands */
