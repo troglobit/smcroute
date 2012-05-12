@@ -1,5 +1,10 @@
                                                                        -*-org-*-
 
+* Add IPv6 support for (*, G), i.e., on-demand, routing rules.
+In SMCRoute 1.99.0 IPv4 support for source-less multicast routes was
+added. Adding support for IPv6 should be fairly straight forward, but
+needs figuring out the kernel interface and extensive testing.
+
 * Support for detecting link up/down on interfaces
 Also requires updating VIF/MIFs and mroutes accordingly.
 

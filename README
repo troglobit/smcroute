@@ -20,13 +20,13 @@ Usage
 SMCRoute is both a daemon and a client. You must start the daemon to be able
 to setup multicast routes.
 
-# smcroute -d
+   # smcroute -d
 
 By default SMCRoute will look for a configuration file in /etc/smcroute.conf,
 which can look something like this:
 
-mgroup from eth0 group 225.1.2.3
-mroute from eth0 group 225.1.2.3 source 192.168.1.42 to eth1 eth2
+   mgroup from eth0 group 225.1.2.3
+   mroute from eth0 group 225.1.2.3 source 192.168.1.42 to eth1 eth2
 
 The first line means "Join multicast group 225.1.2.3 on interface eth0",
 and is for layer-2 devices (switches) with IGMP snooping implemented to
@@ -51,12 +51,12 @@ aware switches can help mitigate its broadcast effect.
 Traditionally, however, SMCRoute only had the client interface to interact
 with the daemon. To achieve the above two config file lines you have to:
 
-# sleep 1
+   # sleep 1
 
 To allow the daemon to startup properly (above) before interacting with it.
 
-# smcroute -j eth0 225.1.2.3
-# smcroute -a eth0 192.168.1.42 225.1.2.3 eth1 eth2
+   # smcroute -j eth0 225.1.2.3
+   # smcroute -a eth0 192.168.1.42 225.1.2.3 eth1 eth2
 
 Experimental
 ------------
@@ -68,13 +68,13 @@ the wildcard address 0.0.0.0 (INADDR_ANY) for IPv4 multicast routes.
 
 Example smcroute.conf:
 
-mgroup from eth0 group 225.1.2.3
-mroute from eth0 group 225.1.2.3 source 0.0.0.0 to eth1 eth2
+   mgroup from eth0 group 225.1.2.3
+   mroute from eth0 group 225.1.2.3 to eth1 eth2
 
 or, from the command line:
 
-# smcroute -j eth0 225.1.2.3
-# smcroute -a eth0 0.0.0.0 225.1.2.3 eth1 eth2
+   # smcroute -j eth0 225.1.2.3
+   # smcroute -a eth0 0.0.0.0 225.1.2.3 eth1 eth2
 
 Good Luck!
 The SMCRoute Maintainers

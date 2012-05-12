@@ -22,13 +22,15 @@ no proper IGMP or MLD signaling exists.
 Generally multicast routes exists in the kernel only as long as smcroute
 or another multicast routing daemon is running. Only one multicast
 routing daemon can be active at a time, so it's impossible to run
-smcroute and e.g. 'mrouted' at the same time.
+smcroute and, e.g.,
+.Nm mrouted
+at the same time.
 .Pp
-Due to the nature of the operation of
+Because
 .Nm
-the daemon needs to run with full 
+modifies the kernel routing table it needs to run with full
 .Ar superuser rights .
-Which also means that the same applies to the client operations, to be
+Which also means that the same applies to client operations, to be
 able to communicate with the daemon.
 .Ss WARNING
 By using multiple output interfaces (traffic multiplication), using the
@@ -198,6 +200,10 @@ command line option.
 mgroup from eth0 group 225.1.2.3
 mroute from eth0 group 225.1.2.3 source 192.168.1.42 to eth1 eth2
 
+# Here we allow routing of multicast to group 225.3.2.1 from ANY
+# source coming in from interface eth0 and forward to eth1 and eth2.
+# NOTE: Routing from ANY source is currently only available for IPv4
+#       multicast.
 mgroup from eth0 group 225.3.2.1
 mroute from eth0 group 225.3.2.1 to eth1 eth2
 .Ed
@@ -224,7 +230,7 @@ When starting up, the daemon by default lists the success of parsing each
 line and setting up a route.
 .Sh LIMITS
 The current version compiles and runs fine on Linux kernel version
-2.4 and 2.6. Known limits:
+2.4, 2.6 and 3.0. Known limits:
 .Pp
 .Bl -tag -width TERM -compact -offset indent
 .It Cm Multicast routes
