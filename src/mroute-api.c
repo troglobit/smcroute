@@ -166,11 +166,13 @@ void mroute4_disable(void)
 	mroute4_socket = -1;
 
 	/* Free list of (*,G) routes on SIGHUP */
-	LIST_FOREACH(entry, &mroute4_conf_list, link) {
+	while (!LIST_EMPTY(&mroute4_conf_list)) {
+		entry = LIST_FIRST(&mroute4_conf_list);
 		LIST_REMOVE(entry, link);
 		free(entry);
 	}
-	LIST_FOREACH(entry, &mroute4_dyn_list, link) {
+	while (!LIST_EMPTY(&mroute4_dyn_list)) {
+		entry = LIST_FIRST(&mroute4_dyn_list);
 		LIST_REMOVE(entry, link);
 		free(entry);
 	}
@@ -360,13 +362,17 @@ int mroute4_del(mroute4_t *ptr)
 	if (ptr->sender.s_addr == INADDR_ANY) {
 		mroute4_t *entry;
 
-		LIST_FOREACH(entry, &mroute4_conf_list, link) {
+		while (!LIST_EMPTY(&mroute4_conf_list)) {
+			entry = LIST_FIRST(&mroute4_conf_list);
+
 			/* Find matching (*,G) ... and interface. */
 			if (!memcmp (&entry->group, &ptr->group, sizeof(entry->group)) && entry->inbound == ptr->inbound) {
 				mroute4_t *set;
 
 				smclog(LOG_DEBUG, 0, "Found (*,G) match for (0x%x, 0x%x) - now find any set routes!", ptr->sender.s_addr, ptr->group.s_addr);
-				LIST_FOREACH(set, &mroute4_dyn_list, link) {
+				while (!LIST_EMPTY(&mroute4_dyn_list)) {
+					set = LIST_FIRST(&mroute4_dyn_list);
+
 					if (!memcmp (&entry->group, &set->group, sizeof(entry->group)) && entry->inbound == set->inbound) {
 						smclog(LOG_DEBUG, 0, "Found match (0x%x, 0x%x) - removing, unlinking and freeing.", set->sender.s_addr, set->group.s_addr);
 						__mroute4_del(set);
