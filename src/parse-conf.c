@@ -73,7 +73,7 @@ static int join_mgroup (int lineno, char *ifname, char *group)
 	}
 
 	if (strchr(group, ':')) {
-#ifndef HAVE_IPV6_MULTICAST_HOST
+#if !defined(HAVE_IPV6_MULTICAST_HOST) || !defined(HAVE_IPV6_MULTICAST_ROUTING)
 		smclog(LOG_WARNING, 0, "Line %02: Sadly this build of smcroute does not support IPv6.", lineno);
 		result = 0;
 #else
@@ -110,7 +110,7 @@ static int add_mroute (int lineno, char *ifname, char *group, char *source, char
 	}
 
 	if (strchr(group, ':')) {
-#ifndef HAVE_IPV6_MULTICAST_HOST
+#if !defined(HAVE_IPV6_MULTICAST_HOST) || !defined(HAVE_IPV6_MULTICAST_ROUTING)
 		smclog(LOG_WARNING, 0, "Line %02: Sadly this build of smcroute does not support IPv6.", lineno);
 		result = 0;
 #else
