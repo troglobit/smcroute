@@ -41,7 +41,9 @@ mcsender:  $(MCSENDER_OBJS) config.h
 	@printf "  LINK    $@\n"
 	@$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(MCSENDER_OBJS) $(LDLIBS)
 
-smcroute: build.h config.h $(SMCROUTE_OBJS)
+$(SMCROUTE_OBJS): build.h config.h
+
+smcroute: $(SMCROUTE_OBJS)
 	@printf "  LINK    $@\n"
 	@$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(SMCROUTE_OBJS) $(LDLIBS)
 
