@@ -29,6 +29,8 @@ AC_CHECK_HEADERS([linux/mroute.h], [], [],
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #endif
+#define _LINUX_IN_H             /* For Linux <= 2.6.25 */
+#include <linux/types.h>
 ])
 
 AC_CHECK_HEADERS([linux/mroute6.h], [], [], 

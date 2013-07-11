@@ -48,6 +48,8 @@
 #include "config.h"
 
 #ifdef HAVE_LINUX_MROUTE_H
+#define _LINUX_IN_H             /* For Linux <= 2.6.25 */
+#include <linux/types.h>
 #include <linux/mroute.h>
 #endif
 
@@ -90,9 +92,6 @@ typedef u_int32_t uint32;
  */
 #define ARRAY_ELEMENTS(arr) ((sizeof(arr)/sizeof(0[arr])) / ((size_t)(!(sizeof(arr) % sizeof(0[arr])))))
 
-#define MAX_MC_VIFS    MAXVIFS	/* = to MAXVIFS from linux/mroute.h */
-#define MAX_MC_MIFS    MAXMIFS	/* = to MAXMIFS from linux/mroute6.h */
-
 struct iface {
 	char name[IFNAMSIZ];
 	struct in_addr inaddr;	/* == 0 for non IP interfaces */
@@ -121,6 +120,8 @@ int           iface_get_mif_by_name (const char *ifname);
 /*
  * IPv4 multicast route
  */
+#define MAX_MC_VIFS MAXVIFS		/* from linux/mroute.h */
+
 struct mroute4 {
 	LIST_ENTRY(mroute4) link;
 
@@ -134,6 +135,12 @@ typedef struct mroute4 mroute4_t;
 /*
  * IPv6 multicast route
  */
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
+#define MAX_MC_MIFS MAXMIFS		/* from linux/mroute6.h */
+#else
+#define MAX_MC_MIFS 1			/* Dummy value for builds w/o IPv6 routing */
+#endif
+
 struct mroute6 {
 	struct sockaddr_in6 sender;
 	struct sockaddr_in6 group;      /* multicast group */
