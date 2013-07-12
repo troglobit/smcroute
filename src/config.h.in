@@ -30,6 +30,9 @@
 /* Define to 1 if your OS supports IPv6 multicast routing */
 #undef HAVE_IPV6_MULTICAST_ROUTING
 
+/* Define to 1 if you have the `ev' library (-lev). */
+#undef HAVE_LIBEV
+
 /* Define to 1 if you have the <linux/mroute6.h> header file. */
 #undef HAVE_LINUX_MROUTE6_H
 

@@ -7,6 +7,7 @@ SMCROUTE_OBJS = smcroute.o mroute-api.o ifvc.o cmdpkt.o ipc.o syslog.o \
 OBJS          = $(MCSENDER_OBJS) $(SMCROUTE_OBJS)
 SRCS          = $(OBJS:.o=.c)
 DEPS          = $(addprefix .,$(SRCS:.c=.d))
+LDLIBS        = @LIBS@
 
 # Smart autodependecy generation via GCC -M.
 .%.d: %.c

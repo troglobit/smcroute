@@ -34,6 +34,8 @@
 #include <netinet/ip.h>
 #include <arpa/inet.h>
 
+#include <ev.h>
+
 #include <signal.h>
 #include <unistd.h>
 
@@ -41,6 +43,16 @@
 
 #include "config.h"
 #include "build.h"
+
+
+int do_debug_logging = 0;
+const char *conf_file = SMCROUTE_SYSTEM_CONF;
+
+static struct ev_io ipc_watcher;
+static struct ev_io mroute4_watcher;
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
+static struct ev_io mroute6_watcher;
+#endif
 
 extern char *__progname;
 static const char version_info[] =
@@ -78,41 +90,6 @@ static const char usage_info[] =
 	"  -j <IFNAME> <MULTICAST-GROUP>\n"
 	"  -l <IFNAME> <MULTICAST-GROUP>\n";
 
-static int sighandled = 0;
-#define	GOT_SIGINT	0x01
-#define	GOT_SIGHUP	0x02
-
-int do_debug_logging = 0;
-
-/*
- * Signal handler.  Take note of the fact that the signal arrived
- * so that the main loop can take care of it.
- */
-static void handler(int sig)
-{
-    switch (sig) {
-    case SIGINT:
-    case SIGTERM:
-	sighandled |= GOT_SIGINT;
-	break;
-
-    case SIGHUP:
-	sighandled |= GOT_SIGHUP;
-	break;
-    }
-}
-
-static void signal_init(void)
-{
-	struct sigaction sa;
-
-	sa.sa_handler = handler;
-	sa.sa_flags = 0;	/* Interrupt system calls */
-	sigemptyset(&sa.sa_mask);
-	sigaction(SIGHUP, &sa, NULL);
-	sigaction(SIGTERM, &sa, NULL);
-	sigaction(SIGINT, &sa, NULL);
-}
 
 /*
 ** Counts the number of arguments belonging to an option. Option is any argument
@@ -193,211 +170,252 @@ static int daemonize(void)
 	return pid;
 }
 
-static void server_loop(int sd, const char *conf_file)
+static void server_ipc_cb(struct ev_loop *loop, struct ev_io *w, int revents __attribute__ ((unused)))
 {
-	int result;
 	uint8 buf[MX_CMDPKT_SZ];
-	fd_set fds;
-#ifdef HAVE_IPV6_MULTICAST_ROUTING
-	int max_fd_num = MAX(sd, MAX(mroute4_socket, mroute6_socket));
-#else
-	int max_fd_num = MAX(sd, mroute4_socket);
-#endif
 	const char *str;
 	struct cmd *packet;
 	struct mroute mroute;
 
+	ev_io_stop(loop, w);
+
+	/* receive the command from the smcroute client */
+	packet = ipc_server_read(buf, sizeof(buf));
+	switch (packet->cmd) {
+	case 'a':
+	case 'r':
+		if ((str = cmd_convert_to_mroute(&mroute, packet))) {
+			smclog(LOG_WARNING, 0, str);
+			ipc_send(log_last_message, strlen(log_last_message) + 1);
+			break;
+		}
+
+		if (mroute.version == 4) {
+			if ((packet->cmd == 'a' && mroute4_add(&mroute.u.mroute4))
+			    || (packet->cmd == 'r' && mroute4_del(&mroute.u.mroute4))) {
+				ipc_send(log_last_message, strlen(log_last_message) + 1);
+				break;
+			}
+		} else {
+#ifndef HAVE_IPV6_MULTICAST_ROUTING
+			smclog(LOG_WARNING, 0, "Not built with IPv6 routing support.");
+#else
+			if ((packet->cmd == 'a' && mroute6_add(&mroute.u.mroute6))
+			    || (packet->cmd == 'r' && mroute6_del(&mroute.u.mroute6))) {
+				ipc_send(log_last_message, strlen(log_last_message) + 1);
+				break;
+			}
+#endif /* HAVE_IPV6_MULTICAST_ROUTING */
+		}
+
+		ipc_send("", 1);
+		break;
+
+	case 'j':	/* j <InputIntf> <McGroupAdr> */
+	case 'l':	/* l <InputIntf> <McGroupAdr> */
+	{
+		int result = -1;
+		const char *ifname = (const char *)(packet + 1);
+		const char *groupstr = ifname + strlen(ifname) + 1;
+
+		if (strchr(groupstr, ':') == NULL) {
+			struct in_addr group;
+
+			/* check multicast address */
+			if (!*groupstr
+			    || !inet_aton(groupstr, &group)
+			    || !IN_MULTICAST(ntohl(group.s_addr))) {
+				smclog(LOG_WARNING, 0, "invalid multicast group address: '%s'", groupstr);
+				ipc_send(log_last_message, strlen(log_last_message) + 1);
+				break;
+			}
+
+			/* join or leave */
+			if (packet->cmd == 'j')
+				result = mcgroup4_join(ifname, group);
+			else
+				result = mcgroup4_leave(ifname, group);
+		} else {	/* IPv6 */
+#ifndef HAVE_IPV6_MULTICAST_HOST
+			smclog(LOG_WARNING, 0, "Not built with IPv6 support.");
+#else
+			struct in6_addr group;
+
+			/* check multicast address */
+			if (!*groupstr
+			    || (inet_pton(AF_INET6, groupstr, &group) <= 0)
+			    || !IN6_IS_ADDR_MULTICAST(&group)) {
+				smclog(LOG_WARNING, 0, "invalid multicast group address: '%s'", groupstr);
+				ipc_send(log_last_message, strlen(log_last_message) + 1);
+				break;
+			}
+
+			/* join or leave */
+			if (packet->cmd == 'j')
+				result = mcgroup6_join(ifname, group);
+			else
+				result = mcgroup6_leave(ifname, group);
+#endif			/* HAVE_IPV6_MULTICAST_HOST */
+		}
+
+		/* failed */
+		if (result) {
+			ipc_send(log_last_message, strlen(log_last_message) + 1);
+			break;
+		}
+
+		ipc_send("", 1);
+		break;
+	}
+
+	case 'k':
+		ipc_send("", 1);
+		exit(0);
+	}
+
+	ev_io_start(loop, w);
+}
+
+/* Check for kernel IGMPMSG_NOCACHE for (*,G) hits. I.e., source-less routes. */
+static void server_mroute4_cb(struct ev_loop *loop, struct ev_io *w, int revents __attribute__ ((unused)))
+{
+	int result;
+	char tmp[128];
+	struct ip *ip;
+	struct igmpmsg *igmpctl;
+
+	ev_io_stop(loop, w);
+
+	memset(tmp, 0, sizeof(tmp));
+	result = read(mroute4_socket, tmp, sizeof(tmp));
+
+	/* packets sent up from kernel to daemon have ip->ip_p = 0 */
+	ip = (struct ip *)tmp;
+	igmpctl = (struct igmpmsg *)tmp;
+
+	/* Check for IGMPMSG_NOCACHE to do (*,G) based routing. */
+	if (ip->ip_p == 0 && igmpctl->im_msgtype == IGMPMSG_NOCACHE) {
+		char sbuf[16], gbuf[16];
+		struct iface *iface;
+		mroute4_t mroute;
+
+		mroute.group.s_addr  = igmpctl->im_dst.s_addr;
+		mroute.sender.s_addr = igmpctl->im_src.s_addr;
+		mroute.inbound       = igmpctl->im_vif;
+		iface = iface_find_by_vif(mroute.inbound);
+
+		/* Find any matching route for this group on that iif. */
+		smclog(LOG_DEBUG, 0, "Cache miss for group %s from %s on interface %s(%d) ifindex:%d",
+		       inet_ntop (AF_INET, &mroute.group, gbuf, sizeof(gbuf)),
+		       inet_ntop (AF_INET, &mroute.sender, sbuf, sizeof(sbuf)),
+		       iface ? iface->name : "unknown", mroute.inbound,
+		       iface ? iface->ifindex : -1);
+		mroute4_dyn_add(&mroute);
+	} else {
+		smclog(LOG_DEBUG, 0, "%d byte IGMP signaling dropped", result);
+	}
+
+	ev_io_start(loop, w);
+}
+
+/* Receive and drop ICMPv6 stuff. This is either MLD packets or upcall messages sent up from the kernel. */
+static void server_mroute6_cb(struct ev_loop *loop, struct ev_io *w, int revents __attribute__ ((unused)))
+{
+	int result;
+
+	ev_io_stop(loop, w);
+
+	if (-1 != mroute6_socket) {
+		char tmp[128];
+
+		result = read(mroute6_socket, tmp, sizeof(tmp));
+		smclog(LOG_DEBUG, 0, "%d byte MLD signaling dropped", result);
+	}
+
+	ev_io_start(loop, w);
+}
+
+static void unregister_routing_watchers(struct ev_loop *loop)
+{
+	ev_io_stop(loop, &mroute4_watcher);
+	ev_io_stop(loop, &mroute6_watcher);
+}
+
+static void register_routing_watchers(struct ev_loop *loop)
+{
+	if (mroute4_socket < 0)
+		smclog(LOG_WARNING, 0, "No IPv4 multicast routing socket.");
+	else {
+		ev_io_init(&mroute4_watcher, server_mroute4_cb, mroute4_socket, EV_READ);
+		ev_io_start(loop, &mroute4_watcher);
+	}
+
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
+	if (mroute6_socket < 0)
+		smclog(LOG_WARNING, 0, "No IPv6 multicast routing socket.");
+	else {
+		ev_io_init(&mroute6_watcher, server_mroute6_cb, mroute6_socket, EV_READ);
+		ev_io_start(loop, &mroute6_watcher);
+	}
+#endif /* HAVE_IPV6_MULTICAST_ROUTING */
+}
+
+/* Watch the MRouter and the IPC socket to the smcroute client */
+static void server_loop_init(struct ev_loop *loop, int sd)
+{
 	smclog(LOG_NOTICE, 0, "Attempting to load %s", conf_file);
-	read_conf_file (conf_file);
+	read_conf_file(conf_file);
 
 	/* Ready for input, tell clients that by creating the pidfile */
 	if (pidfile(NULL))
 		smclog(LOG_WARNING, errno, "Failed creating pidfile");
 
-	/* Watch the MRouter and the IPC socket to the smcroute client */
-	while (1) {
-		if (sighandled) {
-			if (sighandled & GOT_SIGINT) {
-				sighandled &= ~GOT_SIGINT;
-				break;
-			}
-			if (sighandled & GOT_SIGHUP) {
-				sighandled &= ~GOT_SIGHUP;
-				restart();
-				smclog(LOG_NOTICE, 0, "Got SIGHUP, reloading %s ...", conf_file);
-				read_conf_file (conf_file);
-			}
-		}
-
-		FD_ZERO(&fds);
-		FD_SET(sd, &fds);
-		FD_SET(mroute4_socket, &fds);
-#ifdef HAVE_IPV6_MULTICAST_ROUTING
-		if (-1 != mroute6_socket)
-			FD_SET(mroute6_socket, &fds);
-#endif
-
-		/* wait for input */
-		result = select(max_fd_num + 1, &fds, NULL, NULL, NULL);
-		if (result <= 0) {
-			/* Log all errors, except when signalled, ignore failures. */
-			if (EINTR != errno)
-				smclog(LOG_WARNING, errno, "select() failure");
-			continue;
-		}
-
-		/* Check for kernel IGMPMSG_NOCACHE for (*,G) hits. I.e., source-less routes. */
-		if (FD_ISSET(mroute4_socket, &fds)) {
-			char tmp[128];
-			struct ip *ip;
-			struct igmpmsg *igmpctl;
-
-			memset (tmp, 0, sizeof(tmp));
-			result = read(mroute4_socket, tmp, sizeof(tmp));
-
-			/* packets sent up from kernel to daemon have ip->ip_p = 0 */
-			ip = (struct ip *)tmp;
-			igmpctl = (struct igmpmsg *)tmp;
-
-			/* Check for IGMPMSG_NOCACHE to do (*,G) based routing. */
-			if (ip->ip_p == 0 && igmpctl->im_msgtype == IGMPMSG_NOCACHE) {
-				char sbuf[16], gbuf[16];
-				struct iface *iface;
-				mroute4_t mroute;
-
-				mroute.group.s_addr  = igmpctl->im_dst.s_addr;
-				mroute.sender.s_addr = igmpctl->im_src.s_addr;
-				mroute.inbound       = igmpctl->im_vif;
-				iface = iface_find_by_vif (mroute.inbound);
-
-				/* Find any matching route for this group on that iif. */
-				smclog(LOG_DEBUG, 0, "Cache miss for group %s from %s on interface %s(%d) ifindex:%d",
-				       inet_ntop (AF_INET, &mroute.group, gbuf, sizeof(gbuf)),
-				       inet_ntop (AF_INET, &mroute.sender, sbuf, sizeof(sbuf)),
-				       iface ? iface->name : "unknown", mroute.inbound,
-				       iface ? iface->ifindex : -1);
-				mroute4_dyn_add(&mroute);
-			} else {
-				smclog(LOG_DEBUG, 0, "%d byte IGMP signaling dropped", result);
-			}
-		}
-
-		/* Receive and drop ICMPv6 stuff. This is either MLD packets
-		 * or upcall messages sent up from the kernel.
-		 */
-#ifdef HAVE_IPV6_MULTICAST_ROUTING
-		if (-1 != mroute6_socket && FD_ISSET(mroute6_socket, &fds)) {
-			char tmp[128];
-
-			result = read(mroute6_socket, tmp, sizeof(tmp));
-			smclog(LOG_DEBUG, 0, "%d byte MLD signaling dropped", result);
-		}
-#endif
-
-		/* loop back to select if there is no smcroute command */
-		if (!FD_ISSET(sd, &fds))
-			continue;
-
-		/* receive the command from the smcroute client */
-		packet = ipc_server_read(buf, sizeof(buf));
-		switch (packet->cmd) {
-		case 'a':
-		case 'r':
-			if ((str = cmd_convert_to_mroute(&mroute, packet))) {
-				smclog(LOG_WARNING, 0, str);
-				ipc_send(log_last_message, strlen(log_last_message) + 1);
-				break;
-			}
-
-			if (mroute.version == 4) {
-				if ((packet->cmd == 'a' && mroute4_add(&mroute.u.mroute4))
-				    || (packet->cmd == 'r' && mroute4_del(&mroute.u.mroute4))) {
-					ipc_send(log_last_message, strlen(log_last_message) + 1);
-					break;
-				}
-			} else {
-#ifndef HAVE_IPV6_MULTICAST_ROUTING
-				smclog(LOG_WARNING, 0, "Not built with IPv6 routing support.");
-#else
-				if ((packet->cmd == 'a' && mroute6_add(&mroute.u.mroute6))
-				    || (packet->cmd == 'r' && mroute6_del(&mroute.u.mroute6))) {
-					ipc_send(log_last_message, strlen(log_last_message) + 1);
-					break;
-				}
-#endif				/* HAVE_IPV6_MULTICAST_ROUTING */
-			}
-
-			ipc_send("", 1);
-			break;
-
-		case 'j':	/* j <InputIntf> <McGroupAdr> */
-		case 'l':	/* l <InputIntf> <McGroupAdr> */
-		{
-			int result = -1;
-			const char *ifname = (const char *)(packet + 1);
-			const char *groupstr = ifname + strlen(ifname) + 1;
-
-			if (strchr(groupstr, ':') == NULL) {
-				struct in_addr group;
-
-				/* check multicast address */
-				if (!*groupstr
-				    || !inet_aton(groupstr, &group)
-				    || !IN_MULTICAST(ntohl(group.s_addr))) {
-					smclog(LOG_WARNING, 0, "invalid multicast group address: '%s'", groupstr);
-					ipc_send(log_last_message, strlen(log_last_message) + 1);
-					break;
-				}
-
-				/* join or leave */
-				if (packet->cmd == 'j')
-					result = mcgroup4_join(ifname, group);
-				else
-					result = mcgroup4_leave(ifname, group);
-			} else {	/* IPv6 */
-#ifndef HAVE_IPV6_MULTICAST_HOST
-				smclog(LOG_WARNING, 0, "Not built with IPv6 support.");
-#else
-				struct in6_addr group;
-
-				/* check multicast address */
-				if (!*groupstr
-				    || (inet_pton(AF_INET6, groupstr, &group) <= 0)
-				    || !IN6_IS_ADDR_MULTICAST(&group)) {
-					smclog(LOG_WARNING, 0, "invalid multicast group address: '%s'", groupstr);
-					ipc_send(log_last_message, strlen(log_last_message) + 1);
-					break;
-				}
-
-				/* join or leave */
-				if (packet->cmd == 'j')
-					result = mcgroup6_join(ifname, group);
-				else
-					result = mcgroup6_leave(ifname, group);
-#endif				/* HAVE_IPV6_MULTICAST_HOST */
-			}
-
-			/* failed */
-			if (result) {
-				ipc_send(log_last_message, strlen(log_last_message) + 1);
-				break;
-			}
-
-			ipc_send("", 1);
-			break;
-		}
-
-		case 'k':
-			ipc_send("", 1);
-			exit(0);
-		}
+	if (sd < 0)
+		smclog(LOG_WARNING, errno, "No IPC socket setup, client communication disabled.");
+	else {
+		ev_io_init(&ipc_watcher, server_ipc_cb, sd, EV_READ);
+		ev_io_start(loop, &ipc_watcher);
 	}
+
+	register_routing_watchers(loop);
+}
+
+static void sigterm_cb(struct ev_loop *loop, ev_signal *w __attribute__ ((unused)), int revents __attribute__ ((unused)))
+{
+	ev_break(loop, EVBREAK_ALL);
+}
+
+static void sighup_cb(struct ev_loop *loop, ev_signal *w __attribute__ ((unused)), int revents __attribute__ ((unused)))
+{
+	smclog(LOG_NOTICE, 0, "Got SIGHUP, reloading %s ...", conf_file);
+
+	unregister_routing_watchers(loop);
+	restart();
+	read_conf_file(conf_file);
+	register_routing_watchers(loop);
+}
+
+static void signal_init(struct ev_loop *loop)
+{
+	static ev_signal sighup_watcher;
+	static ev_signal sigterm_watcher;
+	static ev_signal sigint_watcher;
+
+	ev_signal_init(&sighup_watcher, sighup_cb, SIGHUP);
+	ev_signal_start(loop, &sighup_watcher);
+
+	ev_signal_init(&sigterm_watcher, sigterm_cb, SIGTERM);
+	ev_signal_start(loop, &sigterm_watcher);
+
+	ev_signal_init(&sigint_watcher, sigterm_cb, SIGINT);
+	ev_signal_start(loop, &sigint_watcher);
 }
 
 /* Init everything before forking, so we can fail and return an
  * error code in the parent and the initscript will fail */
-static void start_server(int background, const char *conf_file)
+static void start_server(int background)
 {
+	struct ev_loop *loop;
 	int sd, pid = 0;
 	unsigned short initialized_api_count;
 
@@ -433,8 +451,13 @@ static void start_server(int background, const char *conf_file)
 	if (!pid) {
 		smclog(LOG_NOTICE, 0, "Entering smcroute daemon main loop.");
 		atexit(clean);
-		signal_init();
-		server_loop(sd, conf_file);
+
+		loop = ev_default_loop(0);
+
+		signal_init(loop);
+		server_loop_init(loop, sd);
+
+		ev_run(loop, 0);
 	}
 }
 
@@ -458,7 +481,7 @@ int main(int argc, const char *argv[])
 	int start_daemon = 0;
 	int background = 1;
 	uint8 buf[MX_CMDPKT_SZ];
-	const char *arg, *conf_file = SMCROUTE_SYSTEM_CONF;
+	const char *arg;
 	unsigned int cmdnum = 0;
 	struct cmd *cmdv[16];
 
@@ -552,7 +575,7 @@ int main(int argc, const char *argv[])
 			smclog(LOG_ERR, 0, "Must have super-user permissions to start %s.", __progname);
 			exit(1);
 		}
-		start_server(background, conf_file);
+		start_server(background);
 		if (!background)
 			exit (0); /* Exit if non-backgrounded daemon exits this way. */
 	}
