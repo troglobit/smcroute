@@ -1,7 +1,11 @@
-smcroute 1.99.1 -> 2.0.0
+smcroute 1.99.2 -> 2.0.0
  * Refactor to use libev for event handling instead of poll() etc.
 
-smcroute 1.99.9 -> 1.99.1
+smcroute 1.99.1 -> 1.99.2
+ * Fix issue #2: Loop forever bug when deleting new (*,G) sourceless routes
+   Bug report and patch by Jean-Baptiste Maillet
+
+smcroute 1.99.0 -> 1.99.1
  * Fix possible memory leak on Linux
  * Fix missing #ifdefs when building on systems w/o IPv6
  * Fix possible race in Makefile when building in (massive) parallel
