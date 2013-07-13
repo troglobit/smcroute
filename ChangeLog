@@ -1,3 +1,12 @@
+smcroute 1.99.1 -> 2.0.0
+ * Refactor to use libev for event handling instead of poll() etc.
+
+smcroute 1.99.9 -> 1.99.1
+ * Fix possible memory leak on Linux
+ * Fix missing #ifdefs when building on systems w/o IPv6
+ * Fix possible race in Makefile when building in (massive) parallel
+ * Fix build problems on RedHat EL5/CentOS5, i.e., Linux <= 2.6.25
+
 smcroute 1.98.3 -> 1.99.0
  * Bugfix: SMCRoute segfault when starting on interface that is up but has
 	no valid IPv4 address yet. Bug introduced in 1.98.3
