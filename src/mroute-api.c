@@ -362,32 +362,40 @@ int mroute4_del(mroute4_t *ptr)
 	if (ptr->sender.s_addr == INADDR_ANY) {
 		mroute4_t *entry;
 
-		while (!LIST_EMPTY(&mroute4_conf_list)) {
-			entry = LIST_FIRST(&mroute4_conf_list);
+		if (LIST_EMPTY(&mroute4_conf_list))
+			return 0;
 
+		entry = LIST_FIRST(&mroute4_conf_list);
+		while (entry) {
+			smclog(LOG_DEBUG, 0, "%s:%d:%s:looping over entry at 0x%x", __FILE__, __LINE__, __func__, entry);
 			/* Find matching (*,G) ... and interface. */
 			if (!memcmp (&entry->group, &ptr->group, sizeof(entry->group)) && entry->inbound == ptr->inbound) {
 				mroute4_t *set;
 
 				smclog(LOG_DEBUG, 0, "Found (*,G) match for (0x%x, 0x%x) - now find any set routes!", ptr->sender.s_addr, ptr->group.s_addr);
-				while (!LIST_EMPTY(&mroute4_dyn_list)) {
-					set = LIST_FIRST(&mroute4_dyn_list);
+				if (LIST_EMPTY(&mroute4_dyn_list)) {
+					entry = LIST_NEXT(entry, link);
+					continue;
+				}
 
+				set = LIST_FIRST(&mroute4_dyn_list);
+				while (set) {
 					if (!memcmp (&entry->group, &set->group, sizeof(entry->group)) && entry->inbound == set->inbound) {
 						smclog(LOG_DEBUG, 0, "Found match (0x%x, 0x%x) - removing, unlinking and freeing.", set->sender.s_addr, set->group.s_addr);
 						__mroute4_del(set);
 						LIST_REMOVE(set, link);
 						free(set);
-					}
+						set = LIST_FIRST(&mroute4_dyn_list);
+					} else set = LIST_NEXT(set, link);
 				}
 
 				LIST_REMOVE(entry, link);
 				free(entry);
-			}
+				entry = LIST_FIRST(&mroute4_conf_list);
+			} else entry = LIST_NEXT(entry, link);
 		}
-	}
-
-	return __mroute4_del(ptr);
+	} else
+		return __mroute4_del(ptr);
 }
 
 
