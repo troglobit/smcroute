@@ -45,6 +45,9 @@
 #endif
 #endif
 
+/* Used for (*,G) matches */
+#define mroute4_match(r1, r2) (!memcmp(&(r1)->group, &(r2)->group, sizeof((r1)->group)) && (r1)->inbound == (r2)->inbound)
+
 /*
  * Need a raw IGMP socket as interface for the IPv4 mrouted API
  * Receives IGMP packets and kernel upcall messages.
@@ -290,7 +293,7 @@ int mroute4_dyn_add(mroute4_t *ptr)
 
 	LIST_FOREACH(entry, &mroute4_conf_list, link) {
 		/* Find matching (*,G) ... and interface. */
-		if (!memcmp (&entry->group, &ptr->group, sizeof(entry->group)) && entry->inbound == ptr->inbound) {
+		if (mroute4_match(entry, ptr)) {
 			smclog(LOG_DEBUG, 0, "Found (*,G) match for (0x%x, 0x%x)!", ptr->sender.s_addr, ptr->group.s_addr);
 
 			/* Use configured template (*,G) outbound interfaces. */
@@ -355,49 +358,55 @@ int mroute4_add(mroute4_t *ptr)
 */
 int mroute4_del(mroute4_t *ptr)
 {
+	mroute4_t *entry, *set;
+
 	/* For (*,G) we have saved all dynamically added kernel routes
 	 * to a linked list which we need to traverse again and remove
 	 * all matches. From kernel dyn list before we remove the conf
 	 * entry. */
-	if (ptr->sender.s_addr == INADDR_ANY) {
-		mroute4_t *entry;
+	if (ptr->sender.s_addr != INADDR_ANY)
+		return __mroute4_del(ptr);
 
-		if (LIST_EMPTY(&mroute4_conf_list))
-			return 0;
+	if (LIST_EMPTY(&mroute4_conf_list))
+		return 0;
 
-		entry = LIST_FIRST(&mroute4_conf_list);
-		while (entry) {
-			smclog(LOG_DEBUG, 0, "%s:%d:%s:looping over entry at 0x%x", __FILE__, __LINE__, __func__, entry);
-			/* Find matching (*,G) ... and interface. */
-			if (!memcmp (&entry->group, &ptr->group, sizeof(entry->group)) && entry->inbound == ptr->inbound) {
-				mroute4_t *set;
+	entry = LIST_FIRST(&mroute4_conf_list);
+	while (entry) {
+		/* Find matching (*,G) ... and interface. */
+		if (mroute4_match(entry, ptr)) {
+			smclog(LOG_DEBUG, 0, "Found (*,G) match for (0x%x, 0x%x) - now find any set routes!", ptr->sender.s_addr, ptr->group.s_addr);
+			if (LIST_EMPTY(&mroute4_dyn_list)) {
+				entry = LIST_NEXT(entry, link);
+				continue;
+			}
 
-				smclog(LOG_DEBUG, 0, "Found (*,G) match for (0x%x, 0x%x) - now find any set routes!", ptr->sender.s_addr, ptr->group.s_addr);
-				if (LIST_EMPTY(&mroute4_dyn_list)) {
-					entry = LIST_NEXT(entry, link);
+			set = LIST_FIRST(&mroute4_dyn_list);
+			while (set) {
+				if (mroute4_match(entry, set)) {
+					smclog(LOG_DEBUG, 0, "Found match (0x%x, 0x%x) - removing, unlinking and freeing.", set->sender.s_addr, set->group.s_addr);
+					__mroute4_del(set);
+					LIST_REMOVE(set, link);
+					free(set);
+
+					set = LIST_FIRST(&mroute4_dyn_list);
 					continue;
 				}
 
-				set = LIST_FIRST(&mroute4_dyn_list);
-				while (set) {
-					if (!memcmp (&entry->group, &set->group, sizeof(entry->group)) && entry->inbound == set->inbound) {
-						smclog(LOG_DEBUG, 0, "Found match (0x%x, 0x%x) - removing, unlinking and freeing.", set->sender.s_addr, set->group.s_addr);
-						__mroute4_del(set);
-						LIST_REMOVE(set, link);
-						free(set);
-						set = LIST_FIRST(&mroute4_dyn_list);
-					} else set = LIST_NEXT(set, link);
-				}
+				set = LIST_NEXT(set, link);
+			}
 
-				LIST_REMOVE(entry, link);
-				free(entry);
-				entry = LIST_FIRST(&mroute4_conf_list);
-			} else entry = LIST_NEXT(entry, link);
+			LIST_REMOVE(entry, link);
+			free(entry);
+
+			entry = LIST_FIRST(&mroute4_conf_list);
+			continue;
 		}
-	} else
-		return __mroute4_del(ptr);
-}
 
+		entry = LIST_NEXT(entry, link);
+	}
+
+	return 0;
+}
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 #define IPV6_ALL_MC_FORWARD "/proc/sys/net/ipv6/conf/all/mc_forwarding"
