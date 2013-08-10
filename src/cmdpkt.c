@@ -1,30 +1,25 @@
-/*
-**  smcroute - static multicast routing control 
-**  Copyright (C) 2001-2005  Carsten Schill <carsten@cschill.de>
-**  Copyright (C) 2006-2009  Julien BLACHE <jb@jblache.org>
-**  Copyright (C) 2009       Todd Hayton <todd.hayton@gmail.com>
-**  Copyright (C) 2009-2011  Micha Lenk <micha@debian.org>
-**  Copyright (C) 2011-2013  Joachim Nilsson <troglobit@gmail.com>
-**
-**  This program is free software; you can redistribute it and/or modify
-**  it under the terms of the GNU General Public License as published by
-**  the Free Software Foundation; either version 2 of the License, or
-**  (at your option) any later version.
-**
-**  This program is distributed in the hope that it will be useful,
-**  but WITHOUT ANY WARRANTY; without even the implied warranty of
-**  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-**  GNU General Public License for more details.
-**
-**  You should have received a copy of the GNU General Public License
-**  along with this program; if not, write to the Free Software
-**  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
-**
-**  $Id: cmdpkt.c 85 2011-08-08 16:47:53Z micha $	
-**
-**  This module contains the functions to build and convert IPC command packets
-**
-*/
+/* IPC command parser
+ *
+ * Copyright (C) 2001-2005  Carsten Schill <carsten@cschill.de>
+ * Copyright (C) 2006-2009  Julien BLACHE <jb@jblache.org>
+ * Copyright (C) 2009       Todd Hayton <todd.hayton@gmail.com>
+ * Copyright (C) 2009-2011  Micha Lenk <micha@debian.org>
+ * Copyright (C) 2011-2013  Joachim Nilsson <troglobit@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+ */
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -33,11 +28,11 @@
 #include "mclab.h"
 
 /*
-** Builds an command packet with the command 'cmd' and 'count' arguments
-** from 'argv'.
-**
-** returns: - pointer to the dyn. allocated command packet
-*/
+ * Builds an command packet with the command 'cmd' and 'count' arguments
+ * from 'argv'.
+ *
+ * returns: - pointer to the dyn. allocated command packet
+ */
 void *cmd_build(char cmd, const char *argv[], int count)
 {
 	int i;
@@ -75,13 +70,13 @@ void *cmd_build(char cmd, const char *argv[], int count)
 }
 
 /*
-** Converts a command packet 'packet' to an mroute struct 'mroute' for the
-** 'add' and 'remove' command. The IP version is determined by searching
-** for ':' in the address strings to indicate IPv6 addresses.
-**
-** returns: - NULL if the conversion succeeded
-**          - an error string with a hint why the conversion failed
-*/
+ * Converts a command packet 'packet' to an mroute struct 'mroute' for the
+ * 'add' and 'remove' command. The IP version is determined by searching
+ * for ':' in the address strings to indicate IPv6 addresses.
+ *
+ * returns: - NULL if the conversion succeeded
+ *          - an error string with a hint why the conversion failed
+ */
 const char *cmd_convert_to_mroute(struct mroute *mroute, const struct cmd *packet)
 {
 	char *arg = (char *)packet->argv;
@@ -131,13 +126,13 @@ const char *cmd_convert_to_mroute(struct mroute *mroute, const struct cmd *packe
 }
 
 /*
-** Converts a command packet 'packet' to an mroute4 struct 'mroute' for the
-** 'add' and 'remove' command.
-**
-** returns: - NULL if the conversion succeeded
-**          - an error string with a hint why the conversion failed
-**          
-*/
+ * Converts a command packet 'packet' to an mroute4 struct 'mroute' for the
+ * 'add' and 'remove' command.
+ *
+ * returns: - NULL if the conversion succeeded
+ *          - an error string with a hint why the conversion failed
+ *
+ */
 const char *cmd_convert_to_mroute4(struct mroute4 *mroute, const struct cmd *packet)
 {
 	char *arg = (char *)packet->argv;
@@ -191,13 +186,13 @@ const char *cmd_convert_to_mroute4(struct mroute4 *mroute, const struct cmd *pac
 }
 
 /*
-** Converts a command packet 'packet' to an mroute6 struct 'mroute' for the
-** 'add' and 'remove' command.
-**
-** returns: - NULL if the conversion succeeded
-**          - an error string with a hint why the conversion failed
-**          
-*/
+ * Converts a command packet 'packet' to an mroute6 struct 'mroute' for the
+ * 'add' and 'remove' command.
+ *
+ * returns: - NULL if the conversion succeeded
+ *          - an error string with a hint why the conversion failed
+ *
+ */
 const char *cmd_convert_to_mroute6(struct mroute6 *mroute, const struct cmd *packet)
 {
 	const char *arg = (const char *)(packet + 1);

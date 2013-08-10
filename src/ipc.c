@@ -1,30 +1,25 @@
-/*
-**  smcroute - static multicast routing control 
-**  Copyright (C) 2001-2005  Carsten Schill <carsten@cschill.de>
-**  Copyright (C) 2006-2009  Julien BLACHE <jb@jblache.org>
-**  Copyright (C) 2009       Todd Hayton <todd.hayton@gmail.com>
-**  Copyright (C) 2009-2011  Micha Lenk <micha@debian.org>
-**  Copyright (C) 2011-2013  Joachim Nilsson <troglobit@gmail.com>
-**
-**  This program is free software; you can redistribute it and/or modify
-**  it under the terms of the GNU General Public License as published by
-**  the Free Software Foundation; either version 2 of the License, or
-**  (at your option) any later version.
-**
-**  This program is distributed in the hope that it will be useful,
-**  but WITHOUT ANY WARRANTY; without even the implied warranty of
-**  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-**  GNU General Public License for more details.
-**
-**  You should have received a copy of the GNU General Public License
-**  along with this program; if not, write to the Free Software
-**  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
-**
-**  $Id: ipc.c 85 2011-08-08 16:47:53Z micha $	
-**
-**  This module contains the IPC functions for client and server
-**
-*/
+/* Daemon and client IPC API
+ *
+ * Copyright (C) 2001-2005  Carsten Schill <carsten@cschill.de>
+ * Copyright (C) 2006-2009  Julien BLACHE <jb@jblache.org>
+ * Copyright (C) 2009       Todd Hayton <todd.hayton@gmail.com>
+ * Copyright (C) 2009-2011  Micha Lenk <micha@debian.org>
+ * Copyright (C) 2011-2013  Joachim Nilsson <troglobit@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+ */
 
 #include <stddef.h>
 #include <unistd.h>
@@ -42,10 +37,10 @@ static int server_sd;
 static int client_sd = -1;
 
 /*
-** Inits an IPC listen socket 
-**
-** returns: - the socket descriptor
-*/
+ * Inits an IPC listen socket
+ *
+ * returns: - the socket descriptor
+ */
 int ipc_server_init(void)
 {
 	struct sockaddr_un sa;
@@ -74,14 +69,14 @@ int ipc_server_init(void)
 }
 
 /*
-** Connects to the IPC socket of the server
-**
-** returns: - 0, if function succeeds
-**          - errno value, of connection attempt. Typically: 
-**            - EACCES - Permission denied
-**            - ENOENT - No such file or directory
-**            - ECONREFUSED - Connection refused
-*/
+ * Connects to the IPC socket of the server
+ *
+ * returns: - 0, if function succeeds
+ *          - errno value, of connection attempt. Typically:
+ *            - EACCES - Permission denied
+ *            - ENOENT - No such file or directory
+ *            - ECONREFUSED - Connection refused
+ */
 int ipc_client_init(void)
 {
 	int err;
@@ -113,11 +108,11 @@ int ipc_client_init(void)
 }
 
 /*
-** Reads a message from the IPC socket and stores in 'buf' with a max. size of 'len'. 
-** Connects and resets connection as necessary.
-**
-** returns: Pointer to a successfuly read command packet in 'buf' 
-*/
+ * Reads a message from the IPC socket and stores in 'buf' with a max. size of 'len'.
+ * Connects and resets connection as necessary.
+ *
+ * returns: Pointer to a successfuly read command packet in 'buf'
+ */
 struct cmd *ipc_server_read(uint8 buf[], int len)
 {
 	while (1) {
@@ -162,11 +157,11 @@ struct cmd *ipc_server_read(uint8 buf[], int len)
 }
 
 /*
-** Sends the IPC message in 'buf' with the size 'Sz' to the peer.
-**
-** returns: - number of bytes written (Sz)
-**          - -1 if write failed
-*/
+ * Sends the IPC message in 'buf' with the size 'Sz' to the peer.
+ *
+ * returns: - number of bytes written (Sz)
+ *          - -1 if write failed
+ */
 int ipc_send(const void *buf, int len)
 {
 	if (write(client_sd, buf, len) != len) {
@@ -178,12 +173,12 @@ int ipc_send(const void *buf, int len)
 }
 
 /*
-** Reads the next IPC message in 'buf' with the max. size 'len' from the peer.
-**
-** returns: - number of bytes read (0..len)
-**          - -1 if read failed
-** 
-*/
+ * Reads the next IPC message in 'buf' with the max. size 'len' from the peer.
+ *
+ * returns: - number of bytes read (0..len)
+ *          - -1 if read failed
+ *
+ */
 int ipc_receive(uint8 buf[], int len)
 {
 	int size = read(client_sd, buf, len);
@@ -197,9 +192,9 @@ int ipc_receive(uint8 buf[], int len)
 }
 
 /*
-** Clean up IPC.
-** 
-*/
+ * Clean up IPC.
+ *
+ */
 void ipc_exit(void)
 {
 	if (server_sd) {

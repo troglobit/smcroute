@@ -1,31 +1,25 @@
-/*
-**  smcroute - static multicast routing control 
-**  Copyright (C) 2001-2005  Carsten Schill <carsten@cschill.de>
-**  Copyright (C) 2006-2009  Julien BLACHE <jb@jblache.org>
-**  Copyright (C) 2009       Todd Hayton <todd.hayton@gmail.com>
-**  Copyright (C) 2009-2011  Micha Lenk <micha@debian.org>
-**  Copyright (C) 2011-2013  Joachim Nilsson <troglobit@gmail.com>
-**
-**  This program is free software; you can redistribute it and/or modify
-**  it under the terms of the GNU General Public License as published by
-**  the Free Software Foundation; either version 2 of the License, or
-**  (at your option) any later version.
-**
-**  This program is distributed in the hope that it will be useful,
-**  but WITHOUT ANY WARRANTY; without even the implied warranty of
-**  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-**  GNU General Public License for more details.
-**
-**  You should have received a copy of the GNU General Public License
-**  along with this program; if not, write to the Free Software
-**  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
-**
-**  $Id: mcgroup.c 85 2011-08-08 16:47:53Z micha $	
-**
-**  This module contains the remaining functions that where not placed in 
-**  separate modules
-**
-*/
+/* Multicast group management (join/leave) API
+ *
+ * Copyright (C) 2001-2005  Carsten Schill <carsten@cschill.de>
+ * Copyright (C) 2006-2009  Julien BLACHE <jb@jblache.org>
+ * Copyright (C) 2009       Todd Hayton <todd.hayton@gmail.com>
+ * Copyright (C) 2009-2011  Micha Lenk <micha@debian.org>
+ * Copyright (C) 2011-2013  Joachim Nilsson <troglobit@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+ */
 
 #include "mclab.h"
 
@@ -66,13 +60,13 @@ static int mcgroup_join_leave_ipv4(int sd, int cmd, const char *ifname, struct i
 }
 
 /*
-** Joins the MC group with the address 'group' on the interface 'ifname'. 
-** The join is bound to the UDP socket 'sd', so if this socket is 
-** closed the membership is dropped.
-**          
-** returns: - 0 if the function succeeds
-**          - 1 if parameters are wrong or the join fails
-*/
+ * Joins the MC group with the address 'group' on the interface 'ifname'.
+ * The join is bound to the UDP socket 'sd', so if this socket is
+ * closed the membership is dropped.
+ *
+ * returns: - 0 if the function succeeds
+ *          - 1 if parameters are wrong or the join fails
+ */
 int mcgroup4_join(const char *ifname, struct in_addr group)
 {
 	mcgroup4_init();
@@ -81,11 +75,11 @@ int mcgroup4_join(const char *ifname, struct in_addr group)
 }
 
 /*
-** Leaves the MC group with the address 'group' on the interface 'ifname'. 
-**          
-** returns: - 0 if the function succeeds
-**          - 1 if parameters are wrong or the join fails
-*/
+ * Leaves the MC group with the address 'group' on the interface 'ifname'.
+ *
+ * returns: - 0 if the function succeeds
+ *          - 1 if parameters are wrong or the join fails
+ */
 int mcgroup4_leave(const char *ifname, struct in_addr group)
 {
 	mcgroup4_init();
@@ -94,8 +88,8 @@ int mcgroup4_leave(const char *ifname, struct in_addr group)
 }
 
 /*
-** Close IPv4 multicast socket to kernel to leave any joined groups
-*/
+ * Close IPv4 multicast socket to kernel to leave any joined groups
+ */
 void mcgroup4_disable(void)
 {
 	if (mcgroup4_socket != -1) {
@@ -144,13 +138,13 @@ static int mcgroup_join_leave_ipv6(int sd, int cmd, const char *ifname, struct i
 }
 
 /*
-** Joins the MC group with the address 'group' on the interface 'ifname'.
-** The join is bound to the UDP socket 'sd', so if this socket is
-** closed the membership is dropped.
-**
-** returns: - 0 if the function succeeds
-**          - 1 if parameters are wrong or the join fails
-*/
+ * Joins the MC group with the address 'group' on the interface 'ifname'.
+ * The join is bound to the UDP socket 'sd', so if this socket is
+ * closed the membership is dropped.
+ *
+ * returns: - 0 if the function succeeds
+ *          - 1 if parameters are wrong or the join fails
+ */
 int mcgroup6_join(const char *ifname, struct in6_addr group)
 {
 	mcgroup6_init();
@@ -159,11 +153,11 @@ int mcgroup6_join(const char *ifname, struct in6_addr group)
 }
 
 /*
-** Leaves the MC group with the address 'group' on the interface 'ifname'.
-**
-** returns: - 0 if the function succeeds
-**          - 1 if parameters are wrong or the join fails
-*/
+ * Leaves the MC group with the address 'group' on the interface 'ifname'.
+ *
+ * returns: - 0 if the function succeeds
+ *          - 1 if parameters are wrong or the join fails
+ */
 int mcgroup6_leave(const char *ifname, struct in6_addr group)
 {
 	mcgroup6_init();
@@ -173,8 +167,8 @@ int mcgroup6_leave(const char *ifname, struct in6_addr group)
 #endif /* HAVE_IPV6_MULTICAST_HOST */
 
 /*
-** Close IPv6 multicast socket to kernel to leave any joined groups
-*/
+ * Close IPv6 multicast socket to kernel to leave any joined groups
+ */
 void mcgroup6_disable(void)
 {
 #ifdef HAVE_IPV6_MULTICAST_HOST

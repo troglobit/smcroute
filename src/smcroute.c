@@ -1,27 +1,25 @@
-/*
-**  smcroute - static multicast routing control 
-**  Copyright (C) 2001-2005  Carsten Schill <carsten@cschill.de>
-**  Copyright (C) 2006-2009  Julien BLACHE <jb@jblache.org>
-**  Copyright (C) 2009       Todd Hayton <todd.hayton@gmail.com>
-**  Copyright (C) 2009-2011  Micha Lenk <micha@debian.org>
-**  Copyright (C) 2011-2013  Joachim Nilsson <troglobit@gmail.com>
-**
-**  This program is free software; you can redistribute it and/or modify
-**  it under the terms of the GNU General Public License as published by
-**  the Free Software Foundation; either version 2 of the License, or
-**  (at your option) any later version.
-**
-**  This program is distributed in the hope that it will be useful,
-**  but WITHOUT ANY WARRANTY; without even the implied warranty of
-**  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-**  GNU General Public License for more details.
-**
-**  You should have received a copy of the GNU General Public License
-**  along with this program; if not, write to the Free Software
-**  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
-**
-**  $Id: smcroute.c 86 2011-08-08 17:09:45Z micha $	
-*/
+/* Daemon and client main routines
+ *
+ * Copyright (C) 2001-2005  Carsten Schill <carsten@cschill.de>
+ * Copyright (C) 2006-2009  Julien BLACHE <jb@jblache.org>
+ * Copyright (C) 2009       Todd Hayton <todd.hayton@gmail.com>
+ * Copyright (C) 2009-2011  Micha Lenk <micha@debian.org>
+ * Copyright (C) 2011-2013  Joachim Nilsson <troglobit@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+ */
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -84,13 +82,13 @@ static const char usage_info[] =
 	"  -l <IFNAME> <MULTICAST-GROUP>\n";
 
 /*
-** Counts the number of arguments belonging to an option. Option is any argument
-** begining with a '-'. 
-** 
-** returns: - the number of arguments (without the option itself), 
-**          - 0, if we start already from the end of the argument vector
-**          - -1, if we start not from an option
-*/
+ * Counts the number of arguments belonging to an option. Option is any argument
+ * begining with a '-'.
+ *
+ * returns: - the number of arguments (without the option itself),
+ *          - 0, if we start already from the end of the argument vector
+ *          - -1, if we start not from an option
+ */
 static int num_option_arguments(const char *argv[])
 {
 	const char **ptr;
@@ -398,7 +396,7 @@ static void start_server(int background)
 	int sd, pid = 0;
 	unsigned short initialized_api_count;
 
-	/* Build list of multicast-capable physical interfaces that 
+	/* Build list of multicast-capable physical interfaces that
 	 * are currently assigned an IP address. */
 	iface_init();
 
@@ -452,11 +450,11 @@ static int usage(void)
 }
 
 /*
-** main program
-** - Parses command line options
-**   - daemon mode: enters daemon status and goes in receive-execute command loop 
-**   - client mode: creates commands from command line and sends them to the daemon
-*/
+ * main program
+ * - Parses command line options
+ *   - daemon mode: enters daemon status and goes in receive-execute command loop
+ *   - client mode: creates commands from command line and sends them to the daemon
+ */
 int main(int argc, const char *argv[])
 {
 	int num_opts, result = 0;

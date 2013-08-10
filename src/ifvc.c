@@ -1,30 +1,25 @@
-/*
-**  smcroute - static multicast routing control 
-**  Copyright (C) 2001-2005  Carsten Schill <carsten@cschill.de>
-**  Copyright (C) 2006-2009  Julien BLACHE <jb@jblache.org>
-**  Copyright (C) 2009       Todd Hayton <todd.hayton@gmail.com>
-**  Copyright (C) 2009-2011  Micha Lenk <micha@debian.org>
-**  Copyright (C) 2011-2013  Joachim Nilsson <troglobit@gmail.com>
-**
-**  This program is free software; you can redistribute it and/or modify
-**  it under the terms of the GNU General Public License as published by
-**  the Free Software Foundation; either version 2 of the License, or
-**  (at your option) any later version.
-**
-**  This program is distributed in the hope that it will be useful,
-**  but WITHOUT ANY WARRANTY; without even the implied warranty of
-**  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-**  GNU General Public License for more details.
-**
-**  You should have received a copy of the GNU General Public License
-**  along with this program; if not, write to the Free Software
-**  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
-**
-**  $Id: ifvc.c 85 2011-08-08 16:47:53Z micha $	
-**
-**  This module manages an interface vector of the machine
-**
-*/
+/* Physical and virtual interface API
+ *
+ * Copyright (C) 2001-2005  Carsten Schill <carsten@cschill.de>
+ * Copyright (C) 2006-2009  Julien BLACHE <jb@jblache.org>
+ * Copyright (C) 2009       Todd Hayton <todd.hayton@gmail.com>
+ * Copyright (C) 2009-2011  Micha Lenk <micha@debian.org>
+ * Copyright (C) 2011-2013  Joachim Nilsson <troglobit@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+ */
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -36,10 +31,10 @@ static unsigned int num_ifaces = 0;
 static struct iface iface_list[MAX_IF];
 
 /*
-** Builds up a vector with the interface of the machine. Calls to the other functions of 
-** the module will fail if they are called before the vector is build.
-**          
-*/
+ * Builds up a vector with the interface of the machine. Calls to the other functions of
+ * the module will fail if they are called before the vector is build.
+ *
+ */
 void iface_init(void)
 {
 	int family;
@@ -82,14 +77,14 @@ void iface_init(void)
 }
 
 /*
-** Returns a pointer to the iface of the interface 'ifname'
-**
-** returns: - pointer to the iface of the requested interface
-**          - NULL if no interface 'ifname' exists
-**          
-**          - if more than one interface 'ifname' exists, chose the
-**            an interface that corresponds to a virtual interface
-*/
+ * Returns a pointer to the iface of the interface 'ifname'
+ *
+ * returns: - pointer to the iface of the requested interface
+ *          - NULL if no interface 'ifname' exists
+ *
+ *          - if more than one interface 'ifname' exists, chose the
+ *            an interface that corresponds to a virtual interface
+ */
 struct iface *iface_find_by_name(const char *ifname)
 {
 	unsigned int i;
@@ -109,14 +104,14 @@ struct iface *iface_find_by_name(const char *ifname)
 }
 
 /*
-** Returns a pointer to the iface matching the given 'vif'
-**
-** returns: - pointer to the iface of the requested interface
-**          - NULL if no interface matching 'vif' exists
-**
-**          - if more than one interface 'ifname' exists, chose the
-**            an interface that corresponds to a virtual interface
-*/
+ * Returns a pointer to the iface matching the given 'vif'
+ *
+ * returns: - pointer to the iface of the requested interface
+ *          - NULL if no interface matching 'vif' exists
+ *
+ *          - if more than one interface 'ifname' exists, chose the
+ *            an interface that corresponds to a virtual interface
+ */
 struct iface *iface_find_by_vif(int vif)
 {
 	unsigned int i;
@@ -132,12 +127,12 @@ struct iface *iface_find_by_vif(int vif)
 }
 
 /*
-** Returns a pointer to the iface of the interface 'ifindex'
-**
-** returns: - pointer to the iface of the requested interface
-**          - NULL if no interface 'ifindex' exists
-**          
-*/
+ * Returns a pointer to the iface of the interface 'ifindex'
+ *
+ * returns: - pointer to the iface of the requested interface
+ *          - NULL if no interface 'ifindex' exists
+ *
+ */
 struct iface *iface_find_by_index(unsigned int ifindex)
 {
 	if (ifindex >= num_ifaces)
@@ -148,12 +143,12 @@ struct iface *iface_find_by_index(unsigned int ifindex)
 
 
 /*
-** Returns for the virtual interface index for '*iface'
-**
-** returns: - the virtual interface index if the interface is registered
-**          - -1 if no virtual interface exists for the interface 
-**          
-*/
+ * Returns for the virtual interface index for '*iface'
+ *
+ * returns: - the virtual interface index if the interface is registered
+ *          - -1 if no virtual interface exists for the interface
+ *
+ */
 int iface_get_vif(struct iface *iface)
 {
 	if (iface == NULL)
@@ -163,12 +158,12 @@ int iface_get_vif(struct iface *iface)
 }
 
 /*
-** Returns for the virtual interface index for '*iface'
-**
-** returns: - the virtual interface index if the interface is registered
-**          - -1 if no virtual interface exists for the interface 
-**          
-*/
+ * Returns for the virtual interface index for '*iface'
+ *
+ * returns: - the virtual interface index if the interface is registered
+ *          - -1 if no virtual interface exists for the interface
+ *
+ */
 int iface_get_mif(struct iface *iface __attribute__ ((unused)))
 {
 #ifndef HAVE_IPV6_MULTICAST_ROUTING
@@ -182,12 +177,12 @@ int iface_get_mif(struct iface *iface __attribute__ ((unused)))
 }
 
 /*
-** Gets the VIF index for a given interface name
-**
-** returns: - index of the VIF
-**          - -1 if no VIF can be found for the interface name
-**          
-*/
+ * Gets the VIF index for a given interface name
+ *
+ * returns: - index of the VIF
+ *          - -1 if no VIF can be found for the interface name
+ *
+ */
 int iface_get_vif_by_name(const char *ifname)
 {
 	int vif;
@@ -205,12 +200,12 @@ int iface_get_vif_by_name(const char *ifname)
 }
 
 /*
-** Gets the MIF index for a given interface name
-**
-** returns: - index of the MIF
-**          - -1 if no MIF can be found for the interface name
-**          
-*/
+ * Gets the MIF index for a given interface name
+ *
+ * returns: - index of the MIF
+ *          - -1 if no MIF can be found for the interface name
+ *
+ */
 int iface_get_mif_by_name(const char *ifname)
 {
 	int vif;

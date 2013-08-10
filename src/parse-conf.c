@@ -289,7 +289,7 @@ int parse_conf_file(const char *file)
 		else if (op == 2)
 			add_mroute(lineno, ifname, group, source, dest, num);
 #endif	/* UNITTEST */
-		
+
 		lineno++;
 	}
 

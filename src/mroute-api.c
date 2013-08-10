@@ -1,30 +1,25 @@
-/*
-**  smcroute - static multicast routing control 
-**  Copyright (C) 2001-2005  Carsten Schill <carsten@cschill.de>
-**  Copyright (C) 2006-2009  Julien BLACHE <jb@jblache.org>
-**  Copyright (C) 2009       Todd Hayton <todd.hayton@gmail.com>
-**  Copyright (C) 2009-2011  Micha Lenk <micha@debian.org>
-**  Copyright (C) 2011-2013  Joachim Nilsson <troglobit@gmail.com>
-**
-**  This program is free software; you can redistribute it and/or modify
-**  it under the terms of the GNU General Public License as published by
-**  the Free Software Foundation; either version 2 of the License, or
-**  (at your option) any later version.
-**
-**  This program is distributed in the hope that it will be useful,
-**  but WITHOUT ANY WARRANTY; without even the implied warranty of
-**  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-**  GNU General Public License for more details.
-**
-**  You should have received a copy of the GNU General Public License
-**  along with this program; if not, write to the Free Software
-**  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
-**
-**  $Id: mroute-api.c 85 2011-08-08 16:47:53Z micha $	
-**
-**  This module contains the interface routines to the Linux mrouted API
-**
-*/
+/* Generic kernel multicast routing API for Linux/*BSD
+ *
+ * Copyright (C) 2001-2005  Carsten Schill <carsten@cschill.de>
+ * Copyright (C) 2006-2009  Julien BLACHE <jb@jblache.org>
+ * Copyright (C) 2009       Todd Hayton <todd.hayton@gmail.com>
+ * Copyright (C) 2009-2011  Micha Lenk <micha@debian.org>
+ * Copyright (C) 2011-2013  Joachim Nilsson <troglobit@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+ */
 #include <unistd.h>
 #include <arpa/inet.h>
 #include "config.h"
@@ -89,12 +84,12 @@ static void mroute6_add_mif(struct iface *iface);
 #endif
 
 /*
-** Initialise the mrouted API and locks the multicast routing
-** socket to this program (only!).
-**     
-** returns: - 0 if the functions succeeds     
-**          - the errno value for non-fatal failure condition
-*/
+ * Initialise the mrouted API and locks the multicast routing
+ * socket to this program (only!).
+ *
+ * returns: - 0 if the functions succeeds
+ *          - the errno value for non-fatal failure condition
+ */
 int mroute4_enable(void)
 {
 	int arg = 1;
@@ -153,8 +148,8 @@ int mroute4_enable(void)
 }
 
 /*
-** Diable the mrouted API and relase the kernel lock.
-*/
+ * Diable the mrouted API and relase the kernel lock.
+ */
 void mroute4_disable(void)
 {
 	mroute4_t *entry;
@@ -184,8 +179,8 @@ void mroute4_disable(void)
 
 
 /*
-** Adds the interface '*iface' as virtual interface to the mrouted API
-*/
+ * Adds the interface '*iface' as virtual interface to the mrouted API
+ */
 static void mroute4_add_vif(struct iface *iface)
 {
 	struct vifctl vc;
@@ -283,11 +278,11 @@ static int __mroute4_del (mroute4_t *ptr)
 }
 
 /*
-** Add mcroute to kernel if it matches a known (*,G) route.
-**
-** returns: - 0 if the function succeeds
-**          - the errno value for non-fatal failure condition
-*/
+ * Add mcroute to kernel if it matches a known (*,G) route.
+ *
+ * returns: - 0 if the function succeeds
+ *          - the errno value for non-fatal failure condition
+ */
 int mroute4_dyn_add(mroute4_t *ptr)
 {
 	mroute4_t *entry;
@@ -321,13 +316,13 @@ int mroute4_dyn_add(mroute4_t *ptr)
 }
 
 /*
-** Adds the multicast route '*ptr' to the kernel multicast routing table
-** unless the source IP is INADDR_ANY, i.e., a (*,G) route. Those we save
-** for later and check against at runtime when the kernel signals us.
-**
-** returns: - 0 if the function succeeds
-**          - the errno value for non-fatal failure condition
-*/
+ * Adds the multicast route '*ptr' to the kernel multicast routing table
+ * unless the source IP is INADDR_ANY, i.e., a (*,G) route. Those we save
+ * for later and check against at runtime when the kernel signals us.
+ *
+ * returns: - 0 if the function succeeds
+ *          - the errno value for non-fatal failure condition
+ */
 int mroute4_add(mroute4_t *ptr)
 {
 	/* For (*,G) we save to a linked list to be added on-demand
@@ -352,11 +347,11 @@ int mroute4_add(mroute4_t *ptr)
 }
 
 /*
-** Removes the multicast routed '*ptr' from the kernel routes
-**
-** returns: - 0 if the function succeeds
-**          - the errno value for non-fatal failure condition
-*/
+ * Removes the multicast routed '*ptr' from the kernel routes
+ *
+ * returns: - 0 if the function succeeds
+ *          - the errno value for non-fatal failure condition
+ */
 int mroute4_del(mroute4_t *ptr)
 {
 	mroute4_t *entry, *set;
@@ -432,11 +427,11 @@ static int proc_set_val(char *file, int val)
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
 /*
-** Initialises the mrouted API and locks it by this exclusively.
-**     
-** returns: - 0 if the functions succeeds     
-**          - the errno value for non-fatal failure condition
-*/
+ * Initialises the mrouted API and locks it by this exclusively.
+ *
+ * returns: - 0 if the functions succeeds
+ *          - the errno value for non-fatal failure condition
+ */
 int mroute6_enable(void)
 {
 #ifndef HAVE_IPV6_MULTICAST_ROUTING
@@ -499,9 +494,9 @@ int mroute6_enable(void)
 }
 
 /*
-** Diables the mrouted API and relases by this the lock.
-**          
-*/
+ * Diables the mrouted API and relases by this the lock.
+ *
+ */
 void mroute6_disable(void)
 {
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
@@ -518,8 +513,8 @@ void mroute6_disable(void)
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 /*
-** Adds the interface '*iface' as virtual interface to the mrouted API
-*/
+ * Adds the interface '*iface' as virtual interface to the mrouted API
+ */
 static void mroute6_add_mif(struct iface *iface)
 {
 	struct mif6ctl mc;
@@ -563,11 +558,11 @@ static void mroute6_add_mif(struct iface *iface)
 }
 
 /*
-** Adds the multicast routed '*ptr' to the kernel routes
-**
-** returns: - 0 if the function succeeds
-**          - the errno value for non-fatal failure condition
-*/
+ * Adds the multicast routed '*ptr' to the kernel routes
+ *
+ * returns: - 0 if the function succeeds
+ *          - the errno value for non-fatal failure condition
+ */
 int mroute6_add(mroute6_t *ptr)
 {
 	int result = 0;
@@ -601,11 +596,11 @@ int mroute6_add(mroute6_t *ptr)
 }
 
 /*
-** Removes the multicast routed '*ptr' from the kernel routes
-**
-** returns: - 0 if the function succeeds
-**          - the errno value for non-fatal failure condition
-*/
+ * Removes the multicast routed '*ptr' from the kernel routes
+ *
+ * returns: - 0 if the function succeeds
+ *          - the errno value for non-fatal failure condition
+ */
 int mroute6_del(mroute6_t *ptr)
 {
 	int result = 0;
