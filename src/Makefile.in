@@ -48,6 +48,9 @@ smcroute: $(SMCROUTE_OBJS)
 	@printf "  LINK    $@\n"
 	@$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(SMCROUTE_OBJS) $(LDLIBS)
 
+check:
+	$(CHECK) $(CHECK_FLAGS) $(CPPFLAGS) $(SRCS)
+
 clean:
 	-@$(RM) build.h $(SMCROUTE_OBJS) $(MCSENDER_OBJS) $(EXECS)
 
