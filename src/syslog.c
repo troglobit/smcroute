@@ -1,7 +1,10 @@
 /*
 **  smcroute - static multicast routing control 
-**  Copyright (C) 2001-2005 Carsten Schill <carsten@cschill.de>
-**  Copyright (C) 2006 Julien BLACHE <jb@jblache.org>
+**  Copyright (C) 2001-2005  Carsten Schill <carsten@cschill.de>
+**  Copyright (C) 2006-2009  Julien BLACHE <jb@jblache.org>
+**  Copyright (C) 2009       Todd Hayton <todd.hayton@gmail.com>
+**  Copyright (C) 2009-2011  Micha Lenk <micha@debian.org>
+**  Copyright (C) 2011-2013  Joachim Nilsson <troglobit@gmail.com>
 **
 **  This program is free software; you can redistribute it and/or modify
 **  it under the terms of the GNU General Public License as published by
@@ -32,17 +35,16 @@ char log_last_message[128];
 
 /*
 ** Writes the message 'fmt' with the parameters '...' to syslog.
-** 'severity' is used for the syslog entry. For an 'code' value 
-** other then 0, the correponding error string is appended to the
+** 'severity' is used for the syslog entry. For an 'code' value
+** other than 0, the correponding error string is appended to the
 ** message.
 **
-** For a 'severity' more important then 'LOG_WARNING' the message is 
-** also logged to 'stderr' and the program is finished with a call to 
+** For a 'severity' more important than 'LOG_WARNING' the message is
+** also logged to 'stderr' and the program is finished with a call to
 ** 'exit()'.
 **
-** If the 'severity' is more important then 'log_stderr' the message
+** If the 'severity' is more important than 'log_stderr' the message
 ** is logged to 'stderr'.
-**          
 */
 void smclog(int severity, int code, const char *fmt, ...)
 {

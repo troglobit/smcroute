@@ -1,7 +1,6 @@
 /*
 **  smcroute - static multicast routing control 
 **  Copyright (C) 2001-2005  Carsten Schill <carsten@cschill.de>
-**  Copyright (C) 2006-2008  Julien BLACHE <jb@jblache.org>
 **  Copyright (C) 2006-2009  Julien BLACHE <jb@jblache.org>
 **  Copyright (C) 2009       Todd Hayton <todd.hayton@gmail.com>
 **  Copyright (C) 2009-2011  Micha Lenk <micha@debian.org>
