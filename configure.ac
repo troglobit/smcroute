@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(smcroute, 2.0.0, troglobit@gmail.com)
+AC_INIT(smcroute, 2.0.0-beta1, troglobit@gmail.com)
 AC_CONFIG_SRCDIR([src/mclab.h])
 AC_CONFIG_HEADER([src/config.h])
 AC_CONFIG_FILES([Makefile src/Makefile doc/Makefile])
@@ -12,9 +12,6 @@ AC_PROG_CC
 
 # The pidfile() code needs asprintf(), which relies on -D_GNU_SOURCE
 AC_GNU_SOURCE
-
-# Checks for libraries.
-AC_CHECK_LIB(ev, ev_run,,AC_MSG_ERROR([The libev library is required for smcroute >= 2.0.0]))
 
 # Checks for header files.
 AC_HEADER_STDC
