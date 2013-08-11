@@ -30,10 +30,11 @@
 static unsigned int num_ifaces = 0;
 static struct iface iface_list[MAX_IF];
 
-/*
- * Builds up a vector with the interface of the machine. Calls to the other functions of
- * the module will fail if they are called before the vector is build.
+/**
+ * iface_init - Setup vector of active interfaces
  *
+ * Builds up a vector with active system interfaces.  Must be called
+ * before any other interface functions in this module!
  */
 void iface_init(void)
 {
@@ -76,14 +77,14 @@ void iface_init(void)
 	freeifaddrs(ifaddr);
 }
 
-/*
- * Returns a pointer to the iface of the interface 'ifname'
+/**
+ * iface_find_by_name - Find an interface by name
+ * @ifname: Interface name
  *
- * returns: - pointer to the iface of the requested interface
- *          - NULL if no interface 'ifname' exists
- *
- *          - if more than one interface 'ifname' exists, chose the
- *            an interface that corresponds to a virtual interface
+ * Returns:
+ * Pointer to a @struct iface of the matching interface, or %NULL if no
+ * interface exists, or is up.  If more than one interface exists, chose
+ * the interface that corresponds to a virtual interface.
  */
 struct iface *iface_find_by_name(const char *ifname)
 {
@@ -103,14 +104,13 @@ struct iface *iface_find_by_name(const char *ifname)
 	return candidate;
 }
 
-/*
- * Returns a pointer to the iface matching the given 'vif'
+/**
+ * iface_find_by_vif - Find by virtual interface index
+ * @vif: Virtual multicast interface index
  *
- * returns: - pointer to the iface of the requested interface
- *          - NULL if no interface matching 'vif' exists
- *
- *          - if more than one interface 'ifname' exists, chose the
- *            an interface that corresponds to a virtual interface
+ * Returns:
+ * Pointer to a @struct iface of the requested interface, or %NULL if no
+ * interface matching @vif exists.
  */
 struct iface *iface_find_by_vif(int vif)
 {
@@ -126,12 +126,13 @@ struct iface *iface_find_by_vif(int vif)
 	return NULL;
 }
 
-/*
- * Returns a pointer to the iface of the interface 'ifindex'
+/**
+ * iface_find_by_index - Find by kernel interface index
+ * @ifindex: Kernel interface index
  *
- * returns: - pointer to the iface of the requested interface
- *          - NULL if no interface 'ifindex' exists
- *
+ * Returns:
+ * Pointer to a @struct iface of the requested interface, or %NULL if no
+ * interface @ifindex exists.
  */
 struct iface *iface_find_by_index(unsigned int ifindex)
 {
@@ -142,12 +143,13 @@ struct iface *iface_find_by_index(unsigned int ifindex)
 }
 
 
-/*
- * Returns for the virtual interface index for '*iface'
+/**
+ * iface_get_vif - Get virtual interface index for an interface (IPv4)
+ * @iface: Pointer to a @struct iface interface
  *
- * returns: - the virtual interface index if the interface is registered
- *          - -1 if no virtual interface exists for the interface
- *
+ * Returns:
+ * The virtual interface index if the interface is known and registered
+ * with the kernel, or -1 if no virtual interface exists.
  */
 int iface_get_vif(struct iface *iface)
 {
@@ -157,12 +159,13 @@ int iface_get_vif(struct iface *iface)
 	return iface->vif;
 }
 
-/*
- * Returns for the virtual interface index for '*iface'
+/**
+ * iface_get_mif - Get virtual interface index for an interface (IPv6)
+ * @iface: Pointer to a @struct iface interface
  *
- * returns: - the virtual interface index if the interface is registered
- *          - -1 if no virtual interface exists for the interface
- *
+ * Returns:
+ * The virtual interface index if the interface is known and registered
+ * with the kernel, or -1 if no virtual interface exists.
  */
 int iface_get_mif(struct iface *iface __attribute__ ((unused)))
 {
@@ -176,12 +179,13 @@ int iface_get_mif(struct iface *iface __attribute__ ((unused)))
 #endif				/* HAVE_IPV6_MULTICAST_ROUTING */
 }
 
-/*
- * Gets the VIF index for a given interface name
+/**
+ * iface_get_vif_by_name - Get virtual interface index by interface name (IPv4)
+ * @ifname: Interface name
  *
- * returns: - index of the VIF
- *          - -1 if no VIF can be found for the interface name
- *
+ * Returns:
+ * The virtual interface index if the interface is known and registered
+ * with the kernel, or -1 if no virtual interface by that name is found.
  */
 int iface_get_vif_by_name(const char *ifname)
 {
@@ -199,12 +203,13 @@ int iface_get_vif_by_name(const char *ifname)
 	return vif;
 }
 
-/*
- * Gets the MIF index for a given interface name
+/**
+ * iface_get_mif_by_name - Get virtual interface index by interface name (IPv6)
+ * @ifname: Interface name
  *
- * returns: - index of the MIF
- *          - -1 if no MIF can be found for the interface name
- *
+ * Returns:
+ * The virtual interface index if the interface is known and registered
+ * with the kernel, or -1 if no virtual interface by that name is found.
  */
 int iface_get_mif_by_name(const char *ifname)
 {

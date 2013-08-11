@@ -1,4 +1,4 @@
-/* IPC command parser
+/* IPC command parser and builder for daemon and client
  *
  * Copyright (C) 2001-2005  Carsten Schill <carsten@cschill.de>
  * Copyright (C) 2006-2009  Julien BLACHE <jb@jblache.org>
@@ -27,11 +27,19 @@
 
 #include "mclab.h"
 
-/*
- * Builds an command packet with the command 'cmd' and 'count' arguments
- * from 'argv'.
+
+/**
+ * cmd_build - Create IPC command to send to daemon
+ * @cmd:   Command, one of 'a', 'r', 'j' or 'l'
+ * @argv:  Vector of arguments for @cmd
+ * @count: Number of arguments in @argv
  *
- * returns: - pointer to the dyn. allocated command packet
+ * Builds an command packet with the command @cmd and @count number of
+ * arguments from @argv.
+ *
+ * Returns:
+ * Pointer to a dynamically allocated command packet, or %NULL on failure
+ * to allocate enought memory.
  */
 void *cmd_build(char cmd, const char *argv[], int count)
 {
@@ -69,13 +77,17 @@ void *cmd_build(char cmd, const char *argv[], int count)
 	return packet;
 }
 
-/*
- * Converts a command packet 'packet' to an mroute struct 'mroute' for the
- * 'add' and 'remove' command. The IP version is determined by searching
- * for ':' in the address strings to indicate IPv6 addresses.
+/**
+ * cmd_convert_to_mroute - Convert IPC command from client to desired mulicast route
+ * @mroute: Pointer to &struct mroute to convert to
+ * @packet: Pointer to &struct cmd IPC command
  *
- * returns: - NULL if the conversion succeeded
- *          - an error string with a hint why the conversion failed
+ * Converts a command @packet to an @mroute for the 'add' and 'remove'
+ * commands.  The IP version is determined by searching for ':' in the
+ * address strings to indicate IPv6 addresses.
+ *
+ * Returns:
+ * %NULL on success, or an error string with a hint why the operation failed.
  */
 const char *cmd_convert_to_mroute(struct mroute *mroute, const struct cmd *packet)
 {
@@ -125,14 +137,6 @@ const char *cmd_convert_to_mroute(struct mroute *mroute, const struct cmd *packe
 	return NULL;
 }
 
-/*
- * Converts a command packet 'packet' to an mroute4 struct 'mroute' for the
- * 'add' and 'remove' command.
- *
- * returns: - NULL if the conversion succeeded
- *          - an error string with a hint why the conversion failed
- *
- */
 const char *cmd_convert_to_mroute4(struct mroute4 *mroute, const struct cmd *packet)
 {
 	char *arg = (char *)packet->argv;
@@ -152,17 +156,17 @@ const char *cmd_convert_to_mroute4(struct mroute4 *mroute, const struct cmd *pac
 
 	/* get input interface index */
 	if (!*arg || (mroute->inbound = iface_get_vif_by_name(arg)) < 0)
-		return "invalid input interface";
+		return "Invalid input interface";
 
 	/* get origin */
 	arg += strlen(arg) + 1;
 	if (!*arg || (inet_pton(AF_INET, arg, &mroute->sender) <= 0))
-		return "invalid origin IP address";
+		return "Invalid origin IPv4 address";
 
 	/* get multicast group */
 	arg += strlen(arg) + 1;
 	if (!*arg || (inet_pton(AF_INET, arg, &mroute->group) <= 0) || !IN_MULTICAST(ntohl(mroute->group.s_addr)))
-		return "invalid multicast group address";
+		return "Invalid multicast group address";
 
 	/*
 	 * Scan output interfaces for the 'add' command only, just ignore it
@@ -173,7 +177,7 @@ const char *cmd_convert_to_mroute4(struct mroute4 *mroute, const struct cmd *pac
 			int vif;
 
 			if ((vif = iface_get_vif_by_name(arg)) < 0)
-				return "invalid output interface";
+				return "Invalid output interface";
 
 			if (vif == mroute->inbound)
 				smclog(LOG_WARNING, 0, "Forwarding multicast to the input interface may not make sense: %s", arg);
@@ -185,14 +189,6 @@ const char *cmd_convert_to_mroute4(struct mroute4 *mroute, const struct cmd *pac
 	return NULL;
 }
 
-/*
- * Converts a command packet 'packet' to an mroute6 struct 'mroute' for the
- * 'add' and 'remove' command.
- *
- * returns: - NULL if the conversion succeeded
- *          - an error string with a hint why the conversion failed
- *
- */
 const char *cmd_convert_to_mroute6(struct mroute6 *mroute, const struct cmd *packet)
 {
 	const char *arg = (const char *)(packet + 1);
@@ -206,7 +202,7 @@ const char *cmd_convert_to_mroute6(struct mroute6 *mroute, const struct cmd *pac
 	/* get origin */
 	arg += strlen(arg) + 1;
 	if (!*arg || (inet_pton(AF_INET6, arg, &mroute->sender.sin6_addr) <= 0))
-		return "Invalid origin IP address";
+		return "Invalid origin IPv6 address";
 
 	/* get multicast group */
 	arg += strlen(arg) + 1;

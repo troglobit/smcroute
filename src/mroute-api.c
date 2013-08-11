@@ -83,12 +83,14 @@ static struct mif {
 static void mroute6_add_mif(struct iface *iface);
 #endif
 
-/*
- * Initialise the mrouted API and locks the multicast routing
- * socket to this program (only!).
+/**
+ * mroute4_enable - Initialise IPv4 multicast routing
  *
- * returns: - 0 if the functions succeeds
- *          - the errno value for non-fatal failure condition
+ * Setup the kernel IPv4 multicast routing API and lock the multicast
+ * routing socket to this program (only!).
+ *
+ * Returns:
+ * POSIX OK(0) on success, non-zero on error with @errno set.
  */
 int mroute4_enable(void)
 {
@@ -147,8 +149,10 @@ int mroute4_enable(void)
 	return 0;
 }
 
-/*
- * Diable the mrouted API and relase the kernel lock.
+/**
+ * mroute4_disable - Disable IPv4 multicast routing
+ *
+ * Disable IPv4 multicast routing and release kernel routing socket.
  */
 void mroute4_disable(void)
 {
@@ -178,9 +182,7 @@ void mroute4_disable(void)
 }
 
 
-/*
- * Adds the interface '*iface' as virtual interface to the mrouted API
- */
+/* Create a virtual interface from @iface so it can be used for IPv4 multicast routing. */
 static void mroute4_add_vif(struct iface *iface)
 {
 	struct vifctl vc;
@@ -277,11 +279,12 @@ static int __mroute4_del (mroute4_t *ptr)
 	return result;
 }
 
-/*
- * Add mcroute to kernel if it matches a known (*,G) route.
+/**
+ * mroute4_dyn_add - Add route to kernel if it matches a known (*,G) route.
+ * @route: Pointer to candidate &mroute4_t IPv4 multicast route
  *
- * returns: - 0 if the function succeeds
- *          - the errno value for non-fatal failure condition
+ * Returns:
+ * POSIX OK(0) on success, non-zero on error with @errno set.
  */
 int mroute4_dyn_add(mroute4_t *ptr)
 {
@@ -315,13 +318,16 @@ int mroute4_dyn_add(mroute4_t *ptr)
 	return -1;
 }
 
-/*
- * Adds the multicast route '*ptr' to the kernel multicast routing table
- * unless the source IP is INADDR_ANY, i.e., a (*,G) route. Those we save
- * for later and check against at runtime when the kernel signals us.
+/**
+ * mroute4_add - Add route to kernel, or save a wildcard route for later use
+ * @ptr: Pointer to &mroute4_t IPv4 multicast route to add
  *
- * returns: - 0 if the function succeeds
- *          - the errno value for non-fatal failure condition
+ * Adds the given multicast @route to the kernel multicast routing table
+ * unless the source IP is %INADDR_ANY, i.e., a (*,G) route.  Those we
+ * save for and check against at runtime when the kernel signals us.
+ *
+ * Returns:
+ * POSIX OK(0) on success, non-zero on error with @errno set.
  */
 int mroute4_add(mroute4_t *ptr)
 {
@@ -346,11 +352,15 @@ int mroute4_add(mroute4_t *ptr)
 	return __mroute4_add (ptr);
 }
 
-/*
- * Removes the multicast routed '*ptr' from the kernel routes
+/**
+ * mroute4_del - Remove route from kernel
+ * @route: Pointer to &mroute4_t IPv4 multicast route to remove
  *
- * returns: - 0 if the function succeeds
- *          - the errno value for non-fatal failure condition
+ * Removes the given multicast @route from the kernel multicast routing
+ * table.
+ *
+ * Returns:
+ * POSIX OK(0) on success, non-zero on error with @errno set.
  */
 int mroute4_del(mroute4_t *ptr)
 {
@@ -426,11 +436,14 @@ static int proc_set_val(char *file, int val)
 }
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
-/*
- * Initialises the mrouted API and locks it by this exclusively.
+/**
+ * mroute6_enable - Initialise IPv6 multicast routing
  *
- * returns: - 0 if the functions succeeds
- *          - the errno value for non-fatal failure condition
+ * Setup the kernel IPv6 multicast routing API and lock the multicast
+ * routing socket to this program (only!).
+ *
+ * Returns:
+ * POSIX OK(0) on success, non-zero on error with @errno set.
  */
 int mroute6_enable(void)
 {
@@ -493,9 +506,10 @@ int mroute6_enable(void)
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
 }
 
-/*
- * Diables the mrouted API and relases by this the lock.
+/**
+ * mroute6_disable - Disable IPv6 multicast routing
  *
+ * Disable IPv6 multicast routing and release kernel routing socket.
  */
 void mroute6_disable(void)
 {
@@ -512,9 +526,7 @@ void mroute6_disable(void)
 }
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
-/*
- * Adds the interface '*iface' as virtual interface to the mrouted API
- */
+/* Create a virtual interface from @iface so it can be used for IPv6 multicast routing. */
 static void mroute6_add_mif(struct iface *iface)
 {
 	struct mif6ctl mc;
@@ -557,11 +569,14 @@ static void mroute6_add_mif(struct iface *iface)
 	}
 }
 
-/*
- * Adds the multicast routed '*ptr' to the kernel routes
+/**
+ * mroute6_add - Add route to kernel, or save a wildcard route for later use
+ * @route: Pointer to &mroute6_t IPv6 multicast route to add
  *
- * returns: - 0 if the function succeeds
- *          - the errno value for non-fatal failure condition
+ * Adds the given multicast @route to the kernel multicast routing table.
+ *
+ * Returns:
+ * POSIX OK(0) on success, non-zero on error with @errno set.
  */
 int mroute6_add(mroute6_t *ptr)
 {
@@ -595,11 +610,15 @@ int mroute6_add(mroute6_t *ptr)
 	return result;
 }
 
-/*
- * Removes the multicast routed '*ptr' from the kernel routes
+/**
+ * mroute6_del - Remove route from kernel
+ * @route: Pointer to &mroute6_t IPv6 multicast route to remove
  *
- * returns: - 0 if the function succeeds
- *          - the errno value for non-fatal failure condition
+ * Removes the given multicast @route from the kernel multicast routing
+ * table.
+ *
+ * Returns:
+ * POSIX OK(0) on success, non-zero on error with @errno set.
  */
 int mroute6_del(mroute6_t *ptr)
 {

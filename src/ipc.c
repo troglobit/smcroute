@@ -36,10 +36,11 @@ static int server_sd;
 /* connected server or client socket */
 static int client_sd = -1;
 
-/*
- * Inits an IPC listen socket
+/**
+ * ipc_server_init - Initialise an IPC server socket
  *
- * returns: - the socket descriptor
+ * Returns:
+ * The socket descriptor, or -1 on error with @errno set.
  */
 int ipc_server_init(void)
 {
@@ -68,14 +69,12 @@ int ipc_server_init(void)
 	return server_sd;
 }
 
-/*
- * Connects to the IPC socket of the server
+/**
+ * ipc_client_init - Connects to the IPC socket of the server
  *
- * returns: - 0, if function succeeds
- *          - errno value, of connection attempt. Typically:
- *            - EACCES - Permission denied
- *            - ENOENT - No such file or directory
- *            - ECONREFUSED - Connection refused
+ * Returns:
+ * POSIX OK(0) on success, non-zero on error with @errno set.
+ * Typically %EACCES, %ENOENT, or %ECONREFUSED.
  */
 int ipc_client_init(void)
 {
@@ -102,16 +101,19 @@ int ipc_client_init(void)
 		return err;
 	}
 
-	smclog(LOG_DEBUG, 0, "%s: client connected, sd %d", __FUNCTION__, client_sd);
-
 	return 0;
 }
 
-/*
- * Reads a message from the IPC socket and stores in 'buf' with a max. size of 'len'.
- * Connects and resets connection as necessary.
+/**
+ * ipc_server_read - Read IPC message from client
+ * @buf: Buffer for message
+ * @len: Size of @buf in bytes
  *
- * returns: Pointer to a successfuly read command packet in 'buf'
+ * Reads a message from the IPC socket and stores in @buf, respecting
+ * the size @len.  Connects and resets connection as necessary.
+ *
+ * Returns:
+ * Pointer to a successfuly read command packet in @buf, or %NULL on error.
  */
 struct cmd *ipc_server_read(uint8 buf[], int len)
 {
@@ -156,11 +158,15 @@ struct cmd *ipc_server_read(uint8 buf[], int len)
 	}
 }
 
-/*
- * Sends the IPC message in 'buf' with the size 'Sz' to the peer.
+/**
+ * ipc_send - Send message to peer
+ * @buf: Message to send
+ * @len: Message length in bytes of @buf
  *
- * returns: - number of bytes written (Sz)
- *          - -1 if write failed
+ * Sends the IPC message in @buf of the size @len to the peer.
+ *
+ * Returns:
+ * Number of bytes successfully sent, or -1 with @errno on failure.
  */
 int ipc_send(const void *buf, int len)
 {
@@ -172,12 +178,15 @@ int ipc_send(const void *buf, int len)
 	return len;
 }
 
-/*
- * Reads the next IPC message in 'buf' with the max. size 'len' from the peer.
+/**
+ * ipc_receive - Receive message from peer
+ * @buf: Buffer to receive message in
+ * @len: Buffer size in bytes
  *
- * returns: - number of bytes read (0..len)
- *          - -1 if read failed
+ * Waits to receive an IPC message in @buf of max @len bytes from the peer.
  *
+ * Returns:
+ * Number of bytes successfully received, or -1 with @errno on failure.
  */
 int ipc_receive(uint8 buf[], int len)
 {
@@ -191,9 +200,8 @@ int ipc_receive(uint8 buf[], int len)
 	return size;
 }
 
-/*
- * Clean up IPC.
- *
+/**
+ * ipc_exit - Tear down and cleanup IPC communication.
  */
 void ipc_exit(void)
 {

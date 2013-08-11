@@ -49,9 +49,9 @@ static const char version_info[] =
 	"SMCRoute, version " PACKAGE_VERSION ", build" BUILD "\n"
 	"Copyright (c) 2001-2005  Carsten Schill <carsten@cschill.de>\n"
 	"Copyright (c) 2006-2009  Julien Blache <jb@jblache.org>,\n"
-	"                   2009  Todd Hayton <todd.hayton@gmail.com>, and\n"
-	"              2009-2011  Micha Lenk <micha@debian.org>\n"
-	"              2011-2013  Joachim Nilsson <troglobit@gmail.com>\n"
+	"Copyright (c)      2009  Todd Hayton <todd.hayton@gmail.com>, and\n"
+	"Copyright (c) 2009-2011  Micha Lenk <micha@debian.org>\n"
+	"Copyright (c) 2011-2013  Joachim Nilsson <troglobit@gmail.com>\n"
 	"\n"
 	"Licensed under the GNU GENERAL PUBLIC LICENSE, Version 2\n"
 	"\n";
@@ -59,20 +59,20 @@ static const char version_info[] =
 static const char usage_info[] =
 	"Usage: smcroute [OPTIONS]... [ARGS]...\n"
 	"\n"
-	"  -d       Start smcroute daemon.\n"
-	"  -n       Run daemon in foreground, i.e., do not fork.\n"
+	"  -d       Start SMCRoute daemon\n"
+	"  -n       Run SMCRoute daemon in foreground, i.e., do not fork\n"
 	"  -f FILE  Use FILE as daemon configuration. Default: " SMCROUTE_SYSTEM_CONF "\n"
-	"  -k       Stop (kill) a running daemon.\n"
+	"  -k       Stop (kill) a running daemon.n"
 	"\n"
-	"  -h       Display this help text.\n"
-	"  -D       Debug logging.\n"
-	"  -v       Display version information and enable verbose logging.\n"
+	"  -h       Display this help text\n"
+	"  -D       Debug logging\n"
+	"  -v       Display version information and enable verbose logging\n"
 	"\n"
-	"  -a ARGS  Add a multicast route, full syntax below.\n"
-	"  -r ARGS  Remove a multicast route, full syntax below.\n"
+	"  -a ARGS  Add a multicast route, full syntax below\n"
+	"  -r ARGS  Remove a multicast route, full syntax below\n"
 	"\n"
-	"  -j ARGS  Join a multicast group on an interface, useful for testing.\n"
-	"  -l ARGS  Leave a multicast group on an interface, useful for testing.\n"
+	"  -j ARGS  Join a multicast group on an interface, useful for testing\n"
+	"  -l ARGS  Leave a multicast group on an interface, useful for testing\n"
 	"\n"
 	"     <------------- INBOUND -------------->  <----- OUTBOUND ------>\n"
 	"  -a <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>  <IFNAME> [<IFNAME> ...]\n"
@@ -147,7 +147,7 @@ static int daemonize(void)
 {
 	int pid;
 
-	smclog(LOG_NOTICE, 0, "Forking daemon process.");
+	smclog(LOG_NOTICE, 0, "Forking off SMCRoute daemon process.");
 
 	pid = fork();
 	if (!pid) {
@@ -265,7 +265,7 @@ static void read_ipc_command(void)
 			if (!*groupstr
 			    || !inet_aton(groupstr, &group)
 			    || !IN_MULTICAST(ntohl(group.s_addr))) {
-				smclog(LOG_WARNING, 0, "invalid multicast group address: '%s'", groupstr);
+				smclog(LOG_WARNING, 0, "Invalid multicast group address: '%s'", groupstr);
 				ipc_send(log_last_message, strlen(log_last_message) + 1);
 				break;
 			}
@@ -285,7 +285,7 @@ static void read_ipc_command(void)
 			if (!*groupstr
 			    || (inet_pton(AF_INET6, groupstr, &group) <= 0)
 			    || !IN6_IS_ADDR_MULTICAST(&group)) {
-				smclog(LOG_WARNING, 0, "invalid multicast group address: '%s'", groupstr);
+				smclog(LOG_WARNING, 0, "Invalid multicast group address: '%s'", groupstr);
 				ipc_send(log_last_message, strlen(log_last_message) + 1);
 				break;
 			}
@@ -416,15 +416,15 @@ static void start_server(int background)
 
 	sd = ipc_server_init();
 	if (sd < 0)
-		smclog(LOG_WARNING, errno, "Failed setting up IPC socket, client communication disabled.");
+		smclog(LOG_WARNING, errno, "Failed setting up IPC socket, client communication disabled");
 
 	if (background)
 		pid = daemonize();
 	else
-		smclog(LOG_NOTICE, 0, "Starting daemon in foreground.");
+		smclog(LOG_NOTICE, 0, "Starting SMCRoute daemon in foreground.");
 
 	if (!pid) {
-		smclog(LOG_NOTICE, 0, "Entering smcroute daemon main loop.");
+		smclog(LOG_NOTICE, 0, "Entering SMCRoute daemon main loop ...");
 		atexit(clean);
 
 		signal_init();
@@ -449,11 +449,16 @@ static int usage(void)
 	return 1;
 }
 
-/*
- * main program
- * - Parses command line options
- *   - daemon mode: enters daemon status and goes in receive-execute command loop
- *   - client mode: creates commands from command line and sends them to the daemon
+/**
+ * main - Main program
+ *
+ * Parses command line options and enters either daemon or client mode.
+ *
+ * In daemon mode, acquires multicast routing sockets, opens IPC socket
+ * and goes in receive-execute command loop.
+ *
+ * In client mode, creates commands from command line and sends them to
+ * the daemon.
  */
 int main(int argc, const char *argv[])
 {
@@ -488,7 +493,7 @@ int main(int argc, const char *argv[])
 
 		case 'r':	/* remove route */
 			if (num_opts < 4) {
-				fprintf(stderr, "Wrong number of  arguments for 'remove' command\n");
+				fprintf(stderr, "Wrong number of arguments for 'remove' command\n");
 				return usage();
 			}
 			break;
@@ -576,7 +581,7 @@ int main(int argc, const char *argv[])
 		if (code) {
 			switch (code) {
 			case EACCES:
-				smclog(LOG_ERR, EACCES, "Need super-user permissions to connect to daemon");
+				smclog(LOG_ERR, EACCES, "Need root privileges to connect to daemon");
 				break;
 
 			case ENOENT:
@@ -586,11 +591,11 @@ int main(int argc, const char *argv[])
 					usleep(100000);
 					goto retry;
 				}
-				smclog(LOG_ERR, code, "Daemon not running");
+				smclog(LOG_ERR, errno, "SMCRoute daemon not running");
 				break;
 
 			default:
-				smclog(LOG_ERR, code, "Failed connecting to daemon");
+				smclog(LOG_ERR, errno, "Failed connecting to SMCRoute daemon");
 				break;
 			}
 		}
