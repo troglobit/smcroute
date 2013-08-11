@@ -29,8 +29,8 @@
 
 int do_debug_logging = 0;
 
-const char Usage[] = "mcsender [-t<n>] [-i<ifname>] <ip-address:port>\n";
-const char McMsg[] = "this is the test message from mclab/mcsender\n";
+static const char Usage[] = "mcsender [-t<n>] [-i<ifname>] <ip-address:port>\n";
+static const char McMsg[] = "this is the test message from mclab/mcsender\n";
 
 static void usage(void);
 
