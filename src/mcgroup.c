@@ -25,28 +25,34 @@
 
 static int mcgroup4_socket = -1;
 
+static struct iface *find_valid_iface(const char *ifname, int cmd)
+{
+	const char *command = cmd == 'j' ? "Join" : "Leave";
+	struct iface *iface = iface_find_by_name(ifname);
+
+	if (!iface) {
+		smclog(LOG_WARNING, 0, "%s multicast group, unknown interface %s", command, ifname);
+		return NULL;
+	}
+
+	return iface;
+}
+
 static void mcgroup4_init(void)
 {
-	if (mcgroup4_socket < 0) {
+	if (mcgroup4_socket < 0)
 		mcgroup4_socket = udp_socket_open(INADDR_ANY, 0);
-	}
 }
 
 static int mcgroup_join_leave_ipv4(int sd, int cmd, const char *ifname, struct in_addr group)
 {
 	int joinleave = cmd == 'j' ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP;
 	char buf[INET_ADDRSTRLEN];
-	const char *command = cmd == 'j' ? "Join" : "Leave";
 	struct ip_mreq mreq;
-	struct iface *iface = iface_find_by_name(ifname);
+	struct iface *iface = find_valid_iface(ifname, cmd);
 
-	if (!iface) {
-		smclog(LOG_WARNING, 0, "%s multicast group, unknown interface %s", command, ifname);
+	if (!iface)
 		return 1;
-	}
-
-	smclog(LOG_NOTICE, 0, "%s multicast group: %s on %s", command,
-	       inet_ntop(AF_INET, &group, buf, sizeof(buf)), iface ? iface->name : "<any>");
 
 	mreq.imr_multiaddr.s_addr = group.s_addr;
 	mreq.imr_interface.s_addr = iface->inaddr.s_addr;
@@ -114,17 +120,11 @@ static int mcgroup_join_leave_ipv6(int sd, int cmd, const char *ifname, struct i
 {
 	int joinleave = cmd == 'j' ? IPV6_JOIN_GROUP : IPV6_LEAVE_GROUP;
 	char buf[INET6_ADDRSTRLEN];
-	const char *command = cmd == 'j' ? "Join" : "Leave";
 	struct ipv6_mreq mreq;
-	struct iface *iface = iface_find_by_name(ifname);
+	struct iface *iface = find_valid_iface(ifname, cmd);
 
-	if (!iface) {
-		smclog(LOG_WARNING, 0, "%s multicast group, unknown interface %s", command, ifname);
+	if (!iface)
 		return 1;
-	}
-
-	smclog(LOG_NOTICE, 0, "%s multicast group: %s on %s", command,
-	       inet_ntop(AF_INET6, &group, buf, sizeof(buf)), iface ? iface->name : "<any>");
 
 	mreq.ipv6mr_multiaddr = group;
 	mreq.ipv6mr_interface = iface->ifindex;

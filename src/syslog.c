@@ -91,7 +91,7 @@ void smclog(int severity, int code, const char *fmt, ...)
 
 	/* LOG_INIT doesn't trigger that */
 	if (severity <= LOG_ERR)
-		exit(-1);
+		exit(255);
 }
 
 /**

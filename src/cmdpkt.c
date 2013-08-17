@@ -54,15 +54,18 @@ void *cmd_build(char cmd, const char *argv[], int count)
 
 	/* resulting packet size */
 	packet_len = sizeof(struct cmd) + arg_len + 1;
-	if (packet_len > MX_CMDPKT_SZ)
-		smclog(LOG_ERR, 0, "option too big");
+	if (packet_len > MX_CMDPKT_SZ) {
+		errno = EMSGSIZE;
+		return NULL;
+	}
 
 	/* build packet */
-	if (!(packet = malloc(packet_len)))
-		smclog(LOG_ERR, errno, "out of memory for option arguments");
+	packet = malloc(packet_len);
+	if (!packet)
+		return NULL;
 
-	packet->len = packet_len;
-	packet->cmd = cmd;
+	packet->len   = packet_len;
+	packet->cmd   = cmd;
 	packet->count = count;
 
 	/* copy args */
@@ -166,7 +169,7 @@ const char *cmd_convert_to_mroute4(struct mroute4 *mroute, const struct cmd *pac
 	/* get multicast group */
 	arg += strlen(arg) + 1;
 	if (!*arg || (inet_pton(AF_INET, arg, &mroute->group) <= 0) || !IN_MULTICAST(ntohl(mroute->group.s_addr)))
-		return "Invalid multicast group address";
+		return "Invalid multicast group";
 
 	/*
 	 * Scan output interfaces for the 'add' command only, just ignore it
@@ -180,7 +183,7 @@ const char *cmd_convert_to_mroute4(struct mroute4 *mroute, const struct cmd *pac
 				return "Invalid output interface";
 
 			if (vif == mroute->inbound)
-				smclog(LOG_WARNING, 0, "Forwarding multicast to the input interface may not make sense: %s", arg);
+				smclog(LOG_WARNING, 0, "Same outbound interface as inbound %s?", arg);
 
 			mroute->ttl[vif] = 1;	/* Use a TTL threashold */
 		}
@@ -223,7 +226,7 @@ const char *cmd_convert_to_mroute6(struct mroute6 *mroute, const struct cmd *pac
 				return "Invalid output interface";
 
 			if (mif == mroute->inbound)
-				smclog(LOG_WARNING, 0, "Forwarding multicast to the input interface may not make sense: %s", arg);
+				smclog(LOG_WARNING, 0, "Same outbound interface as inbound %s?", arg);
 
 			mroute->ttl[mif] = 1;	/* Use a TTL threashold */
 		}

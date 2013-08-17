@@ -31,13 +31,13 @@
 
 /* MAX_MC_VIFS from mclab.h must have same value as MAXVIFS from mroute.h */
 #if MAX_MC_VIFS != MAXVIFS
-#error "constants don't match, correct mclab.h"
+#error "IPv4 constants don't match, mclab.h needs to be fixed!"
 #endif
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 /* MAX_MC_MIFS from mclab.h must have same value as MAXVIFS from mroute6.h */
 #if MAX_MC_MIFS != MAXMIFS
-#error "constants don't match, correct mclab.h"
+#error "IPv6 constants don't match, mclab.h needs to be fixed!"
 #endif
 #endif
 
@@ -72,7 +72,7 @@ static struct vif {
 	struct iface *iface;
 } vif_list[MAXVIFS];
 
-static void mroute4_add_vif(struct iface *iface);
+static int mroute4_add_vif(struct iface *iface);
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 /* IPv6 internal virtual interfaces (VIF) descriptor vector */
@@ -80,7 +80,7 @@ static struct mif {
 	struct iface *iface;
 } mif_list[MAXMIFS];
 
-static void mroute6_add_mif(struct iface *iface);
+static int mroute6_add_mif(struct iface *iface);
 #endif
 
 /**
@@ -101,7 +101,7 @@ int mroute4_enable(void)
 	mroute4_socket = socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
 	if (mroute4_socket < 0) {
 		if (ENOPROTOOPT == errno)
-			smclog(LOG_WARNING, 0, "Kernel does not support IPv4 multicast routing, skipping...");
+			smclog(LOG_WARNING, 0, "Kernel does not support IPv4 multicast routing, skipping ...");
 
 		return -1;
 	}
@@ -111,12 +111,6 @@ int mroute4_enable(void)
 		case EADDRINUSE:
 			smclog(LOG_INIT, errno, "IPv4 multicast routing API already in use");
 			break;
-
-#ifdef EOPNOTSUPP
-		case EOPNOTSUPP:
-			smclog(LOG_INIT, errno, "Unknown socket option MRT_INIT");
-			break;
-#endif
 
 		default:
 			smclog(LOG_INIT, errno, "Failed initializing IPv4 multicast routing API");
@@ -140,7 +134,10 @@ int mroute4_enable(void)
 			iface->vif = -1;
 			continue;
 		}
-		mroute4_add_vif(iface);
+
+		/* No point in continuing the loop when out of VIF's */
+		if (mroute4_add_vif(iface))
+			break;
 	}
 
 	LIST_INIT(&mroute4_conf_list);
@@ -162,9 +159,7 @@ void mroute4_disable(void)
 		return;
 
 	/* Drop all kernel routes set by smcroute */
-	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_DONE, NULL, 0))
-		smclog(LOG_ERR, errno, "MRT_DONE");
-
+	setsockopt(mroute4_socket, IPPROTO_IP, MRT_DONE, NULL, 0);
 	close(mroute4_socket);
 	mroute4_socket = -1;
 
@@ -183,11 +178,10 @@ void mroute4_disable(void)
 
 
 /* Create a virtual interface from @iface so it can be used for IPv4 multicast routing. */
-static void mroute4_add_vif(struct iface *iface)
+static int mroute4_add_vif(struct iface *iface)
 {
 	struct vifctl vc;
 	int vif = -1;
-	char buf[16];
 	size_t i;
 
 	/* search free vif */
@@ -200,8 +194,8 @@ static void mroute4_add_vif(struct iface *iface)
 
 	/* no more space */
 	if (vif == -1) {
-		smclog(LOG_ERR, ENOMEM, "%s: out of VIF space", __FUNCTION__);
-		return;
+		smclog(LOG_WARNING, ENOMEM, "Kernel MAXVIFS (%d) too small for number of interfaces", MAXVIFS);
+		return 1;
 	}
 
 	memset(&vc, 0, sizeof(vc));
@@ -212,21 +206,20 @@ static void mroute4_add_vif(struct iface *iface)
 	vc.vifc_lcl_addr.s_addr = iface->inaddr.s_addr;
 	vc.vifc_rmt_addr.s_addr = INADDR_ANY;
 
-	smclog(LOG_NOTICE, 0, "Add VIF: %d Ifindex: %d Flags: 0x%04x IP: %s Ifname: %s",
-	       vc.vifc_vifi, iface->ifindex, vc.vifc_flags,
-	       inet_ntop (AF_INET, &vc.vifc_lcl_addr, buf, sizeof(buf)),
-	       iface->name);
+	smclog(LOG_DEBUG, 0, "Iface %s => VIF %d index %d flags 0x%04x",
+	       iface->name, vc.vifc_vifi, iface->ifindex, vc.vifc_flags);
 
-	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_VIF, (void *)&vc, sizeof(vc))) {
-		smclog(LOG_ERR, errno, "MRT_ADD_VIF %s", iface->name);
-	} else {
-		iface->vif = vif;
-		vif_list[vif].iface = iface;
-	}
+	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_VIF, (void *)&vc, sizeof(vc)))
+		smclog(LOG_ERR, errno, "Failed adding VIF for iface %s", iface->name);
+
+	iface->vif = vif;
+	vif_list[vif].iface = iface;
+
+	return 0;
 }
 
 /* Actually set in kernel - called by mroute4_add() and mroute4_check_add() */
-static int __mroute4_add (mroute4_t *ptr)
+static int __mroute4_add (mroute4_t *route)
 {
 	int result = 0;
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
@@ -234,46 +227,46 @@ static int __mroute4_add (mroute4_t *ptr)
 
 	memset(&mc, 0, sizeof(mc));
 
-	mc.mfcc_origin = ptr->sender;
-	mc.mfcc_mcastgrp = ptr->group;
-	mc.mfcc_parent = ptr->inbound;
+	mc.mfcc_origin = route->sender;
+	mc.mfcc_mcastgrp = route->group;
+	mc.mfcc_parent = route->inbound;
 
 	/* copy the TTL vector */
-	if (sizeof(mc.mfcc_ttls[0]) != sizeof(ptr->ttl[0]) || ARRAY_ELEMENTS(mc.mfcc_ttls) != ARRAY_ELEMENTS(ptr->ttl))
-		smclog(LOG_ERR, 0, "Data types does not match in %s, source adaption needed!", __FILE__);
+	if (sizeof(mc.mfcc_ttls[0]) != sizeof(route->ttl[0]) || ARRAY_ELEMENTS(mc.mfcc_ttls) != ARRAY_ELEMENTS(route->ttl))
+		smclog(LOG_ERR, 0, "Critical data type validation error in %s!", __FILE__);
 
-	memcpy(mc.mfcc_ttls, ptr->ttl, ARRAY_ELEMENTS(mc.mfcc_ttls) * sizeof(mc.mfcc_ttls[0]));
+	memcpy(mc.mfcc_ttls, route->ttl, ARRAY_ELEMENTS(mc.mfcc_ttls) * sizeof(mc.mfcc_ttls[0]));
 
-	smclog(LOG_NOTICE, 0, "Add MFC: %s -> %s, inbound VIF: %d",
+	smclog(LOG_DEBUG, 0, "Add %s -> %s from VIF %d",
 	       inet_ntop(AF_INET, &mc.mfcc_origin,   origin, INET_ADDRSTRLEN),
 	       inet_ntop(AF_INET, &mc.mfcc_mcastgrp, group,  INET_ADDRSTRLEN), mc.mfcc_parent);
 
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_MFC, (void *)&mc, sizeof(mc))) {
 		result = errno;
-		smclog(LOG_WARNING, errno, "MRT_ADD_MFC");
+		smclog(LOG_WARNING, errno, "Failed adding IPv4 multicast route");
 	}
 
 	return result;
 }
 
 /* Actually remove from kernel - called by mroute4_del() */
-static int __mroute4_del (mroute4_t *ptr)
+static int __mroute4_del (mroute4_t *route)
 {
 	int result = 0;
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	struct mfcctl mc;
 
 	memset(&mc, 0, sizeof(mc));
-	mc.mfcc_origin = ptr->sender;
-	mc.mfcc_mcastgrp = ptr->group;
+	mc.mfcc_origin = route->sender;
+	mc.mfcc_mcastgrp = route->group;
 
-	smclog(LOG_NOTICE, 0, "Del MFC: %s -> %s",
+	smclog(LOG_DEBUG, 0, "Del %s -> %s",
 	       inet_ntop(AF_INET, &mc.mfcc_origin,  origin, INET_ADDRSTRLEN),
 	       inet_ntop(AF_INET, &mc.mfcc_mcastgrp, group, INET_ADDRSTRLEN));
 
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_DEL_MFC, (void *)&mc, sizeof(mc))) {
 		result = errno;
-		smclog(LOG_WARNING, errno, "MRT_DEL_MFC");
+		smclog(LOG_WARNING, errno, "Failed removing IPv4 multicast route");
 	}
 
 	return result;
@@ -286,17 +279,15 @@ static int __mroute4_del (mroute4_t *ptr)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute4_dyn_add(mroute4_t *ptr)
+int mroute4_dyn_add(mroute4_t *route)
 {
 	mroute4_t *entry;
 
 	LIST_FOREACH(entry, &mroute4_conf_list, link) {
 		/* Find matching (*,G) ... and interface. */
-		if (mroute4_match(entry, ptr)) {
-			smclog(LOG_DEBUG, 0, "Found (*,G) match for (0x%x, 0x%x)!", ptr->sender.s_addr, ptr->group.s_addr);
-
+		if (mroute4_match(entry, route)) {
 			/* Use configured template (*,G) outbound interfaces. */
-			memcpy(ptr->ttl, entry->ttl, ARRAY_ELEMENTS(ptr->ttl) * sizeof(ptr->ttl[0]));
+			memcpy(route->ttl, entry->ttl, ARRAY_ELEMENTS(route->ttl) * sizeof(route->ttl[0]));
 
 			/* Add to list of dynamically added routes. Necessary if the user
 			 * removes the (*,G) using the command line interface rather than
@@ -304,15 +295,13 @@ int mroute4_dyn_add(mroute4_t *ptr)
 			 * memory we don't do anything, just add kernel route silently. */
 			entry = malloc(sizeof(mroute4_t));
 			if (entry) {
-				memcpy(entry, ptr, sizeof(mroute4_t));
+				memcpy(entry, route, sizeof(mroute4_t));
 				LIST_INSERT_HEAD(&mroute4_dyn_list, entry, link);
 			}
 
-			return __mroute4_add(ptr);
+			return __mroute4_add(route);
 		}
 	}
-
-	smclog(LOG_DEBUG, 0, "No (*,G) match for (0x%x, 0x%x)!", ptr->sender.s_addr, ptr->group.s_addr);
 
 	errno = ENOENT;
 	return -1;
@@ -320,7 +309,7 @@ int mroute4_dyn_add(mroute4_t *ptr)
 
 /**
  * mroute4_add - Add route to kernel, or save a wildcard route for later use
- * @ptr: Pointer to &mroute4_t IPv4 multicast route to add
+ * @route: Pointer to &mroute4_t IPv4 multicast route to add
  *
  * Adds the given multicast @route to the kernel multicast routing table
  * unless the source IP is %INADDR_ANY, i.e., a (*,G) route.  Those we
@@ -329,27 +318,25 @@ int mroute4_dyn_add(mroute4_t *ptr)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute4_add(mroute4_t *ptr)
+int mroute4_add(mroute4_t *route)
 {
 	/* For (*,G) we save to a linked list to be added on-demand
 	 * when the kernel sends IGMPMSG_NOCACHE. */
-	if (ptr->sender.s_addr == INADDR_ANY) {
+	if (route->sender.s_addr == INADDR_ANY) {
 		mroute4_t *entry = malloc(sizeof(mroute4_t));
 
 		if (!entry) {
-			smclog(LOG_WARNING, errno, "Failed allocating (*,G) entry to linked list");
+			smclog(LOG_WARNING, errno, "Failed adding (*,G) multicast route");
 			return errno;
 		}
 
-		memcpy(entry, ptr, sizeof(mroute4_t));
-		smclog(LOG_DEBUG, 0, "Adding (*,G) mroute to dynamic list => (0x%x, 0x%x) vif:%d ",
-		       ptr->sender.s_addr, ptr->group.s_addr, ptr->inbound);
+		memcpy(entry, route, sizeof(mroute4_t));
 		LIST_INSERT_HEAD(&mroute4_conf_list, entry, link);
 
 		return 0;
 	}
 
-	return __mroute4_add (ptr);
+	return __mroute4_add (route);
 }
 
 /**
@@ -362,7 +349,7 @@ int mroute4_add(mroute4_t *ptr)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute4_del(mroute4_t *ptr)
+int mroute4_del(mroute4_t *route)
 {
 	mroute4_t *entry, *set;
 
@@ -370,8 +357,8 @@ int mroute4_del(mroute4_t *ptr)
 	 * to a linked list which we need to traverse again and remove
 	 * all matches. From kernel dyn list before we remove the conf
 	 * entry. */
-	if (ptr->sender.s_addr != INADDR_ANY)
-		return __mroute4_del(ptr);
+	if (route->sender.s_addr != INADDR_ANY)
+		return __mroute4_del(route);
 
 	if (LIST_EMPTY(&mroute4_conf_list))
 		return 0;
@@ -379,8 +366,7 @@ int mroute4_del(mroute4_t *ptr)
 	entry = LIST_FIRST(&mroute4_conf_list);
 	while (entry) {
 		/* Find matching (*,G) ... and interface. */
-		if (mroute4_match(entry, ptr)) {
-			smclog(LOG_DEBUG, 0, "Found (*,G) match for (0x%x, 0x%x) - now find any set routes!", ptr->sender.s_addr, ptr->group.s_addr);
+		if (mroute4_match(entry, route)) {
 			if (LIST_EMPTY(&mroute4_dyn_list)) {
 				entry = LIST_NEXT(entry, link);
 				continue;
@@ -389,7 +375,6 @@ int mroute4_del(mroute4_t *ptr)
 			set = LIST_FIRST(&mroute4_dyn_list);
 			while (set) {
 				if (mroute4_match(entry, set)) {
-					smclog(LOG_DEBUG, 0, "Found match (0x%x, 0x%x) - removing, unlinking and freeing.", set->sender.s_addr, set->group.s_addr);
 					__mroute4_del(set);
 					LIST_REMOVE(set, link);
 					free(set);
@@ -419,20 +404,18 @@ int mroute4_del(mroute4_t *ptr)
 
 static int proc_set_val(char *file, int val)
 {
-	int fd;
+	int fd, result = 0;
 
 	fd = open(file, O_WRONLY);
-	if (fd < 0) {
+	if (fd < 0)
 		return 1;
-	} else {
-		if (-1 == write(fd, "1", val)) {
-			(void)close(fd);
-			return 1;
-		}
-		(void)close(fd);
-	}
 
-	return 0;
+	if (-1 == write(fd, "1", val))
+		result = 1;
+
+	close(fd);
+
+	return result;
 }
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
@@ -456,7 +439,7 @@ int mroute6_enable(void)
 
 	if ((mroute6_socket = socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6)) < 0) {
 		if (ENOPROTOOPT == errno)
-			smclog(LOG_WARNING, 0, "Kernel does not support IPv6 multicast routing, skipping...");
+			smclog(LOG_WARNING, 0, "Kernel does not support IPv6 multicast routing, skipping ...");
 
 		return -1;
 	}
@@ -465,12 +448,6 @@ int mroute6_enable(void)
 		case EADDRINUSE:
 			smclog(LOG_INIT, errno, "IPv6 multicast routing API already in use");
 			break;
-
-#ifdef EOPNOTSUPP
-		case EOPNOTSUPP:
-			smclog(LOG_INIT, errno, "Unknown socket option MRT6_INIT");
-			break;
-#endif
 
 		default:
 			smclog(LOG_INIT, errno, "Failed initializing IPv6 multicast routing API");
@@ -490,16 +467,19 @@ int mroute6_enable(void)
 	 * is not set on MRT6_INIT so we have to do this manually */
 	if (proc_set_val(IPV6_ALL_MC_FORWARD, 1)) {
 		if (errno != EACCES)
-			smclog(LOG_ERR, errno, "Failed enabling IPv6 mc_forwarding");
+			smclog(LOG_ERR, errno, "Failed enabling IPv6 multicast forwarding");
 	}
 
-	/* create MIFs for all IP, non-loop interfaces */
+	/* Create virtual interfaces, IPv6 MIFs, for all non-loopback interfaces */
 	for (i = 0; (iface = iface_find_by_index(i)); i++) {
 		if (iface->flags & IFF_LOOPBACK) {
 			iface->vif = -1;
 			continue;
 		}
-		mroute6_add_mif(iface);
+
+		/* No point in continuing the loop when out of MIF's */
+		if (mroute6_add_mif(iface))
+			break;
 	}
 
 	return 0;
@@ -517,9 +497,7 @@ void mroute6_disable(void)
 	if (mroute6_socket < 0)
 		return;
 
-	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_DONE, NULL, 0))
-		smclog(LOG_ERR, errno, "MRT6_DONE");
-
+	setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_DONE, NULL, 0);
 	close(mroute6_socket);
 	mroute6_socket = -1;
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
@@ -527,7 +505,7 @@ void mroute6_disable(void)
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 /* Create a virtual interface from @iface so it can be used for IPv6 multicast routing. */
-static void mroute6_add_mif(struct iface *iface)
+static int mroute6_add_mif(struct iface *iface)
 {
 	struct mif6ctl mc;
 	int mif = -1;
@@ -543,8 +521,8 @@ static void mroute6_add_mif(struct iface *iface)
 
 	/* no more space */
 	if (mif == -1) {
-		smclog(LOG_ERR, ENOMEM, "%s: out of MIF space", __FUNCTION__);
-		return;
+		smclog(LOG_WARNING, ENOMEM, "Kernel MAXMIFS (%d) too small for number of interfaces", MAXMIFS);
+		return 1;
 	}
 
 	memset(&mc, 0, sizeof(mc));
@@ -558,15 +536,16 @@ static void mroute6_add_mif(struct iface *iface)
 	mc.vifc_rate_limit = 0;	/* hopefully no limit */
 #endif
 
-	smclog(LOG_NOTICE, 0, "Add MIF: %d Ifindex: %d Flags: 0x%04x Ifname: %s",
-	       mc.mif6c_mifi, mc.mif6c_pifi, mc.mif6c_flags, iface->name);
+	smclog(LOG_DEBUG, 0, "Iface %s => MIF %d index %d flags 0x%04x",
+	       iface->name, mc.mif6c_mifi, mc.mif6c_pifi, mc.mif6c_flags);
 
-	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MIF, (void *)&mc, sizeof(mc))) {
-		smclog(LOG_ERR, errno, "MRT6_ADD_MIF %s", iface->name);
-	} else {
-		iface->mif = mif;
-		mif_list[mif].iface = iface;
-	}
+	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MIF, (void *)&mc, sizeof(mc)))
+		smclog(LOG_ERR, errno, "Failed adding MIF for iface %s", iface->name);
+
+	iface->mif = mif;
+	mif_list[mif].iface = iface;
+
+	return 0;
 }
 
 /**
@@ -578,7 +557,7 @@ static void mroute6_add_mif(struct iface *iface)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute6_add(mroute6_t *ptr)
+int mroute6_add(mroute6_t *route)
 {
 	int result = 0;
 	size_t i;
@@ -586,25 +565,24 @@ int mroute6_add(mroute6_t *ptr)
 	struct mf6cctl mc;
 
 	memset(&mc, 0, sizeof(mc));
-	mc.mf6cc_origin   = ptr->sender;
-	mc.mf6cc_mcastgrp = ptr->group;
-	mc.mf6cc_parent   = ptr->inbound;
+	mc.mf6cc_origin   = route->sender;
+	mc.mf6cc_mcastgrp = route->group;
+	mc.mf6cc_parent   = route->inbound;
 
 	/* copy the outgoing MIFs */
-	for (i = 0; i < ARRAY_ELEMENTS(ptr->ttl); i++) {
-		if (ptr->ttl[i] > 0)
+	for (i = 0; i < ARRAY_ELEMENTS(route->ttl); i++) {
+		if (route->ttl[i] > 0)
 			IF_SET(i, &mc.mf6cc_ifset);
 	}
 
-	smclog(LOG_NOTICE, 0, "Add MFC: %s -> %s, Inbound MIF: %d",
-	       inet_ntop(AF_INET6, &mc.mf6cc_origin.sin6_addr,
-			 origin, INET6_ADDRSTRLEN),
-	       inet_ntop(AF_INET6, &mc.mf6cc_mcastgrp.sin6_addr,
-			 group, INET6_ADDRSTRLEN), mc.mf6cc_parent);
+	smclog(LOG_DEBUG, 0, "Add %s -> %s from MIF %d",
+	       inet_ntop(AF_INET6, &mc.mf6cc_origin.sin6_addr, origin, INET6_ADDRSTRLEN),
+	       inet_ntop(AF_INET6, &mc.mf6cc_mcastgrp.sin6_addr, group, INET6_ADDRSTRLEN),
+	       mc.mf6cc_parent);
 
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MFC, (void *)&mc, sizeof(mc))) {
 		result = errno;
-		smclog(LOG_WARNING, errno, "MRT6_ADD_MFC");
+		smclog(LOG_WARNING, errno, "Failed adding IPv6 multicast route");
 	}
 
 	return result;
@@ -620,25 +598,23 @@ int mroute6_add(mroute6_t *ptr)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute6_del(mroute6_t *ptr)
+int mroute6_del(mroute6_t *route)
 {
 	int result = 0;
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	struct mf6cctl mc;
 
 	memset(&mc, 0, sizeof(mc));
-	mc.mf6cc_origin = ptr->sender;
-	mc.mf6cc_mcastgrp = ptr->group;
+	mc.mf6cc_origin = route->sender;
+	mc.mf6cc_mcastgrp = route->group;
 
-	smclog(LOG_NOTICE, 0, "Del MFC: %s -> %s",
-	       inet_ntop(AF_INET6, &mc.mf6cc_origin.sin6_addr,
-			 origin, INET6_ADDRSTRLEN),
-	       inet_ntop(AF_INET6, &mc.mf6cc_mcastgrp.sin6_addr,
-			 group, INET6_ADDRSTRLEN));
+	smclog(LOG_DEBUG, 0, "Del %s -> %s",
+	       inet_ntop(AF_INET6, &mc.mf6cc_origin.sin6_addr, origin, INET6_ADDRSTRLEN),
+	       inet_ntop(AF_INET6, &mc.mf6cc_mcastgrp.sin6_addr, group, INET6_ADDRSTRLEN));
 
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_DEL_MFC, (void *)&mc, sizeof(mc))) {
 		result = errno;
-		smclog(LOG_WARNING, errno, "MRT_DEL_MFC");
+		smclog(LOG_WARNING, errno, "Failed removing IPv6 multicast route");
 	}
 
 	return result;

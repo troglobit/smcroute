@@ -31,7 +31,7 @@
 #define SOCKET_PATH "/var/run/smcroute"
 
 /* server's listen socket */
-static int server_sd;
+static int server_sd = -1;
 
 /* connected server or client socket */
 static int client_sd = -1;
@@ -47,10 +47,13 @@ int ipc_server_init(void)
 	struct sockaddr_un sa;
 	socklen_t len;
 
-	if ((server_sd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-           smclog(LOG_INIT, errno, "%s: socket() failed", __FUNCTION__);
+	if (server_sd >= 0)
+		close(server_sd);
+
+	server_sd = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (server_sd < 0)
 		return -1;
-	}
+
 #ifdef HAVE_SOCKADDR_UN_SUN_LEN
 	sa.sun_len = 0;	/* <- correct length is set by the OS */
 #endif
@@ -59,11 +62,13 @@ int ipc_server_init(void)
 
 	unlink(SOCKET_PATH);
 
-	len = offsetof(struct sockaddr_un, sun_path)+strlen(SOCKET_PATH);
+	len = offsetof(struct sockaddr_un, sun_path) + strlen(SOCKET_PATH);
 	if (bind(server_sd, (struct sockaddr *)&sa, len) < 0 || listen(server_sd, 1)) {
-           smclog(LOG_INIT, errno, "%s: bind()/listen() failed", __FUNCTION__);
-           close(server_sd);
-           return -1;
+		int err = errno;
+
+		close(server_sd);
+		server_sd = -1;
+		errno = err;
 	}
 
 	return server_sd;
@@ -78,12 +83,15 @@ int ipc_server_init(void)
  */
 int ipc_client_init(void)
 {
-	int err;
 	struct sockaddr_un sa;
 	socklen_t len;
 
-	if ((client_sd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
-		smclog(LOG_ERR, errno, "%s: socket() failed", __FUNCTION__);
+	if (client_sd >= 0)
+		close(client_sd);
+
+	client_sd = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (client_sd < 0)
+		return -1;
 
 #ifdef HAVE_SOCKADDR_UN_SUN_LEN
 	sa.sun_len = 0;	/* <- correct length is set by the OS */
@@ -93,12 +101,13 @@ int ipc_client_init(void)
 
 	len = offsetof(struct sockaddr_un, sun_path) + strlen(SOCKET_PATH);
 	if (connect(client_sd, (struct sockaddr *)&sa, len) < 0) {
-		err = errno;
+		int err = errno;
 
 		close(client_sd);
 		client_sd = -1;
 
-		return err;
+		errno = err;
+		return -1;
 	}
 
 	return 0;
@@ -117,45 +126,40 @@ int ipc_client_init(void)
  */
 struct cmd *ipc_server_read(uint8 buf[], int len)
 {
-	while (1) {
-		size_t size;
-		socklen_t socklen = 0;
+	size_t size;
+	socklen_t socklen = 0;
 
-		/* wait for connections */
-		if (client_sd < 0) {
-			smclog(LOG_DEBUG, 0, "%s: waiting for connection...", __FUNCTION__);
-
-			if ((client_sd = accept(server_sd, NULL, &socklen)) < 0)
-				smclog(LOG_ERR, errno, "%s: accept() failed incoming connection", __FUNCTION__);
-
-			smclog(LOG_DEBUG, 0, "%s: connection accepted", __FUNCTION__);
-		}
-
-		/* read */
-		memset(buf, 0, len);	/* had some problems with buffer garbage */
-		size = read(client_sd, buf, len);
-		smclog(LOG_DEBUG, 0, "%s: command read(%d, %p, %d) => %zu should be at least %zu", __FUNCTION__,
-		       client_sd, buf, len, size, sizeof(struct cmd));
-
-		/* successful read */
-		if (size >= sizeof(struct cmd)) {
-			struct cmd *p = (struct cmd *)buf;
-
-			if (size == p->len)
-				return p;
-		}
-
-		/* connection lost ? -> reset connection */
-		if (!size) {
-			smclog(LOG_DEBUG, 0, "%s: connection lost", __FUNCTION__);
-			close(client_sd);
-			client_sd = -1;
-			continue;
-		}
-
-		/* error */
-		smclog(LOG_WARNING, errno, "%s: read() failed", __FUNCTION__);
+	/* sanity check */
+	if (server_sd < 0) {
+		errno = EBADFD;
+		return NULL;
 	}
+
+	/* wait for connections */
+	if (client_sd < 0) {
+		client_sd = accept(server_sd, NULL, &socklen);
+		if (client_sd < 0)
+			return NULL;
+	}
+
+	size = recv(client_sd, buf, len, 0);
+	if (!size) {
+		close(client_sd);
+		client_sd = -1;
+		errno = ECONNRESET;
+		return NULL;
+	}
+
+	/* successful read */
+	if (size >= sizeof(struct cmd)) {
+		struct cmd *p = (struct cmd *)buf;
+
+		if (size == p->len)
+			return p;
+	}
+
+	errno = ENODATA;
+	return NULL;
 }
 
 /**
@@ -170,10 +174,14 @@ struct cmd *ipc_server_read(uint8 buf[], int len)
  */
 int ipc_send(const void *buf, int len)
 {
-	if (write(client_sd, buf, len) != len) {
-		smclog(LOG_ERR, errno, "%s: write failed (%d)", __FUNCTION__, len);
+	/* sanity check */
+	if (client_sd < 0) {
+		errno = EBADFD;
 		return -1;
 	}
+
+	if (write(client_sd, buf, len) != len)
+		return -1;
 
 	return len;
 }
@@ -190,14 +198,13 @@ int ipc_send(const void *buf, int len)
  */
 int ipc_receive(uint8 buf[], int len)
 {
-	int size = read(client_sd, buf, len);
+	/* sanity check */
+	if (client_sd < 0) {
+		errno = EBADFD;
+		return -1;
+	}
 
-	smclog(LOG_DEBUG, 0, "%s: read (%d)", __FUNCTION__, size);
-
-	if (size < 1)
-		smclog(LOG_WARNING, errno, "%s: read() failed", __FUNCTION__);
-
-	return size;
+	return read(client_sd, buf, len);
 }
 
 /**
@@ -205,7 +212,7 @@ int ipc_receive(uint8 buf[], int len)
  */
 void ipc_exit(void)
 {
-	if (server_sd) {
+	if (server_sd >= 0) {
 		close(server_sd);
 		unlink(SOCKET_PATH);
 	}

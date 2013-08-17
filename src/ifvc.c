@@ -28,7 +28,7 @@
 #include "mclab.h"
 
 static unsigned int num_ifaces = 0;
-static struct iface iface_list[MAX_IF];
+static struct iface *iface_list = NULL;
 
 /**
  * iface_init - Setup vector of active interfaces
@@ -43,16 +43,24 @@ void iface_init(void)
 	struct ifaddrs *ifaddr, *ifa;
 
 	num_ifaces = 0;
-	memset(iface_list, 0, sizeof(iface_list));
 
-	if (getifaddrs(&ifaddr) == -1) {
-		smclog(LOG_ERR, errno, "Failed to retrieve interface addresses");
+	if (iface_list)
+		free(iface_list);
+
+	iface_list = calloc(MAX_IF, sizeof(struct iface));
+	if (!iface_list) {
+		smclog(LOG_ERR, errno, "Failed allocating space for interfaces");
 		return;
 	}
 
-	for (ifa = ifaddr; ifa != NULL && num_ifaces < ARRAY_ELEMENTS(iface_list); ifa = ifa->ifa_next) {
+	if (getifaddrs(&ifaddr) == -1) {
+		smclog(LOG_ERR, errno, "Failed retrieving interface addresses");
+		return;
+	}
+
+	for (ifa = ifaddr; ifa && num_ifaces < MAX_IF; ifa = ifa->ifa_next) {
 		/* Skip interface without internet address */
-		if (ifa->ifa_addr == NULL)
+		if (!ifa->ifa_addr)
 			continue;
 
 		/* Skip non-IPv4 and non-IPv6 interfaces */
@@ -153,7 +161,7 @@ struct iface *iface_find_by_index(unsigned int ifindex)
  */
 int iface_get_vif(struct iface *iface)
 {
-	if (iface == NULL)
+	if (!iface)
 		return -1;
 
 	return iface->vif;
@@ -172,7 +180,7 @@ int iface_get_mif(struct iface *iface __attribute__ ((unused)))
 #ifndef HAVE_IPV6_MULTICAST_ROUTING
 	return -1;
 #else
-	if (iface == NULL)
+	if (!iface)
 		return -1;
 
 	return iface->mif;

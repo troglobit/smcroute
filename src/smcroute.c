@@ -46,33 +46,25 @@ static const char *conf_file = SMCROUTE_SYSTEM_CONF;
 
 extern char *__progname;
 static const char version_info[] =
-	"SMCRoute, version " PACKAGE_VERSION ", build" BUILD "\n"
-	"Copyright (c) 2001-2005  Carsten Schill <carsten@cschill.de>\n"
-	"Copyright (c) 2006-2009  Julien Blache <jb@jblache.org>,\n"
-	"Copyright (c)      2009  Todd Hayton <todd.hayton@gmail.com>, and\n"
-	"Copyright (c) 2009-2011  Micha Lenk <micha@debian.org>\n"
-	"Copyright (c) 2011-2013  Joachim Nilsson <troglobit@gmail.com>\n"
-	"\n"
-	"Licensed under the GNU GENERAL PUBLIC LICENSE, Version 2\n"
-	"\n";
+	"SMCRoute version " PACKAGE_VERSION " build" BUILD "\n";
 
 static const char usage_info[] =
 	"Usage: smcroute [OPTIONS]... [ARGS]...\n"
 	"\n"
-	"  -d       Start SMCRoute daemon\n"
-	"  -n       Run SMCRoute daemon in foreground, i.e., do not fork\n"
-	"  -f FILE  Use FILE as daemon configuration. Default: " SMCROUTE_SYSTEM_CONF "\n"
-	"  -k       Stop (kill) a running daemon.n"
+	"  -d       Start daemon\n"
+	"  -n       Run daemon in foreground\n"
+	"  -f FILE  File to use instead of default " SMCROUTE_SYSTEM_CONF "\n"
+	"  -k       Kill a running daemon\n"
 	"\n"
-	"  -h       Display this help text\n"
+	"  -h       This help text\n"
 	"  -D       Debug logging\n"
-	"  -v       Display version information and enable verbose logging\n"
+	"  -v       Show version and enable verbose logging\n"
 	"\n"
-	"  -a ARGS  Add a multicast route, full syntax below\n"
-	"  -r ARGS  Remove a multicast route, full syntax below\n"
+	"  -a ARGS  Add a multicast route\n"
+	"  -r ARGS  Remove a multicast route\n"
 	"\n"
-	"  -j ARGS  Join a multicast group on an interface, useful for testing\n"
-	"  -l ARGS  Leave a multicast group on an interface, useful for testing\n"
+	"  -j ARGS  Join a multicast group\n"
+	"  -l ARGS  Leave a multicast group\n"
 	"\n"
 	"     <------------- INBOUND -------------->  <----- OUTBOUND ------>\n"
 	"  -a <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>  <IFNAME> [<IFNAME> ...]\n"
@@ -122,15 +114,14 @@ static void read_conf_file(const char *conf_file)
 /* Cleans up, i.e. releases allocated resources. Called via atexit() */
 static void clean(void)
 {
-	smclog(LOG_DEBUG, 0, "clean handler called");
 	mroute4_disable();
 	mroute6_disable();
 	ipc_exit();
+	smclog(LOG_NOTICE, 0, "Exiting.");
 }
 
 static void restart(void)
 {
-	smclog(LOG_DEBUG, 0, "Restart handler called");
 	mroute4_disable();
 	mroute6_disable();
 	mcgroup4_disable();
@@ -147,22 +138,22 @@ static int daemonize(void)
 {
 	int pid;
 
-	smclog(LOG_NOTICE, 0, "Forking off SMCRoute daemon process.");
-
 	pid = fork();
+	if (pid < 0)
+		smclog(LOG_ERR, errno, "Cannot start in background");
 	if (!pid) {
 		/* Detach deamon from terminal */
 		if (close(0) < 0 || close(1) < 0 || close(2) < 0
 		    || open("/dev/null", 0) != 0 || dup2(0, 1) < 0
 		    || dup2(0, 2) < 0 || setpgrp() < 0)
-			smclog(LOG_ERR, errno, "Failed to detach deamon");
+			smclog(LOG_ERR, errno, "Failed detaching deamon");
 	}
 
 	return pid;
 }
 
 /* Check for kernel IGMPMSG_NOCACHE for (*,G) hits. I.e., source-less routes. */
-static void read_mroute4_socket(void)
+static int read_mroute4_socket(void)
 {
 	int result;
 	char tmp[128];
@@ -178,7 +169,6 @@ static void read_mroute4_socket(void)
 
 	/* Check for IGMPMSG_NOCACHE to do (*,G) based routing. */
 	if (ip->ip_p == 0 && igmpctl->im_msgtype == IGMPMSG_NOCACHE) {
-		char sbuf[16], gbuf[16];
 		struct iface *iface;
 		mroute4_t mroute;
 
@@ -188,39 +178,40 @@ static void read_mroute4_socket(void)
 		iface = iface_find_by_vif(mroute.inbound);
 
 		/* Find any matching route for this group on that iif. */
-		smclog(LOG_DEBUG, 0, "Cache miss for group %s from %s on interface %s(%d) ifindex:%d",
-		       inet_ntop (AF_INET, &mroute.group, gbuf, sizeof(gbuf)),
-		       inet_ntop (AF_INET, &mroute.sender, sbuf, sizeof(sbuf)),
-		       iface ? iface->name : "unknown", mroute.inbound,
-		       iface ? iface->ifindex : -1);
 		mroute4_dyn_add(&mroute);
-	} else {
-		smclog(LOG_DEBUG, 0, "%d byte IGMP signaling dropped", result);
 	}
+
+	return result;
 }
 
 /* Receive and drop ICMPv6 stuff. This is either MLD packets or upcall messages sent up from the kernel. */
-static void read_mroute6_socket(void)
+static int read_mroute6_socket(void)
 {
-	int result;
+	char tmp[128];
 
-	if (-1 != mroute6_socket) {
-		char tmp[128];
+	if (mroute6_socket < 0)
+		return;
 
-		result = read(mroute6_socket, tmp, sizeof(tmp));
-		smclog(LOG_DEBUG, 0, "%d byte MLD signaling dropped", result);
-	}
+	return read(mroute6_socket, tmp, sizeof(tmp));
 }
 
 /* Receive command from the smcroute client */
-static void read_ipc_command(void)
+static int read_ipc_command(void)
 {
 	const char *str;
 	struct cmd *packet;
 	struct mroute mroute;
 	uint8 buf[MX_CMDPKT_SZ];
 
+	memset(buf, 0, sizeof(buf));
 	packet = ipc_server_read(buf, sizeof(buf));
+	if (!packet) {
+		/* Skip logging client disconnects */
+		if (errno != ECONNRESET)
+			smclog(LOG_WARNING, errno, "Failed receving IPC message from client");
+		return 1;
+	}
+
 	switch (packet->cmd) {
 	case 'a':
 	case 'r':
@@ -238,7 +229,7 @@ static void read_ipc_command(void)
 			}
 		} else {
 #ifndef HAVE_IPV6_MULTICAST_ROUTING
-			smclog(LOG_WARNING, 0, "Not built with IPv6 routing support.");
+			smclog(LOG_WARNING, 0, "IPv6 multicast routing support disabled.");
 #else
 			if ((packet->cmd == 'a' && mroute6_add(&mroute.u.mroute6))
 			    || (packet->cmd == 'r' && mroute6_del(&mroute.u.mroute6))) {
@@ -265,7 +256,7 @@ static void read_ipc_command(void)
 			if (!*groupstr
 			    || !inet_aton(groupstr, &group)
 			    || !IN_MULTICAST(ntohl(group.s_addr))) {
-				smclog(LOG_WARNING, 0, "Invalid multicast group address: '%s'", groupstr);
+				smclog(LOG_WARNING, 0, "Invalid multicast group: %s", groupstr);
 				ipc_send(log_last_message, strlen(log_last_message) + 1);
 				break;
 			}
@@ -277,7 +268,7 @@ static void read_ipc_command(void)
 				result = mcgroup4_leave(ifname, group);
 		} else {	/* IPv6 */
 #ifndef HAVE_IPV6_MULTICAST_HOST
-			smclog(LOG_WARNING, 0, "Not built with IPv6 support.");
+			smclog(LOG_WARNING, 0, "IPv6 multicast support disabled.");
 #else
 			struct in6_addr group;
 
@@ -285,7 +276,7 @@ static void read_ipc_command(void)
 			if (!*groupstr
 			    || (inet_pton(AF_INET6, groupstr, &group) <= 0)
 			    || !IN6_IS_ADDR_MULTICAST(&group)) {
-				smclog(LOG_WARNING, 0, "Invalid multicast group address: '%s'", groupstr);
+				smclog(LOG_WARNING, 0, "Invalid multicast group: %s", groupstr);
 				ipc_send(log_last_message, strlen(log_last_message) + 1);
 				break;
 			}
@@ -312,6 +303,8 @@ static void read_ipc_command(void)
 		ipc_send("", 1);
 		exit(0);
 	}
+
+	return 0;
 }
 
 /*
@@ -393,23 +386,26 @@ static void server_loop(int sd)
  * error code in the parent and the initscript will fail */
 static void start_server(int background)
 {
-	int sd, pid = 0;
-	unsigned short initialized_api_count;
+	int sd, api = 0;
+
+	if (background && daemonize())
+		return;
+
+	smclog(LOG_NOTICE, 0, "%s", version_info);
 
 	/* Build list of multicast-capable physical interfaces that
 	 * are currently assigned an IP address. */
 	iface_init();
 
-	initialized_api_count = 0;
-	if (mroute4_enable() == 0)
-		initialized_api_count++;
+	if (!mroute4_enable())
+		api++;
 
-	if (mroute6_enable() == 0)
-		initialized_api_count++;
+	if (!mroute6_enable())
+		api++;
 
 	/* At least one API (IPv4 or IPv6) must have initialized successfully
 	 * otherwise we abort the server initialization. */
-	if (initialized_api_count == 0) {
+	if (!api) {
 		smclog(LOG_INIT, ENOPROTOOPT, "Kernel does not support multicast routing");
 		exit(1);
 	}
@@ -418,27 +414,15 @@ static void start_server(int background)
 	if (sd < 0)
 		smclog(LOG_WARNING, errno, "Failed setting up IPC socket, client communication disabled");
 
-	if (background)
-		pid = daemonize();
-	else
-		smclog(LOG_NOTICE, 0, "Starting SMCRoute daemon in foreground.");
+	atexit(clean);
+	signal_init();
+	read_conf_file(conf_file);
 
-	if (!pid) {
-		smclog(LOG_NOTICE, 0, "Entering SMCRoute daemon main loop ...");
-		atexit(clean);
+	/* Everything setup, notify any clients by creating the pidfile */
+	if (pidfile(NULL))
+		smclog(LOG_WARNING, errno, "Failed creating pidfile");
 
-		signal_init();
-
-		/* Watch the MRouter and the IPC socket to the smcroute client */
-		smclog(LOG_NOTICE, 0, "Attempting to load %s", conf_file);
-		read_conf_file(conf_file);
-
-		/* Ready for input, tell clients that by creating the pidfile */
-		if (pidfile(NULL))
-			smclog(LOG_WARNING, errno, "Failed creating pidfile");
-
-		server_loop(sd);
-	}
+	server_loop(sd);
 }
 
 static int usage(void)
@@ -462,7 +446,7 @@ static int usage(void)
  */
 int main(int argc, const char *argv[])
 {
-	int num_opts, result = 0;
+	int i, num_opts, result = 0;
 	int start_daemon = 0;
 	int background = 1;
 	uint8 buf[MX_CMDPKT_SZ];
@@ -485,32 +469,24 @@ int main(int argc, const char *argv[])
 		arg = argv[0];
 		switch (arg[1]) {
 		case 'a':	/* add route */
-			if (num_opts < 5) {
-				fprintf(stderr, "Not enough arguments for 'add' command\n");
+			if (num_opts < 5)
 				return usage();
-			}
 			break;
 
 		case 'r':	/* remove route */
-			if (num_opts < 4) {
-				fprintf(stderr, "Wrong number of arguments for 'remove' command\n");
+			if (num_opts < 4)
 				return usage();
-			}
 			break;
 
 		case 'j':	/* join */
 		case 'l':	/* leave */
-			if (num_opts != 3) {
-				fprintf(stderr, "Wrong number of arguments for %s command\n", arg[1] == 'j' ? "'join'" : "'leave'");
+			if (num_opts != 3)
 				return usage();
-			}
 			break;
 
 		case 'k':	/* kill daemon */
-			if (num_opts != 1) {
-				fprintf(stderr, "No arguments allowed for 'k' option\n");
+			if (num_opts != 1)
 				return usage();
-			}
 			break;
 
 		case 'h':	/* help */
@@ -530,10 +506,8 @@ int main(int argc, const char *argv[])
 			continue;
 
 		case 'f':
-			if (num_opts != 2) {
-				fprintf(stderr, "Missing configuration file arguments for 'f' option\n");
+			if (num_opts != 2)
 				return usage();
-			}
 			conf_file = argv[1];
 			continue;
 
@@ -542,7 +516,6 @@ int main(int argc, const char *argv[])
 			continue;
 
 		default:	/* unknown option */
-			fprintf(stderr, "Unknown option: %s\n", *argv);
 			return usage();
 		}
 
@@ -552,34 +525,38 @@ int main(int argc, const char *argv[])
 			return usage();
 		}
 
-		cmdv[cmdnum++] = cmd_build(arg[1], argv + 1, num_opts - 1);
+		cmdv[cmdnum] = cmd_build(arg[1], argv + 1, num_opts - 1);
+		if (!cmdv[cmdnum]) {
+			perror("Failed parsing command");
+			for (i = 0; i < cmdnum; i++)
+				free(cmdv[i]);
+			return 1;
+		}
+		cmdnum++;
 	}
 
 	if (start_daemon) {	/* only daemon parent enters */
 		if (geteuid() != 0) {
-			smclog(LOG_ERR, 0, "Must have super-user permissions to start %s.", __progname);
-			exit(1);
+			smclog(LOG_ERR, 0, "Need root privileges to start %s", __progname);
+			return 1;
 		}
 
 		start_server(background);
 		if (!background)
-			exit(0); /* Exit if non-backgrounded daemon exits this way. */
+			return 0;
 	}
 
 	/* Client or daemon parent only, the daemon never reaches this point */
 
 	/* send commands */
 	if (cmdnum) {
-		unsigned int i;
-		int code, retry_count = 30;
+		int retry_count = 30;
 
 		openlog(argv[0], LOG_PID, LOG_USER);
 
-	retry:
 		/* connect to daemon */
-		code = ipc_client_init();
-		if (code) {
-			switch (code) {
+		while (ipc_client_init()) {
+			switch (errno) {
 			case EACCES:
 				smclog(LOG_ERR, EACCES, "Need root privileges to connect to daemon");
 				break;
@@ -589,36 +566,42 @@ int main(int argc, const char *argv[])
 				/* When starting daemon, give it 30 times a 1/10 second to get ready */
 				if (start_daemon && --retry_count) {
 					usleep(100000);
-					goto retry;
+					continue;
 				}
-				smclog(LOG_ERR, errno, "SMCRoute daemon not running");
+
+				smclog(LOG_WARNING, errno, "Daemon not running");
+				result = 1;
 				break;
 
 			default:
-				smclog(LOG_ERR, errno, "Failed connecting to SMCRoute daemon");
+				smclog(LOG_WARNING, errno, "Failed connecting to daemon");
+				result = 1;
 				break;
 			}
 		}
 
-		for (i = 0; i < cmdnum; i++) {
-			int slen = 0, rlen = 0;
+		for (i = 0; !result && i < cmdnum; i++) {
+			int slen, rlen;
 			struct cmd *command = cmdv[i];
 
-			smclog(LOG_DEBUG, 0, "Sending command %c len:%zu count:%d", command->cmd, command->len, command->count);
+			/* Send command */
 			slen = ipc_send(command, command->len);
-			rlen = ipc_receive(buf, sizeof(buf));
-			if (slen < 0 || rlen < 0)
-				smclog(LOG_ERR, errno, "Read/Write to daemon failed");
 
-			smclog(LOG_DEBUG, 0, "rlen: %d", rlen);
+			/* Wait here for reply */
+			rlen = ipc_receive(buf, sizeof(buf));
+			if (slen < 0 || rlen < 0) {
+				smclog(LOG_WARNING, errno, "Communication with daemon failed");
+				result = 1;
+			}
 
 			if (rlen != 1 || *buf != '\0') {
 				fprintf(stderr, "Daemon error: %s\n", buf);
 				result = 1;
 			}
-
-			free(command);
 		}
+
+		for (i = 0; i < cmdnum; i++)
+			free(cmdv[i]);
 	}
 
 	return result;
