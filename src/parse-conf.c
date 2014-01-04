@@ -121,12 +121,12 @@ static int add_mroute (int lineno, char *ifname, char *group, char *source, char
 			smclog(LOG_WARNING, 0, "%02d: Invalid inbound IPv6 interface: %s", lineno, ifname);
 			return 1;
 		}
-		if (!source || inet_pton(AF_INET6, source, &mroute.sender) <= 0) {
+		if (!source || inet_pton(AF_INET6, source, &mroute.sender.sin6_addr) <= 0) {
 			smclog(LOG_WARNING, 0, "%02d: Invalid source IPv6 address: %s", lineno, source ?: "NONE");
 			return 1;
 		}
 
-		if (inet_pton(AF_INET6, group, &mroute.group) <= 0 || !IN6_IS_ADDR_MULTICAST(&mroute.group)) {
+		if (inet_pton(AF_INET6, group, &mroute.group.sin6_addr) <= 0 || !IN6_IS_ADDR_MULTICAST(&mroute.group.sin6_addr)) {
 			smclog(LOG_WARNING, 0, "%02d: Invalid IPv6 multicast group: %s", lineno, group);
 			return 1;
 		}
