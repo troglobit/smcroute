@@ -122,11 +122,11 @@ struct iface *iface_find_by_name(const char *ifname)
  */
 struct iface *iface_find_by_vif(int vif)
 {
-	unsigned int i;
-	struct iface *iface;
+	size_t i;
 
 	for (i = 0; i < num_ifaces; i++) {
-		iface = &iface_list[i];
+		struct iface *iface = &iface_list[i];
+
 		if (iface->vif >= 0 && iface->vif == vif)
 			return iface;
 	}
