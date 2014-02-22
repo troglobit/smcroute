@@ -175,7 +175,13 @@ static int read_mroute4_socket(void)
 		mroute.group.s_addr  = igmpctl->im_dst.s_addr;
 		mroute.sender.s_addr = igmpctl->im_src.s_addr;
 		mroute.inbound       = igmpctl->im_vif;
+
 		iface = iface_find_by_vif(mroute.inbound);
+		if (!iface) {
+			/* TODO: Add support for dynamically re-enumerating VIFs at runtime! */
+			smclog(LOG_WARNING, 0, "No VIF for possibly dynamic inbound iface %s, cannot add mroute dynamically.", mroute.inbound);
+			return 1;
+		}
 
 		/* Find any matching route for this group on that iif. */
 		mroute4_dyn_add(&mroute);
