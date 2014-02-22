@@ -33,7 +33,7 @@ char log_last_message[128];
  * @severity: Standard syslog() severity levels or %LOG_INIT
  * @code:     Error code, @errno, or zero if unused
  * @fmt:      Standard printf() formatted message to log
- * 
+ *
  * Logs a standard printf() formatted message to syslog and stderr when
  * @severity is greater than the @log_stderr threshold.  When @code is
  * set it is appended to the log, along with the error message.
@@ -42,7 +42,7 @@ char log_last_message[128];
  */
 void smclog(int severity, int code, const char *fmt, ...)
 {
-	int len;
+	int len = 0;
 	va_list args;
 	const char *err = (code <= 0) ? NULL : (const char *)strerror(code);
 
