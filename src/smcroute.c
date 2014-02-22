@@ -341,7 +341,6 @@ static void signal_init(void)
 
 static void server_loop(int sd)
 {
-	int result;
 	fd_set fds;
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 	int max_fd_num = MAX(sd, MAX(mroute4_socket, mroute6_socket));
@@ -351,6 +350,8 @@ static void server_loop(int sd)
 
 	/* Watch the MRouter and the IPC socket to the smcroute client */
 	while (running) {
+		int result;
+
 		FD_ZERO(&fds);
 		FD_SET(sd, &fds);
 		FD_SET(mroute4_socket, &fds);
@@ -449,8 +450,6 @@ int main(int argc, const char *argv[])
 	int i, num_opts, result = 0;
 	int start_daemon = 0;
 	int background = 1;
-	uint8 buf[MX_CMDPKT_SZ];
-	const char *arg;
 	unsigned int cmdnum = 0;
 	struct cmd *cmdv[16];
 
@@ -462,6 +461,8 @@ int main(int argc, const char *argv[])
 
 	/* Parse command line options */
 	for (num_opts = 1; (num_opts = num_option_arguments(argv += num_opts));) {
+		const char *arg;
+
 		if (num_opts < 0)	/* error */
 			return usage();
 
@@ -582,6 +583,7 @@ int main(int argc, const char *argv[])
 
 		for (i = 0; !result && i < cmdnum; i++) {
 			int slen, rlen;
+			uint8 buf[MX_CMDPKT_SZ];
 			struct cmd *command = cmdv[i];
 
 			/* Send command */
