@@ -71,7 +71,7 @@ int main(int ArgCn, char *ArgVc[])
 				break;
 
 			case 't':
-				if (sscanf(Pt + 1, " %u", &TtlVal) != 1 || TtlVal < 1) {
+				if (sscanf(Pt + 1, " %3u", &TtlVal) != 1 || TtlVal < 1) {
 					usage();
 					exit(1);
 				}
