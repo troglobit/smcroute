@@ -47,7 +47,6 @@ static void mcgroup4_init(void)
 static int mcgroup_join_leave_ipv4(int sd, int cmd, const char *ifname, struct in_addr group)
 {
 	int joinleave = cmd == 'j' ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP;
-	char buf[INET_ADDRSTRLEN];
 	struct ip_mreq mreq;
 	struct iface *iface = find_valid_iface(ifname, cmd);
 
@@ -119,7 +118,6 @@ static void mcgroup6_init(void)
 static int mcgroup_join_leave_ipv6(int sd, int cmd, const char *ifname, struct in6_addr group)
 {
 	int joinleave = cmd == 'j' ? IPV6_JOIN_GROUP : IPV6_LEAVE_GROUP;
-	char buf[INET6_ADDRSTRLEN];
 	struct ipv6_mreq mreq;
 	struct iface *iface = find_valid_iface(ifname, cmd);
 
