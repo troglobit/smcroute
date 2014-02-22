@@ -27,9 +27,13 @@
 
 static char *pop_token(char **line)
 {
-	char *end, *token = *line;
+	char *end, *token;
 
-	if (!line || !token)
+	if (!line)
+		return NULL;
+
+	token = *line;
+	if (!token)
 		return NULL;
 
 	/* Find start of token, skip whitespace. */
