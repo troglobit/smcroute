@@ -7,7 +7,7 @@ env:
   global:
    # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
    #   via the "travis encrypt" command using the project repo's public key
-   - secure: "HO2rz+AnXuCYV95ZTDG9IzF3adFaISSR8P9loXnaEmE4hDKp2Qsdmk4Yl12tYGVxfedSIREMzmXdFgMErWoJIVRHQGGU6Tg/pI5Kg3/4dkND22Dm3V2c/R2WZ5FTojytIP65cc4G/CZF6GhojX1eQnVamfnJvEJrNtkQFSs5g6k="
+   - secure: "ozYzmWMFbneep0nRVwFGBAds7v7NK6iDbFczqY4ZJXKaSU16MAN6g/WxaRYdRyTrhzb6kUfwgRyajvRV48npb62ohl9/mbSYibCSpL76ZYwEtqOPK7lOCz0/c6KyT3ItPlM508K2EG/UdU+M+nbc54ZpvyuZeaDDW6vCxbfKZqQ="
 
 addons:
   coverity_scan:
