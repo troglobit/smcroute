@@ -7,7 +7,7 @@ env:
   global:
    # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
    #   via the "travis encrypt" command using the project repo's public key
-   - secure: "ozYzmWMFbneep0nRVwFGBAds7v7NK6iDbFczqY4ZJXKaSU16MAN6g/WxaRYdRyTrhzb6kUfwgRyajvRV48npb62ohl9/mbSYibCSpL76ZYwEtqOPK7lOCz0/c6KyT3ItPlM508K2EG/UdU+M+nbc54ZpvyuZeaDDW6vCxbfKZqQ="
+   - secure: "BOySKarfB7ySP4SQ9vpeLz/Yrle3cxGYe+f5ep6OVk42M2bmonX27FdgVF5oKpII6Sq5hXrhoNrwRpkYRj+G5OUy4lguOALJ1AAtRpvlrfXCCL5Vxe9TDBNpmU/AfOcZoiGiR5Vpv96CIIoqvnB6XQJMMfTa2JHvU7tZCS2p9lU="
 
 addons:
   coverity_scan:
@@ -16,7 +16,7 @@ addons:
       description: "SMCRoute -- Static Multicast Routing Daemon"
     notification_email: troglobit@gmail.com
     build_command_prepend: "./configure"
-    build_command:   "make -j5"
+    build_command:   "make"
     branch_pattern: master
 
-script: ./configure && make -j5
+script: ./configure && make
