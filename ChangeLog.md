@@ -1,0 +1,141 @@
+ChangeLog
+=========
+
+smcroute 1.99.2 -> 2.0.0
+------------------------
+ * 
+
+smcroute 1.99.1 -> 1.99.2
+-------------------------
+* Fix issue #2: Loop forever bug when deleting new (*,G) sourceless routes
+  Bug report and patch by Jean-Baptiste Maillet
+
+smcroute 1.99.0 -> 1.99.1
+-------------------------
+* Fix possible memory leak on Linux
+* Fix missing #ifdefs when building on systems w/o IPv6
+* Fix possible race in Makefile when building in (massive) parallel
+* Fix build problems on RedHat EL5/CentOS5, i.e., Linux <= 2.6.25
+
+smcroute 1.98.3 -> 1.99.0
+-------------------------
+* Bugfix: SMCRoute segfault when starting on interface that is up but
+  has no valid IPv4 address yet. Bug introduced in 1.98.3
+* Feature: Experimental source-less `(*,G)` IPv4 multicast routing.
+  Most UNIX kernels are (S,G) based, i.e., you need to supply the
+  source address with the multicast group to setup a kernel routing
+  rule.  However, daemons like mrouted and pimd emulate `(*,G)` by
+  listening for IGMPMSG_NOCACHE messages from the kernel. SMCRoute now
+  also implements this, for IPv4 only atm, by placing all `(*,G)`
+  routes in a list and adding matching (S,G) routes on-demand at
+  runtime. All routes matching this (*,G) are removed when reloading
+  the conf file on SIGHUP or when the user sends an IPC (-r) command to
+  remove the (*,G) rule.
+* Feature: Actually check if running as root at startup.
+* Cleanup: Also, slightly improved error messages including some minor
+  cleanup and readability improvements.
+
+smcroute 1.98.1 -> 1.98.3
+-------------------------
+* Cleanup IPv6 #ifdefs and replace IN6_MULTICAST() with IN6_IS_ADDR_MULTICAST()
+  This commit cleans up a lot of the IPv6 related #ifdefs, some minor
+  function name refactoring and squash of some _init and _enable funcs
+  into one for clarity and clearer error messages to the user.
+* Check for existence of asprintf() to pidfile() and add -D_GNU_SOURCE to CPPFLAGS
+  using AC_GNU_SOURCE in configure.ac
+* Fixes FTBFS when host lacks IPv6 support.
+
+smcroute 1.98.0 -> 1.98.1
+-------------------------
+* Bugfix: Client failed to send commands to daemon.
+* Bugfix: Several FTBFS fixed for GCC 4.6.x and -W -Wall
+
+smcroute 0.95 -> 1.98.0
+-----------------------
+* SMCRoute2 Announced!
+* Feature: Support for smcroute.conf file for daemon
+  Add support for reading mroutes and mgroups from a configuration file.
+   mgroup from IFNAME group MCGROUP
+   mroute from IFNAME source ADDRESS group MCGROUP to IFNAME [IFNAME ...]
+  Both IPv4 and IPv6 address formats are supported.
+* Feature: Support for signals, reload conf file on SIGHUP
+* Refactor: Insecure handling of pointers potentially outside array boundaries.
+* Bugfix: Invalid use of varargs in call to snprintf(), use vsnprintf() instead.
+* Feature: Add -n switch to support running smcroute in foreground.
+* Refactor: Major cleanup, reindent to Linux C-style, for improved maintainability.
+* Bugfix: Invalid MRouterFD6 fd crashes smcroute, always check for valid fd.
+* Bugfix: Several minor bugfixes; type mismatches and unused return values.
+
+smcroute 0.94.1 -> 0.95
+-----------------------
+* Feature request #313278: Added support for FreeBSD
+  SMCRoute now builds and runs on FreeBSD kernels.  This was successfully
+  tested with the FreeBSD port of Debian using FreeBSD 8.1.  Other BSD
+  flavours or versions might work too.  Any feedback is appreciated.
+  https://alioth.debian.org/tracker/index.php?func=detail&aid=313278
+* Feature request #313190: Debug logging is now disabled by default. If you
+  want to enable debug logging again, start the daemon with parameter '-D'.
+  https://alioth.debian.org/tracker/index.php?func=detail&aid=313190
+
+smcroute 0.94 -> 0.94.1
+-----------------------
+* Bugfix: In case the kernel refuses write access to the file
+  /proc/sys/net/ipv6/conf/all/mc_forwarding, don't let smcroute exit
+  with an error, but proceed with normal operation without writing a
+  "1" to this file.  Apparently newer Linux kernels take care for the
+  correct content of this file automatically whenever the IPv6
+  multicast routing API is initialized by a process.
+
+smcroute 0.93 -> 0.94
+---------------------
+* Added support for IPv6 multicast routing in smcroute. SMCRoute now
+   supports addition and removal of IPv6 multicast routes. It will
+   automatically detect which type of route to add or delete based
+   on the type (IPv4/IPv6) of addresses provided for the add and
+   remove commands.
+* Added support for joins and leaves ('j'/'l') to IPv6 multicast groups.
+* Added support for sending to IPv6 multicast addresses to mcsender tool.
+* Added command line option to mcsender tool to allow user to specify the
+   outgoing interface for datagrams sent.
+* Added autoconf support for smcroute build.
+
+smcroute 0.92 -> 0.93
+---------------------
+* Fixed the "smcroute looses output interfaces" bug
+  Carsten Schill, 0.93 unreleased
+
+smcroute 0.90 -> 0.92
+---------------------
+* Fixed the 'mroute: pending queue full, dropping entries' error
+  Smcroute 0.90 didn't care about the IGMP messages delivered to the
+  UDP socket that establish the MC-Router API. After some time the
+  queue for the sockets filled up and the 'pending queue full' message
+  was send from the kernel. To my knowledge this didn't affect smcroute
+  or the operating system.
+  - version 0.92 reads the ICMP messages now from the UDP socket and
+    logs them to syslog with daemon/debug
+  - smcroute does no further processing of this messages
+* Increased the number of supported interfaces
+  The 16 interface limit of version 0.90 (interfaces as listed with
+  ifconfig) was to small, especially when alias interfaces where
+  defined.
+  - up to 40 interfaces are no recognized by smcroute
+  - this does not change the number of 'virtual interfaces' supported
+    by the kernel (32)
+  - not all interfaces recognized by smcroute (40) results in a
+    'virtual interface' of the kernel (32)
+
+smcroute 0.80 -> 0.90
+---------------------
+* Added MC group join (-j) and leave (-l) functionality
+  - the options enable/disable the sending of IGMP join messages for
+    a multicast group on a specific interface
+* Removed the '<OutputIntf> [<OutputIntf>] ...' for the '-r' option
+  - they are not used by the kernel to identify the route to remove
+  - smcroute will not complain about extra arguments for the '-r' option
+    to stay compatible with releases <= 0.80
+* Improved error handling for some typical error situations
+* Added a test script (tst-smcroute.pl)
+* Added a man page
+* Fixed some minor bugs
+
