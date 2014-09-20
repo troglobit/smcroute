@@ -3,4 +3,20 @@ language: c
 compiler:
   - gcc
 
-script: ./configure && make
+env:
+  global:
+   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "HO2rz+AnXuCYV95ZTDG9IzF3adFaISSR8P9loXnaEmE4hDKp2Qsdmk4Yl12tYGVxfedSIREMzmXdFgMErWoJIVRHQGGU6Tg/pI5Kg3/4dkND22Dm3V2c/R2WZ5FTojytIP65cc4G/CZF6GhojX1eQnVamfnJvEJrNtkQFSs5g6k="
+
+addons:
+  coverity_scan:
+    project:
+      name: "troglobit/smcroute"
+      description: "SMCRoute -- Static Multicast Routing Daemon"
+    notification_email: troglobit@gmail.com
+    build_command_prepend: "./configure"
+    build_command:   "make -j5"
+    branch_pattern: master
+
+script: ./configure && make -j5

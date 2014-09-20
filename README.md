@@ -1,6 +1,6 @@
 SMCRoute - A static multicast route tool
 ========================================
-[![Build Status](https://travis-ci.org/troglobit/smcroute.png?branch=master)](https://travis-ci.org/troglobit/smcroute)
+[![Build Status](https://travis-ci.org/troglobit/smcroute.png?branch=master)](https://travis-ci.org/troglobit/smcroute)[![Coverity Scan Status](https://scan.coverity.com/projects/3061/badge.svg)](https://scan.coverity.com/projects/3061)
 
 SMCRoute is a command line tool to manipulate the multicast routes of a
 UNIX kernel.  It supports both IPv4 and IPv6 multicast routing.
