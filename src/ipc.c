@@ -131,7 +131,7 @@ struct cmd *ipc_server_read(uint8 buf[], int len)
 
 	/* sanity check */
 	if (server_sd < 0) {
-		errno = EBADFD;
+		errno = EBADF;
 		return NULL;
 	}
 
@@ -158,7 +158,7 @@ struct cmd *ipc_server_read(uint8 buf[], int len)
 			return p;
 	}
 
-	errno = ENODATA;
+	errno = EAGAIN;
 	return NULL;
 }
 
@@ -176,7 +176,7 @@ int ipc_send(const void *buf, int len)
 {
 	/* sanity check */
 	if (client_sd < 0) {
-		errno = EBADFD;
+		errno = EBADF;
 		return -1;
 	}
 
@@ -200,7 +200,7 @@ int ipc_receive(uint8 buf[], int len)
 {
 	/* sanity check */
 	if (client_sd < 0) {
-		errno = EBADFD;
+		errno = EBADF;
 		return -1;
 	}
 
