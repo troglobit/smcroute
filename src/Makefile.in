@@ -6,19 +6,15 @@ SMCROUTE_OBJS = smcroute.o mroute-api.o ifvc.o cmdpkt.o ipc.o syslog.o \
                 udpsock.o mcgroup.o parse-conf.o pidfile.o
 OBJS          = $(MCSENDER_OBJS) $(SMCROUTE_OBJS)
 SRCS          = $(OBJS:.o=.c)
-DEPS          = $(addprefix .,$(SRCS:.c=.d))
+DEPS          = $(SRCS:.c=.d)
 LDLIBS        = @LIBS@
 
-# Smart autodependecy generation via GCC -M.
-.%.d: %.c
-	@$(SHELL) -ec "$(CC) -MM $(CFLAGS) $(CPPFLAGS) $< 2>/dev/null \
-		| sed 's,.*: ,$*.o $@ : ,g' > $@; \
-                [ -s $@ ] || rm -f $@"
-
+# Override default implicit rules
 .c.o:
 	@printf "  CC      $@\n"
-	@$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
+	@$(CC) $(CFLAGS) $(CPPFLAGS) -c -MMD -MP -o $@ $<
 
+# Build rules
 all: $(EXECS)
 
 install: all
@@ -55,13 +51,8 @@ clean:
 	-@$(RM) build.h $(SMCROUTE_OBJS) $(MCSENDER_OBJS) $(EXECS)
 
 distclean: clean
-	-@$(RM) $(DEPS) *~ .bak DEADJOE semantic.cache *.gdb *.elf core core.*
+	-@$(RM) *~ .bak DEADJOE semantic.cache *.gdb *.elf core core.* *.d
 	-@$(RM) config.h Makefile
 
-
 # Include automatically generated rules
-ifneq ($(MAKECMDGOALS),clean)
-ifneq ($(MAKECMDGOALS),distclean)
 -include $(DEPS)
-endif
-endif
