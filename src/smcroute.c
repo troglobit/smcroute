@@ -145,7 +145,7 @@ static int daemonize(void)
 		/* Detach deamon from terminal */
 		if (close(0) < 0 || close(1) < 0 || close(2) < 0
 		    || open("/dev/null", 0) != 0 || dup2(0, 1) < 0
-		    || dup2(0, 2) < 0 || setpgrp() < 0)
+		    || dup2(0, 2) < 0 || setpgid(0, 0) < 0)
 			smclog(LOG_ERR, errno, "Failed detaching deamon");
 	}
 
@@ -196,7 +196,7 @@ static int read_mroute6_socket(void)
 	char tmp[128];
 
 	if (mroute6_socket < 0)
-		return;
+		return -1;
 
 	return read(mroute6_socket, tmp, sizeof(tmp));
 }
