@@ -1,4 +1,4 @@
-/* Generic kernel multicast routing API for Linux/*BSD
+/* Generic kernel multicast routing API for Linux and *BSD
  *
  * Copyright (C) 2001-2005  Carsten Schill <carsten@cschill.de>
  * Copyright (C) 2006-2009  Julien BLACHE <jb@jblache.org>
@@ -68,7 +68,7 @@ int mroute6_socket = -1;
 #endif
 
 /* IPv4 internal virtual interfaces (VIF) descriptor vector */
-static struct vif {
+static struct {
 	struct iface *iface;
 } vif_list[MAXVIFS];
 
