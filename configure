@@ -3564,11 +3564,16 @@ $as_echo "#define STDC_HEADERS 1" >>confdefs.h
 fi
 
 for ac_header in arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h \
-                  sys/ioctl.h sys/socket.h syslog.h unistd.h \
+                  sys/ioctl.h sys/socket.h sys/types.h syslog.h unistd.h \
                   net/route.h sys/param.h ifaddrs.h
 do :
   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
-ac_fn_c_check_header_mongrel "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default"
+ac_fn_c_check_header_compile "$LINENO" "$ac_header" "$as_ac_Header" "
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
+
+"
 if eval test \"x\$"$as_ac_Header"\" = x"yes"; then :
   cat >>confdefs.h <<_ACEOF
 #define `$as_echo "HAVE_$ac_header" | $as_tr_cpp` 1
@@ -3639,6 +3644,12 @@ done
 for ac_header in netinet/ip_mroute.h
 do :
   ac_fn_c_check_header_compile "$LINENO" "netinet/ip_mroute.h" "ac_cv_header_netinet_ip_mroute_h" "
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #endif

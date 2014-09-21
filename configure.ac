@@ -16,8 +16,13 @@ AC_GNU_SOURCE
 # Checks for header files.
 AC_HEADER_STDC
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h \
-                  sys/ioctl.h sys/socket.h syslog.h unistd.h \
-                  net/route.h sys/param.h ifaddrs.h])
+                  sys/ioctl.h sys/socket.h sys/types.h syslog.h unistd.h \
+                  net/route.h sys/param.h ifaddrs.h], [], [],
+[
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
+])
 
 AC_CHECK_HEADERS([linux/mroute.h], [], [], 
 [
@@ -45,6 +50,12 @@ AC_CHECK_HEADERS([linux/sockios.h])
 
 AC_CHECK_HEADERS([netinet/ip_mroute.h], [], [],
 [
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #endif
