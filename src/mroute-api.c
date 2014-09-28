@@ -400,6 +400,7 @@ int mroute4_del(mroute4_t *route)
 }
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
+#ifdef __linux__
 #define IPV6_ALL_MC_FORWARD "/proc/sys/net/ipv6/conf/all/mc_forwarding"
 
 static int proc_set_val(char *file, int val)
@@ -417,6 +418,7 @@ static int proc_set_val(char *file, int val)
 
 	return result;
 }
+#endif /* Linux only */
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
 /**
@@ -463,13 +465,14 @@ int mroute6_enable(void)
 	/* Initialize virtual interface table */
 	memset(&mif_list, 0, sizeof(mif_list));
 
+#ifdef __linux__
 	/* On Linux pre 2.6.29 kernels net.ipv6.conf.all.mc_forwarding
 	 * is not set on MRT6_INIT so we have to do this manually */
 	if (proc_set_val(IPV6_ALL_MC_FORWARD, 1)) {
 		if (errno != EACCES)
 			smclog(LOG_ERR, errno, "Failed enabling IPv6 multicast forwarding");
 	}
-
+#endif
 	/* Create virtual interfaces, IPv6 MIFs, for all non-loopback interfaces */
 	for (i = 0; (iface = iface_find_by_index(i)); i++) {
 		if (iface->flags & IFF_LOOPBACK) {
