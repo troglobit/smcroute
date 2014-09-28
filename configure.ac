@@ -2,10 +2,10 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(smcroute, 2.0.0-beta1, https://github.com/troglobit/smcroute/issues)
-AC_CONFIG_SRCDIR([src/mclab.h])
-AC_CONFIG_HEADER([src/config.h])
-AC_CONFIG_FILES([Makefile src/Makefile doc/Makefile])
+AC_INIT(smcroute, 2.0.0-rc1, https://github.com/troglobit/smcroute/issues)
+AC_CONFIG_SRCDIR([mclab.h])
+AC_CONFIG_HEADER([config.h])
+AC_CONFIG_FILES([Makefile])
 
 # Checks for programs.
 AC_PROG_CC

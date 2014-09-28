@@ -1,13 +1,25 @@
 ##  smcroute - static multicast routing control 
-.EXPORT_ALL_VARIABLES:
 
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
 CONFIG          = $(PACKAGE_TARNAME).conf
 PKG             = $(PACKAGE_TARNAME)-$(PACKAGE_VERSION)
 ARCHIVE         = $(PKG).tar.bz2
+
 DISTFILES       = $(CONFIG) README AUTHORS TODO ChangeLog
 DOCDIR          = $(DESTDIR)$(docdir)
+
+MANS            = smcroute.8 mcsender.8
+MANDIR          = $(DESTDIR)$(mandir)/man8
+
+EXECS           = smcroute mcsender
+MCSENDER_OBJS   = mcsender.o syslog.o
+SMCROUTE_OBJS   = smcroute.o mroute-api.o ifvc.o cmdpkt.o ipc.o syslog.o \
+                  mcgroup.o parse-conf.o pidfile.o
+OBJS            = $(MCSENDER_OBJS) $(SMCROUTE_OBJS)
+SRCS            = $(OBJS:.o=.c)
+DEPS            = $(SRCS:.c=.d)
+LDLIBS          = @LIBS@
 
 RM             ?= rm -f
 CC             ?= @CC@
@@ -23,34 +35,67 @@ docdir         ?= @docdir@
 mandir         ?= @mandir@
 sbindir        ?= @sbindir@
 
-all:
-	@make -C src $@
+# Override default implicit rules
+.c.o:
+	@printf "  CC      $@\n"
+	@$(CC) $(CFLAGS) $(CPPFLAGS) -c -MMD -MP -o $@ $<
+
+# Build rules
+all: $(EXECS)
+
+build.h:  
+	@echo '#define BUILD "' `date +%y%m%d` '"' >build.h
+
+config.h:
+	@echo "Please run ./configure first"
+
+mcsender:  $(MCSENDER_OBJS) config.h
+	@printf "  LINK    $@\n"
+	@$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(MCSENDER_OBJS) $(LDLIBS)
+
+$(SMCROUTE_OBJS): build.h config.h
+
+smcroute: $(SMCROUTE_OBJS)
+	@printf "  LINK    $@\n"
+	@$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(SMCROUTE_OBJS) $(LDLIBS)
 
 install: 
-	@make -C doc $@
-	@make -C src $@
 	@install -d $(DOCDIR)
 	@for file in $(DISTFILES); do \
 		install -b -m 0644 $$file $(DOCDIR)/$$file; \
 	done
+	@install -d $(MANDIR)
+	@for file in $(MANS); do \
+		install -m 0644 $$file $(MANDIR)/$$file; \
+	done
+	@install -d $(DESTDIR)$(sbindir)
+	@for file in $(EXECS); do \
+		install -m 0755 $$file $(DESTDIR)$(sbindir)/$$file; \
+	done
 
 uninstall: 
-	@make -C doc $@
-	@make -C src $@
 	-@$(RM) -r $(DESTDIR)$(docdir)
+	-@for file in $(MANS); do \
+		$(RM) $(MANDIR)/$$file; \
+	done
+	-@for file in $(EXECS); do \
+		$(RM) $(DESTDIR)$(sbindir)/$$file; \
+	done
 
 check:
-	@make -C src $@
+	$(CHECK) $(CHECK_FLAGS) $(CPPFLAGS) $(SRCS)
 
 clean:
-	@make -C src $@
+	-@$(RM) build.h $(SMCROUTE_OBJS) $(MCSENDER_OBJS) $(EXECS)
 
-distclean:
-	@make -C src $@
-	-@$(RM) -rf config.status config.log doc/Makefile Makefile autom4te.cache
+distclean: clean
+	-@$(RM) -rf config.status config.log config.h doc src autom4te.cache
+	-@$(RM) *~ Makefile DEADJOE semantic.cache *.gdb *.elf core core.* *.d
 
 dist: distclean
 	@echo "Building bzip2 tarball of $(PKG) in parent dir..."
 	git archive --format=tar --prefix=$(PKG)/ $(PACKAGE_VERSION) | bzip2 >../$(ARCHIVE)
 	@(cd ..; md5sum $(ARCHIVE) | tee $(ARCHIVE).md5)
 
+# Include automatically generated rules
+-include $(DEPS)
