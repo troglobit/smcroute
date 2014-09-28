@@ -591,20 +591,21 @@ int main(int argc, const char *argv[])
 
 		for (i = 0; !result && i < cmdnum; i++) {
 			int slen, rlen;
-			uint8 buf[MX_CMDPKT_SZ];
+			uint8 buf[MX_CMDPKT_SZ + 1];
 			struct cmd *command = cmdv[i];
 
 			/* Send command */
 			slen = ipc_send(command, command->len);
 
 			/* Wait here for reply */
-			rlen = ipc_receive(buf, sizeof(buf));
+			rlen = ipc_receive(buf, MX_CMDPKT_SZ);
 			if (slen < 0 || rlen < 0) {
 				smclog(LOG_WARNING, errno, "Communication with daemon failed");
 				result = 1;
 			}
 
 			if (rlen != 1 || *buf != '\0') {
+				buf[rlen] = 0;
 				fprintf(stderr, "Daemon error: %s\n", buf);
 				result = 1;
 			}
