@@ -78,6 +78,10 @@ typedef u_int32_t uint32;
 #define SIN4(x) ((struct sockaddr_in *)x)
 #define SIN6(x) ((struct sockaddr_in6 *)x)
 
+#ifndef IN6_IS_ADDR_MULTICAST
+#define IN6_IS_ADDR_MULTICAST(a) (((__const uint8_t *) (a))[0] == 0xff)
+#endif
+
 #ifndef MIN
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #endif
@@ -226,16 +230,7 @@ extern char log_last_message[128];	/* last logged message     */
 
 void smclog(int severity, int code, const char *fmt, ...);
 
-/* udpsock.c */
-int udp_socket_open(uint32 inaddr, uint16 port);
-
-#ifndef IN6_IS_ADDR_MULTICAST
-#define IN6_IS_ADDR_MULTICAST(a) (((__const uint8_t *) (a))[0] == 0xff)
-#endif
-
 /* parse-conf.c */
-#define SMCROUTE_SYSTEM_CONF "/etc/smcroute.conf"
-
 int parse_conf_file(const char *file);
 
 /* pidfile.c */

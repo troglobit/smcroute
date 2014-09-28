@@ -3,7 +3,7 @@
 EXECS         = smcroute mcsender
 MCSENDER_OBJS = mcsender.o syslog.o
 SMCROUTE_OBJS = smcroute.o mroute-api.o ifvc.o cmdpkt.o ipc.o syslog.o \
-                udpsock.o mcgroup.o parse-conf.o pidfile.o
+                mcgroup.o parse-conf.o pidfile.o
 OBJS          = $(MCSENDER_OBJS) $(SMCROUTE_OBJS)
 SRCS          = $(OBJS:.o=.c)
 DEPS          = $(SRCS:.c=.d)

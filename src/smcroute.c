@@ -39,6 +39,8 @@
 #include "config.h"
 #include "build.h"
 
+#define SMCROUTE_SYSTEM_CONF "/etc/smcroute.conf"
+
 int do_debug_logging = 0;
 
 static int         running   = 1;
