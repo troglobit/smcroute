@@ -3,12 +3,16 @@
 
 AC_PREREQ(2.61)
 AC_INIT(smcroute, 2.0.0-rc1, https://github.com/troglobit/smcroute/issues)
+AM_INIT_AUTOMAKE([1.11 foreign no-dist-gzip dist-xz])
+AM_SILENT_RULES()
+
 AC_CONFIG_SRCDIR([mclab.h])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_FILES([Makefile])
 
 # Checks for programs.
 AC_PROG_CC
+AC_PROG_INSTALL
 
 # The pidfile() code needs asprintf(), which relies on -D_GNU_SOURCE
 AC_GNU_SOURCE
@@ -175,6 +179,9 @@ AC_COMPILE_IFELSE(
   [AC_DEFINE(HAVE_MIF6CTL_VIFC_RATE_LIMIT, 1, [Define to 1 if the struct mif6ctl has a member vifc_rate_limit on your OS])
    AC_MSG_RESULT(yes)],
   [AC_MSG_RESULT(no)])
+
+# Add build number to config.h.in
+AC_DEFINE_UNQUOTED([BUILD], "`date +%y%m%d`", [Build number, abbreviated date.])
 
 # Checks for library functions.
 AC_FUNC_FORK
