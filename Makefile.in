@@ -1,4 +1,4 @@
-##  smcroute - static multicast routing control 
+# SMCRoute - A static multicast routing tool             -*-Makefile-*-
 
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@

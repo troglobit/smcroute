@@ -604,7 +604,7 @@ int mroute6_add(mroute6_t *route)
 int mroute6_del(mroute6_t *route)
 {
 	int result = 0;
-	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
+	char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
 	struct mf6cctl mc;
 
 	memset(&mc, 0, sizeof(mc));
