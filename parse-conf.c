@@ -120,6 +120,7 @@ static int add_mroute (int lineno, char *ifname, char *group, char *source, char
 #else
 		mroute6_t mroute;
 
+		memset(&mroute, 0, sizeof(mroute));
 		mroute.inbound = iface_get_mif_by_name(ifname);
 		if (mroute.inbound < 0) {
 			smclog(LOG_WARNING, 0, "%02d: Invalid inbound IPv6 interface: %s", lineno, ifname);
