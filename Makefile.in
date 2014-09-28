@@ -74,11 +74,11 @@ install:
 	done
 
 uninstall: 
-	-@$(RM) -r $(DESTDIR)$(docdir)
-	-@for file in $(MANS); do \
+	@$(RM) -r $(DESTDIR)$(docdir)
+	@for file in $(MANS); do \
 		$(RM) $(MANDIR)/$$file; \
 	done
-	-@for file in $(EXECS); do \
+	@for file in $(EXECS); do \
 		$(RM) $(DESTDIR)$(sbindir)/$$file; \
 	done
 
@@ -86,11 +86,11 @@ check:
 	$(CHECK) $(CHECK_FLAGS) $(CPPFLAGS) $(SRCS)
 
 clean:
-	-@$(RM) build.h $(SMCROUTE_OBJS) $(MCSENDER_OBJS) $(EXECS)
+	@$(RM) build.h $(SMCROUTE_OBJS) $(MCSENDER_OBJS) $(EXECS)
 
 distclean: clean
-	-@$(RM) -rf config.status config.log config.h doc src autom4te.cache
-	-@$(RM) *~ Makefile DEADJOE semantic.cache *.gdb *.elf core core.* *.d
+	@$(RM) -r config.status config.log config.h doc src autom4te.cache
+	@$(RM) *~ Makefile DEADJOE semantic.cache *.gdb *.elf core core.* *.d
 
 dist: distclean
 	@echo "Building bzip2 tarball of $(PKG) in parent dir..."
