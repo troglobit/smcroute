@@ -393,7 +393,7 @@ static void server_loop(int sd)
  * error code in the parent and the initscript will fail */
 static void start_server(int background)
 {
-	int sd, api = 0;
+	int sd, api = 0, busy = 0;
 
 	if (background && daemonize())
 		return;
@@ -404,16 +404,27 @@ static void start_server(int background)
 	 * are currently assigned an IP address. */
 	iface_init();
 
-	if (!mroute4_enable())
+	if (mroute4_enable()) {
+		if (errno == EADDRINUSE)
+			busy++;
+	} else {
 		api++;
+	}
 
-	if (!mroute6_enable())
+	if (mroute6_enable()) {
+		if (errno == EADDRINUSE)
+			busy++;
+	} else {
 		api++;
+	}
 
 	/* At least one API (IPv4 or IPv6) must have initialized successfully
 	 * otherwise we abort the server initialization. */
 	if (!api) {
-		smclog(LOG_INIT, ENOPROTOOPT, "Kernel does not support multicast routing");
+		if (busy)
+			smclog(LOG_INIT, 0, "Another multicast routing application is already running.");
+		else
+			smclog(LOG_INIT, 0, "Kernel does not support multicast routing.");
 		exit(1);
 	}
 
