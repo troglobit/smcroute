@@ -614,7 +614,7 @@ int main(int argc, const char *argv[])
 			}
 
 			if (rlen != 1 || *buf != '\0') {
-				buf[rlen] = 0;
+				buf[MX_CMDPKT_SZ] = 0;
 				fprintf(stderr, "Daemon error: %s\n", buf);
 				result = 1;
 			}
