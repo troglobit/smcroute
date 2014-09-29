@@ -46,7 +46,7 @@ static const char *conf_file = SMCROUTE_SYSTEM_CONF;
 
 extern char *__progname;
 static const char version_info[] =
-	"SMCRoute version " PACKAGE_VERSION " build" BUILD "\n";
+	"SMCRoute version " PACKAGE_VERSION " build " BUILD "\n";
 
 static const char usage_info[] =
 	"Usage: smcroute [OPTIONS]... [ARGS]...\n"
