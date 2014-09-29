@@ -74,7 +74,8 @@ void iface_init(void)
 
 		/* Copy data from interface iterator 'ifa' */
 		iface = &iface_list[num_ifaces++];
-		strncpy(iface->name, ifa->ifa_name, sizeof(iface->name));
+		strncpy(iface->name, ifa->ifa_name, IFNAMSIZ);
+		iface->name[IFNAMSIZ] = 0;
 		if (family == AF_INET)
 			iface->inaddr.s_addr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr.s_addr;
 		iface->flags = ifa->ifa_flags;

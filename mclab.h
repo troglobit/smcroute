@@ -95,7 +95,7 @@ typedef u_int32_t uint32;
 #define ARRAY_ELEMENTS(arr) ((sizeof(arr)/sizeof(0[arr])) / ((size_t)(!(sizeof(arr) % sizeof(0[arr])))))
 
 struct iface {
-	char name[IFNAMSIZ];
+	char name[IFNAMSIZ + 1];
 	struct in_addr inaddr;	/* == 0 for non IP interfaces */
 	u_short ifindex;	/* Physical interface index   */
 	short flags;
