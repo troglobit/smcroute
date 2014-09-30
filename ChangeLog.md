@@ -3,7 +3,12 @@ ChangeLog
 
 smcroute 1.99.2 -> 2.0.0
 ------------------------
- * 
+ * Multiple fixes of nasty bugs thanks to Coverity static code analysis!
+ * Cleanup of Linux system anachronisms to make FreeBSD work again,
+   GitHub issue #5
+ * Migrate to full GNU Configure and Build system, add Makefile.am,
+   GitHub issue #6 -- heads up, packagers!
+ * Add standard SysV init script, from Debian. GitHub issue #9
 
 smcroute 1.99.1 -> 1.99.2
 -------------------------
