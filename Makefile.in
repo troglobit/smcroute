@@ -241,13 +241,17 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 dist_man8_MANS = smcroute.8 mcsender.8
-doc_DATA = smcroute.conf README AUTHORS TODO ChangeLog COPYING 
-EXTRA_DIST = autogen.sh smcroute.conf
+doc_DATA = README AUTHORS TODO ChangeLog COPYING \
+			  smcroute.conf smcroute.init
+
+EXTRA_DIST = autogen.sh smcroute.conf smcroute.init
 mcsender_SOURCES = mcsender.c syslog.c
 smcroute_SOURCES = smcroute.c mroute-api.c ifvc.c cmdpkt.c ipc.c	\
 			  mcgroup.c  parse-conf.c syslog.c pidfile.c mclab.h 
 
 DISTCLEANFILES = *~ DEADJOE semantic.cache *.gdb *.elf core core.* *.d
+GPG = gpg
+MD5 = md5sum
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -799,6 +803,42 @@ uninstall-man: uninstall-man8
 	tags uninstall uninstall-am uninstall-binPROGRAMS \
 	uninstall-docDATA uninstall-man uninstall-man8
 
+gpg-dist:
+	for file in $(DIST_ARCHIVES); do 	\
+		$(GPG) -ba $$file; 		\
+	done
+md5-dist:
+	@for file in $(DIST_ARCHIVES); do	\
+		$(MD5) $$file > $$file.md5;	\
+	done
+
+release-hook:
+	if [ ! `git tag | grep $(PACKAGE_VERSION)` ]; then				\
+		echo;									\
+		printf "\e[1m\e[41mCannot find release tag $(PACKAGE_VERSION)\e[0m\n";	\
+		printf "\e[1m\e[5mDo release anyway?\e[0m "; read yorn;			\
+		if [ "$$yorn" != "y" -a "$$yorn" != "Y" ]; then				\
+			printf "OK, aborting release.\n";				\
+			exit 1;								\
+		fi;									\
+		echo;									\
+	else										\
+		echo;									\
+		printf "\e[1m\e[42mFound GIT release tag $(PACKAGE_VERSION)\e[0m\n";	\
+		printf "\e[1m\e[44m>>Remember to push tags!\e[0m\n";			\
+		echo;									\
+	fi
+
+release: distcheck release-hook md5-dist gpg-dist
+	@echo
+	@echo "Resulting release files:"
+	@echo "================================================================="
+	@for file in $(DIST_ARCHIVES); do						\
+		printf "$$file    \tDistribution tarball\n";				\
+		printf "$$file.md5\t"; cat $$file.md5 | cut -f1 -d' ';			\
+		printf "$$file.asc\tGPG signature "; gpg --verify $$file.asc 2>&1	\
+			| grep 'key ID' | sed 's/.*using \(.*\)/\1/'; echo;		\
+	done
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
