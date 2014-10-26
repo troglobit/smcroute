@@ -6,7 +6,7 @@ doc_DATA		= README AUTHORS TODO ChangeLog COPYING \
 			  smcroute.conf smcroute.init
 EXTRA_DIST		= autogen.sh smcroute.conf smcroute.init
 
-bin_PROGRAMS		= smcroute mcsender
+sbin_PROGRAMS		= smcroute mcsender
 
 mcsender_SOURCES	= mcsender.c syslog.c
 
