@@ -573,10 +573,11 @@ int main(int argc, const char *argv[])
 		openlog(argv[0], LOG_PID, LOG_USER);
 
 		/* connect to daemon */
-		while (ipc_client_init()) {
+		while (ipc_client_init() && !result) {
 			switch (errno) {
 			case EACCES:
 				smclog(LOG_ERR, EACCES, "Need root privileges to connect to daemon");
+				result = 1;
 				break;
 
 			case ENOENT:
