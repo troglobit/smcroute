@@ -181,7 +181,14 @@ AC_COMPILE_IFELSE(
   [AC_MSG_RESULT(no)])
 
 # Add build number to config.h.in
-AC_DEFINE_UNQUOTED([BUILD], "`date +%y%m%d`", [Build number, abbreviated date.])
+AC_ARG_ENABLE([build-id],
+  [AS_HELP_STRING([--enable-build-id@<:@=ID@:>@],
+              [show build id in output of 'smcroute -v'])],
+  [AS_IF([test "x$enableval" = "xyes" ],
+    [build_id=`date +%y%m%d`],
+    [build_id=$enableval])
+   AC_DEFINE_UNQUOTED([BUILD], "$build_id", [Build number, abbreviated date.])])
+
 
 # Checks for library functions.
 AC_FUNC_FORK
