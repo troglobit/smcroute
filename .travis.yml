@@ -17,9 +17,7 @@ addons:
       name: "troglobit/smcroute"
       description: "SMCRoute -- Static Multicast Routing Daemon"
     notification_email: troglobit@gmail.com
-    build_command_prepend:
-      - ./autogen.sh
-      - ./configure --disable-silent-rules
+    build_command_prepend: ./autogen.sh && ./configure
     build_command:  make
     branch_pattern: master
 
