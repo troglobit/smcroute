@@ -124,20 +124,29 @@ The output interfaces are not needed when removing routes using the
 command. The first three parameters are sufficient to identify the
 source of the multicast route. 
 .Pp
-The intended purpose of SMCRoute is to aid in situations where dynamic
-multicast routing does not work properly.  However, dynamic multicast routing
-is in nearly all cases the preferred solution.
+The intended purpose of
+.Nm
+is to aid in situations where dynamic multicast routing does not work
+properly.  However, dynamic multicast routing is in nearly all cases the
+preferred solution.  The reason for this is their ability to translate
+Layer-3 signalling to Layer-2 dito (IGMP or MLD).
 .Pp
 .Nm
-can also send simple group join and leave commands to the kernel. As a
-result the kernel will send Layer-2 IGMP join and leave frames. This can
-be used for testing but is also useful sometimes to open up multicast
-from the sender if located on a LAN with switches equipped with IGMP/MLD
-Snooping. Such devices will prevent forwarding of multicast unless an
-IGMP/MLD capable router or multicast client is located on the same
-physical port as you run
+is capable of simple group join and leave by sending commands to the
+kernel.  It handles sending Layer-2 IGMP/MLD join and leave frames.
+This can be used for testing but is also useful sometimes to open up
+multicast from the sender if located on a LAN with switches equipped
+with IGMP/MLD Snooping.  Such devices will prevent forwarding of
+multicast unless an IGMP/MLD capable router or multicast client is
+located on the same physical port as you run
 .Nm
-on.
+on.  However, this feature of
+.Nm
+is only intended as a temporary workaround, and only 20 groups can be
+joined this way (kernel limit).  For bigger installations it is strongly
+recommended that the user instead fix the root cause to why the
+designated multicast router does to receive all the required multicast
+groups on its input interface(s).
 .Pp
 To emulate a multicast client using
 .Nm
@@ -184,6 +193,12 @@ command line option.
 # Layer-2 signaling so that switches and routers open up multicast
 # traffic to your interfaces.  Leave is not supported, remove the
 # mgroup and SIGHUP your daemon, or send a specific leave command.
+#
+# NOTE: Use of mgroup should really not be needed!  It is only available
+#       to aid a user in figuring out problems in multicast forwarding.
+#       Only 20 mgroup lines can be configured, this is a HARD kernel
+#       maximum.  If you need more, you probably need to find another
+#       way of forwarding multicast to your router.
 #
 # Similarily supported is setting mroutes. Removing mroutes is not
 # supported, remove/comment out the mroute or send a remove command.
@@ -234,9 +249,9 @@ The current version compiles and runs fine on Linux kernel version
 .Pp
 .Bl -tag -width TERM -compact -offset indent
 .It Cm Multicast routes
-More than 200
-.It Cm Multicast group membership
-Max. 20
+Depends on the kernel, more than 200, probably more than 1000
+.It Cm Multicast group memberships
+Max. 20, see caveat above
 .El
 .Pp
 .Sh SIGNALS
