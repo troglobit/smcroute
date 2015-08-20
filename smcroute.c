@@ -189,6 +189,8 @@ static int read_mroute4_socket(void)
 
 		/* Find any matching route for this group on that iif. */
 		mroute4_dyn_add(&mroute);
+
+		/* TODO: Add external callback script here, and/or call to conntrack -F */
 	}
 
 	return result;
