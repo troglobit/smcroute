@@ -1,7 +1,9 @@
 # Travis CI integration
+# Defaults to GNU GCC and autotools: ./configure && make && make test
 language: c
-compiler:
-  - gcc
+
+# We don't need to install packages, use dockerized build, quicker
+sudo: false
 
 env:
   global:
@@ -15,8 +17,15 @@ addons:
       name: "troglobit/smcroute"
       description: "SMCRoute -- Static Multicast Routing Daemon"
     notification_email: troglobit@gmail.com
-    build_command_prepend: "./configure"
-    build_command:   "make"
+    build_command_prepend:
+      - ./autogen.sh
+      - ./configure --disable-silent-rules
+    build_command:  make
     branch_pattern: master
 
-script: ./configure && make
+# We don't store generated files (configure and Makefile) in GIT,
+# so we must customize the default build script to run ./autogen.sh
+script:
+  - ./autogen.sh
+  - ./configure --disable-silent-rules
+  - make
