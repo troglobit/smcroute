@@ -1,6 +1,6 @@
 SMCRoute - A static multicast route tool
 ========================================
-[![Build Status](https://travis-ci.org/troglobit/smcroute.png?branch=master)](https://travis-ci.org/troglobit/smcroute)[![Coverity Scan Status](https://scan.coverity.com/projects/3061/badge.svg)](https://scan.coverity.com/projects/3061)
+[![Travis Status][]][Travis] [![Coverity Status][]][Coverity Scan]
 
 SMCRoute is a command line tool to manipulate the multicast routes of a
 UNIX kernel.  It supports both IPv4 and IPv6 multicast routing.
@@ -14,8 +14,9 @@ or another multicast routing daemon is running.  Only one multicast
 routing daemon can be active at a time, so it's impossible to run
 SMCRoute and, e.g., mrouted at the same time.
 
-SMCRoute is maintained at GitHub.  Previously the code has been hosted by
-Debian at Alioth and before that by Carsten Schill, the original author.
+SMCRoute is maintained collaboratively at [GitHub][].  Previously the
+code was hosted and maintained by Debian at [Alioth][] and before that
+by [Carsten Schill][], the original author.
 
 
 Usage
@@ -34,13 +35,20 @@ which can look something like this:
 
 The first line means "Join multicast group 225.1.2.3 on interface eth0",
 and is for layer-2 devices (switches) with IGMP snooping implemented to
-open up multicast for that group to be flooded to us.
+open up multicast for that group to be flooded to us.  You *should not*
+need the `mgroup` line, it will cause routing performance loss and is
+only intended to be used when you have problems with switches that do
+not forward multicast to us by default.  Only 20 groups can be "joined"
+this way, for more groups you should investigate the root cause for not
+receiving multicast at the multicast router, or use a dynamic multicast
+routing protocol.
 
-The second line is the actual layer-3 routing entry.  Here we say that
-multicast data originating from 192.168.1.42 on eth0 to multicast group
-225.1.2.3 should be routed to interfaces eth1 and eth2.
+The second `mroute` line is the actual layer-3 routing entry.  Here we
+say that multicast data originating from 192.168.1.42 on `eth0` to the
+multicast group 225.1.2.3 should be forwarded to interfaces `eth1` and
+`eth2`.
 
-*Note:* To test the above you can use ping from another device.  The
+**Note:** To test the above you can use ping from another device.  The
    multicast should be visible as long as your IP# matches the source
    above and you ping 225.1.2.3 AND REMEMBER TO SET TTL >1!
    
@@ -85,3 +93,17 @@ or, from the command line:
 
 Good Luck!
 The SMCRoute Maintainers
+
+[GitHub]:          https://github.com/troglobit/smcroute
+[Alioth]:          https://alioth.debian.org/projects/smcroute
+[Carsten Schill]:  http://www.cschill.de/smcroute/
+[Travis]:          https://travis-ci.org/troglobit/smcroute
+[Travis Status]:   https://travis-ci.org/troglobit/smcroute.png?branch=master
+[Coverity Scan]:   https://scan.coverity.com/projects/3061
+[Coverity Status]: https://scan.coverity.com/projects/3061/badge.svg
+
+<!--
+  -- Local Variables:
+  -- mode: markdown
+  -- End:
+  -->
