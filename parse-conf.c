@@ -19,11 +19,57 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 #ifndef UNITTEST
 #include "mclab.h"
 #endif
 
 #define MAX_LINE_LEN 512
+
+extern char *script_exec;
+
+
+int run_script(mroute_t *mroute)
+{
+	int status;
+	pid_t pid;
+	char *argv[] = {
+		script_exec,
+		"reload",
+		NULL,
+	};
+
+	if (!script_exec)
+		return 0;
+
+	if (mroute) {
+		char source[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
+
+		if (mroute->version == 4) {
+			inet_ntop(AF_INET, &mroute->u.mroute4.sender.s_addr, source, INET_ADDRSTRLEN);
+			inet_ntop(AF_INET, &mroute->u.mroute4.group.s_addr, group, INET_ADDRSTRLEN);
+		} else {
+			inet_ntop(AF_INET6, &mroute->u.mroute6.sender.sin6_addr, source, INET_ADDRSTRLEN);
+			inet_ntop(AF_INET6, &mroute->u.mroute6.group.sin6_addr, group, INET_ADDRSTRLEN);
+		}
+
+		setenv("source", source, 1);
+		setenv("group", group, 1);
+		argv[1] = "install";
+	} else {
+		unsetenv("source");
+		unsetenv("group");
+	}
+
+	pid = fork();
+	if (-1 == pid)
+		return 1;
+	if (0 == pid)
+		_exit(execv(argv[0], argv));
+	waitpid(pid, &status, 0);
+
+	return WIFEXITED(status);
+}
 
 static char *pop_token(char **line)
 {
@@ -308,6 +354,11 @@ int parse_conf_file(const char *file)
 
 	free(linebuf);
 	fclose(fp);
+
+	if (script_exec) {
+		if (run_script(NULL))
+			smclog(LOG_WARNING, 0, "Failed calling %s after (re)load of configuraion file.", script_exec);
+	}
 
 	return 0;
 }
