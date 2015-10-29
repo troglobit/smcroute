@@ -41,7 +41,7 @@ static struct iface *find_valid_iface(const char *ifname, int cmd)
 static void mcgroup4_init(void)
 {
 	if (mcgroup4_socket < 0) {
-		mcgroup4_socket = socket(AF_INET, SOCK_DGRAM, 0);
+		mcgroup4_socket = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 		if (mcgroup4_socket < 0)
 			smclog(LOG_ERR, errno, "Failed creating IPv4 socket for communicating group membership to kernel");
 	}
@@ -112,7 +112,7 @@ static int mcgroup6_socket = -1;
 static void mcgroup6_init(void)
 {
 	if (mcgroup6_socket < 0) {
-		mcgroup6_socket = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+		mcgroup6_socket = socket(AF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_UDP);
 		if (mcgroup6_socket < 0)
 			smclog(LOG_WARNING, errno, "socket failed");
 	}

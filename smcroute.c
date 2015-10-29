@@ -40,6 +40,7 @@
 #define SMCROUTE_SYSTEM_CONF "/etc/smcroute.conf"
 
 int do_debug_logging = 0;
+const char *script_exec = NULL;
 
 static int         running   = 1;
 static const char *conf_file = SMCROUTE_SYSTEM_CONF;
@@ -58,6 +59,9 @@ static const char usage_info[] =
 	"  -d       Start daemon\n"
 	"  -n       Run daemon in foreground\n"
 	"  -f FILE  File to use instead of default " SMCROUTE_SYSTEM_CONF "\n"
+	"  -s SCRIPT  Script to call on startup/reload when all routes have\n"
+	"             been installed. Or when a source-less (ANY) route has\n"
+	"             been installed.\n"
 	"  -k       Kill a running daemon\n"
 	"\n"
 	"  -h       This help text\n"
@@ -190,9 +194,14 @@ static int read_mroute4_socket(void)
 		}
 
 		/* Find any matching route for this group on that iif. */
-		mroute4_dyn_add(&mroute);
+		result = mroute4_dyn_add(&mroute);
+		if (!result && script_exec) {
+			mroute_t mrt;
 
-		/* TODO: Add external callback script here, and/or call to conntrack -F */
+			mrt.version = 4;
+			mrt.u.mroute4 = mroute;
+			run_script(&mrt);
+		}
 	}
 
 	return result;
@@ -537,6 +546,12 @@ int main(int argc, const char *argv[])
 			conf_file = argv[1];
 			continue;
 
+		case 's':
+			if (num_opts != 2)
+				return usage();
+			script_exec = argv[1];
+			continue;
+
 		case 'D':
 			do_debug_logging = 1;
 			continue;
@@ -565,6 +580,11 @@ int main(int argc, const char *argv[])
 		if (geteuid() != 0) {
 			smclog(LOG_ERR, 0, "Need root privileges to start %s", __progname);
 			return 1;
+		}
+
+		if (script_exec && access(script_exec, X_OK)) {
+			fprintf(stderr, "%s is not an executable, disabling script.", script_exec);
+			script_exec = NULL;
 		}
 
 		start_server(background);

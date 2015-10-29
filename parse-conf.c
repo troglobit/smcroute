@@ -25,6 +25,32 @@
 
 #define MAX_LINE_LEN 512
 
+extern char *script_exec;
+
+
+int run_script(mroute_t *mroute)
+{
+	if (!script_exec)
+		return 0;
+
+	if (mroute) {
+		char source[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
+
+		if (mroute->version == 4) {
+			inet_ntop(AF_INET, &mroute->u.mroute4.sender.s_addr, source, INET_ADDRSTRLEN);
+			inet_ntop(AF_INET, &mroute->u.mroute4.group.s_addr, group, INET_ADDRSTRLEN);
+		} else {
+			inet_ntop(AF_INET6, &mroute->u.mroute6.sender.sin6_addr, source, INET_ADDRSTRLEN);
+			inet_ntop(AF_INET6, &mroute->u.mroute6.group.sin6_addr, group, INET_ADDRSTRLEN);
+		}
+
+		setenv("source", source, 1);
+		setenv("group", group, 1);
+	}
+
+	return WIFEXITED(system(script_exec));
+}
+
 static char *pop_token(char **line)
 {
 	char *end, *token;
@@ -308,6 +334,9 @@ int parse_conf_file(const char *file)
 
 	free(linebuf);
 	fclose(fp);
+
+	if (script_exec)
+		run_script(NULL);
 
 	return 0;
 }

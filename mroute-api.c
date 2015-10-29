@@ -98,7 +98,7 @@ int mroute4_enable(void)
 	unsigned int i;
 	struct iface *iface;
 
-	mroute4_socket = socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
+	mroute4_socket = socket(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_IGMP);
 	if (mroute4_socket < 0) {
 		if (ENOPROTOOPT == errno)
 			smclog(LOG_WARNING, 0, "Kernel does not support IPv4 multicast routing, skipping ...");
@@ -441,7 +441,7 @@ int mroute6_enable(void)
 	unsigned int i;
 	struct iface *iface;
 
-	if ((mroute6_socket = socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6)) < 0) {
+	if ((mroute6_socket = socket(AF_INET6, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMPV6)) < 0) {
 		if (ENOPROTOOPT == errno)
 			smclog(LOG_WARNING, 0, "Kernel does not support IPv6 multicast routing, skipping ...");
 

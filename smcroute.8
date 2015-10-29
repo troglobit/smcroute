@@ -1,4 +1,4 @@
-.Dd $Mdocdate: November 01 2011 $
+.Dd $Mdocdate: October 29 2015 $
 .Dt SMCROUTE 8 SMM
 .Os
 .Sh NAME
@@ -50,6 +50,11 @@ flags, however, are accepted, but not command flags.
 .It Fl f Ar FILE
 Specify an alternative configuration file, instead of the default
 .Pa /etc/smcroute.conf .
+.It Fl s Ar SCRIPT
+Specify external script to be called when
+.Nm
+has loaded/reloaded all static multicast routes from the configuration
+file, or when a source-less (ANY) rule has been installed.
 .It Fl v
 Display version and enable verbose logs.  This gives a more verbose
 output in some error situations.  Do not expect too much, see syslog
@@ -73,7 +78,28 @@ option. The
 option will terminate a running daemon.  The 
 .Fl f Ar FILE
 option can be used to tell the daemon to setup routes from a conf
-file. By default it looks for /etc/smcroute.conf
+file. By default it looks for /etc/smcroute.conf.  The
+.Fl s Ar SCRIPT
+option is useful if you want to either trigger other processes to start
+when
+.Nm
+has completed installing routes from
+.Pa /etc/smcroute.conf ,
+or when a source-less (ANY) route from
+.Pa /etc/smcroute.conf .
+is matched and installed.  In the latter case
+.Nm
+calls the SCRIPT with two environment variables set:
+.Nm source ,
+and
+.Nm group .
+On startup/reload (SIGHUP) the environment variables are not set, only
+when a source-less rule is installed.  Be aware that these environment
+variables are unconditionally overwritten by
+.Nm
+and can thus not be used to pass information to the script from outside
+of
+.Nm .
 .Sh COMMANDS
 The following are commands that can only be passed to an already running daemon.
 .Bl -tag -width Ds
