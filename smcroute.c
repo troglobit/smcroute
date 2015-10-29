@@ -120,6 +120,8 @@ static void clean(void)
 {
 	mroute4_disable();
 	mroute6_disable();
+	mcgroup4_disable();
+	mcgroup6_disable();
 	ipc_exit();
 	smclog(LOG_NOTICE, 0, "Exiting.");
 }
