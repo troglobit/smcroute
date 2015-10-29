@@ -43,6 +43,7 @@ int do_debug_logging = 0;
 
 static int         running   = 1;
 static const char *conf_file = SMCROUTE_SYSTEM_CONF;
+extern char       *exec_install;
 
 extern char *__progname;
 static const char version_info[] =
@@ -120,6 +121,7 @@ static void clean(void)
 {
 	mroute4_disable();
 	mroute6_disable();
+	free_conf();
 	ipc_exit();
 	smclog(LOG_NOTICE, 0, "Exiting.");
 }
@@ -130,6 +132,7 @@ static void restart(void)
 	mroute6_disable();
 	mcgroup4_disable();
 	mcgroup6_disable();
+	free_conf();
 	/* No need to close the IPC, only at cleanup. */
 
 	/* Update list of interfaces and create new virtual interface mappings in kernel. */
@@ -188,9 +191,9 @@ static int read_mroute4_socket(void)
 		}
 
 		/* Find any matching route for this group on that iif. */
-		mroute4_dyn_add(&mroute);
-
-		/* TODO: Add external callback script here, and/or call to conntrack -F */
+		result = mroute4_dyn_add(&mroute);
+		if (!result && exec_install)
+			run_callback(exec_install, &mroute);
 	}
 
 	return result;

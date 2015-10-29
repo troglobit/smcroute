@@ -231,7 +231,9 @@ extern char log_last_message[128];	/* last logged message     */
 void smclog(int severity, int code, const char *fmt, ...);
 
 /* parse-conf.c */
-int parse_conf_file(const char *file);
+int  run_callback    (char *cmd, mroute4_t *mroute);
+int  parse_conf_file (const char *file);
+void free_conf       (void);
 
 /* pidfile.c */
 int pidfile(const char *basename);
