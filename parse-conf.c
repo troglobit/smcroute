@@ -24,6 +24,37 @@
 #endif
 
 #define MAX_LINE_LEN 512
+char *exec_reload  = NULL;
+char *exec_install = NULL;
+
+int run_callback(char *cmd, mroute4_t *mroute)
+{
+	int status;
+	char source[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
+
+	if (mroute) {
+		inet_ntop(AF_INET, &mroute->sender.s_addr, source, INET_ADDRSTRLEN);
+		inet_ntop(AF_INET, &mroute->group.s_addr, group, INET_ADDRSTRLEN);
+
+		setenv("source", source, 1);
+		setenv("group", group, 1);
+	}
+
+	status = system(exec_install);
+	if (WIFEXITED(status))
+		smclog(LOG_DEBUG, 0, "Callback '%s' exited normally with status %d",
+		       exec_install, WEXITSTATUS(status));
+	else
+		smclog(LOG_DEBUG, 0, "Callback '%s' did not exit normally!",
+		       exec_install);
+
+	if (mroute) {
+		unsetenv("source");
+		unsetenv("group");
+	}
+
+	return WIFEXITED(status);
+}
 
 static char *pop_token(char **line)
 {
@@ -44,8 +75,7 @@ static char *pop_token(char **line)
 	end = token;
 	while (*end && !isspace(*end))
 		end++;
-	if (*end == 0 || end == token)
-	{
+	if (*end == 0 || end == token) {
 		*line = NULL;
 		return NULL;
 	}
@@ -208,6 +238,39 @@ static int add_mroute (int lineno, char *ifname, char *group, char *source, char
 	return result;
 }
 
+static void set_exec(char *cmd)
+{
+	int type = 0;
+	char *cond = strstr(cmd, "on ");
+
+	if (cond) {
+		*cond = 0;
+		cond += 3;
+
+		if (!strncmp(cond, "reload", 6))
+			type = 1;
+		if (!strncmp(cond, "install", 7))
+			type = 2;
+	}
+
+	if (type == 1) {
+		if (exec_reload)
+			free(exec_reload);
+		exec_reload  = strdup(cmd);
+	} else if (type == 2) {
+		if (exec_install)
+			free(exec_install);
+		exec_install = strdup(cmd);
+	} else {
+		if (exec_reload)
+			free(exec_reload);
+		if (exec_install)
+			free(exec_install);
+		exec_reload  = strdup(cmd);
+		exec_install = strdup(cmd);
+	}
+}
+
 /**
  * parse_conf_file - Parse smcroute.conf
  * @file: File name to parse
@@ -217,6 +280,7 @@ static int add_mroute (int lineno, char *ifname, char *group, char *source, char
  * kernel.
  *
  * Format:
+ *    exec /path/to/script [optional args] [on <reload | install>]
  *    mgroup from IFNAME group MCGROUP
  *    mroute from IFNAME source ADDRESS group MCGROUP to IFNAME [IFNAME ...]
  */
@@ -261,9 +325,13 @@ int parse_conf_file(const char *file)
 					op = 1;
 				} else if (match ("mroute", token)) {
 					op = 2;
+				} else if (match ("exec", token)) {
+					set_exec(line);
+					line = NULL;
+					continue;
 				} else {
 #ifdef UNITTEST
-					printf("%02d: Unknonw command: %s", lineno, line);
+					printf("%02d: Unknown command: %s", lineno, line);
 #else
 					smclog(LOG_WARNING, 0, "%02d: Unknown command %s, skipping.", lineno, token);
 #endif
@@ -309,7 +377,22 @@ int parse_conf_file(const char *file)
 	free(linebuf);
 	fclose(fp);
 
+	if (exec_reload)
+		run_callback(exec_reload, NULL);
+
 	return 0;
+}
+
+void free_conf(void)
+{
+	if (exec_reload) {
+		free(exec_reload);
+		exec_reload = NULL;
+	}
+	if (exec_install) {
+		free(exec_install);
+		exec_install = NULL;
+	}
 }
 
 #ifdef UNITTEST
