@@ -77,16 +77,22 @@ file. By default it looks for /etc/smcroute.conf
 .Sh COMMANDS
 The following are commands that can only be passed to an already running daemon.
 .Bl -tag -width Ds
-.It Fl a Ar IFNAME SOURCE GROUP IFNAME [IFNAME ...]
-Add a kernel multicast route from {IFNAME, SOURCE & GROUP} to a list of,
-at least one, outbound IFNAME.  The interfaces can be any network
-interface as listed by 'ifconfig' or 'ip link list' (incl. tunnel
-interfaces), but not the loopback interface.  Please note that the
+.It Fl a Ar INIFNAME SOURCE GROUP OUTIFNAME [OUTIFNAME ...]
+Add a multicast route to the kernel routing cache so that multicast packets
+received on the network interface
+.Ar INIFNAME
+originating from the IP address
 .Ar SOURCE
-address is the unicast IPv4 or IPv6 source address of the multicast
-sender! The 
+and sent to the multicast group addess
 .Ar GROUP
-can be either an IPv4 or IPv6 formatted multicast group address.
+will be forwarded to the outbound network interfaces
+.Ar OUTIFNAME [OUTIFNAME ...] .
+The interfaces provided as
+.Ar INIFNAME
+and
+.Ar OUTIFNAME
+can be any network interface as listed by 'ifconfig' or 'ip link
+list' (incl. tunnel interfaces), but not the loopback interface.
 .It Fl r Ar IFNAME SOURCE GROUP
 Remove a kernel multicast route.
 .It Fl j Ar IFNAME GROUP
@@ -95,15 +101,15 @@ Join a multicast group on a given interface.
 Leave a multicast group on a given interface.
 .El
 .Pp
-To be able to add/remove routes or join/leave multicast groups the
-.Nm
-daemon must run.
-.Pp
 Multicast routes can be added with the 
 .Fl a 
 command and removed with the 
 .Fl r
 command. 
+.Pp
+To be able to add/remove routes or join/leave multicast groups the
+.Nm
+daemon must run.
 .Pp
 A multicast route is defined by an input interface
 .Ar IFNAME ,
@@ -129,11 +135,11 @@ The intended purpose of
 is to aid in situations where dynamic multicast routing does not work
 properly.  However, dynamic multicast routing is in nearly all cases the
 preferred solution.  The reason for this is their ability to translate
-Layer-3 signalling to Layer-2 dito (IGMP or MLD).
+Layer-3 signalling to Layer-2 and vice versa (IGMP or MLD).
 .Pp
 .Nm
-is capable of simple group join and leave by sending commands to the
-kernel.  It handles sending Layer-2 IGMP/MLD join and leave frames.
+is capable of simple group join and leave by sending commands to the kernel.
+The kernel then handles sending Layer-2 IGMP/MLD join and leave frames as needed.
 This can be used for testing but is also useful sometimes to open up
 multicast from the sender if located on a LAN with switches equipped
 with IGMP/MLD Snooping.  Such devices will prevent forwarding of
@@ -262,7 +268,7 @@ responds to the following signals:
 .It HUP
 Restarts
 .Nm .
-The configuration file is reread every time this signal is received.
+The configuration file is re-read every time this signal is received.
 .It INT
 Terminates execution gracefully.
 .It TERM
