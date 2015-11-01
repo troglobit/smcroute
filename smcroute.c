@@ -200,7 +200,8 @@ static int read_mroute4_socket(void)
 
 			mrt.version = 4;
 			mrt.u.mroute4 = mroute;
-			run_script(&mrt);
+			if (run_script(&mrt))
+				smclog(LOG_WARNING, 0, "Failed calling %s with a new multicast route.", script_exec);
 		}
 	}
 
@@ -583,8 +584,8 @@ int main(int argc, const char *argv[])
 		}
 
 		if (script_exec && access(script_exec, X_OK)) {
-			fprintf(stderr, "%s is not an executable, disabling script.", script_exec);
-			script_exec = NULL;
+			smclog(LOG_ERR, 0, "%s is not an executable, exiting.", script_exec);
+			return 1;
 		}
 
 		start_server(background);
