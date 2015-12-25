@@ -192,10 +192,6 @@ AC_ARG_ENABLE([build-id],
 
 # Checks for library functions.
 AC_FUNC_FORK
-AC_PROG_GCC_TRADITIONAL
-AC_FUNC_MALLOC
-AC_FUNC_SELECT_ARGTYPES
-AC_FUNC_SETPGRP
 AC_CHECK_FUNCS([atexit dup2 memset select socket strchr strerror strrchr asprintf])
 
 AC_OUTPUT
