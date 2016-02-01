@@ -22,10 +22,19 @@ by [Carsten Schill][], the original author.
 Usage
 -----
 
-SMCRoute is both a daemon and a client.  You must start the daemon to be
-able to setup multicast routes.
+SMCRoute is both a daemon and a client.  You must start the daemon first
+to be able to set up multicast routes.
 
     # smcroute -d
+
+or
+
+    # smcroute -d -s /path/to/script
+
+The latter syntax calls your own script whenever `smcroute` receives a
+`SIGHUP` or installs a multicast route to the kernel.  This is useful if
+you, for instance, also run a NAT firewall and need to flush connection
+tracking after installing a multicast route.
 
 By default SMCRoute looks for its configuration in `/etc/smcroute.conf`,
 which can look something like this:
