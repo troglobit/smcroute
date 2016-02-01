@@ -9,6 +9,10 @@ AM_SILENT_RULES()
 AC_CONFIG_SRCDIR([mclab.h])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_FILES([Makefile])
+
+# Older versions of autoconf (<2.58) do not have AC_CONFIG_MACRO_DIR()
+m4_include([m4/misc.m4])
+m4_include([m4/mroute.m4])
 AC_CONFIG_MACRO_DIR([m4])
 
 # Checks for programs.
