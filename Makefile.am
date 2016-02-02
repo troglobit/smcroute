@@ -8,10 +8,10 @@ EXTRA_DIST		= autogen.sh smcroute.conf smcroute.init
 
 sbin_PROGRAMS		= smcroute mcsender
 
-mcsender_SOURCES	= mcsender.c syslog.c
+mcsender_SOURCES	= mcsender.c log.c
 
 smcroute_SOURCES	= smcroute.c mroute-api.c ifvc.c cmdpkt.c ipc.c	\
-			  mcgroup.c  parse-conf.c syslog.c pidfile.c mclab.h 
+			  mcgroup.c  parse-conf.c log.c pidfile.c mclab.h
 
 DISTCLEANFILES		= *~ DEADJOE semantic.cache *.gdb *.elf core core.* *.d
 
