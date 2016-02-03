@@ -18,12 +18,14 @@ addons:
       description: "SMCRoute -- Static Multicast Routing Daemon"
     notification_email: troglobit@gmail.com
     build_command_prepend: ./autogen.sh && ./configure
-    build_command:  make
-    branch_pattern: master
+    build_command: make -j5 clean all
+    branch_pattern: dev
 
 # We don't store generated files (configure and Makefile) in GIT,
 # so we must customize the default build script to run ./autogen.sh
 script:
   - ./autogen.sh
-  - ./configure --disable-silent-rules
+  - ./configure --disable-silent-rules --prefix=
+  - make clean
+  - make -j5
   - make
