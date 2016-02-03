@@ -212,7 +212,7 @@ static int mroute4_add_vif(struct iface *iface)
 #endif
 	vc.vifc_rmt_addr.s_addr = INADDR_ANY;
 
-	smclog(LOG_DEBUG, "Map iface %-8s => VIF %-3d ifindex %d flags 0x%04x",
+	smclog(LOG_DEBUG, "Map iface %-16s => VIF %-2d ifindex %2d flags 0x%04x",
 	       iface->name, vc.vifc_vifi, iface->ifindex, vc.vifc_flags);
 
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_VIF, (void *)&vc, sizeof(vc))) {
@@ -554,7 +554,7 @@ static int mroute6_add_mif(struct iface *iface)
 	mc.vifc_rate_limit = 0;	/* hopefully no limit */
 #endif
 
-	smclog(LOG_DEBUG, "Map iface %-8s => MIF %-3d ifindex %d flags 0x%04x",
+	smclog(LOG_DEBUG, "Map iface %-16s => MIF %-2d ifindex %2d flags 0x%04x",
 	       iface->name, mc.mif6c_mifi, mc.mif6c_pifi, mc.mif6c_flags);
 
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MIF, (void *)&mc, sizeof(mc))) {
