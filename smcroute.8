@@ -39,16 +39,16 @@ some other forms of indirect loops you can easily flood your networks!
 .Sh OPTIONS
 .Bl -tag -width Ds
 .It Fl d
-Starts the smcroute daemon before any of the optional following commands
-are executed. Please note, if started with the
-.Fl n
-flag no commands specified on the command line will be run.
+Start the smcroute daemon.  Will attempt to set up multicast routes and
+group joins from the file
+.Pa /etc/smcroute.conf ,
+unless
+.Fl f Ar FILE
+is also provided.
 .It Fl n
-Run in foreground, do not detach from the calling terminal.  This also
-means that any further commands from that command line are run.  Option
-flags, however, are accepted, but not command flags.
+Run daemon in foreground, do not detach from the calling terminal.
 .It Fl f Ar FILE
-Specify an alternative configuration file, instead of the default
+Specify an alternate configuration file, default
 .Pa /etc/smcroute.conf .
 .It Fl s Ar SCRIPT
 Specify external script to be called when
@@ -68,17 +68,7 @@ Print a help message and exit.
 Stop (kill) running daemon.
 .El
 .Pp
-The 
-.Fl d
-option to smcroute starts the smcroute daemon. It can be started in the
-foreground using the
-.Fl n
-option. The
-.Fl k
-option will terminate a running daemon.  The 
-.Fl f Ar FILE
-option can be used to tell the daemon to setup routes from a conf
-file. By default it looks for /etc/smcroute.conf.  The
+The
 .Fl s Ar SCRIPT
 option is useful if you want to either trigger other processes to start
 when
@@ -133,9 +123,11 @@ command and removed with the
 .Fl r
 command. 
 .Pp
-To be able to add/remove routes or join/leave multicast groups the
+To be able to add/remove routes or join/leave multicast groups using
+these commands the
 .Nm
-daemon must run.
+daemon must run.  You can also write all rules in the configuration file
+and send SIGHUP to the daemon.
 .Pp
 A multicast route is defined by an input interface
 .Ar IFNAME ,

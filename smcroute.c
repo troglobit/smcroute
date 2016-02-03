@@ -39,6 +39,8 @@
 
 #define SMCROUTE_SYSTEM_CONF "/etc/smcroute.conf"
 
+int background = 1;
+int start_daemon = 0;
 int do_debug_logging = 0;
 const char *script_exec = NULL;
 
@@ -142,29 +144,6 @@ static void restart(void)
 	iface_init();
 	mroute4_enable();
 	mroute6_enable();
-}
-
-static int daemonize(void)
-{
-	int pid;
-
-	pid = fork();
-	if (pid < 0) {
-		smclog(LOG_ERR, errno, "Cannot start in background");
-		exit(255);
-	}
-
-	if (!pid) {
-		/* Detach deamon from terminal */
-		if (close(0) < 0 || close(1) < 0 || close(2) < 0
-		    || open("/dev/null", 0) != 0 || dup2(0, 1) < 0
-		    || dup2(0, 2) < 0 || setpgid(0, 0) < 0) {
-			smclog(LOG_ERR, errno, "Failed detaching deamon");
-			exit(255);
-		}
-	}
-
-	return pid;
 }
 
 /* Check for kernel IGMPMSG_NOCACHE for (*,G) hits. I.e., source-less routes. */
@@ -368,7 +347,7 @@ static void signal_init(void)
 	sigaction(SIGINT, &sa, NULL);
 }
 
-static void server_loop(int sd)
+static int server_loop(int sd)
 {
 	fd_set fds;
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
@@ -410,17 +389,17 @@ static void server_loop(int sd)
 		if (FD_ISSET(sd, &fds))
 			read_ipc_command();
 	}
+
+	return 0;
 }
 
 /* Init everything before forking, so we can fail and return an
  * error code in the parent and the initscript will fail */
-static void start_server(int background)
+static int start_server(void)
 {
 	int sd, api = 0, busy = 0;
 
-	if (background && daemonize())
-		return;
-
+	/* Hello world! */
 	smclog(LOG_NOTICE, 0, "%s", version_info);
 
 	/* Build list of multicast-capable physical interfaces that
@@ -463,7 +442,74 @@ static void start_server(int background)
 	if (pidfile(NULL))
 		smclog(LOG_WARNING, errno, "Failed creating pidfile");
 
-	server_loop(sd);
+	return server_loop(sd);
+}
+
+static int send_commands(int cmdnum, struct cmd *cmdv[])
+{
+	int i, result = 0;
+	int retry_count = 30;
+
+	if (!cmdnum)
+		return 0;
+
+	while (ipc_client_init() && !result) {
+		switch (errno) {
+		case EACCES:
+			smclog(LOG_ERR, EACCES, "Need root privileges to connect to daemon");
+			result = 1;
+			goto error;
+
+		case ENOENT:
+		case ECONNREFUSED:
+			/* When starting daemon, give it 30 times a 1/10 second to get ready */
+			if (start_daemon && --retry_count) {
+				usleep(100000);
+				continue;
+			}
+
+			smclog(LOG_WARNING, errno, "Daemon not running");
+			result = 1;
+			goto error;
+
+		default:
+			smclog(LOG_WARNING, errno, "Failed connecting to daemon");
+			result = 1;
+			goto error;
+		}
+	}
+
+	for (i = 0; i < cmdnum; i++) {
+		int slen, rlen;
+		uint8 buf[MX_CMDPKT_SZ + 1];
+		struct cmd *command = cmdv[i];
+
+		/* Send command */
+		fprintf(stderr, "Sending command(s) ... ");
+		slen = ipc_send(command, command->len);
+
+		/* Wait here for reply */
+		rlen = ipc_receive(buf, MX_CMDPKT_SZ);
+		if (slen < 0 || rlen < 0) {
+			smclog(LOG_WARNING, errno, "Communication with daemon failed");
+			result = 1;
+			break;
+		}
+
+		if (rlen != 1 || *buf != '\0') {
+			buf[MX_CMDPKT_SZ] = 0;
+			fprintf(stderr, "Daemon error: %s\n", buf);
+			result = 1;
+			break;
+		}
+		fprintf(stderr, "OK!\n");
+	}
+
+error:
+	for (i = 0; i < cmdnum; i++)
+		free(cmdv[i]);
+
+	return result;
 }
 
 static int usage(void)
@@ -487,9 +533,7 @@ static int usage(void)
  */
 int main(int argc, const char *argv[])
 {
-	int i, num_opts, result = 0;
-	int start_daemon = 0;
-	int background = 1;
+	int i, num_opts;
 	unsigned int cmdnum = 0;
 	struct cmd *cmdv[16];
 
@@ -582,7 +626,7 @@ int main(int argc, const char *argv[])
 		cmdnum++;
 	}
 
-	if (start_daemon) {	/* only daemon parent enters */
+	if (start_daemon) {
 		if (geteuid() != 0) {
 			smclog(LOG_ERR, 0, "Need root privileges to start %s", __progname);
 			return 1;
@@ -593,74 +637,17 @@ int main(int argc, const char *argv[])
 			return 1;
 		}
 
-		start_server(background);
-		if (!background)
-			return 0;
-	}
-
-	/* Client or daemon parent only, the daemon never reaches this point */
-
-	/* send commands */
-	if (cmdnum) {
-		int retry_count = 30;
-
-		openlog(argv[0], LOG_PID, LOG_USER);
-
-		/* connect to daemon */
-		while (ipc_client_init() && !result) {
-			switch (errno) {
-			case EACCES:
-				smclog(LOG_ERR, EACCES, "Need root privileges to connect to daemon");
-				result = 1;
-				exit(255);
-				break;
-
-			case ENOENT:
-			case ECONNREFUSED:
-				/* When starting daemon, give it 30 times a 1/10 second to get ready */
-				if (start_daemon && --retry_count) {
-					usleep(100000);
-					continue;
-				}
-
-				smclog(LOG_WARNING, errno, "Daemon not running");
-				result = 1;
-				break;
-
-			default:
-				smclog(LOG_WARNING, errno, "Failed connecting to daemon");
-				result = 1;
-				break;
+		if (background) {
+			if (daemon(0, 0) < 0) {
+				smclog(LOG_ERR, 0, "Failed daemonizing");
+				return 1;
 			}
 		}
 
-		for (i = 0; !result && i < cmdnum; i++) {
-			int slen, rlen;
-			uint8 buf[MX_CMDPKT_SZ + 1];
-			struct cmd *command = cmdv[i];
-
-			/* Send command */
-			slen = ipc_send(command, command->len);
-
-			/* Wait here for reply */
-			rlen = ipc_receive(buf, MX_CMDPKT_SZ);
-			if (slen < 0 || rlen < 0) {
-				smclog(LOG_WARNING, errno, "Communication with daemon failed");
-				result = 1;
-			}
-
-			if (rlen != 1 || *buf != '\0') {
-				buf[MX_CMDPKT_SZ] = 0;
-				fprintf(stderr, "Daemon error: %s\n", buf);
-				result = 1;
-			}
-		}
-
-		for (i = 0; i < cmdnum; i++)
-			free(cmdv[i]);
+		return start_server();
 	}
 
-	return result;
+	return send_commands(cmdnum, cmdv);
 }
 
 /**
