@@ -118,7 +118,7 @@ static void restart(void)
 }
 
 /* Check for kernel IGMPMSG_NOCACHE for (*,G) hits. I.e., source-less routes. */
-static int read_mroute4_socket(void)
+static void read_mroute4_socket(void)
 {
 	int result;
 	char tmp[128];
@@ -127,6 +127,10 @@ static int read_mroute4_socket(void)
 
 	memset(tmp, 0, sizeof(tmp));
 	result = read(mroute4_socket, tmp, sizeof(tmp));
+	if (result < 0) {
+		smclog(LOG_WARNING, "Failed reading IGMP message from kernel: %m");
+		return;
+	}
 
 	/* packets sent up from kernel to daemon have ip->ip_p = 0 */
 	ip = (struct ip *)tmp;
@@ -136,21 +140,37 @@ static int read_mroute4_socket(void)
 	if (ip->ip_p == 0 && igmpctl->im_msgtype == IGMPMSG_NOCACHE) {
 		struct iface *iface;
 		mroute4_t mroute;
+		char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 
 		mroute.group.s_addr  = igmpctl->im_dst.s_addr;
 		mroute.sender.s_addr = igmpctl->im_src.s_addr;
 		mroute.inbound       = igmpctl->im_vif;
 
+		inet_ntop(AF_INET, &mroute.group,  group,  INET_ADDRSTRLEN);
+		inet_ntop(AF_INET, &mroute.sender, origin, INET_ADDRSTRLEN);
+		smclog(LOG_DEBUG, "New multicast data from %s to group %s on VIF %d", origin, group, mroute.inbound);
+
 		iface = iface_find_by_vif(mroute.inbound);
 		if (!iface) {
 			/* TODO: Add support for dynamically re-enumerating VIFs at runtime! */
-			smclog(LOG_WARNING, "No VIF for possibly dynamic inbound iface %s, cannot add mroute dynamically.", mroute.inbound);
-			return 1;
+			smclog(LOG_WARNING, "No matching interface for VIF %d, cannot add mroute.", mroute.inbound);
+			return;
 		}
 
 		/* Find any matching route for this group on that iif. */
 		result = mroute4_dyn_add(&mroute);
-		if (!result && script_exec) {
+		if (result) {
+			/* This is a common error, the router receives streams it is not
+			 * set up to route -- we ignore these by default, but if the user
+			 * sets a more permissive log level we help out by showing what
+			 * is going on. */
+			if (ENOENT == errno)
+				smclog(LOG_INFO, "Multicast from %s, group %s, VIF %d does not match any (*,G) rule",
+				       origin, group, mroute.inbound);
+			return;
+		}
+
+		if (script_exec) {
 			mroute_t mrt;
 
 			mrt.version = 4;
@@ -159,23 +179,24 @@ static int read_mroute4_socket(void)
 				smclog(LOG_WARNING, "Failed calling %s with a new multicast route.", script_exec);
 		}
 	}
-
-	return result;
 }
 
 /* Receive and drop ICMPv6 stuff. This is either MLD packets or upcall messages sent up from the kernel. */
-static int read_mroute6_socket(void)
+static void read_mroute6_socket(void)
 {
+	int result;
 	char tmp[128];
 
 	if (mroute6_socket < 0)
-		return -1;
+		return;
 
-	return read(mroute6_socket, tmp, sizeof(tmp));
+	result = read(mroute6_socket, tmp, sizeof(tmp));
+	if (result < 0)
+		smclog(LOG_INFO, "Failed clearing MLD message from kernel: %m");
 }
 
 /* Receive command from the smcroute client */
-static int read_ipc_command(void)
+static void read_ipc_command(void)
 {
 	const char *str;
 	struct cmd *packet;
@@ -188,7 +209,7 @@ static int read_ipc_command(void)
 		/* Skip logging client disconnects */
 		if (errno != ECONNRESET)
 			smclog(LOG_WARNING, "Failed receving IPC message from client: %m");
-		return 1;
+		return;
 	}
 
 	switch (packet->cmd) {
@@ -282,8 +303,6 @@ static int read_ipc_command(void)
 		ipc_send("", 1);
 		exit(0);
 	}
-
-	return 0;
 }
 
 /*
