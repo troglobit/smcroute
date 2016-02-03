@@ -20,13 +20,22 @@ v2.1.0 - [UNRELEASED][]
 - Add support for executing an external script on config reload and when
   installing a multicast route.  Issue #14
 
-        smcroute -s /path/to/cmd
+        smcroute -e /path/to/cmd
 
   The script is called when SMCRoute has started up, or has received
   `SIGHUP` and just reloaded the configuration file, and when a new
   source-less rule have been installed.  See the documentation for
   more information on set environment variables etc.
-- Add `--disable-ipv6` option to `configure` script
+- Add `--disable-ipv6` option to `configure` script.  Disables IPv6
+  support in SMCRoute even though the kernel may support it
+- Replaced `-D` option with `-L LVL` to alter log level
+- The smcroute daemon now behaves more like a regular UNIX daemon.  It
+  defaults to using syslog when running in the background and stderr
+  when running in the foreground.  A new option `-s` can be used to
+  enable syslog when running in the foreground
+- The smcroute client no longer uses syslog, only logs to stderr
+- When starting the smcroute daemon it is no longer possible to also
+  send client commands on the same command line.
 
 ### Fixes
 - Install binaries to `/usr/sbin` rather than `/usr/bin`, regression
@@ -36,6 +45,8 @@ v2.1.0 - [UNRELEASED][]
 - Cleanup fix for no-MMU systems.  Multicast groups were not properly
   cleaned up in the `atexit()` handler -- *only* affects no-MMU systems.
 - Do not force automake v1.11, only require *at least* v.11
+- SMCRoute can still operate fine without a config file, so use a less
+  obtrusive warning message for missing `/etc/smcroute.conf`
 
 
 [v2.0.0][] - 2014-09-30

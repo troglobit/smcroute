@@ -29,7 +29,7 @@ to be able to set up multicast routes.
 
 or
 
-    # smcroute -d -s /path/to/script
+    # smcroute -d -e /path/to/script
 
 The latter syntax calls your own script whenever `smcroute` receives a
 `SIGHUP` or installs a multicast route to the kernel.  This is useful if
