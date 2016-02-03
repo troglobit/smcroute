@@ -484,14 +484,14 @@ error:
 
 static int usage(int code)
 {
-	printf("\nUsage: %s [dnkhDv] [-f FILE] [-e CMD] [-a|-r ROUTE] [-j|-l GROUP]\n"
+	printf("\nUsage: %s [dnkhv] [-f FILE] [-e CMD] [-L LVL] [-a|-r ROUTE] [-j|-l GROUP]\n"
 	       "\n"
 	       "Daemon:\n"
 	       "  -d       Start daemon\n"
-	       "  -D       Debug logging\n"
 	       "  -e CMD   Script or command to call on startup/reload when all routes\n"
 	       "           have been installed. Or when a source-less (ANY) route has\n"
 	       "           been installed.\n"
+	       "  -L LVL   Set log level: none, err, info, notice*, debug\n"
 	       "  -n       Run daemon in foreground, useful when run from finit\n"
 	       "  -f FILE  File to use instead of default " SMCROUTE_SYSTEM_CONF "\n"
 	       "\n"
@@ -595,8 +595,10 @@ int main(int argc, const char *argv[])
 			script_exec = argv[1];
 			continue;
 
-		case 'D':
-			log_level = LOG_DEBUG;
+		case 'L':
+			if (num_opts != 2)
+				return usage(1);
+			log_level = loglvl(argv[1]);
 			continue;
 
 		default:	/* unknown option */

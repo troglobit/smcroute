@@ -28,6 +28,25 @@ int  log_level = LOG_NOTICE;
 char log_message[128];
 
 /**
+ * loglvl - Convert log level string to value
+ * @level: String from user, debug, error, warning, etc.
+ *
+ * Returns:
+ * Matching %LOG_DEBUG, %LOG_ERR, etc.
+ */
+int loglvl(const char *level)
+{
+	for (int i = 0; prioritynames[i].c_name; i++) {
+		size_t len = MIN(strlen(prioritynames[i].c_name), strlen(level));
+
+		if (!strncasecmp(prioritynames[i].c_name, level, len))
+			return prioritynames[i].c_val;
+	}
+
+	return atoi(level);
+}
+
+/**
  * smclog - Log message to syslog or stderr
  * @severity: Standard syslog() severity levels
  * @fmt:      Standard printf() formatted message to log
@@ -51,7 +70,7 @@ void smclog(int severity, const char *fmt, ...)
 		return;
 	}
 
-	if (severity < log_level || severity == LOG_INIT)
+	if (severity <= log_level || severity == LOG_INIT)
 		fprintf(stderr, "%s\n", log_message);
 }
 

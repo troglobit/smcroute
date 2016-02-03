@@ -226,6 +226,7 @@ void mcgroup6_disable (void);
 extern int  log_level;
 extern char log_message[128];
 
+int loglvl(const char *level);
 void smclog(int severity, const char *fmt, ...);
 
 /* parse-conf.c */
