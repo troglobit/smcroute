@@ -39,21 +39,20 @@
 
 #define SMCROUTE_SYSTEM_CONF "/etc/smcroute.conf"
 
+int running    = 1;
 int background = 1;
-int start_daemon = 0;
-int do_debug_logging = 0;
-const char *script_exec = NULL;
+int do_daemon  = 0;
+int do_syslog  = 0;
 
-static int         running   = 1;
-static const char *conf_file = SMCROUTE_SYSTEM_CONF;
-
-extern char *__progname;
+const        char *script_exec = NULL;
+static const char *conf_file   = SMCROUTE_SYSTEM_CONF;
+extern       char *__progname;
 static const char version_info[] =
 	"SMCRoute version " PACKAGE_VERSION
 #ifdef BUILD
         " build " BUILD
 #endif
-        "\n";
+	;
 
 /*
  * Counts the number of arguments belonging to an option. Option is any argument
@@ -85,12 +84,12 @@ static int num_option_arguments(const char *argv[])
 static void read_conf_file(const char *conf_file)
 {
 	if (access(conf_file, R_OK)) {
-		smclog(LOG_NOTICE, 0, "No configuration file, %s -- waiting for command(s)", conf_file);
+		smclog(LOG_NOTICE, "No configuration file, %s -- waiting for command(s)", conf_file);
 		return;
 	}
 
 	if (parse_conf_file(conf_file))
-		smclog(LOG_WARNING, errno, "Failed reading %s", conf_file);
+		smclog(LOG_WARNING, "Failed reading %s: %m", conf_file);
 }
 
 /* Cleans up, i.e. releases allocated resources. Called via atexit() */
@@ -101,7 +100,7 @@ static void clean(void)
 	mcgroup4_disable();
 	mcgroup6_disable();
 	ipc_exit();
-	smclog(LOG_NOTICE, 0, "Exiting.");
+	smclog(LOG_NOTICE, "Exiting.");
 }
 
 static void restart(void)
@@ -145,7 +144,7 @@ static int read_mroute4_socket(void)
 		iface = iface_find_by_vif(mroute.inbound);
 		if (!iface) {
 			/* TODO: Add support for dynamically re-enumerating VIFs at runtime! */
-			smclog(LOG_WARNING, 0, "No VIF for possibly dynamic inbound iface %s, cannot add mroute dynamically.", mroute.inbound);
+			smclog(LOG_WARNING, "No VIF for possibly dynamic inbound iface %s, cannot add mroute dynamically.", mroute.inbound);
 			return 1;
 		}
 
@@ -157,7 +156,7 @@ static int read_mroute4_socket(void)
 			mrt.version = 4;
 			mrt.u.mroute4 = mroute;
 			if (run_script(&mrt))
-				smclog(LOG_WARNING, 0, "Failed calling %s with a new multicast route.", script_exec);
+				smclog(LOG_WARNING, "Failed calling %s with a new multicast route.", script_exec);
 		}
 	}
 
@@ -188,7 +187,7 @@ static int read_ipc_command(void)
 	if (!packet) {
 		/* Skip logging client disconnects */
 		if (errno != ECONNRESET)
-			smclog(LOG_WARNING, errno, "Failed receving IPC message from client");
+			smclog(LOG_WARNING, "Failed receving IPC message from client: %m");
 		return 1;
 	}
 
@@ -196,24 +195,24 @@ static int read_ipc_command(void)
 	case 'a':
 	case 'r':
 		if ((str = cmd_convert_to_mroute(&mroute, packet))) {
-			smclog(LOG_WARNING, 0, str);
-			ipc_send(log_last_message, strlen(log_last_message) + 1);
+			smclog(LOG_WARNING, "%s", str);
+			ipc_send(log_message, strlen(log_message) + 1);
 			break;
 		}
 
 		if (mroute.version == 4) {
 			if ((packet->cmd == 'a' && mroute4_add(&mroute.u.mroute4))
 			    || (packet->cmd == 'r' && mroute4_del(&mroute.u.mroute4))) {
-				ipc_send(log_last_message, strlen(log_last_message) + 1);
+				ipc_send(log_message, strlen(log_message) + 1);
 				break;
 			}
 		} else {
 #ifndef HAVE_IPV6_MULTICAST_ROUTING
-			smclog(LOG_WARNING, 0, "IPv6 multicast routing support disabled.");
+			smclog(LOG_WARNING, "IPv6 multicast routing support disabled.");
 #else
 			if ((packet->cmd == 'a' && mroute6_add(&mroute.u.mroute6))
 			    || (packet->cmd == 'r' && mroute6_del(&mroute.u.mroute6))) {
-				ipc_send(log_last_message, strlen(log_last_message) + 1);
+				ipc_send(log_message, strlen(log_message) + 1);
 				break;
 			}
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
@@ -236,8 +235,8 @@ static int read_ipc_command(void)
 			if (!*groupstr
 			    || !inet_aton(groupstr, &group)
 			    || !IN_MULTICAST(ntohl(group.s_addr))) {
-				smclog(LOG_WARNING, 0, "Invalid multicast group: %s", groupstr);
-				ipc_send(log_last_message, strlen(log_last_message) + 1);
+				smclog(LOG_WARNING, "Invalid multicast group: %s", groupstr);
+				ipc_send(log_message, strlen(log_message) + 1);
 				break;
 			}
 
@@ -248,7 +247,7 @@ static int read_ipc_command(void)
 				result = mcgroup4_leave(ifname, group);
 		} else {	/* IPv6 */
 #ifndef HAVE_IPV6_MULTICAST_HOST
-			smclog(LOG_WARNING, 0, "IPv6 multicast support disabled.");
+			smclog(LOG_WARNING, "IPv6 multicast support disabled.");
 #else
 			struct in6_addr group;
 
@@ -256,8 +255,8 @@ static int read_ipc_command(void)
 			if (!*groupstr
 			    || (inet_pton(AF_INET6, groupstr, &group) <= 0)
 			    || !IN6_IS_ADDR_MULTICAST(&group)) {
-				smclog(LOG_WARNING, 0, "Invalid multicast group: %s", groupstr);
-				ipc_send(log_last_message, strlen(log_last_message) + 1);
+				smclog(LOG_WARNING, "Invalid multicast group: %s", groupstr);
+				ipc_send(log_message, strlen(log_message) + 1);
 				break;
 			}
 
@@ -271,7 +270,7 @@ static int read_ipc_command(void)
 
 		/* failed */
 		if (result) {
-			ipc_send(log_last_message, strlen(log_last_message) + 1);
+			ipc_send(log_message, strlen(log_message) + 1);
 			break;
 		}
 
@@ -300,7 +299,7 @@ static void handler(int sig)
 		break;
 
 	case SIGHUP:
-		smclog(LOG_NOTICE, 0, "Got SIGHUP, reloading %s ...", conf_file);
+		smclog(LOG_NOTICE, "Got SIGHUP, reloading %s ...", conf_file);
 		restart();
 		read_conf_file(conf_file);
 		break;
@@ -345,7 +344,7 @@ static int server_loop(int sd)
 		if (result <= 0) {
 			/* Log all errors, except when signalled, ignore failures. */
 			if (EINTR != errno)
-				smclog(LOG_WARNING, errno, "select() failure");
+				smclog(LOG_WARNING, "Failed call to select() in server_loop(): %m");
 			continue;
 		}
 
@@ -372,7 +371,7 @@ static int start_server(void)
 	int sd, api = 0, busy = 0;
 
 	/* Hello world! */
-	smclog(LOG_NOTICE, 0, "%s", version_info);
+	smclog(LOG_NOTICE, "%s", version_info);
 
 	/* Build list of multicast-capable physical interfaces that
 	 * are currently assigned an IP address. */
@@ -396,15 +395,15 @@ static int start_server(void)
 	 * otherwise we abort the server initialization. */
 	if (!api) {
 		if (busy)
-			smclog(LOG_INIT, 0, "Another multicast routing application is already running.");
+			smclog(LOG_INIT, "Another multicast routing application is already running.");
 		else
-			smclog(LOG_INIT, 0, "Kernel does not support multicast routing.");
+			smclog(LOG_INIT, "Kernel does not support multicast routing.");
 		exit(1);
 	}
 
 	sd = ipc_server_init();
 	if (sd < 0)
-		smclog(LOG_WARNING, errno, "Failed setting up IPC socket, client communication disabled");
+		smclog(LOG_WARNING, "Failed setting up IPC socket, client communication disabled: %m");
 
 	atexit(clean);
 	signal_init();
@@ -412,7 +411,7 @@ static int start_server(void)
 
 	/* Everything setup, notify any clients by creating the pidfile */
 	if (pidfile(NULL))
-		smclog(LOG_WARNING, errno, "Failed creating pidfile");
+		smclog(LOG_WARNING, "Failed creating pidfile: %m");
 
 	return server_loop(sd);
 }
@@ -428,24 +427,23 @@ static int send_commands(int cmdnum, struct cmd *cmdv[])
 	while (ipc_client_init() && !result) {
 		switch (errno) {
 		case EACCES:
-			smclog(LOG_ERR, EACCES, "Need root privileges to connect to daemon");
+			smclog(LOG_ERR, "Need root privileges to connect to daemon: %m");
 			result = 1;
 			goto error;
 
 		case ENOENT:
 		case ECONNREFUSED:
-			/* When starting daemon, give it 30 times a 1/10 second to get ready */
-			if (start_daemon && --retry_count) {
+			if (--retry_count) {
 				usleep(100000);
 				continue;
 			}
 
-			smclog(LOG_WARNING, errno, "Daemon not running");
+			smclog(LOG_WARNING, "Daemon not running: %m");
 			result = 1;
 			goto error;
 
 		default:
-			smclog(LOG_WARNING, errno, "Failed connecting to daemon");
+			smclog(LOG_WARNING, "Failed connecting to daemon: %m");
 			result = 1;
 			goto error;
 		}
@@ -463,7 +461,7 @@ static int send_commands(int cmdnum, struct cmd *cmdv[])
 		/* Wait here for reply */
 		rlen = ipc_receive(buf, MX_CMDPKT_SZ);
 		if (slen < 0 || rlen < 0) {
-			smclog(LOG_WARNING, errno, "Communication with daemon failed");
+			smclog(LOG_WARNING, "Communication with daemon failed: %m");
 			result = 1;
 			break;
 		}
@@ -536,9 +534,6 @@ int main(int argc, const char *argv[])
 	unsigned int cmdnum = 0;
 	struct cmd *cmdv[16];
 
-	/* init syslog */
-	openlog(__progname, LOG_PID, LOG_DAEMON);
-
 	if (argc <= 1)
 		return usage(1);
 
@@ -581,7 +576,7 @@ int main(int argc, const char *argv[])
 			return 0;
 
 		case 'd':	/* daemon */
-			start_daemon = 1;
+			do_daemon = 1;
 			continue;
 
 		case 'n':	/* run daemon in foreground, i.e., do not fork */
@@ -601,7 +596,7 @@ int main(int argc, const char *argv[])
 			continue;
 
 		case 'D':
-			do_debug_logging = 1;
+			log_level = LOG_DEBUG;
 			continue;
 
 		default:	/* unknown option */
@@ -624,22 +619,28 @@ int main(int argc, const char *argv[])
 		cmdnum++;
 	}
 
-	if (start_daemon) {
+	if (do_daemon) {
 		if (geteuid() != 0) {
-			smclog(LOG_ERR, 0, "Need root privileges to start %s", __progname);
+			smclog(LOG_ERR, "Need root privileges to start %s", __progname);
 			return 1;
 		}
 
 		if (script_exec && access(script_exec, X_OK)) {
-			smclog(LOG_ERR, 0, "%s is not an executable, exiting.", script_exec);
+			smclog(LOG_ERR, "%s is not an executable, exiting.", script_exec);
 			return 1;
 		}
 
 		if (background) {
+			do_syslog = 1;
 			if (daemon(0, 0) < 0) {
-				smclog(LOG_ERR, 0, "Failed daemonizing");
+				smclog(LOG_ERR, "Failed daemonizing: %m");
 				return 1;
 			}
+		}
+
+		if (do_syslog) {
+			openlog(__progname, LOG_PID, LOG_DAEMON);
+			setlogmask(LOG_UPTO(log_level));
 		}
 
 		return start_server();

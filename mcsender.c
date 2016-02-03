@@ -27,7 +27,7 @@
 
 #include "mclab.h"
 
-int do_debug_logging = 0;
+int do_syslog = 0;
 
 static const char Usage[] = "mcsender [-t<n>] [-i<ifname>] <ip-address:port>\n";
 static const char McMsg[] = "this is the test message from mclab/mcsender\n";
@@ -67,7 +67,7 @@ int main(int ArgCn, char *ArgVc[])
 			switch (*++Pt) {
 
 			case 'D':
-				do_debug_logging = 1;
+				log_level = LOG_DEBUG;
 				break;
 
 			case 't':
@@ -114,7 +114,7 @@ int main(int ArgCn, char *ArgVc[])
 
 		UdpSock = socket(TarAdr.ss_family, SOCK_DGRAM, IPPROTO_UDP);
 		if (UdpSock < 0)  {
-			smclog(LOG_ERR, errno, "UDP socket open");
+			smclog(LOG_ERR, "UDP socket open: %m");
 			exit(255);
 		}
 
@@ -125,7 +125,7 @@ int main(int ArgCn, char *ArgVc[])
 
 		while (1) {
 			if (sendto(UdpSock, McMsg, sizeof(McMsg), 0, SA(&TarAdr), TarAdrLen) != sizeof(McMsg))
-				smclog(LOG_WARNING, errno, "send to UDP socket");
+				smclog(LOG_WARNING, "send to UDP socket: %m");
 
 			sleep(1);
 		}
@@ -142,7 +142,7 @@ static void usage(void)
 static void SetTtl4(int Sock, unsigned Ttl)
 {
 	if (setsockopt(Sock, IPPROTO_IP, IP_MULTICAST_TTL, &Ttl, sizeof(Ttl))) {
-		smclog(LOG_ERR, errno, "set IP_MULTICAST_TTL");
+		smclog(LOG_ERR, "set IP_MULTICAST_TTL: %m");
 		exit(255);
 	}
 }
@@ -156,7 +156,7 @@ static void SetOif4(int Sock, char *ifname)
 	strncpy(IfReq.ifr_name, ifname, sizeof(IfReq.ifr_name));
 
 	if (ioctl(Sock, SIOCGIFADDR, &IfReq) < 0) {
-		smclog(LOG_ERR, errno, "ioctl SIOCGIFADDR");
+		smclog(LOG_ERR, "ioctl SIOCGIFADDR: %m");
 		exit(255);
 	}
 
@@ -172,7 +172,7 @@ static void SetOif4(int Sock, char *ifname)
 	}
 
 	if (setsockopt(Sock, IPPROTO_IP, IP_MULTICAST_IF, &Sin4->sin_addr, sizeof(struct in_addr))) {
-		smclog(LOG_ERR, errno, "set IP_MULTICAST_IF");
+		smclog(LOG_ERR, "set IP_MULTICAST_IF: %m");
 		exit(255);
 	}
 }
@@ -180,7 +180,7 @@ static void SetOif4(int Sock, char *ifname)
 static void SetTtl6(int Sock, unsigned Ttl)
 {
 	if (setsockopt(Sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &Ttl, sizeof(Ttl))) {
-		smclog(LOG_ERR, errno, "set IPV6_MULTICAST_HOPS");
+		smclog(LOG_ERR, "set IPV6_MULTICAST_HOPS: %m");
 		exit(255);
 	}
 }
@@ -192,7 +192,7 @@ static void SetOif6(int Sock, char *ifname)
 	ifindex = if_nametoindex(ifname);
 
 	if (setsockopt(Sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, &ifindex, sizeof(ifindex))) {
-		smclog(LOG_ERR, errno, "set IPV6_MULTICAST_IF");
+		smclog(LOG_ERR, "set IPV6_MULTICAST_IF: %m");
 		exit(255);
 	}
 }
@@ -219,7 +219,7 @@ static void getSockAdr(struct sockaddr *SaPt, socklen_t * SaLenPt, char *AddrSt,
 		Sin4->sin_port = htons(atoi(PortSt));
 
 		if (inet_pton(AF_INET, AddrSt, &Sin4->sin_addr) <= 0) {
-			smclog(LOG_ERR, errno, "inet_pton failed for address %s", AddrSt);
+			smclog(LOG_ERR, "inet_pton failed for address %s: %m", AddrSt);
 			exit(255);
 		}
 
@@ -232,7 +232,7 @@ static void getSockAdr(struct sockaddr *SaPt, socklen_t * SaLenPt, char *AddrSt,
 		Sin6->sin6_port = htons(atoi(PortSt));
 
 		if (inet_pton(AF_INET6, AddrSt, &Sin6->sin6_addr) <= 0) {
-			smclog(LOG_ERR, errno, "inet_pton failed for address %s", AddrSt);
+			smclog(LOG_ERR, "inet_pton failed for address %s: %m", AddrSt);
 			exit(255);
 		}
 

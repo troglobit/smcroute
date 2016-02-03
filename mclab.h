@@ -103,7 +103,7 @@ struct iface {
 	short mif;
 };
 
-extern int do_debug_logging;
+extern int do_syslog;
 
 /* ifvc.c */
 #define MAX_IF         40	// max. number of interfaces recognized
@@ -220,15 +220,13 @@ int  mcgroup6_join    (const char *ifname, struct in6_addr group);
 int  mcgroup6_leave   (const char *ifname, struct in6_addr group);
 void mcgroup6_disable (void);
 
-/* syslog.c */
+/* log.c */
 #define LOG_INIT 10
 
-extern int log_stderr;		/* Log threshold for stderr, LOG_WARNING .... LOG_DEBUG */
-extern int log_last_severity;	/* last logged serverity   */
-extern int log_last_error;	/* last logged errno value */
-extern char log_last_message[128];	/* last logged message     */
+extern int  log_level;
+extern char log_message[128];
 
-void smclog(int severity, int code, const char *fmt, ...);
+void smclog(int severity, const char *fmt, ...);
 
 /* parse-conf.c */
 int run_script(mroute_t *mroute);

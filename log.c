@@ -21,51 +21,38 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
+#define SYSLOG_NAMES
 #include "mclab.h"
 
-int  log_stderr = LOG_WARNING;
-int  log_last_severity;
-int  log_last_error;
-char log_last_message[128];
+int  log_level = LOG_NOTICE;
+char log_message[128];
 
 /**
- * smclog - Log message to syslog and stderr
- * @severity: Standard syslog() severity levels or %LOG_INIT
- * @code:     Error code, @errno, or zero if unused
+ * smclog - Log message to syslog or stderr
+ * @severity: Standard syslog() severity levels
  * @fmt:      Standard printf() formatted message to log
  *
  * Logs a standard printf() formatted message to syslog and stderr when
- * @severity is greater than the @log_stderr threshold.  When @code is
+ * @severity is greater than the @log_level threshold.  When @code is
  * set it is appended to the log, along with the error message.
  *
  * When @severity is %LOG_ERR or worse this function will call exit().
  */
-void smclog(int severity, int code, const char *fmt, ...)
+void smclog(int severity, const char *fmt, ...)
 {
-	int len = 0;
 	va_list args;
-	const char *err = (code <= 0) ? NULL : (const char *)strerror(code);
-
-	/* Skip logging for severities 'DEBUG' if do_debug_logging is false */
-	if (severity == LOG_DEBUG && !do_debug_logging)
-		return;
 
 	va_start(args, fmt);
-	len += vsnprintf(log_last_message + len, sizeof(log_last_message) - len, fmt, args);
-	if (err)
-		snprintf(log_last_message + len, sizeof(log_last_message) - len, ". Error %d: %s", code, err);
+	vsnprintf(log_message, sizeof(log_message), fmt, args);
 	va_end(args);
 
-	/* update our global Last... variables */
-	log_last_severity = severity;
-	log_last_error = code;
+	if (do_syslog) {
+		syslog(severity, "%s", log_message);
+		return;
+	}
 
-	/* control logging to stderr */
-	if (severity < log_stderr || severity == LOG_INIT)
-		fprintf(stderr, "%s\n", log_last_message);
-
-	/* always to syslog */
-	syslog((severity == LOG_INIT) ? LOG_ERR : severity, "%s", log_last_message);
+	if (severity < log_level || severity == LOG_INIT)
+		fprintf(stderr, "%s\n", log_message);
 }
 
 /**

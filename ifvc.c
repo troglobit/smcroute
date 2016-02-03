@@ -49,12 +49,12 @@ void iface_init(void)
 
 	iface_list = calloc(MAX_IF, sizeof(struct iface));
 	if (!iface_list) {
-		smclog(LOG_ERR, errno, "Failed allocating space for interfaces");
+		smclog(LOG_ERR, "Failed allocating space for interfaces: %m");
 		exit(255);
 	}
 
 	if (getifaddrs(&ifaddr) == -1) {
-		smclog(LOG_ERR, errno, "Failed retrieving interface addresses");
+		smclog(LOG_ERR, "Failed retrieving interface addresses: %m");
 		exit(255);
 	}
 

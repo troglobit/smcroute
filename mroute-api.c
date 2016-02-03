@@ -101,7 +101,7 @@ int mroute4_enable(void)
 	mroute4_socket = socket(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_IGMP);
 	if (mroute4_socket < 0) {
 		if (ENOPROTOOPT == errno)
-			smclog(LOG_WARNING, 0, "Kernel does not support IPv4 multicast routing, skipping ...");
+			smclog(LOG_WARNING, "Kernel does not support IPv4 multicast routing, skipping ...");
 
 		return -1;
 	}
@@ -109,11 +109,11 @@ int mroute4_enable(void)
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_INIT, (void *)&arg, sizeof(arg))) {
 		switch (errno) {
 		case EADDRINUSE:
-			smclog(LOG_INIT, errno, "IPv4 multicast routing API already in use");
+			smclog(LOG_INIT, "IPv4 multicast routing API already in use: %m");
 			break;
 
 		default:
-			smclog(LOG_INIT, errno, "Failed initializing IPv4 multicast routing API");
+			smclog(LOG_INIT, "Failed initializing IPv4 multicast routing API: %m");
 			break;
 		}
 
@@ -160,7 +160,7 @@ void mroute4_disable(void)
 
 	/* Drop all kernel routes set by smcroute */
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_DONE, NULL, 0))
-		smclog(LOG_WARNING, errno, "Failed shutting down IPv4 multicast routing socket.");
+		smclog(LOG_WARNING, "Failed shutting down IPv4 multicast routing socket: %m");
 
 	close(mroute4_socket);
 	mroute4_socket = -1;
@@ -196,7 +196,8 @@ static int mroute4_add_vif(struct iface *iface)
 
 	/* no more space */
 	if (vif == -1) {
-		smclog(LOG_WARNING, ENOMEM, "Kernel MAXVIFS (%d) too small for number of interfaces", MAXVIFS);
+		errno = ENOMEM;
+		smclog(LOG_WARNING, "Kernel MAXVIFS (%d) too small for number of interfaces: %m", MAXVIFS);
 		return 1;
 	}
 
@@ -208,11 +209,11 @@ static int mroute4_add_vif(struct iface *iface)
 	vc.vifc_lcl_addr.s_addr = iface->inaddr.s_addr;
 	vc.vifc_rmt_addr.s_addr = INADDR_ANY;
 
-	smclog(LOG_DEBUG, 0, "Iface %s => VIF %d index %d flags 0x%04x",
+	smclog(LOG_DEBUG, "Iface %s => VIF %d index %d flags 0x%04x",
 	       iface->name, vc.vifc_vifi, iface->ifindex, vc.vifc_flags);
 
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_VIF, (void *)&vc, sizeof(vc))) {
-		smclog(LOG_ERR, errno, "Failed adding VIF for iface %s", iface->name);
+		smclog(LOG_ERR, "Failed adding VIF for iface %s: %m", iface->name);
 		exit(255);
 	}
 
@@ -237,19 +238,19 @@ static int __mroute4_add (mroute4_t *route)
 
 	/* copy the TTL vector */
 	if (sizeof(mc.mfcc_ttls[0]) != sizeof(route->ttl[0]) || ARRAY_ELEMENTS(mc.mfcc_ttls) != ARRAY_ELEMENTS(route->ttl)) {
-		smclog(LOG_ERR, 0, "Critical data type validation error in %s!", __FILE__);
+		smclog(LOG_ERR, "Critical data type validation error in %s!", __FILE__);
 		exit(255);
 	}
 
 	memcpy(mc.mfcc_ttls, route->ttl, ARRAY_ELEMENTS(mc.mfcc_ttls) * sizeof(mc.mfcc_ttls[0]));
 
-	smclog(LOG_DEBUG, 0, "Add %s -> %s from VIF %d",
+	smclog(LOG_DEBUG, "Add %s -> %s from VIF %d",
 	       inet_ntop(AF_INET, &mc.mfcc_origin,   origin, INET_ADDRSTRLEN),
 	       inet_ntop(AF_INET, &mc.mfcc_mcastgrp, group,  INET_ADDRSTRLEN), mc.mfcc_parent);
 
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_MFC, (void *)&mc, sizeof(mc))) {
 		result = errno;
-		smclog(LOG_WARNING, errno, "Failed adding IPv4 multicast route");
+		smclog(LOG_WARNING, "Failed adding IPv4 multicast route: %m");
 	}
 
 	return result;
@@ -266,13 +267,13 @@ static int __mroute4_del (mroute4_t *route)
 	mc.mfcc_origin = route->sender;
 	mc.mfcc_mcastgrp = route->group;
 
-	smclog(LOG_DEBUG, 0, "Del %s -> %s",
+	smclog(LOG_DEBUG, "Del %s -> %s",
 	       inet_ntop(AF_INET, &mc.mfcc_origin,  origin, INET_ADDRSTRLEN),
 	       inet_ntop(AF_INET, &mc.mfcc_mcastgrp, group, INET_ADDRSTRLEN));
 
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_DEL_MFC, (void *)&mc, sizeof(mc))) {
 		result = errno;
-		smclog(LOG_WARNING, errno, "Failed removing IPv4 multicast route");
+		smclog(LOG_WARNING, "Failed removing IPv4 multicast route: %m");
 	}
 
 	return result;
@@ -332,7 +333,7 @@ int mroute4_add(mroute4_t *route)
 		mroute4_t *entry = malloc(sizeof(mroute4_t));
 
 		if (!entry) {
-			smclog(LOG_WARNING, errno, "Failed adding (*,G) multicast route");
+			smclog(LOG_WARNING, "Failed adding (*,G) multicast route: %m");
 			return errno;
 		}
 
@@ -447,18 +448,18 @@ int mroute6_enable(void)
 
 	if ((mroute6_socket = socket(AF_INET6, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMPV6)) < 0) {
 		if (ENOPROTOOPT == errno)
-			smclog(LOG_WARNING, 0, "Kernel does not support IPv6 multicast routing, skipping ...");
+			smclog(LOG_WARNING, "Kernel does not support IPv6 multicast routing, skipping ...");
 
 		return -1;
 	}
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_INIT, (void *)&arg, sizeof(arg))) {
 		switch (errno) {
 		case EADDRINUSE:
-			smclog(LOG_INIT, errno, "IPv6 multicast routing API already in use");
+			smclog(LOG_INIT, "IPv6 multicast routing API already in use: %m");
 			break;
 
 		default:
-			smclog(LOG_INIT, errno, "Failed initializing IPv6 multicast routing API");
+			smclog(LOG_INIT, "Failed initializing IPv6 multicast routing API: %m");
 			break;
 		}
 
@@ -476,7 +477,7 @@ int mroute6_enable(void)
 	 * is not set on MRT6_INIT so we have to do this manually */
 	if (proc_set_val(IPV6_ALL_MC_FORWARD, 1)) {
 		if (errno != EACCES) {
-			smclog(LOG_ERR, errno, "Failed enabling IPv6 multicast forwarding");
+			smclog(LOG_ERR, "Failed enabling IPv6 multicast forwarding: %m");
 			exit(255);
 		}
 	}
@@ -509,7 +510,7 @@ void mroute6_disable(void)
 		return;
 
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_DONE, NULL, 0))
-		smclog(LOG_WARNING, errno, "Failed shutting down IPv6 multicast routing socket.");
+		smclog(LOG_WARNING, "Failed shutting down IPv6 multicast routing socket: %m");
 
 	close(mroute6_socket);
 	mroute6_socket = -1;
@@ -534,7 +535,8 @@ static int mroute6_add_mif(struct iface *iface)
 
 	/* no more space */
 	if (mif == -1) {
-		smclog(LOG_WARNING, ENOMEM, "Kernel MAXMIFS (%d) too small for number of interfaces", MAXMIFS);
+		errno = ENOMEM;
+		smclog(LOG_WARNING, "Kernel MAXMIFS (%d) too small for number of interfaces: %m", MAXMIFS);
 		return 1;
 	}
 
@@ -549,11 +551,11 @@ static int mroute6_add_mif(struct iface *iface)
 	mc.vifc_rate_limit = 0;	/* hopefully no limit */
 #endif
 
-	smclog(LOG_DEBUG, 0, "Iface %s => MIF %d index %d flags 0x%04x",
+	smclog(LOG_DEBUG, "Iface %s => MIF %d index %d flags 0x%04x",
 	       iface->name, mc.mif6c_mifi, mc.mif6c_pifi, mc.mif6c_flags);
 
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MIF, (void *)&mc, sizeof(mc))) {
-		smclog(LOG_ERR, errno, "Failed adding MIF for iface %s", iface->name);
+		smclog(LOG_ERR, "Failed adding MIF for iface %s: %m", iface->name);
 		exit(255);
 	}
 
@@ -590,14 +592,14 @@ int mroute6_add(mroute6_t *route)
 			IF_SET(i, &mc.mf6cc_ifset);
 	}
 
-	smclog(LOG_DEBUG, 0, "Add %s -> %s from MIF %d",
+	smclog(LOG_DEBUG, "Add %s -> %s from MIF %d",
 	       inet_ntop(AF_INET6, &mc.mf6cc_origin.sin6_addr, origin, INET6_ADDRSTRLEN),
 	       inet_ntop(AF_INET6, &mc.mf6cc_mcastgrp.sin6_addr, group, INET6_ADDRSTRLEN),
 	       mc.mf6cc_parent);
 
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MFC, (void *)&mc, sizeof(mc))) {
 		result = errno;
-		smclog(LOG_WARNING, errno, "Failed adding IPv6 multicast route");
+		smclog(LOG_WARNING, "Failed adding IPv6 multicast route: %m");
 	}
 
 	return result;
@@ -623,13 +625,13 @@ int mroute6_del(mroute6_t *route)
 	mc.mf6cc_origin = route->sender;
 	mc.mf6cc_mcastgrp = route->group;
 
-	smclog(LOG_DEBUG, 0, "Del %s -> %s",
+	smclog(LOG_DEBUG, "Del %s -> %s",
 	       inet_ntop(AF_INET6, &mc.mf6cc_origin.sin6_addr, origin, INET6_ADDRSTRLEN),
 	       inet_ntop(AF_INET6, &mc.mf6cc_mcastgrp.sin6_addr, group, INET6_ADDRSTRLEN));
 
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_DEL_MFC, (void *)&mc, sizeof(mc))) {
 		result = errno;
-		smclog(LOG_WARNING, errno, "Failed removing IPv6 multicast route");
+		smclog(LOG_WARNING, "Failed removing IPv6 multicast route: %m");
 	}
 
 	return result;
