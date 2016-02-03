@@ -204,7 +204,12 @@ static int mroute4_add_vif(struct iface *iface)
 	vc.vifc_flags = 0;      /* no tunnel, no source routing, register ? */
 	vc.vifc_threshold = 1;  /* Packet TTL must be at least 1 to pass them */
 	vc.vifc_rate_limit = 0;	/* hopefully no limit */
+#ifdef VIFF_USE_IFINDEX		/* Register VIF using ifindex, not lcl_addr, since Linux 2.6.33 */
+	vc.vifc_flags |= VIFF_USE_IFINDEX;
+	vc.vifc_lcl_ifindex = iface->ifindex;
+#else
 	vc.vifc_lcl_addr.s_addr = iface->inaddr.s_addr;
+#endif
 	vc.vifc_rmt_addr.s_addr = INADDR_ANY;
 
 	smclog(LOG_DEBUG, "Map iface %-8s => VIF %-3d ifindex %d flags 0x%04x",
