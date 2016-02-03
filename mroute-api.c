@@ -549,7 +549,7 @@ static int mroute6_add_mif(struct iface *iface)
 	mc.vifc_rate_limit = 0;	/* hopefully no limit */
 #endif
 
-	smclog(LOG_DEBUG, "Iface %s => MIF %d index %d flags 0x%04x",
+	smclog(LOG_DEBUG, "Map iface %-8s => MIF %-3d ifindex %d flags 0x%04x",
 	       iface->name, mc.mif6c_mifi, mc.mif6c_pifi, mc.mif6c_flags);
 
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MIF, (void *)&mc, sizeof(mc))) {
