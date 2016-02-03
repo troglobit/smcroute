@@ -113,7 +113,7 @@ static int num_option_arguments(const char *argv[])
 static void read_conf_file(const char *conf_file)
 {
 	if (access(conf_file, R_OK)) {
-		smclog(LOG_WARNING, errno, "Failed loading %s", conf_file);
+		smclog(LOG_NOTICE, 0, "No configuration file, %s -- waiting for command(s)", conf_file);
 		return;
 	}
 
