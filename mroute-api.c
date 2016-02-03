@@ -207,7 +207,7 @@ static int mroute4_add_vif(struct iface *iface)
 	vc.vifc_lcl_addr.s_addr = iface->inaddr.s_addr;
 	vc.vifc_rmt_addr.s_addr = INADDR_ANY;
 
-	smclog(LOG_DEBUG, "Iface %s => VIF %d index %d flags 0x%04x",
+	smclog(LOG_DEBUG, "Map iface %-8s => VIF %-3d ifindex %d flags 0x%04x",
 	       iface->name, vc.vifc_vifi, iface->ifindex, vc.vifc_flags);
 
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_VIF, (void *)&vc, sizeof(vc))) {
