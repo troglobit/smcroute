@@ -500,7 +500,7 @@ static int usage(int code)
 	       "Client:\n"
 	       "  -h       This help text\n"
 	       "  -k       Kill a running daemon\n"
-	       "  -v       Show version and enable verbose logging\n"
+	       "  -v       Show program version\n"
 	       "\n"
 	       "  -a ARGS  Add a multicast route\n"
 	       "  -r ARGS  Remove a multicast route\n"
@@ -576,10 +576,9 @@ int main(int argc, const char *argv[])
 		case 'h':	/* help */
 			return usage(0);
 
-		case 'v':	/* verbose */
+		case 'v':	/* version */
 			fputs(version_info, stderr);
-			log_stderr = LOG_DEBUG;
-			continue;
+			return 0;
 
 		case 'd':	/* daemon */
 			start_daemon = 1;
