@@ -36,7 +36,9 @@ char log_message[128];
  */
 int loglvl(const char *level)
 {
-	for (int i = 0; prioritynames[i].c_name; i++) {
+	int i;
+
+	for (i = 0; prioritynames[i].c_name; i++) {
 		size_t len = MIN(strlen(prioritynames[i].c_name), strlen(level));
 
 		if (!strncasecmp(prioritynames[i].c_name, level, len))
