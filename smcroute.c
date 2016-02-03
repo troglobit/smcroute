@@ -597,7 +597,7 @@ int main(int argc, const char *argv[])
 			return usage(0);
 
 		case 'v':	/* version */
-			fputs(version_info, stderr);
+			fprintf(stderr, "%s\n", version_info);
 			return 0;
 
 		case 'd':	/* daemon */
