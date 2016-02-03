@@ -55,34 +55,6 @@ static const char version_info[] =
 #endif
         "\n";
 
-static const char usage_info[] =
-	"Usage: smcroute [OPTIONS]... [ARGS]...\n"
-	"\n"
-	"  -d       Start daemon\n"
-	"  -n       Run daemon in foreground\n"
-	"  -f FILE  File to use instead of default " SMCROUTE_SYSTEM_CONF "\n"
-	"  -s SCRIPT  Script to call on startup/reload when all routes have\n"
-	"             been installed. Or when a source-less (ANY) route has\n"
-	"             been installed.\n"
-	"  -k       Kill a running daemon\n"
-	"\n"
-	"  -h       This help text\n"
-	"  -D       Debug logging\n"
-	"  -v       Show version and enable verbose logging\n"
-	"\n"
-	"  -a ARGS  Add a multicast route\n"
-	"  -r ARGS  Remove a multicast route\n"
-	"\n"
-	"  -j ARGS  Join a multicast group\n"
-	"  -l ARGS  Leave a multicast group\n"
-	"\n"
-	"     <------------- INBOUND -------------->  <----- OUTBOUND ------>\n"
-	"  -a <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>  <IFNAME> [<IFNAME> ...]\n"
-	"  -r <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>\n"
-	"\n"
-	"  -j <IFNAME> <MULTICAST-GROUP>\n"
-	"  -l <IFNAME> <MULTICAST-GROUP>\n";
-
 /*
  * Counts the number of arguments belonging to an option. Option is any argument
  * begining with a '-'.
@@ -512,12 +484,39 @@ error:
 	return result;
 }
 
-static int usage(void)
+static int usage(int code)
 {
-	fputs(version_info, stderr);
-	fputs(usage_info, stderr);
+	printf("\nUsage: %s [dnkhDv] [-f FILE] [-s SCRIPT] [-a|-r ROUTE] [-j|-l GROUP]\n"
+	       "\n"
+	       "Daemon:\n"
+	       "  -d       Start daemon\n"
+	       "  -D       Debug logging\n"
+	       "  -n       Run daemon in foreground\n"
+	       "  -f FILE  File to use instead of default " SMCROUTE_SYSTEM_CONF "\n"
+	       "  -s SCRIPT  Script to call on startup/reload when all routes have\n"
+	       "             been installed. Or when a source-less (ANY) route has\n"
+	       "             been installed.\n"
+	       "\n"
+	       "Client:\n"
+	       "  -h       This help text\n"
+	       "  -k       Kill a running daemon\n"
+	       "  -v       Show version and enable verbose logging\n"
+	       "\n"
+	       "  -a ARGS  Add a multicast route\n"
+	       "  -r ARGS  Remove a multicast route\n"
+	       "\n"
+	       "  -j ARGS  Join a multicast group\n"
+	       "  -l ARGS  Leave a multicast group\n"
+	       "\n"
+	       "     <------------- INBOUND -------------->  <----- OUTBOUND ------>\n"
+	       "  -a <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>  <IFNAME> [<IFNAME> ...]\n"
+	       "  -r <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>\n"
+	       "\n"
+	       "  -j <IFNAME> <MULTICAST-GROUP>\n"
+	       "  -l <IFNAME> <MULTICAST-GROUP>\n\n"
+	       "Bug report address: %s\n\n", __progname, PACKAGE_BUGREPORT);
 
-	return 1;
+	return code;
 }
 
 /**
@@ -541,41 +540,41 @@ int main(int argc, const char *argv[])
 	openlog(__progname, LOG_PID, LOG_DAEMON);
 
 	if (argc <= 1)
-		return usage();
+		return usage(1);
 
 	/* Parse command line options */
 	for (num_opts = 1; (num_opts = num_option_arguments(argv += num_opts));) {
 		const char *arg;
 
 		if (num_opts < 0)	/* error */
-			return usage();
+			return usage(1);
 
 		/* handle option */
 		arg = argv[0];
 		switch (arg[1]) {
 		case 'a':	/* add route */
 			if (num_opts < 5)
-				return usage();
+				return usage(1);
 			break;
 
 		case 'r':	/* remove route */
 			if (num_opts < 4)
-				return usage();
+				return usage(1);
 			break;
 
 		case 'j':	/* join */
 		case 'l':	/* leave */
 			if (num_opts != 3)
-				return usage();
+				return usage(1);
 			break;
 
 		case 'k':	/* kill daemon */
 			if (num_opts != 1)
-				return usage();
+				return usage(1);
 			break;
 
 		case 'h':	/* help */
-			return usage();
+			return usage(0);
 
 		case 'v':	/* verbose */
 			fputs(version_info, stderr);
@@ -592,13 +591,13 @@ int main(int argc, const char *argv[])
 
 		case 'f':
 			if (num_opts != 2)
-				return usage();
+				return usage(1);
 			conf_file = argv[1];
 			continue;
 
 		case 's':
 			if (num_opts != 2)
-				return usage();
+				return usage(1);
 			script_exec = argv[1];
 			continue;
 
@@ -607,13 +606,13 @@ int main(int argc, const char *argv[])
 			continue;
 
 		default:	/* unknown option */
-			return usage();
+			return usage(1);
 		}
 
 		/* Check and build command argument list. */
 		if (cmdnum >= ARRAY_ELEMENTS(cmdv)) {
 			fprintf(stderr, "Too many command options\n");
-			return usage();
+			return usage(1);
 		}
 
 		cmdv[cmdnum] = cmd_build(arg[1], argv + 1, num_opts - 1);
