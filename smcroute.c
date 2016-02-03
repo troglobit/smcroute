@@ -491,9 +491,10 @@ static int usage(int code)
 	       "  -e CMD   Script or command to call on startup/reload when all routes\n"
 	       "           have been installed. Or when a source-less (ANY) route has\n"
 	       "           been installed.\n"
+	       "  -f FILE  File to use instead of default " SMCROUTE_SYSTEM_CONF "\n"
 	       "  -L LVL   Set log level: none, err, info, notice*, debug\n"
 	       "  -n       Run daemon in foreground, useful when run from finit\n"
-	       "  -f FILE  File to use instead of default " SMCROUTE_SYSTEM_CONF "\n"
+	       "  -s       Use syslog, default unless running in foreground, -n\n"
 	       "\n"
 	       "Client:\n"
 	       "  -h       This help text\n"
@@ -581,6 +582,10 @@ int main(int argc, const char *argv[])
 
 		case 'n':	/* run daemon in foreground, i.e., do not fork */
 			background = 0;
+			continue;
+
+		case 's':	/* Force syslog even though in foreground */
+			do_syslog = 1;
 			continue;
 
 		case 'f':
