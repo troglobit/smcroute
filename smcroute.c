@@ -345,6 +345,7 @@ static void signal_init(void)
 static int server_loop(int sd)
 {
 	fd_set fds;
+
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 	int max_fd_num = MAX(sd, MAX(mroute4_socket, mroute6_socket));
 #else

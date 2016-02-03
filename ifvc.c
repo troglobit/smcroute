@@ -69,7 +69,7 @@ void iface_init(void)
 			continue;
 
 		/* Check if already added? */
-		if (iface_find_by_name (ifa->ifa_name))
+		if (iface_find_by_name(ifa->ifa_name))
 			continue;
 
 		/* Copy data from interface iterator 'ifa' */

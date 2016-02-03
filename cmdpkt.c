@@ -219,7 +219,7 @@ const char *cmd_convert_to_mroute6(struct mroute6 *mroute, const struct cmd *pac
 	 * for the 'remove' command to be compatible to the first release.
 	 */
 	if (packet->cmd == 'a') {
- 		for (arg += strlen(arg) + 1; *arg; arg += strlen(arg) + 1) {
+		for (arg += strlen(arg) + 1; *arg; arg += strlen(arg) + 1) {
 			int mif;
 
 			if ((mif = iface_get_mif_by_name(arg)) < 0)

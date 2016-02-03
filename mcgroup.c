@@ -103,7 +103,7 @@ int mcgroup4_leave(const char *ifname, struct in_addr group)
 void mcgroup4_disable(void)
 {
 	if (mcgroup4_socket != -1) {
-		close (mcgroup4_socket);
+		close(mcgroup4_socket);
 		mcgroup4_socket = -1;
 	}
 }
@@ -176,7 +176,7 @@ void mcgroup6_disable(void)
 {
 #ifdef HAVE_IPV6_MULTICAST_HOST
 	if (mcgroup6_socket != -1) {
-		close (mcgroup6_socket);
+		close(mcgroup6_socket);
 		mcgroup6_socket = -1;
 	}
 #endif /* HAVE_IPV6_MULTICAST_HOST */

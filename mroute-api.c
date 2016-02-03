@@ -129,8 +129,7 @@ int mroute4_enable(void)
 	/* Create virtual interfaces, VIFs, for all non-loopback interfaces
 	 * that have a valid IPv4 address. */
 	for (i = 0; (iface = iface_find_by_index(i)); i++) {
-		if (iface->flags & IFF_LOOPBACK ||
-		    iface->inaddr.s_addr == INADDR_ANY) {
+		if (iface->flags & IFF_LOOPBACK || iface->inaddr.s_addr == INADDR_ANY) {
 			iface->vif = -1;
 			continue;
 		}
@@ -224,7 +223,7 @@ static int mroute4_add_vif(struct iface *iface)
 }
 
 /* Actually set in kernel - called by mroute4_add() and mroute4_check_add() */
-static int __mroute4_add (mroute4_t *route)
+static int __mroute4_add(mroute4_t *route)
 {
 	int result = 0;
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
@@ -257,7 +256,7 @@ static int __mroute4_add (mroute4_t *route)
 }
 
 /* Actually remove from kernel - called by mroute4_del() */
-static int __mroute4_del (mroute4_t *route)
+static int __mroute4_del(mroute4_t *route)
 {
 	int result = 0;
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
@@ -343,7 +342,7 @@ int mroute4_add(mroute4_t *route)
 		return 0;
 	}
 
-	return __mroute4_add (route);
+	return __mroute4_add(route);
 }
 
 /**
