@@ -84,12 +84,17 @@ static int num_option_arguments(const char *argv[])
 static void read_conf_file(const char *conf_file)
 {
 	if (access(conf_file, R_OK)) {
-		smclog(LOG_NOTICE, "No configuration file, %s -- waiting for command(s)", conf_file);
+		if (errno == ENOENT)
+			smclog(LOG_NOTICE, "Configuration file %s does not exist", conf_file);
+		else
+			smclog(LOG_WARNING, "Unexpected error when accessing %s: %m", conf_file);
+
+		smclog(LOG_NOTICE, "Continuing anyway, waiting for client to connect.");
 		return;
 	}
 
 	if (parse_conf_file(conf_file))
-		smclog(LOG_WARNING, "Failed reading %s: %m", conf_file);
+		smclog(LOG_WARNING, "Failed parsing %s: %m", conf_file);
 }
 
 /* Cleans up, i.e. releases allocated resources. Called via atexit() */
