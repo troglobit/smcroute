@@ -486,16 +486,16 @@ error:
 
 static int usage(int code)
 {
-	printf("\nUsage: %s [dnkhDv] [-f FILE] [-s SCRIPT] [-a|-r ROUTE] [-j|-l GROUP]\n"
+	printf("\nUsage: %s [dnkhDv] [-f FILE] [-e CMD] [-a|-r ROUTE] [-j|-l GROUP]\n"
 	       "\n"
 	       "Daemon:\n"
 	       "  -d       Start daemon\n"
 	       "  -D       Debug logging\n"
-	       "  -n       Run daemon in foreground\n"
+	       "  -e CMD   Script or command to call on startup/reload when all routes\n"
+	       "           have been installed. Or when a source-less (ANY) route has\n"
+	       "           been installed.\n"
+	       "  -n       Run daemon in foreground, useful when run from finit\n"
 	       "  -f FILE  File to use instead of default " SMCROUTE_SYSTEM_CONF "\n"
-	       "  -s SCRIPT  Script to call on startup/reload when all routes have\n"
-	       "             been installed. Or when a source-less (ANY) route has\n"
-	       "             been installed.\n"
 	       "\n"
 	       "Client:\n"
 	       "  -h       This help text\n"
@@ -595,7 +595,7 @@ int main(int argc, const char *argv[])
 			conf_file = argv[1];
 			continue;
 
-		case 's':
+		case 'e':
 			if (num_opts != 2)
 				return usage(1);
 			script_exec = argv[1];

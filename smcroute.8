@@ -6,8 +6,11 @@
 .Nd SMCRoute, a static multicast router
 .Sh SYNOPSIS
 .Nm smcroute
-.Op OPTIONS
-.Op COMMANDS
+.Op dnkhDv
+.Op -f Ar FILE
+.Op -e Ar CMD
+.Op -a|-r Ar ROUTE
+.Op -j|-l Ar GROUP
 .Sh DESCRIPTION
 .Nm
 is a command line tool to manipulate the multicast routes of a UNIX
@@ -50,8 +53,8 @@ Run daemon in foreground, do not detach from the calling terminal.
 .It Fl f Ar FILE
 Specify an alternate configuration file, default
 .Pa /etc/smcroute.conf .
-.It Fl s Ar SCRIPT
-Specify external script to be called when
+.It Fl e Ar CMD
+Specify external script or command to be called when
 .Nm
 has loaded/reloaded all static multicast routes from the configuration
 file, or when a source-less (ANY) rule has been installed.
@@ -69,9 +72,8 @@ Stop (kill) running daemon.
 .El
 .Pp
 The
-.Fl s Ar SCRIPT
-option is useful if you want to either trigger other processes to start
-when
+.Fl e Ar CMD
+option is useful if you want to trigger other processes to start when
 .Nm
 has completed installing routes from
 .Pa /etc/smcroute.conf ,
@@ -79,7 +81,9 @@ or when a source-less (ANY) route from
 .Pa /etc/smcroute.conf .
 is matched and installed.  In the latter case
 .Nm
-calls the SCRIPT with two environment variables set:
+calls the
+.Ar CMD
+with two environment variables set:
 .Nm source ,
 and
 .Nm group .
