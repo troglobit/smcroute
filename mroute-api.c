@@ -314,6 +314,21 @@ int mroute4_dyn_add(mroute4_t *route)
 	return -1;
 }
 
+/* Experimental: cache-timeout */
+void mroute4_dyn_cache_delete(void)
+{
+	mroute4_t *entry;
+
+	if (LIST_EMPTY(&mroute4_dyn_list))
+		return;
+
+	while (mroute4_dyn_list.lh_first) {
+		__mroute4_del((mroute4_t *)mroute4_dyn_list.lh_first);
+		LIST_REMOVE(mroute4_dyn_list.lh_first, link);
+		free(mroute4_dyn_list.lh_first);
+	}
+}
+
 /**
  * mroute4_add - Add route to kernel, or save a wildcard route for later use
  * @route: Pointer to &mroute4_t IPv4 multicast route to add
