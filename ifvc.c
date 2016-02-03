@@ -50,12 +50,12 @@ void iface_init(void)
 	iface_list = calloc(MAX_IF, sizeof(struct iface));
 	if (!iface_list) {
 		smclog(LOG_ERR, errno, "Failed allocating space for interfaces");
-		return;
+		exit(255);
 	}
 
 	if (getifaddrs(&ifaddr) == -1) {
 		smclog(LOG_ERR, errno, "Failed retrieving interface addresses");
-		return;
+		exit(255);
 	}
 
 	for (ifa = ifaddr; ifa && num_ifaces < MAX_IF; ifa = ifa->ifa_next) {

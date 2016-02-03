@@ -149,14 +149,19 @@ static int daemonize(void)
 	int pid;
 
 	pid = fork();
-	if (pid < 0)
+	if (pid < 0) {
 		smclog(LOG_ERR, errno, "Cannot start in background");
+		exit(255);
+	}
+
 	if (!pid) {
 		/* Detach deamon from terminal */
 		if (close(0) < 0 || close(1) < 0 || close(2) < 0
 		    || open("/dev/null", 0) != 0 || dup2(0, 1) < 0
-		    || dup2(0, 2) < 0 || setpgid(0, 0) < 0)
+		    || dup2(0, 2) < 0 || setpgid(0, 0) < 0) {
 			smclog(LOG_ERR, errno, "Failed detaching deamon");
+			exit(255);
+		}
 	}
 
 	return pid;
@@ -607,6 +612,7 @@ int main(int argc, const char *argv[])
 			case EACCES:
 				smclog(LOG_ERR, EACCES, "Need root privileges to connect to daemon");
 				result = 1;
+				exit(255);
 				break;
 
 			case ENOENT:

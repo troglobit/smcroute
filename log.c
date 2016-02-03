@@ -66,10 +66,6 @@ void smclog(int severity, int code, const char *fmt, ...)
 
 	/* always to syslog */
 	syslog((severity == LOG_INIT) ? LOG_ERR : severity, "%s", log_last_message);
-
-	/* LOG_INIT doesn't trigger that */
-	if (severity <= LOG_ERR)
-		exit(255);
 }
 
 /**

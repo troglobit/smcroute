@@ -42,8 +42,10 @@ static void mcgroup4_init(void)
 {
 	if (mcgroup4_socket < 0) {
 		mcgroup4_socket = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-		if (mcgroup4_socket < 0)
+		if (mcgroup4_socket < 0) {
 			smclog(LOG_ERR, errno, "Failed creating IPv4 socket for communicating group membership to kernel");
+			exit(255);
+		}
 	}
 }
 

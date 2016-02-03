@@ -109,10 +109,14 @@ int main(int ArgCn, char *ArgVc[])
 
 	if (TarAdrLen)
 	{
-		int UdpSock = socket(TarAdr.ss_family, SOCK_DGRAM, IPPROTO_UDP);
+		int UdpSock;
 
-		if (UdpSock < 0)
+
+		UdpSock = socket(TarAdr.ss_family, SOCK_DGRAM, IPPROTO_UDP);
+		if (UdpSock < 0)  {
 			smclog(LOG_ERR, errno, "UDP socket open");
+			exit(255);
+		}
 
 		if (TtlVal)
 			(*SetTtl) (UdpSock, TtlVal);
@@ -137,8 +141,10 @@ static void usage(void)
 
 static void SetTtl4(int Sock, unsigned Ttl)
 {
-	if (setsockopt(Sock, IPPROTO_IP, IP_MULTICAST_TTL, &Ttl, sizeof(Ttl)))
+	if (setsockopt(Sock, IPPROTO_IP, IP_MULTICAST_TTL, &Ttl, sizeof(Ttl))) {
 		smclog(LOG_ERR, errno, "set IP_MULTICAST_TTL");
+		exit(255);
+	}
 }
 
 static void SetOif4(int Sock, char *ifname)
@@ -149,8 +155,10 @@ static void SetOif4(int Sock, char *ifname)
 	memset(&IfReq, 0, sizeof(IfReq));
 	strncpy(IfReq.ifr_name, ifname, sizeof(IfReq.ifr_name));
 
-	if (ioctl(Sock, SIOCGIFADDR, &IfReq) < 0)
+	if (ioctl(Sock, SIOCGIFADDR, &IfReq) < 0) {
 		smclog(LOG_ERR, errno, "ioctl SIOCGIFADDR");
+		exit(255);
+	}
 
 	switch (IfReq.ifr_addr.sa_family) {
 	case AF_INET:
@@ -163,16 +171,18 @@ static void SetOif4(int Sock, char *ifname)
 		exit(1);
 	}
 
-	if (setsockopt(Sock, IPPROTO_IP, IP_MULTICAST_IF,
-		       &Sin4->sin_addr, sizeof(struct in_addr)))
+	if (setsockopt(Sock, IPPROTO_IP, IP_MULTICAST_IF, &Sin4->sin_addr, sizeof(struct in_addr))) {
 		smclog(LOG_ERR, errno, "set IP_MULTICAST_IF");
+		exit(255);
+	}
 }
 
 static void SetTtl6(int Sock, unsigned Ttl)
 {
-	if (setsockopt(Sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS,
-		       &Ttl, sizeof(Ttl)))
+	if (setsockopt(Sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &Ttl, sizeof(Ttl))) {
 		smclog(LOG_ERR, errno, "set IPV6_MULTICAST_HOPS");
+		exit(255);
+	}
 }
 
 static void SetOif6(int Sock, char *ifname)
@@ -181,9 +191,10 @@ static void SetOif6(int Sock, char *ifname)
 
 	ifindex = if_nametoindex(ifname);
 
-	if (setsockopt(Sock, IPPROTO_IPV6, IPV6_MULTICAST_IF,
-		       &ifindex, sizeof(ifindex)))
+	if (setsockopt(Sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, &ifindex, sizeof(ifindex))) {
 		smclog(LOG_ERR, errno, "set IPV6_MULTICAST_IF");
+		exit(255);
+	}
 }
 
 /*
@@ -207,8 +218,10 @@ static void getSockAdr(struct sockaddr *SaPt, socklen_t * SaLenPt, char *AddrSt,
 		Sin4->sin_family = AF_INET;
 		Sin4->sin_port = htons(atoi(PortSt));
 
-		if (inet_pton(AF_INET, AddrSt, &Sin4->sin_addr) <= 0)
+		if (inet_pton(AF_INET, AddrSt, &Sin4->sin_addr) <= 0) {
 			smclog(LOG_ERR, errno, "inet_pton failed for address %s", AddrSt);
+			exit(255);
+		}
 
 		*SaLenPt = sizeof(struct sockaddr_in);
 	} else {
@@ -218,8 +231,10 @@ static void getSockAdr(struct sockaddr *SaPt, socklen_t * SaLenPt, char *AddrSt,
 		Sin6->sin6_family = AF_INET6;
 		Sin6->sin6_port = htons(atoi(PortSt));
 
-		if (inet_pton(AF_INET6, AddrSt, &Sin6->sin6_addr) <= 0)
+		if (inet_pton(AF_INET6, AddrSt, &Sin6->sin6_addr) <= 0) {
 			smclog(LOG_ERR, errno, "inet_pton failed for address %s", AddrSt);
+			exit(255);
+		}
 
 		*SaLenPt = sizeof(struct sockaddr_in6);
 	}
