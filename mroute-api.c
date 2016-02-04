@@ -126,11 +126,9 @@ int mroute4_enable(void)
 	/* Initialize virtual interface table */
 	memset(&vif_list, 0, sizeof(vif_list));
 
-	/* Create virtual interfaces, VIFs, for all non-loopback interfaces
-	 * that have a valid IPv4 address. */
+	/* Create virtual interfaces (VIFs) for all non-loopback interfaces supporting multicast */
 	for (i = 0; (iface = iface_find_by_index(i)); i++) {
-		if (iface->flags & IFF_LOOPBACK ||
-		    iface->inaddr.s_addr == INADDR_ANY) {
+		if ((iface->flags & (IFF_LOOPBACK | IFF_MULTICAST)) != IFF_MULTICAST) {
 			iface->vif = -1;
 			continue;
 		}
@@ -206,16 +204,19 @@ static int mroute4_add_vif(struct iface *iface)
 	vc.vifc_flags = 0;      /* no tunnel, no source routing, register ? */
 	vc.vifc_threshold = 1;  /* Packet TTL must be at least 1 to pass them */
 	vc.vifc_rate_limit = 0;	/* hopefully no limit */
+#ifdef VIFF_USE_IFINDEX		/* Register VIF using ifindex, not lcl_addr, since Linux 2.6.33 */
+	vc.vifc_flags |= VIFF_USE_IFINDEX;
+	vc.vifc_lcl_ifindex = iface->ifindex;
+#else
 	vc.vifc_lcl_addr.s_addr = iface->inaddr.s_addr;
+#endif
 	vc.vifc_rmt_addr.s_addr = INADDR_ANY;
 
-	smclog(LOG_DEBUG, "Iface %s => VIF %d index %d flags 0x%04x",
+	smclog(LOG_DEBUG, "Map iface %-16s => VIF %-2d ifindex %2d flags 0x%04x",
 	       iface->name, vc.vifc_vifi, iface->ifindex, vc.vifc_flags);
 
-	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_VIF, (void *)&vc, sizeof(vc))) {
+	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_VIF, (void *)&vc, sizeof(vc)))
 		smclog(LOG_ERR, "Failed adding VIF for iface %s: %m", iface->name);
-		exit(255);
-	}
 
 	iface->vif = vif;
 	vif_list[vif].iface = iface;
@@ -224,7 +225,7 @@ static int mroute4_add_vif(struct iface *iface)
 }
 
 /* Actually set in kernel - called by mroute4_add() and mroute4_check_add() */
-static int __mroute4_add (mroute4_t *route)
+static int __mroute4_add(mroute4_t *route)
 {
 	int result = 0;
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
@@ -257,7 +258,7 @@ static int __mroute4_add (mroute4_t *route)
 }
 
 /* Actually remove from kernel - called by mroute4_del() */
-static int __mroute4_del (mroute4_t *route)
+static int __mroute4_del(mroute4_t *route)
 {
 	int result = 0;
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
@@ -358,7 +359,7 @@ int mroute4_add(mroute4_t *route)
 		return 0;
 	}
 
-	return __mroute4_add (route);
+	return __mroute4_add(route);
 }
 
 /**
@@ -566,13 +567,11 @@ static int mroute6_add_mif(struct iface *iface)
 	mc.vifc_rate_limit = 0;	/* hopefully no limit */
 #endif
 
-	smclog(LOG_DEBUG, "Iface %s => MIF %d index %d flags 0x%04x",
+	smclog(LOG_DEBUG, "Map iface %-16s => MIF %-2d ifindex %2d flags 0x%04x",
 	       iface->name, mc.mif6c_mifi, mc.mif6c_pifi, mc.mif6c_flags);
 
-	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MIF, (void *)&mc, sizeof(mc))) {
+	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MIF, (void *)&mc, sizeof(mc)))
 		smclog(LOG_ERR, "Failed adding MIF for iface %s: %m", iface->name);
-		exit(255);
-	}
 
 	iface->mif = mif;
 	mif_list[mif].iface = iface;

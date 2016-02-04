@@ -59,25 +59,24 @@ void iface_init(void)
 	}
 
 	for (ifa = ifaddr; ifa && num_ifaces < MAX_IF; ifa = ifa->ifa_next) {
-		/* Skip interface without internet address */
-		if (!ifa->ifa_addr)
-			continue;
-
-		/* Skip non-IPv4 and non-IPv6 interfaces */
-		family = ifa->ifa_addr->sa_family;
-		if ((family != AF_INET) && (family != AF_INET6))
-			continue;
-
 		/* Check if already added? */
-		if (iface_find_by_name (ifa->ifa_name))
+		if (iface_find_by_name(ifa->ifa_name))
 			continue;
 
 		/* Copy data from interface iterator 'ifa' */
 		iface = &iface_list[num_ifaces++];
 		strncpy(iface->name, ifa->ifa_name, IFNAMSIZ);
 		iface->name[IFNAMSIZ] = 0;
-		if (family == AF_INET)
-			iface->inaddr.s_addr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr.s_addr;
+
+		/*
+		 * Only copy interface address if inteface has one.  On
+		 * Linux we can enumerate VIFs using ifindex, useful for
+		 * DHCP interfaces w/o any address yet.  Other UNIX
+		 * systems will fail on the MRT_ADD_VIF ioctl. if the
+		 * kernel cannot find a matching interface.
+		 */
+		if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET)
+			iface->inaddr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
 		iface->flags = ifa->ifa_flags;
 		iface->ifindex = if_nametoindex(iface->name);
 		iface->vif = -1;

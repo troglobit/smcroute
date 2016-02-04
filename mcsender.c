@@ -107,13 +107,12 @@ int main(int ArgCn, char *ArgVc[])
 		}
 	}
 
-	if (TarAdrLen)
-	{
+	if (TarAdrLen) {
 		int UdpSock;
 
 
 		UdpSock = socket(TarAdr.ss_family, SOCK_DGRAM, IPPROTO_UDP);
-		if (UdpSock < 0)  {
+		if (UdpSock < 0) {
 			smclog(LOG_ERR, "UDP socket open: %m");
 			exit(255);
 		}
@@ -166,8 +165,7 @@ static void SetOif4(int Sock, char *ifname)
 		break;
 
 	default:
-		fprintf(stderr, "SetOif4 - invalid address family: %d\n",
-			IfReq.ifr_addr.sa_family);
+		fprintf(stderr, "SetOif4 - invalid address family: %d\n", IfReq.ifr_addr.sa_family);
 		exit(1);
 	}
 

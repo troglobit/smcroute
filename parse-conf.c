@@ -33,6 +33,7 @@ int run_script(mroute_t *mroute)
 {
 	int status;
 	pid_t pid;
+
 	char *argv[] = {
 		script_exec,
 		"reload",
@@ -90,8 +91,7 @@ static char *pop_token(char **line)
 	end = token;
 	while (*end && !isspace(*end))
 		end++;
-	if (*end == 0 || end == token)
-	{
+	if (*end == 0 || end == token) {
 		*line = NULL;
 		return NULL;
 	}
@@ -113,7 +113,7 @@ static int match(char *keyword, char *token)
 	return !strncmp(keyword, token, len);
 }
 
-static int join_mgroup (int lineno, char *ifname, char *group)
+static int join_mgroup(int lineno, char *ifname, char *group)
 {
 	int result;
 
@@ -150,7 +150,7 @@ static int join_mgroup (int lineno, char *ifname, char *group)
 	return result;
 }
 
-static int add_mroute (int lineno, char *ifname, char *group, char *source, char *outbound[], int num)
+static int add_mroute(int lineno, char *ifname, char *group, char *source, char *outbound[], int num)
 {
 	int i, total, result;
 
@@ -286,16 +286,16 @@ int parse_conf_file(const char *file)
 	}
 
 	while ((line = fgets(linebuf, MAX_LINE_LEN, fp))) {
+		int   op = 0, num = 0;
 		char *token;
 		char *ifname = NULL;
 		char *source = NULL;
 		char *group  = NULL;
-		int   op = 0, num = 0;
 		char *dest[32];
 
 		while ((token = pop_token(&line))) {
 			/* Strip comments. */
-			if (match ("#", token)) {
+			if (match("#", token)) {
 #ifdef UNITTEST
 				printf("%02d: COMMENT: %s", lineno, line);
 #endif
@@ -303,9 +303,9 @@ int parse_conf_file(const char *file)
 			}
 
 			if (!op) {
-				if (match ("mgroup", token)) {
+				if (match("mgroup", token)) {
 					op = 1;
-				} else if (match ("mroute", token)) {
+				} else if (match("mroute", token)) {
 					op = 2;
 				} else {
 #ifdef UNITTEST
@@ -364,7 +364,7 @@ int parse_conf_file(const char *file)
 }
 
 #ifdef UNITTEST
-int main (int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 	if (argc < 2) {
 		printf("Missing file argument.\n");
