@@ -126,9 +126,9 @@ int mroute4_enable(void)
 	/* Initialize virtual interface table */
 	memset(&vif_list, 0, sizeof(vif_list));
 
-	/* Create virtual interfaces, VIFs for all non-loopback interfaces */
+	/* Create virtual interfaces (VIFs) for all non-loopback interfaces supporting multicast */
 	for (i = 0; (iface = iface_find_by_index(i)); i++) {
-		if (iface->flags & IFF_LOOPBACK) {
+		if ((iface->flags & (IFF_LOOPBACK | IFF_MULTICAST)) != IFF_MULTICAST) {
 			iface->vif = -1;
 			continue;
 		}
@@ -215,10 +215,8 @@ static int mroute4_add_vif(struct iface *iface)
 	smclog(LOG_DEBUG, "Map iface %-16s => VIF %-2d ifindex %2d flags 0x%04x",
 	       iface->name, vc.vifc_vifi, iface->ifindex, vc.vifc_flags);
 
-	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_VIF, (void *)&vc, sizeof(vc))) {
+	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_VIF, (void *)&vc, sizeof(vc)))
 		smclog(LOG_ERR, "Failed adding VIF for iface %s: %m", iface->name);
-		exit(255);
-	}
 
 	iface->vif = vif;
 	vif_list[vif].iface = iface;
@@ -557,10 +555,8 @@ static int mroute6_add_mif(struct iface *iface)
 	smclog(LOG_DEBUG, "Map iface %-16s => MIF %-2d ifindex %2d flags 0x%04x",
 	       iface->name, mc.mif6c_mifi, mc.mif6c_pifi, mc.mif6c_flags);
 
-	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MIF, (void *)&mc, sizeof(mc))) {
+	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MIF, (void *)&mc, sizeof(mc)))
 		smclog(LOG_ERR, "Failed adding MIF for iface %s: %m", iface->name);
-		exit(255);
-	}
 
 	iface->mif = mif;
 	mif_list[mif].iface = iface;
