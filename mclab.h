@@ -55,6 +55,10 @@
 #include <linux/mroute6.h>
 #endif
 
+#ifdef HAVE_LINUX_FILTER_H
+#include <linux/filter.h>
+#endif
+
 #ifdef HAVE_NET_ROUTE_H
 #include <net/route.h>
 #endif
