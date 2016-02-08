@@ -224,6 +224,30 @@ static int mroute4_add_vif(struct iface *iface)
 	return 0;
 }
 
+static int mroute4_del_vif(struct iface *iface)
+{
+	int ret;
+	uint16_t vif = iface->vif;
+
+	if (-1 == vif)
+		return 0;	/* No VIF setup for iface, skip */
+
+	smclog(LOG_DEBUG, "Removing  %-16s => VIF %-2d", iface->name, vif);
+
+#ifdef __linux__
+	struct vifctl vc = { .vifc_vifi = vif };
+	ret = setsockopt(mroute4_socket, IPPROTO_IP, MRT_DEL_VIF, (void *)&vc, sizeof(vc));
+#else
+	ret = setsockopt(mroute4_socket, IPPROTO_IP, MRT_DEL_VIF, (void *)&vif, sizeof(vif));
+#endif
+	if (ret)
+		smclog(LOG_ERR, "Failed deleting VIF for iface %s: %m", iface->name);
+	else
+		iface->vif = -1;
+
+	return 0;
+}
+
 /* Actually set in kernel - called by mroute4_add() and mroute4_check_add() */
 static int __mroute4_add(mroute4_t *route)
 {
@@ -555,11 +579,30 @@ static int mroute6_add_mif(struct iface *iface)
 	smclog(LOG_DEBUG, "Map iface %-16s => MIF %-2d ifindex %2d flags 0x%04x",
 	       iface->name, mc.mif6c_mifi, mc.mif6c_pifi, mc.mif6c_flags);
 
-	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MIF, (void *)&mc, sizeof(mc)))
+	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MIF, (void *)&mc, sizeof(mc))) {
 		smclog(LOG_ERR, "Failed adding MIF for iface %s: %m", iface->name);
+		iface->mif = -1;
+	} else {
+		iface->mif = mif;
+		mif_list[mif].iface = iface;
+	}
 
-	iface->mif = mif;
-	mif_list[mif].iface = iface;
+	return 0;
+}
+
+static int mroute6_del_mif(struct iface *iface)
+{
+	uint16_t mif = iface->mif;
+
+	if (-1 == mif)
+		return 0;	/* No MIF setup for iface, skip */
+
+	smclog(LOG_DEBUG, "Removing  %-16s => MIF %-2d", iface->name, mif);
+
+	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_DEL_MIF, (void *)&mif, sizeof(mif)))
+		smclog(LOG_ERR, "Failed deleting MIF for iface %s: %m", iface->name);
+	else
+		iface->mif = -1;
 
 	return 0;
 }
@@ -636,6 +679,25 @@ int mroute6_del(mroute6_t *route)
 	return result;
 }
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
+
+/* Used by file parser to remove VIFs/MIFs after setup */
+int mroute_del_vif(char *ifname)
+{
+	int ret;
+	struct iface *iface;
+
+	smclog(LOG_DEBUG, "Pruning %s from list of multicast routing interfaces", ifname);
+	iface = iface_find_by_name(ifname);
+	if (!iface)
+		return 1;
+
+	ret = mroute4_del_vif(iface);
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
+	ret += mroute6_del_mif(iface);
+#endif
+
+	return ret;
+}
 
 /**
  * Local Variables:

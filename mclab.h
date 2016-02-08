@@ -186,6 +186,8 @@ void mroute6_disable (void);
 int  mroute6_add     (mroute6_t *mroute);
 int  mroute6_del     (mroute6_t *mroute);
 
+int  mroute_del_vif  (char *ifname);
+
 /* ipc.c */
 int         ipc_server_init (void);
 struct cmd *ipc_server_read (uint8 buf[], int len);

@@ -100,6 +100,9 @@ struct iface *iface_find_by_name(const char *ifname)
 	struct iface *iface;
 	struct iface *candidate = NULL;
 
+	if (!ifname)
+		return NULL;
+
 	for (i = 0; i < num_ifaces; i++) {
 		iface = &iface_list[i];
 		if (!strcmp(ifname, iface->name)) {
