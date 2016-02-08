@@ -355,8 +355,14 @@ int parse_conf_file(const char *file)
 			join_mgroup(lineno, ifname, group);
 		else if (op == 2)
 			add_mroute(lineno, ifname, group, source, dest, num);
-		else if (op == 3 && !strcasecmp(enable, "disable"))
-			mroute_del_vif(ifname); /* Only phyint disable supported atm. */
+		else if (op == 3) {
+			if (!strcasecmp(enable, "disable"))
+				mroute_del_vif(ifname);
+			else if (!strcasecmp(enable, "enable"))
+				mroute_add_vif(ifname);
+			else
+				smclog(LOG_ERR, "Unknown phyint command to iface %s: %s", ifname, enable);
+		}
 #endif	/* UNITTEST */
 
 		lineno++;

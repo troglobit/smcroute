@@ -127,12 +127,7 @@ int mroute4_enable(void)
 	memset(&vif_list, 0, sizeof(vif_list));
 
 	/* Create virtual interfaces (VIFs) for all non-loopback interfaces supporting multicast */
-	for (i = 0; (iface = iface_find_by_index(i)); i++) {
-		if ((iface->flags & (IFF_LOOPBACK | IFF_MULTICAST)) != IFF_MULTICAST) {
-			iface->vif = -1;
-			continue;
-		}
-
+	for (i = 0; do_vifs && (iface = iface_find_by_index(i)); i++) {
 		/* No point in continuing the loop when out of VIF's */
 		if (mroute4_add_vif(iface))
 			break;
@@ -184,7 +179,13 @@ static int mroute4_add_vif(struct iface *iface)
 	int vif = -1;
 	size_t i;
 
-	/* search free vif */
+	if ((iface->flags & (IFF_LOOPBACK | IFF_MULTICAST)) != IFF_MULTICAST) {
+		smclog(LOG_INFO, "Interface %s is not multicast capable, skipping VIF.", iface->name);
+		iface->vif = -1;
+		return 0;
+	}
+
+	/* find a free vif */
 	for (i = 0; i < ARRAY_ELEMENTS(vif_list); i++) {
 		if (!vif_list[i].iface) {
 			vif = i;
@@ -508,12 +509,7 @@ int mroute6_enable(void)
 	}
 #endif
 	/* Create virtual interfaces, IPv6 MIFs, for all non-loopback interfaces */
-	for (i = 0; (iface = iface_find_by_index(i)); i++) {
-		if (iface->flags & IFF_LOOPBACK) {
-			iface->vif = -1;
-			continue;
-		}
-
+	for (i = 0; do_vifs && (iface = iface_find_by_index(i)); i++) {
 		/* No point in continuing the loop when out of MIF's */
 		if (mroute6_add_mif(iface))
 			break;
@@ -549,6 +545,12 @@ static int mroute6_add_mif(struct iface *iface)
 	struct mif6ctl mc;
 	int mif = -1;
 	size_t i;
+
+	if ((iface->flags & (IFF_LOOPBACK | IFF_MULTICAST)) != IFF_MULTICAST) {
+		smclog(LOG_INFO, "Interface %s is not multicast capable, skipping MIF.", iface->name);
+		iface->mif = -1;
+		return 0;
+	}
 
 	/* find a free mif */
 	for (i = 0; i < ARRAY_ELEMENTS(mif_list); i++) {
@@ -679,6 +681,25 @@ int mroute6_del(mroute6_t *route)
 	return result;
 }
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
+
+/* Used by file parser to add VIFs/MIFs after setup */
+int mroute_add_vif(char *ifname)
+{
+	int ret;
+	struct iface *iface;
+
+	smclog(LOG_DEBUG, "Adding %s to list of multicast routing interfaces", ifname);
+	iface = iface_find_by_name(ifname);
+	if (!iface)
+		return 1;
+
+	ret = mroute4_add_vif(iface);
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
+	ret += mroute6_add_mif(iface);
+#endif
+
+	return ret;
+}
 
 /* Used by file parser to remove VIFs/MIFs after setup */
 int mroute_del_vif(char *ifname)

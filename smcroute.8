@@ -51,6 +51,9 @@ unless
 is also provided.
 .It Fl n
 Run daemon in foreground, do not detach from the calling terminal.
+.It Fl N
+Disable all virtual interfaces (phyint) by default.  Useful if the
+ has many interfaces but multicast routing only uses a few.
 .It Fl f Ar FILE
 Specify an alternate configuration file, default
 .Pa /etc/smcroute.conf .
