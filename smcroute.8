@@ -303,6 +303,21 @@ writes its process ID to
 .Pa /var/run/smcroute.pid
 upon startup.
 .Pp
+.Sh DEBUGGING
+The most common problem when attempting to route multicast is the TTL.
+Always start by verifying that the TTL of your multicast stream is not
+set to 1, because the router decrements the TTL of an IP frame before
+routing it.  Test your setup using
+.Xr ping 8
+or
+.Xr iperf 1 .
+Either of which is capable of creating multicast traffic with an
+adjustable TTL.  Iperf in particular is useful since it can act both as
+a multicast source (sender) and a multicast sink (receiver).  For more
+advanced IP multicast testing the
+.Xr omping 8
+tool can be used.
+.Pp
 .Sh FILES
 .Bl -tag -width /proc/net/ip6_mr_cache -compact
 .It Pa /etc/smcroute.conf
@@ -330,7 +345,10 @@ Holds active MLD joins.
 .Pp
 .Sh SEE ALSO
 .Xr mrouted 8 ,
-.Xr pimd 8
+.Xr pimd 8 ,
+.Xr omping 8 ,
+.Xr ping 8 ,
+.Xr iperf 1
 .Sh BUGS
 The English wording of this man page.
 .Sh AUTHORS
