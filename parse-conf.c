@@ -184,18 +184,20 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 
 		total = num;
 		for (i = 0; i < num; i++) {
-			int mif = iface_get_mif_by_name(outbound[i]);
+			struct iface *iface;
 
-			if (mif < 0) {
+			iface = iface_find_by_name(outbound[i]);
+			if (!iface || iface->mif == -1) {
 				total--;
 				smclog(LOG_WARNING, 0, "%02d: Invalid outbound IPv6 interface: %s", lineno, outbound[i]);
 				continue; /* Try next, if any. */
 			}
 
-			if (mif == mroute.inbound)
+			if (iface->mif == mroute.inbound)
 				smclog(LOG_WARNING, 0, "%02d: Same outbound IPv6 interface (%s) as inbound (%s)?", lineno, outbound[i], ifname);
 
-			mroute.ttl[mif] = 1;	/* Use a TTL threshold to indicate the list of outbound interfaces. */
+			/* Use a TTL threshold to indicate the list of outbound interfaces. */
+			mroute.ttl[iface->mif] = iface->threshold;
 		}
 
 		if (!total) {
@@ -229,18 +231,20 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 
 		total = num;
 		for (i = 0; i < num; i++) {
-			int vif = iface_get_vif_by_name(outbound[i]);
+			struct iface *iface;
 
-			if (vif < 0) {
+			iface = iface_find_by_name(outbound[i]);
+			if (!iface || iface->vif == -1) {
 				total--;
 				smclog(LOG_WARNING, 0, "%02d: Invalid outbound IPv4 interface: %s", lineno, outbound[i]);
 				continue; /* Try next, if any. */
 			}
 
-			if (vif == mroute.inbound)
+			if (iface->vif == mroute.inbound)
 				smclog(LOG_WARNING, 0, "%02d: Same outbound IPv4 interface (%s) as inbound (%s)?", lineno, outbound[i], ifname);
 
-			mroute.ttl[vif] = 1;	/* Use a TTL threshold to indicate the list of outbound interfaces. */
+			/* Use a TTL threshold to indicate the list of outbound interfaces. */
+			mroute.ttl[iface->vif] = iface->threshold;
 		}
 
 		if (!total) {
@@ -263,7 +267,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
  * kernel.
  *
  * Format:
- *    phyint IFNAME <enable|disable>
+ *    phyint IFNAME <enable|disable> [threshold <1-255>]
  *    mgroup from IFNAME group MCGROUP
  *    mroute from IFNAME source ADDRESS group MCGROUP to IFNAME [IFNAME ...]
  */
@@ -288,9 +292,9 @@ int parse_conf_file(const char *file)
 
 	while ((line = fgets(linebuf, MAX_LINE_LEN, fp))) {
 		int   op = 0, num = 0;
+		int   enable = do_vifs, threshold = DEFAULT_THRESHOLD;
 		char *token;
 		char *ifname = NULL;
-		char *enable = NULL;
 		char *source = NULL;
 		char *group  = NULL;
 		char *dest[32];
@@ -312,8 +316,7 @@ int parse_conf_file(const char *file)
 				} else if (match("phyint", token)) {
 					op = 3;
 					ifname = pop_token(&line);
-					enable = pop_token(&line);
-					if (!ifname || !enable)
+					if (!ifname)
 						op = 0;
 				} else {
 #ifdef UNITTEST
@@ -334,6 +337,18 @@ int parse_conf_file(const char *file)
 			} else if (match("to", token)) {
 				while ((dest[num] = pop_token(&line)))
 					num++;
+			} else if (match("enable", token)) {
+				enable = 1;
+			} else if (match("disable", token)) {
+				enable = 0;
+			} else if (match("ttl-threshold", token)) {
+				token = pop_token(&line);
+				if (token) {
+					int num = atoi(token);
+
+					if (num >= 1 || num <= 255)
+						threshold = num;
+				}
 			}
 		}
 
@@ -356,12 +371,10 @@ int parse_conf_file(const char *file)
 		else if (op == 2)
 			add_mroute(lineno, ifname, group, source, dest, num);
 		else if (op == 3) {
-			if (!strcasecmp(enable, "disable"))
-				mroute_del_vif(ifname);
-			else if (!strcasecmp(enable, "enable"))
-				mroute_add_vif(ifname);
+			if (enable)
+				mroute_add_vif(ifname, threshold);
 			else
-				smclog(LOG_ERR, "Unknown phyint command to iface %s: %s", ifname, enable);
+				mroute_del_vif(ifname);
 		}
 #endif	/* UNITTEST */
 

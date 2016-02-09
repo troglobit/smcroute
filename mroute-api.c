@@ -203,7 +203,7 @@ static int mroute4_add_vif(struct iface *iface)
 	memset(&vc, 0, sizeof(vc));
 	vc.vifc_vifi = vif;
 	vc.vifc_flags = 0;      /* no tunnel, no source routing, register ? */
-	vc.vifc_threshold = 1;  /* Packet TTL must be at least 1 to pass them */
+	vc.vifc_threshold = iface->threshold;
 	vc.vifc_rate_limit = 0;	/* hopefully no limit */
 #ifdef VIFF_USE_IFINDEX		/* Register VIF using ifindex, not lcl_addr, since Linux 2.6.33 */
 	vc.vifc_flags |= VIFF_USE_IFINDEX;
@@ -213,8 +213,8 @@ static int mroute4_add_vif(struct iface *iface)
 #endif
 	vc.vifc_rmt_addr.s_addr = INADDR_ANY;
 
-	smclog(LOG_DEBUG, "Map iface %-16s => VIF %-2d ifindex %2d flags 0x%04x",
-	       iface->name, vc.vifc_vifi, iface->ifindex, vc.vifc_flags);
+	smclog(LOG_DEBUG, "Map iface %-16s => VIF %-2d ifindex %2d flags 0x%04x TTL threshold %u",
+	       iface->name, vc.vifc_vifi, iface->ifindex, vc.vifc_flags, iface->threshold);
 
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_VIF, (void *)&vc, sizeof(vc)))
 		smclog(LOG_ERR, "Failed adding VIF for iface %s: %m", iface->name);
@@ -571,15 +571,15 @@ static int mroute6_add_mif(struct iface *iface)
 	mc.mif6c_mifi = mif;
 	mc.mif6c_flags = 0;	/* no register */
 #ifdef HAVE_MIF6CTL_VIFC_THRESHOLD
-	mc.vifc_threshold = 1;	/* Packet TTL must be at least 1 to pass them */
+	mc.vifc_threshold = iface->threshold;
 #endif
 	mc.mif6c_pifi = iface->ifindex;	/* physical interface index */
 #ifdef HAVE_MIF6CTL_VIFC_RATE_LIMIT
 	mc.vifc_rate_limit = 0;	/* hopefully no limit */
 #endif
 
-	smclog(LOG_DEBUG, "Map iface %-16s => MIF %-2d ifindex %2d flags 0x%04x",
-	       iface->name, mc.mif6c_mifi, mc.mif6c_pifi, mc.mif6c_flags);
+	smclog(LOG_DEBUG, "Map iface %-16s => MIF %-2d ifindex %2d flags 0x%04x TTL threshold %u",
+	       iface->name, mc.mif6c_mifi, mc.mif6c_pifi, mc.mif6c_flags, iface->threshold);
 
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MIF, (void *)&mc, sizeof(mc))) {
 		smclog(LOG_ERR, "Failed adding MIF for iface %s: %m", iface->name);
@@ -683,7 +683,7 @@ int mroute6_del(mroute6_t *route)
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
 /* Used by file parser to add VIFs/MIFs after setup */
-int mroute_add_vif(char *ifname)
+int mroute_add_vif(char *ifname, uint8_t threshold)
 {
 	int ret;
 	struct iface *iface;
@@ -693,6 +693,7 @@ int mroute_add_vif(char *ifname)
 	if (!iface)
 		return 1;
 
+	iface->threshold = threshold;
 	ret = mroute4_add_vif(iface);
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 	ret += mroute6_add_mif(iface);
