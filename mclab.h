@@ -101,6 +101,7 @@ struct iface {
 	short flags;
 	short vif;
 	short mif;
+	uint8_t threshold;	/* TTL threshold: 1-255, default: 1 */
 };
 
 extern int do_vifs;
@@ -174,6 +175,8 @@ extern int mroute4_socket;
  * Raw ICMPv6 socket used as interface for the IPv6 mrouted API.
  * Receives MLD packets and upcall messages from the kenrel.
  */
+#define DEFAULT_THRESHOLD 1             /* Packet TTL must be at least 1 to pass */
+
 extern int mroute6_socket;
 
 int  mroute4_enable  (void);
@@ -187,7 +190,7 @@ void mroute6_disable (void);
 int  mroute6_add     (mroute6_t *mroute);
 int  mroute6_del     (mroute6_t *mroute);
 
-int  mroute_add_vif  (char *ifname);
+int  mroute_add_vif  (char *ifname, uint8_t threshold);
 int  mroute_del_vif  (char *ifname);
 
 /* ipc.c */
