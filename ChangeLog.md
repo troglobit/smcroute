@@ -36,6 +36,9 @@ v2.1.0 - [UNRELEASED][]
 - The smcroute client no longer uses syslog, only logs to stderr
 - When starting the smcroute daemon it is no longer possible to also
   send client commands on the same command line.
+- Remove the (unmaintained) in-tree `mcsender` tool.  Both ping(8) and
+  iperf(1) can be used in its stead.  The omping(8) tool is another
+  tool, engineered specifically for testing multicast.
 
 ### Fixes
 - Install binaries to `/usr/sbin` rather than `/usr/bin`, regression

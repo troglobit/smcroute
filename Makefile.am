@@ -1,14 +1,12 @@
 ## SMCRoute - A static multicast routing tool             -*-Makefile-*-
 
-dist_man8_MANS		= smcroute.8 mcsender.8
+dist_man8_MANS		= smcroute.8
 
 doc_DATA		= README AUTHORS TODO ChangeLog COPYING \
 			  smcroute.conf smcroute.init
 EXTRA_DIST		= autogen.sh smcroute.conf smcroute.init
 
-sbin_PROGRAMS		= smcroute mcsender
-
-mcsender_SOURCES	= mcsender.c log.c
+sbin_PROGRAMS		= smcroute
 
 smcroute_SOURCES	= smcroute.c mroute-api.c ifvc.c cmdpkt.c ipc.c	\
 			  mcgroup.c  parse-conf.c log.c pidfile.c mclab.h
