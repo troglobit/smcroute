@@ -263,6 +263,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
  * kernel.
  *
  * Format:
+ *    phyint IFNAME <enable|disable>
  *    mgroup from IFNAME group MCGROUP
  *    mroute from IFNAME source ADDRESS group MCGROUP to IFNAME [IFNAME ...]
  */
@@ -289,6 +290,7 @@ int parse_conf_file(const char *file)
 		int   op = 0, num = 0;
 		char *token;
 		char *ifname = NULL;
+		char *enable = NULL;
 		char *source = NULL;
 		char *group  = NULL;
 		char *dest[32];
@@ -307,6 +309,12 @@ int parse_conf_file(const char *file)
 					op = 1;
 				} else if (match("mroute", token)) {
 					op = 2;
+				} else if (match("phyint", token)) {
+					op = 3;
+					ifname = pop_token(&line);
+					enable = pop_token(&line);
+					if (!ifname || !enable)
+						op = 0;
 				} else {
 #ifdef UNITTEST
 					printf("%02d: Unknonw command: %s", lineno, line);
@@ -347,6 +355,14 @@ int parse_conf_file(const char *file)
 			join_mgroup(lineno, ifname, group);
 		else if (op == 2)
 			add_mroute(lineno, ifname, group, source, dest, num);
+		else if (op == 3) {
+			if (!strcasecmp(enable, "disable"))
+				mroute_del_vif(ifname);
+			else if (!strcasecmp(enable, "enable"))
+				mroute_add_vif(ifname);
+			else
+				smclog(LOG_ERR, "Unknown phyint command to iface %s: %s", ifname, enable);
+		}
 #endif	/* UNITTEST */
 
 		lineno++;

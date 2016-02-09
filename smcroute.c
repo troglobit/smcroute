@@ -41,6 +41,7 @@
 
 int running    = 1;
 int background = 1;
+int do_vifs    = 1;
 int do_daemon  = 0;
 int do_syslog  = 0;
 
@@ -519,6 +520,7 @@ static int usage(int code)
 	       "  -f FILE  File to use instead of default " SMCROUTE_SYSTEM_CONF "\n"
 	       "  -L LVL   Set log level: none, err, info, notice*, debug\n"
 	       "  -n       Run daemon in foreground, useful when run from finit\n"
+	       "  -N       No VIFs/MIFs created by default, use `phyint IFNAME enable`\n"
 	       "  -s       Use syslog, default unless running in foreground, -n\n"
 	       "\n"
 	       "Client:\n"
@@ -607,6 +609,10 @@ int main(int argc, const char *argv[])
 
 		case 'n':	/* run daemon in foreground, i.e., do not fork */
 			background = 0;
+			continue;
+
+		case 'N':
+			do_vifs = 0;
 			continue;
 
 		case 's':	/* Force syslog even though in foreground */

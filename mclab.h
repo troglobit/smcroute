@@ -103,6 +103,7 @@ struct iface {
 	short mif;
 };
 
+extern int do_vifs;
 extern int do_syslog;
 
 /* ifvc.c */
@@ -185,6 +186,9 @@ int  mroute6_enable  (void);
 void mroute6_disable (void);
 int  mroute6_add     (mroute6_t *mroute);
 int  mroute6_del     (mroute6_t *mroute);
+
+int  mroute_add_vif  (char *ifname);
+int  mroute_del_vif  (char *ifname);
 
 /* ipc.c */
 int         ipc_server_init (void);
