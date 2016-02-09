@@ -25,6 +25,19 @@
 
 static int mcgroup4_socket = -1;
 
+#ifdef __linux__
+/* Extremely simple "drop everything" filter for Linux so we do not get
+ * a copy each packet of every routed group we join. */
+static struct sock_filter filter[] = {
+	{ 0x6, 0, 0, 0x00000000 },
+};
+
+static struct sock_fprog fprog = {
+	sizeof(filter) / sizeof(filter[0]),
+	filter
+};
+#endif
+
 static struct iface *find_valid_iface(const char *ifname, int cmd)
 {
 	const char *command = cmd == 'j' ? "Join" : "Leave";
@@ -46,6 +59,11 @@ static void mcgroup4_init(void)
 			smclog(LOG_ERR, "Failed creating socket for joining IPv4 multicast groups: %m");
 			exit(255);
 		}
+
+#ifdef __linux__
+		if (setsockopt(mcgroup4_socket, SOL_SOCKET, SO_ATTACH_FILTER, &fprog, sizeof(fprog)) < 0)
+			smclog(LOG_DEBUG, "Failed setting IPv4 socket filter, continuing anyway");
+#endif
 	}
 }
 
@@ -115,8 +133,15 @@ static void mcgroup6_init(void)
 {
 	if (mcgroup6_socket < 0) {
 		mcgroup6_socket = socket(AF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_UDP);
-		if (mcgroup6_socket < 0)
-			smclog(LOG_WARNING, "Failed creating socket for joining IPv4 multicast groups: %m");
+		if (mcgroup6_socket < 0) {
+			smclog(LOG_WARNING, "Failed creating socket for joining IPv6 multicast groups: %m");
+			return;
+		}
+
+#ifdef __linux__
+		if (setsockopt(mcgroup6_socket, SOL_SOCKET, SO_ATTACH_FILTER, &fprog, sizeof(fprog)) < 0)
+			smclog(LOG_DEBUG, "Failed setting IPv6 socket filter, continuing anyway");
+#endif
 	}
 }
 
