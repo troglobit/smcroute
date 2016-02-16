@@ -46,17 +46,23 @@ some other forms of indirect loops you can easily flood your networks!
 Start the smcroute daemon.  Will attempt to set up multicast routes and
 group joins from the file
 .Pa /etc/smcroute.conf ,
-unless
+or any alternate config file specified by
 .Fl f Ar FILE
 is also provided.
 .It Fl n
-Run daemon in foreground, do not detach from the calling terminal.
+Run daemon in foreground, do not detach from controlling terminal
 .It Fl N
-Disable all virtual interfaces (phyint) by default.  Useful if the
- has many interfaces but multicast routing only uses a few.
+By default
+.Nm
+enables virtual interfaces (VIF) on all multicast capable interfaces in
+the system.  This option inverts that behavior, all VIFs are disabled by
+default.  On systems with many interfaces, where multicast routing only
+makes use of a few, this can be very useful.  The config file setting
+.Ar phyint IFNAME enable
+enables only the interfaces needed.
 .It Fl f Ar FILE
-Specify an alternate configuration file, default
-.Pa /etc/smcroute.conf .
+Alternate configuration file, default
+.Pa /etc/smcroute.conf
 .It Fl e Ar CMD
 Specify external script or command to be called when
 .Nm
@@ -78,24 +84,30 @@ The
 .Fl e Ar CMD
 option is useful if you want to trigger other processes to start when
 .Nm
-has completed installing routes from
+has completed installing dynamic multicast routes from (*,G) rules in
 .Pa /etc/smcroute.conf ,
-or when a source-less (ANY) route from
+or when a source-less (ANY) route, a.k.a (*,G) multicast rule, from
 .Pa /etc/smcroute.conf .
-is matched and installed.  In the latter case
-.Nm
-calls the
+is matched and installed.  For instance, calling
+.Ar conntrack
+on Linux to flush firewall connection tracking when NAT:ing multicast.
+.Pp
+The script
 .Ar CMD
-with two environment variables set:
+is called with an argument
+.Ar reload
+or
+.Ar install
+to let the script know if it is called on SIGHUP/startup, or when a
+(*,G) rule is matched and installed.  In the latter case
+.Nm
+also sets two environment variables:
 .Nm source ,
 and
 .Nm group .
-On startup/reload (SIGHUP) the environment variables are not set, only
-when a source-less rule is installed.  Be aware that these environment
-variables are unconditionally overwritten by
+Beware that these environment variables are unconditionally overwritten by
 .Nm
-and can thus not be used to pass information to the script from outside
-of
+and can thus not be used to pass information to the script from outside of
 .Nm .
 .Sh COMMANDS
 The following are commands that can only be passed to an already running daemon.
