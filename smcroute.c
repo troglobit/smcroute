@@ -177,12 +177,18 @@ static void read_mroute4_socket(void)
 		}
 
 		if (script_exec) {
+			int status;
 			mroute_t mrt;
 
 			mrt.version = 4;
 			mrt.u.mroute4 = mroute;
-			if (run_script(&mrt))
-				smclog(LOG_WARNING, "Failed calling %s with a new multicast route.", script_exec);
+			status = run_script(&mrt);
+			if (status) {
+				if (status < 0)
+					smclog(LOG_WARNING, "Failed starting external script %s: %m", script_exec);
+				else
+					smclog(LOG_WARNING, "External script %s returned error code: %d", script_exec, status);
+			}
 		}
 	}
 }
