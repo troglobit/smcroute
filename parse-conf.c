@@ -64,12 +64,15 @@ int run_script(mroute_t *mroute)
 
 	pid = fork();
 	if (-1 == pid)
-		return 1;
+		return -1;
 	if (0 == pid)
 		_exit(execv(argv[0], argv));
 	waitpid(pid, &status, 0);
 
-	return WIFEXITED(status);
+	if (WIFEXITED(status))
+		return 0;
+
+	return WEXITSTATUS(status);
 }
 
 static char *pop_token(char **line)
