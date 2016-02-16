@@ -38,13 +38,15 @@ v2.1.0 - [UNRELEASED][]
   send client commands on the same command line.
 - Remove the (unmaintained) in-tree `mcsender` tool.  Both ping(8) and
   iperf(1) can be used in its stead.  The omping(8) tool is another
-  tool, engineered specifically for testing multicast.
+  tool, engineered specifically for testing multicast.  Issue #30
 
 ### Fixes
-- Install binaries to `/usr/sbin` rather than `/usr/bin`, regression
-  introduced in [v2.0.0][].  Fixed by Micha Lenk
 - Fix issue #10: `smcroute` client loops forever on command if no
   `smcroute` daemon is running
+- Fix issue #13: Register multicast VIFs on Linux using ifindex, thus
+  enabling support for interfaces without IP address
+- Install binaries to `/usr/sbin` rather than `/usr/bin`, regression
+  introduced in [v2.0.0][].  Fixed by Micha Lenk
 - Cleanup fix for no-MMU systems.  Multicast groups were not properly
   cleaned up in the `atexit()` handler -- *only* affects no-MMU systems.
 - Do not force automake v1.11, only require *at least* v.11
