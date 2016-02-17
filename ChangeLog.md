@@ -4,10 +4,33 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
-v2.1.0 - [UNRELEASED][]
------------------------
+[v2.1.0] - 2016-02-17
+---------------------
+
+*Maybe most menacing massively majestic multicast managing monster*
 
 ### Changes
+- Allow more interfaces to be used for multicast routing, in particular
+  on Linux, where interfaces without an IP address can now be used!
+  Making it possible to run SMCRoute on DHCP/PPP interaces, issue #13
+- Add support for TTL scoping on interfaces, very useful for filtering
+  multicast without a firewall: `phyint IFNAME ttl-threshold TTL`
+- On Linux a socket filter now filters out ALL traffic on the helper
+  sockets where SMCRoute does IGMP/MLD join/leave on multicast groups.
+  This should eliminate the extra overhad required to, not only route
+  streams, but also send a copy of each packet to SMCRoute.
+- Add support for limiting the amount of multicast interfaces (VIFs)
+  SMCRoute creates at startup.  Two options are now available, by
+  default all multicast capable interfaces are given a VIF and the user
+  can selectively disable them one by one.  However, if the `-N` command
+  line option is given SMCRoute does *not* enable any VIFs by default,
+  the user must then selectively enable interface one by one.  The
+  syntax in the config file is:
+
+        phyint IFNAME <enable|disable>
+
+  Use `enable` per interface with `-N` option, or `disable` by default.
+
 - Make build ID optional.  SMCRoute has always had the build date
   hard coded in the binary.  This change makes this optional, and
   defaults to disabled, to facilitate reproducible builds.  For
@@ -25,15 +48,15 @@ v2.1.0 - [UNRELEASED][]
   The script is called when SMCRoute has started up, or has received
   `SIGHUP` and just reloaded the configuration file, and when a new
   source-less rule have been installed.  See the documentation for
-  more information on set environment variables etc.
+  more information on set environment variables etc.  Issue #14
 - Add `--disable-ipv6` option to `configure` script.  Disables IPv6
   support in SMCRoute even though the kernel may support it
-- Replaced `-D` option with `-L LVL` to alter log level
+- Replaced `-D` option with `-L LVL` to alter log level, issue #24
 - The smcroute daemon now behaves more like a regular UNIX daemon.  It
   defaults to using syslog when running in the background and stderr
   when running in the foreground.  A new option `-s` can be used to
-  enable syslog when running in the foreground
-- The smcroute client no longer uses syslog, only logs to stderr
+  enable syslog when running in the foreground, issue #25
+- The smcroute client no longer use syslog, only stderr, issue #25
 - When starting the smcroute daemon it is no longer possible to also
   send client commands on the same command line.
 - Remove the (unmaintained) in-tree `mcsender` tool.  Both ping(8) and
@@ -43,15 +66,13 @@ v2.1.0 - [UNRELEASED][]
 ### Fixes
 - Fix issue #10: `smcroute` client loops forever on command if no
   `smcroute` daemon is running
-- Fix issue #13: Register multicast VIFs on Linux using ifindex, thus
-  enabling support for interfaces without IP address
 - Install binaries to `/usr/sbin` rather than `/usr/bin`, regression
   introduced in [v2.0.0][].  Fixed by Micha Lenk
 - Cleanup fix for no-MMU systems.  Multicast groups were not properly
   cleaned up in the `atexit()` handler -- *only* affects no-MMU systems.
 - Do not force automake v1.11, only require *at least* v.11
-- SMCRoute can still operate fine without a config file, so use a less
-  obtrusive warning message for missing `/etc/smcroute.conf`
+- SMCRoute operates fine without a config file, so use a less obtrusive
+  warning message for missing `/etc/smcroute.conf`
 
 
 [v2.0.0][] - 2014-09-30

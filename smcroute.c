@@ -516,7 +516,8 @@ error:
 
 static int usage(int code)
 {
-	printf("\nUsage: %s [dnkhv] [-f FILE] [-e CMD] [-L LVL] [-a|-r ROUTE] [-j|-l GROUP]\n"
+	printf("\nUsage:\n"
+	       "  %s [dnkhv] [-f FILE] [-e CMD] [-L LVL] [-a|-r ROUTE] [-j|-l GROUP]\n"
 	       "\n"
 	       "Daemon:\n"
 	       "  -d       Start daemon\n"
@@ -546,7 +547,8 @@ static int usage(int code)
 	       "\n"
 	       "  -j <IFNAME> <MULTICAST-GROUP>\n"
 	       "  -l <IFNAME> <MULTICAST-GROUP>\n\n"
-	       "Bug report address: %s\n\n", __progname, PACKAGE_BUGREPORT);
+	       "Bug report address: %s\n"
+	       "Project homepage: %s\n\n", __progname, PACKAGE_BUGREPORT, PACKAGE_URL);
 
 	return code;
 }
