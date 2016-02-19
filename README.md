@@ -1,18 +1,19 @@
-SMCRoute - A static multicast route tool
-========================================
+SMCRoute - A static multicast routing daemon
+============================================
 [![Travis Status][]][Travis] [![Coverity Status][]][Coverity Scan]
 
-SMCRoute is a command line tool to manipulate the multicast routes of a
-UNIX kernel.  It supports both IPv4 and IPv6 multicast routing.
+SMCRoute is a command line tool to manipulate the multicast routes in
+the UNIX kernel.  It supports both IPv4 and IPv6 multicast routing.
 
 SMCRoute can be used as an alternative to dynamic multicast routers like
-mrouted or pimd in setups where static multicast routes should be
+`mrouted` or `pimd` in setups where static multicast routes should be
 maintained and/or no proper IGMP or MLD signaling exists.
 
-Generally multicast routes exists in the kernel only as long as SMCRoute
-or another multicast routing daemon is running.  Only one multicast
-routing daemon can be active at a time, so it's impossible to run
-SMCRoute and, e.g., mrouted at the same time.
+Multicast routes exist in the UNIX kernel only as long as a multicast
+routing daemon is running.  Only one multicast routing daemon can be
+active at a time, so it's impossible to run SMCRoute and, e.g.,
+`mrouted` at the same time.  Linux does however support multiple routing
+tables, which SMCRoute not yet supports.
 
 SMCRoute is maintained collaboratively at [GitHub][].  Previously the
 code was hosted and maintained by Debian at [Alioth][] and before that
@@ -29,12 +30,25 @@ to be able to set up multicast routes.
 
 or
 
+    # smcroute -d -N
+
+or
+
     # smcroute -d -e /path/to/script
 
 The latter syntax calls your own script whenever `smcroute` receives a
 `SIGHUP` or installs a multicast route to the kernel.  This is useful if
 you, for instance, also run a NAT firewall and need to flush connection
 tracking after installing a multicast route.
+
+With the `-N` command line option SMCRoute does *not* prepare all system
+interfaces for multicast routing.  Very useful if your system has a lot
+of interfaces but only a select few are required for multicast routing.
+Use the following configuration file syntax to enable interfaces:
+
+    phyint eth0 enable
+    phyint eth1 enable
+    phyint eth2 enable
 
 By default SMCRoute looks for its configuration in `/etc/smcroute.conf`,
 which can look something like this:
