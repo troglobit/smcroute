@@ -1,16 +1,11 @@
 ## SMCRoute - A static multicast routing tool             -*-Makefile-*-
 
 dist_man8_MANS		= smcroute.8
-
-doc_DATA		= README AUTHORS TODO ChangeLog COPYING \
-			  smcroute.conf smcroute.init
-EXTRA_DIST		= autogen.sh smcroute.conf smcroute.init
-
+doc_DATA		= README.md AUTHORS TODO ChangeLog.md COPYING smcroute.conf smcroute.init
+EXTRA_DIST		= README.md ChangeLog.md autogen.sh smcroute.conf smcroute.init
 sbin_PROGRAMS		= smcroute
-
 smcroute_SOURCES	= smcroute.c mroute-api.c ifvc.c cmdpkt.c ipc.c	\
 			  mcgroup.c  parse-conf.c log.c pidfile.c mclab.h
-
 DISTCLEANFILES		= *~ DEADJOE semantic.cache *.gdb *.elf core core.* *.d
 
 ## Generate detached signature file (ascii-armored), like OpenVPN does
