@@ -4,8 +4,8 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
-[v2.1.0] - 2016-02-17
----------------------
+[v2.1.0][] - 2016-02-17
+-----------------------
 
 *Maybe most menacing massively majestic multicast managing monster*
 
@@ -228,7 +228,7 @@ v0.93 - UNRELEASED
 ------------------
 
 ### Fixes
-- Fixed the "smcroute looses output interfaces" bug.  
+- Fixed the "smcroute looses output interfaces" bug.
   Carsten Schill, 0.93 unreleased
 
 
@@ -280,22 +280,22 @@ v0.9 - September 2001
 v0.8 - August 2001
 ------------------
 
-Initial public release
+Initial public release by Carsten Schill.
 
 
-[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.0.0...HEAD
-[v2.1.0]:     https://github.com/troglobit/libuev/compare/2.0.0...2.1.0
-[v2.0.0]:     https://github.com/troglobit/libuev/compare/1.99.2...2.0.0
-[v1.99.2]:    https://github.com/troglobit/libuev/compare/1.99.1...1.99.2
-[v1.99.1]:    https://github.com/troglobit/libuev/compare/1.99.0...1.99.1
-[v1.99.0]:    https://github.com/troglobit/libuev/compare/1.98.3...1.99.0
-[v1.98.3]:    https://github.com/troglobit/libuev/compare/1.98.2...1.98.3
-[v1.98.2]:    https://github.com/troglobit/libuev/compare/1.98.1...1.98.2
-[v1.98.1]:    https://github.com/troglobit/libuev/compare/1.98.0...1.98.1
-[v1.98.0]:    https://github.com/troglobit/libuev/compare/0.95...1.98.0
-[v0.95]:      https://github.com/troglobit/libuev/compare/0.94.1...0.95
-[v0.94.1]:    https://github.com/troglobit/libuev/compare/0.94...0.94.1
-[v0.94]:      https://github.com/troglobit/libuev/compare/0.94.1...0.95
+[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.1.0...HEAD
+[v2.1.0]:     https://github.com/troglobit/smcroute/compare/2.0.0...2.1.0
+[v2.0.0]:     https://github.com/troglobit/smcroute/compare/1.99.2...2.0.0
+[v1.99.2]:    https://github.com/troglobit/smcroute/compare/1.99.1...1.99.2
+[v1.99.1]:    https://github.com/troglobit/smcroute/compare/1.99.0...1.99.1
+[v1.99.0]:    https://github.com/troglobit/smcroute/compare/1.98.3...1.99.0
+[v1.98.3]:    https://github.com/troglobit/smcroute/compare/1.98.2...1.98.3
+[v1.98.2]:    https://github.com/troglobit/smcroute/compare/1.98.1...1.98.2
+[v1.98.1]:    https://github.com/troglobit/smcroute/compare/1.98.0...1.98.1
+[v1.98.0]:    https://github.com/troglobit/smcroute/compare/0.95...1.98.0
+[v0.95]:      https://github.com/troglobit/smcroute/compare/0.94.1...0.95
+[v0.94.1]:    https://github.com/troglobit/smcroute/compare/0.94...0.94.1
+[v0.94]:      https://github.com/troglobit/smcroute/compare/0.94.1...0.95
 
 <!--
   -- Local Variables:
