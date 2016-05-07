@@ -78,7 +78,6 @@ void smclog(int severity, const char *fmt, ...)
 
 /**
  * Local Variables:
- *  version-control: t
  *  indent-tabs-mode: t
  *  c-file-style: "linux"
  * End:

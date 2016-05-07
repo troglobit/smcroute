@@ -209,7 +209,6 @@ void mcgroup6_disable(void)
 
 /**
  * Local Variables:
- *  version-control: t
  *  indent-tabs-mode: t
  *  c-file-style: "linux"
  * End:

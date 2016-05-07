@@ -237,7 +237,6 @@ const char *cmd_convert_to_mroute6(struct mroute6 *mroute, const struct cmd *pac
 
 /**
  * Local Variables:
- *  version-control: t
  *  indent-tabs-mode: t
  *  c-file-style: "linux"
  * End:

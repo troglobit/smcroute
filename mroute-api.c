@@ -723,7 +723,6 @@ int mroute_del_vif(char *ifname)
 
 /**
  * Local Variables:
- *  version-control: t
  *  indent-tabs-mode: t
  *  c-file-style: "linux"
  * End:

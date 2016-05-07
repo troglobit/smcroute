@@ -410,7 +410,6 @@ int main(int argc, char *argv[])
 /**
  * Local Variables:
  *  compile-command: "gcc -g -o unittest -DUNITTEST parse-conf.c && ./unittest ../smcroute.conf"
- *  version-control: t
  *  indent-tabs-mode: t
  *  c-file-style: "linux"
  * End:
