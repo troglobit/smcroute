@@ -334,6 +334,9 @@ static void handler(int sig)
 		smclog(LOG_NOTICE, "Got SIGHUP, reloading %s ...", conf_file);
 		restart();
 		read_conf_file(conf_file);
+
+		/* Acknowledge client SIGHUP by touching the pidfile */
+		pidfile(NULL);
 		break;
 	}
 }
