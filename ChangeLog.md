@@ -4,10 +4,25 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
+[v2.1.1][UNRELEASED] - 2016-07-XX
+---------------------------------
+
+### Changes
+- When `SIGHUP` is received SMCRoute now touches its PID file as an
+  acknowledgement.  This is used by some process supervision daemons,
+  like [Finit](https://github.com/troglobit/finit), on system
+  configuration changes to detect when a daemon is done.  The mtime is
+  set using the `utimensat()` function to ensure nanosecond resolution.
+
+### Fixes
+- Fix issue #38: Minor memory leak at exit.  The Valgrind tool warns
+  that all memory is not freed when smcroute exits.  On most modern
+  UNIX systems, on platforms with MMU, this is not a problem, but on
+  older systems, or uClinux, memory is not freed at program exit.
+
+
 [v2.1.0][] - 2016-02-17
 -----------------------
-
-*Maybe most menacing massively majestic multicast managing monster*
 
 ### Changes
 - Allow more interfaces to be used for multicast routing, in particular
