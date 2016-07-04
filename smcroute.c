@@ -106,6 +106,7 @@ static void clean(void)
 	mcgroup4_disable();
 	mcgroup6_disable();
 	ipc_exit();
+	iface_exit();
 	smclog(LOG_NOTICE, "Exiting.");
 }
 

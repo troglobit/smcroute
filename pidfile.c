@@ -102,7 +102,9 @@ pidfile(const char *basename)
 static void
 pidfile_cleanup(void)
 {
-
-	if (pidfile_path != NULL && pidfile_pid == getpid())
+	if (pidfile_path != NULL && pidfile_pid == getpid()) {
 		(void) unlink(pidfile_path);
+		free(pidfile_path);
+		pidfile_path = NULL;
+	}
 }

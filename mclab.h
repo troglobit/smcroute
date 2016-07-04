@@ -115,6 +115,7 @@ extern int do_syslog;
 #define MAX_IF         40	// max. number of interfaces recognized
 
 void          iface_init            (void);
+void          iface_exit            (void);
 struct iface *iface_find_by_name    (const char *ifname);
 struct iface *iface_find_by_index   (unsigned int ifindex);
 struct iface *iface_find_by_vif     (int vif);

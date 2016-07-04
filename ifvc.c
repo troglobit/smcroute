@@ -87,6 +87,17 @@ void iface_init(void)
 }
 
 /**
+ * iface_exit - Tear down interface list and clean up
+ */
+void iface_exit(void)
+{
+	if (iface_list) {
+		free(iface_list);
+		iface_list = NULL;
+	}
+}
+
+/**
  * iface_find_by_name - Find an interface by name
  * @ifname: Interface name
  *
