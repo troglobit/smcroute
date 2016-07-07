@@ -373,11 +373,12 @@ int mroute4_add(mroute4_t *route)
 }
 
 /**
- * mroute4_del - Remove route from kernel
+ * mroute4_del - Remove route from kernel, or all matching routes if wildcard
  * @route: Pointer to &mroute4_t IPv4 multicast route to remove
  *
  * Removes the given multicast @route from the kernel multicast routing
- * table.
+ * table, or if the @route is a wildcard, then all matching kernel
+ * routes are removed, as well as the wildcard.
  *
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
@@ -400,10 +401,8 @@ int mroute4_del(mroute4_t *route)
 	while (entry) {
 		/* Find matching (*,G) ... and interface. */
 		if (mroute4_match(entry, route)) {
-			if (LIST_EMPTY(&mroute4_dyn_list)) {
-				entry = LIST_NEXT(entry, link);
-				continue;
-			}
+			if (LIST_EMPTY(&mroute4_dyn_list))
+				goto empty;
 
 			set = LIST_FIRST(&mroute4_dyn_list);
 			while (set) {
@@ -419,6 +418,7 @@ int mroute4_del(mroute4_t *route)
 				set = LIST_NEXT(set, link);
 			}
 
+		empty:
 			LIST_REMOVE(entry, link);
 			free(entry);
 
