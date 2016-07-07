@@ -19,6 +19,8 @@ All notable changes to the project are documented in this file.
   that all memory is not freed when smcroute exits.  On most modern
   UNIX systems, on platforms with MMU, this is not a problem, but on
   older systems, or uClinux, memory is not freed at program exit.
+- Fix issue #39: Removing wildcard route at runtime does not work if no
+  kernel routes have been set.
 
 
 [v2.1.0][] - 2016-02-17
