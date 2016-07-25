@@ -255,6 +255,55 @@ static void read_ipc_command(void)
 		ipc_send("", 1);
 		break;
 
+	case 'x':	/* x <InputIntf> <SourceAdr> <McGroupAdr> */
+	case 'y':	/* y <InputIntf> <SourceAdr> <McGroupAdr> */
+	{
+		int result = -1;
+		const char *ifname = (const char *)(packet + 1);
+		const char *sourceadr = ifname + strlen(ifname) + 1;
+		const char *groupstr = sourceadr + strlen(sourceadr) + 1;
+
+		if (strchr(groupstr, ':') == NULL) {
+			struct in_addr source;
+
+			/* check source address */
+			if (!*sourceadr
+			    || !inet_aton(sourceadr, &source)) {
+				smclog(LOG_WARNING, "Invalid multicast source: %s", sourceadr);
+				ipc_send(log_message, strlen(log_message) + 1);
+				break;
+			}
+
+			struct in_addr group;
+
+			/* check multicast address */
+			if (!*groupstr
+			    || !inet_aton(groupstr, &group)
+			    || !IN_MULTICAST(ntohl(group.s_addr))) {
+				smclog(LOG_WARNING, "Invalid multicast group: %s", groupstr);
+				ipc_send(log_message, strlen(log_message) + 1);
+				break;
+			}
+
+			/* join or leave */
+			if (packet->cmd == 'x')
+				result = mcgroup4_join_ssm(ifname, source, group);
+			else
+				result = mcgroup4_leave_ssm(ifname, source, group);
+		} else {
+			smclog(LOG_WARNING, "IPv6 is not supported for Source Specific Multicast.");
+		}
+
+		/* failed */
+		if (result) {
+			ipc_send(log_message, strlen(log_message) + 1);
+			break;
+		}
+
+		ipc_send("", 1);
+		break;
+	}
+
 	case 'j':	/* j <InputIntf> <McGroupAdr> */
 	case 'l':	/* l <InputIntf> <McGroupAdr> */
 	{
@@ -545,12 +594,18 @@ static int usage(int code)
 	       "  -j ARGS  Join a multicast group\n"
 	       "  -l ARGS  Leave a multicast group\n"
 	       "\n"
+	       "  -x ARGS  Join a multicast group (Source Specific Multicast version)\n"
+	       "  -y ARGS  Leave a multicast group (Source Specific Multicast version)\n"
+	       "\n"
 	       "     <------------- INBOUND -------------->  <----- OUTBOUND ------>\n"
 	       "  -a <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>  <IFNAME> [<IFNAME> ...]\n"
 	       "  -r <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>\n"
 	       "\n"
 	       "  -j <IFNAME> <MULTICAST-GROUP>\n"
-	       "  -l <IFNAME> <MULTICAST-GROUP>\n\n"
+	       "  -l <IFNAME> <MULTICAST-GROUP>\n"
+	       "\n"
+	       "  -x <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>\n"
+	       "  -y <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>\n\n"
 	       "Bug report address: %s\n"
 	       "Project homepage: %s\n\n", __progname, PACKAGE_BUGREPORT, PACKAGE_URL);
 
@@ -600,6 +655,12 @@ int main(int argc, const char *argv[])
 		case 'j':	/* join */
 		case 'l':	/* leave */
 			if (num_opts != 3)
+				return usage(1);
+			break;
+
+		case 'x':	/* join (ssm) */
+		case 'y':	/* leave (ssm) */
+			if (num_opts != 4)
 				return usage(1);
 			break;
 
