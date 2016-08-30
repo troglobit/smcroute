@@ -32,6 +32,12 @@
 #include <netinet/ip.h>
 #include <arpa/inet.h>
 
+#include <sys/prctl.h>
+#include <sys/capability.h>
+#include <pwd.h>
+#include <grp.h>
+#include <string.h>
+
 #include <signal.h>
 #include <unistd.h>
 
@@ -45,8 +51,10 @@ int do_vifs    = 1;
 int do_daemon  = 0;
 int do_syslog  = 0;
 
-const        char *script_exec = NULL;
-static const char *conf_file   = SMCROUTE_SYSTEM_CONF;
+const        char *script_exec  = NULL;
+const        char *target_user  = NULL;
+const        char *target_group = NULL;
+static const char *conf_file    = SMCROUTE_SYSTEM_CONF;
 extern       char *__progname;
 static const char version_info[] =
 	"SMCRoute version " PACKAGE_VERSION
@@ -400,6 +408,73 @@ static int server_loop(int sd)
 	return 0;
 }
 
+
+/* Drop root privileges except capability CAP_NET_ADMIN. This capability
+ * enables the thread (among other networking related things) to add and
+ * remove multicast routes */
+static int drop_root(const char* user, const char* group)
+{
+	struct passwd *user_info;
+	struct group  *group_info;
+	gid_t target_gid;
+
+	cap_t caps;
+	cap_value_t cap_list = CAP_NET_ADMIN;
+
+	/* Get target UID and target GID */
+	if (!(user_info = getpwnam(user))) {
+		smclog(LOG_INIT, "User \"%s\" not found!", user);
+		return -1;
+	}
+
+	if (group) {
+		if (!(group_info = getgrnam(group))) {
+			smclog(LOG_INIT, "Group \"%s\" not found!", group);
+			return -1;
+		}
+		target_gid = group_info->gr_gid;
+	}
+	else
+		target_gid = user_info->pw_gid;
+
+	/* Allow this process to preserve permitted capabilities */
+	if (prctl(PR_SET_KEEPCAPS, 1) == -1) {
+		smclog(LOG_INIT, "Could not preserve capabilities for process: %m.");
+		return -1;
+	}
+
+	/* Set supplementary groups, GID and UID */
+	if (initgroups(user, target_gid) == -1) {
+		smclog(LOG_INIT, "Could not set supplementary groups: %m.");
+		return -1;
+	}
+	if (setgid(target_gid) == -1) {
+		smclog(LOG_INIT, "Could not set GID for process: %m.");
+		return -1;
+	}
+	if (setuid(user_info->pw_uid) == -1) {
+		smclog(LOG_INIT, "Could not set UID for process: %m.");
+		return -1;
+	}
+
+	/* Clear all capabilities except CAP_NET_ADMIN */
+	caps = cap_get_proc();
+	cap_clear(caps);
+	cap_set_flag(caps, CAP_PERMITTED, 1, &cap_list, CAP_SET);
+	cap_set_flag(caps, CAP_EFFECTIVE, 1, &cap_list, CAP_SET);
+	if (cap_set_proc(caps) == -1) {
+		smclog(LOG_INIT, "Could not set capabilities for process: %m.");
+		cap_free(caps);
+		return -1;
+	}
+	cap_free(caps);
+
+	/* Try to regain root UID */
+	if (setuid(0) == 0)
+		return -1;
+	return 0;
+}
+
 /* Init everything before forking, so we can fail and return an
  * error code in the parent and the initscript will fail */
 static int start_server(void)
@@ -448,6 +523,14 @@ static int start_server(void)
 	/* Everything setup, notify any clients by creating the pidfile */
 	if (pidfile(NULL))
 		smclog(LOG_WARNING, "Failed creating pidfile: %m");
+
+	/* Drop root privileges before entering the server loop */
+	if (target_user) {
+		if (drop_root(target_user, target_group) == -1)
+			smclog(LOG_INIT, "Could not drop root privileges, continuing as root.");
+		else
+			smclog(LOG_INIT, "Root privileges dropped: Current UID %u, GID %u.", getuid(), getgid());
+	}
 
 	return server_loop(sd);
 }
@@ -524,15 +607,16 @@ static int usage(int code)
 	       "  %s [dnkhv] [-f FILE] [-e CMD] [-L LVL] [-a|-r ROUTE] [-j|-l GROUP]\n"
 	       "\n"
 	       "Daemon:\n"
-	       "  -d       Start daemon\n"
-	       "  -e CMD   Script or command to call on startup/reload when all routes\n"
-	       "           have been installed. Or when a source-less (ANY) route has\n"
-	       "           been installed.\n"
-	       "  -f FILE  File to use instead of default " SMCROUTE_SYSTEM_CONF "\n"
-	       "  -L LVL   Set log level: none, err, info, notice*, debug\n"
-	       "  -n       Run daemon in foreground, useful when run from finit\n"
-	       "  -N       No VIFs/MIFs created by default, use `phyint IFNAME enable`\n"
-	       "  -s       Use syslog, default unless running in foreground, -n\n"
+	       "  -d              Start daemon\n"
+	       "  -e CMD          Script or command to call on startup/reload when all routes\n"
+	       "                  have been installed. Or when a source-less (ANY) route has\n"
+	       "                  been installed.\n"
+	       "  -f FILE         File to use instead of default " SMCROUTE_SYSTEM_CONF "\n"
+	       "  -L LVL          Set log level: none, err, info, notice*, debug\n"
+	       "  -n              Run daemon in foreground, useful when run from finit\n"
+	       "  -N              No VIFs/MIFs created by default, use `phyint IFNAME enable`\n"
+	       "  -s              Use syslog, default unless running in foreground, -n\n"
+	       "  -p USER[:GROUP] After initialization set UID and GID to USER and GROUP\n"
 	       "\n"
 	       "Client:\n"
 	       "  -h       This help text\n"
@@ -647,6 +731,13 @@ int main(int argc, const char *argv[])
 			if (num_opts != 2)
 				return usage(1);
 			log_level = loglvl(argv[1]);
+			continue;
+
+		case 'p':
+			if (num_opts != 2)
+				return usage(1);
+			target_user = strtok((char*) argv[1], ":");
+			target_group = strtok(NULL, ":");
 			continue;
 
 		default:	/* unknown option */
