@@ -36,13 +36,13 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <sys/queue.h>
 
 #include <net/if.h>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "queue.h"
 #include "config.h"
 
 #ifdef HAVE_LINUX_MROUTE_H
