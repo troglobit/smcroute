@@ -114,6 +114,22 @@ or, from the command line:
     # smcroute -j eth0 225.1.2.3
     # smcroute -a eth0 0.0.0.0 225.1.2.3 eth1 eth2
 
+
+Build & Install
+---------------
+
+SMCRoute should in theory work on any UNIX like operating system which
+supports the BSD MROUTING API.  Both Linux and FreeBSD are tested on a
+regular basis.  As of SMCRoute v2.2 however, it depends on the `libcap`
+library for handling POSIX capabilities.  This is used at startup to
+drop full root privileges, retaining only `CAP_NET_ADMIN` for managing
+the multicast routes.
+
+    $ ./configure
+    $ make -j5
+	$ sudo make install-strip
+
+
 Good Luck!
 The SMCRoute Maintainers
 

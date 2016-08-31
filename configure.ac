@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(SMCRoute, 2.1.1, https://github.com/troglobit/smcroute/issues, smcroute, http://troglobit.com/smcroute.html)
+AC_INIT(SMCRoute, 2.2-beta1, https://github.com/troglobit/smcroute/issues, smcroute, http://troglobit.com/smcroute.html)
 AM_INIT_AUTOMAKE([1.11 foreign no-dist-gzip dist-xz])
 AM_SILENT_RULES()
 
@@ -31,12 +31,16 @@ AC_ARG_ENABLE([ipv6],
 # Checks for header files.
 AC_HEADER_STDC
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h		\
-                  sys/ioctl.h sys/socket.h sys/types.h syslog.h unistd.h	\
-                  net/route.h sys/param.h ifaddrs.h linux/sockios.h], [], [],[
+                  sys/ioctl.h sys/prctl.h sys/socket.h sys/types.h syslog.h	\
+                  unistd.h net/route.h sys/param.h ifaddrs.h linux/sockios.h], [], [],[
 	#ifdef HAVE_SYS_SOCKET_H
 	# include <sys/socket.h>
 	#endif
 ])
+
+# Separate check for libcap
+AC_CHECK_HEADER([sys/capability.h], [], [
+	AC_ERROR([SMCRoute v2.2 and later requries libcap to run, and libcap-dev or similar to build.])])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
