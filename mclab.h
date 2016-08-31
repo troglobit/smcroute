@@ -93,10 +93,10 @@ typedef u_int32_t uint32;
 #define MAX(a, b) ((a) < (b) ? (b) : (a))
 #endif
 
-/* http://stackoverflow.com/questions/1598773/is-there-a-standard-function-in-c-that-would-return-the-length-of-an-array/1598827#1598827
- * Evidently Google uses it in Chromium.  It is actually intended to look like 0[arr], read the link, or search the web.
- */
-#define ARRAY_ELEMENTS(arr) ((sizeof(arr)/sizeof(0[arr])) / ((size_t)(!(sizeof(arr) % sizeof(0[arr])))))
+/* From The Practice of Programming, by Kernighan and Pike */
+#ifndef NELEMS
+#define NELEMS(array) (sizeof(array) / sizeof(array[0]))
+#endif
 
 struct iface {
 	char name[IFNAMSIZ + 1];

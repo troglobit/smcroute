@@ -745,7 +745,7 @@ int main(int argc, const char *argv[])
 		}
 
 		/* Check and build command argument list. */
-		if (cmdnum >= ARRAY_ELEMENTS(cmdv)) {
+		if (cmdnum >= NELEMS(cmdv)) {
 			fprintf(stderr, "Too many command options\n");
 			return usage(1);
 		}

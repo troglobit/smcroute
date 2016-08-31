@@ -186,7 +186,7 @@ static int mroute4_add_vif(struct iface *iface)
 	}
 
 	/* find a free vif */
-	for (i = 0; i < ARRAY_ELEMENTS(vif_list); i++) {
+	for (i = 0; i < NELEMS(vif_list); i++) {
 		if (!vif_list[i].iface) {
 			vif = i;
 			break;
@@ -263,12 +263,12 @@ static int __mroute4_add(mroute4_t *route)
 	mc.mfcc_parent = route->inbound;
 
 	/* copy the TTL vector */
-	if (sizeof(mc.mfcc_ttls[0]) != sizeof(route->ttl[0]) || ARRAY_ELEMENTS(mc.mfcc_ttls) != ARRAY_ELEMENTS(route->ttl)) {
+	if (sizeof(mc.mfcc_ttls[0]) != sizeof(route->ttl[0]) || NELEMS(mc.mfcc_ttls) != NELEMS(route->ttl)) {
 		smclog(LOG_ERR, "Critical data type validation error in %s!", __FILE__);
 		exit(255);
 	}
 
-	memcpy(mc.mfcc_ttls, route->ttl, ARRAY_ELEMENTS(mc.mfcc_ttls) * sizeof(mc.mfcc_ttls[0]));
+	memcpy(mc.mfcc_ttls, route->ttl, NELEMS(mc.mfcc_ttls) * sizeof(mc.mfcc_ttls[0]));
 
 	smclog(LOG_DEBUG, "Add %s -> %s from VIF %d",
 	       inet_ntop(AF_INET, &mc.mfcc_origin,   origin, INET_ADDRSTRLEN),
@@ -320,7 +320,7 @@ int mroute4_dyn_add(mroute4_t *route)
 		/* Find matching (*,G) ... and interface. */
 		if (mroute4_match(entry, route)) {
 			/* Use configured template (*,G) outbound interfaces. */
-			memcpy(route->ttl, entry->ttl, ARRAY_ELEMENTS(route->ttl) * sizeof(route->ttl[0]));
+			memcpy(route->ttl, entry->ttl, NELEMS(route->ttl) * sizeof(route->ttl[0]));
 
 			/* Add to list of dynamically added routes. Necessary if the user
 			 * removes the (*,G) using the command line interface rather than
@@ -553,7 +553,7 @@ static int mroute6_add_mif(struct iface *iface)
 	}
 
 	/* find a free mif */
-	for (i = 0; i < ARRAY_ELEMENTS(mif_list); i++) {
+	for (i = 0; i < NELEMS(mif_list); i++) {
 		if (!mif_list[i].iface) {
 			mif = i;
 			break;
@@ -631,7 +631,7 @@ int mroute6_add(mroute6_t *route)
 	mc.mf6cc_parent   = route->inbound;
 
 	/* copy the outgoing MIFs */
-	for (i = 0; i < ARRAY_ELEMENTS(route->ttl); i++) {
+	for (i = 0; i < NELEMS(route->ttl); i++) {
 		if (route->ttl[i] > 0)
 			IF_SET(i, &mc.mf6cc_ifset);
 	}
