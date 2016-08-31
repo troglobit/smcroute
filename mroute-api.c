@@ -109,11 +109,11 @@ int mroute4_enable(void)
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_INIT, (void *)&arg, sizeof(arg))) {
 		switch (errno) {
 		case EADDRINUSE:
-			smclog(LOG_INIT, "IPv4 multicast routing API already in use: %m");
+			smclog(LOG_INIT, "IPv4 multicast routing API already in use: %s", strerror(errno));
 			break;
 
 		default:
-			smclog(LOG_INIT, "Failed initializing IPv4 multicast routing API: %m");
+			smclog(LOG_INIT, "Failed initializing IPv4 multicast routing API: %s", strerror(errno));
 			break;
 		}
 
@@ -153,7 +153,7 @@ void mroute4_disable(void)
 
 	/* Drop all kernel routes set by smcroute */
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_DONE, NULL, 0))
-		smclog(LOG_WARNING, "Failed shutting down IPv4 multicast routing socket: %m");
+		smclog(LOG_WARNING, "Failed shutting down IPv4 multicast routing socket: %s", strerror(errno));
 
 	close(mroute4_socket);
 	mroute4_socket = -1;
@@ -196,7 +196,7 @@ static int mroute4_add_vif(struct iface *iface)
 	/* no more space */
 	if (vif == -1) {
 		errno = ENOMEM;
-		smclog(LOG_WARNING, "Kernel MAXVIFS (%d) too small for number of interfaces: %m", MAXVIFS);
+		smclog(LOG_WARNING, "Kernel MAXVIFS (%d) too small for number of interfaces: %s", MAXVIFS, strerror(errno));
 		return 1;
 	}
 
@@ -217,7 +217,7 @@ static int mroute4_add_vif(struct iface *iface)
 	       iface->name, vc.vifc_vifi, iface->ifindex, vc.vifc_flags, iface->threshold);
 
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_VIF, (void *)&vc, sizeof(vc)))
-		smclog(LOG_ERR, "Failed adding VIF for iface %s: %m", iface->name);
+		smclog(LOG_ERR, "Failed adding VIF for iface %s: %s", iface->name, strerror(errno));
 
 	iface->vif = vif;
 	vif_list[vif].iface = iface;
@@ -242,7 +242,7 @@ static int mroute4_del_vif(struct iface *iface)
 	ret = setsockopt(mroute4_socket, IPPROTO_IP, MRT_DEL_VIF, (void *)&vif, sizeof(vif));
 #endif
 	if (ret)
-		smclog(LOG_ERR, "Failed deleting VIF for iface %s: %m", iface->name);
+		smclog(LOG_ERR, "Failed deleting VIF for iface %s: %s", iface->name, strerror(errno));
 	else
 		iface->vif = -1;
 
@@ -276,7 +276,7 @@ static int __mroute4_add(mroute4_t *route)
 
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_MFC, (void *)&mc, sizeof(mc))) {
 		result = errno;
-		smclog(LOG_WARNING, "Failed adding IPv4 multicast route: %m");
+		smclog(LOG_WARNING, "Failed adding IPv4 multicast route: %s", strerror(errno));
 	}
 
 	return result;
@@ -299,7 +299,7 @@ static int __mroute4_del(mroute4_t *route)
 
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_DEL_MFC, (void *)&mc, sizeof(mc))) {
 		result = errno;
-		smclog(LOG_WARNING, "Failed removing IPv4 multicast route: %m");
+		smclog(LOG_WARNING, "Failed removing IPv4 multicast route: %s", strerror(errno));
 	}
 
 	return result;
@@ -359,7 +359,7 @@ int mroute4_add(mroute4_t *route)
 		mroute4_t *entry = malloc(sizeof(mroute4_t));
 
 		if (!entry) {
-			smclog(LOG_WARNING, "Failed adding (*,G) multicast route: %m");
+			smclog(LOG_WARNING, "Failed adding (*,G) multicast route: %s", strerror(errno));
 			return errno;
 		}
 
@@ -481,11 +481,11 @@ int mroute6_enable(void)
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_INIT, (void *)&arg, sizeof(arg))) {
 		switch (errno) {
 		case EADDRINUSE:
-			smclog(LOG_INIT, "IPv6 multicast routing API already in use: %m");
+			smclog(LOG_INIT, "IPv6 multicast routing API already in use: %s", strerror(errno));
 			break;
 
 		default:
-			smclog(LOG_INIT, "Failed initializing IPv6 multicast routing API: %m");
+			smclog(LOG_INIT, "Failed initializing IPv6 multicast routing API: %s", strerror(errno));
 			break;
 		}
 
@@ -503,7 +503,7 @@ int mroute6_enable(void)
 	 * is not set on MRT6_INIT so we have to do this manually */
 	if (proc_set_val(IPV6_ALL_MC_FORWARD, 1)) {
 		if (errno != EACCES) {
-			smclog(LOG_ERR, "Failed enabling IPv6 multicast forwarding: %m");
+			smclog(LOG_ERR, "Failed enabling IPv6 multicast forwarding: %s", strerror(errno));
 			exit(255);
 		}
 	}
@@ -531,7 +531,7 @@ void mroute6_disable(void)
 		return;
 
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_DONE, NULL, 0))
-		smclog(LOG_WARNING, "Failed shutting down IPv6 multicast routing socket: %m");
+		smclog(LOG_WARNING, "Failed shutting down IPv6 multicast routing socket: %s", strerror(errno));
 
 	close(mroute6_socket);
 	mroute6_socket = -1;
@@ -563,7 +563,7 @@ static int mroute6_add_mif(struct iface *iface)
 	/* no more space */
 	if (mif == -1) {
 		errno = ENOMEM;
-		smclog(LOG_WARNING, "Kernel MAXMIFS (%d) too small for number of interfaces: %m", MAXMIFS);
+		smclog(LOG_WARNING, "Kernel MAXMIFS (%d) too small for number of interfaces: %s", MAXMIFS, strerror(errno));
 		return 1;
 	}
 
@@ -582,7 +582,7 @@ static int mroute6_add_mif(struct iface *iface)
 	       iface->name, mc.mif6c_mifi, mc.mif6c_pifi, mc.mif6c_flags, iface->threshold);
 
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MIF, (void *)&mc, sizeof(mc))) {
-		smclog(LOG_ERR, "Failed adding MIF for iface %s: %m", iface->name);
+		smclog(LOG_ERR, "Failed adding MIF for iface %s: %s", iface->name, strerror(errno));
 		iface->mif = -1;
 	} else {
 		iface->mif = mif;
@@ -602,7 +602,7 @@ static int mroute6_del_mif(struct iface *iface)
 	smclog(LOG_DEBUG, "Removing  %-16s => MIF %-2d", iface->name, mif);
 
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_DEL_MIF, (void *)&mif, sizeof(mif)))
-		smclog(LOG_ERR, "Failed deleting MIF for iface %s: %m", iface->name);
+		smclog(LOG_ERR, "Failed deleting MIF for iface %s: %s", iface->name, strerror(errno));
 	else
 		iface->mif = -1;
 
@@ -643,7 +643,7 @@ int mroute6_add(mroute6_t *route)
 
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MFC, (void *)&mc, sizeof(mc))) {
 		result = errno;
-		smclog(LOG_WARNING, "Failed adding IPv6 multicast route: %m");
+		smclog(LOG_WARNING, "Failed adding IPv6 multicast route: %s", strerror(errno));
 	}
 
 	return result;
@@ -675,7 +675,7 @@ int mroute6_del(mroute6_t *route)
 
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_DEL_MFC, (void *)&mc, sizeof(mc))) {
 		result = errno;
-		smclog(LOG_WARNING, "Failed removing IPv6 multicast route: %m");
+		smclog(LOG_WARNING, "Failed removing IPv6 multicast route: %s", strerror(errno));
 	}
 
 	return result;

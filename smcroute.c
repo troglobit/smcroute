@@ -96,14 +96,14 @@ static void read_conf_file(const char *conf_file)
 		if (errno == ENOENT)
 			smclog(LOG_NOTICE, "Configuration file %s does not exist", conf_file);
 		else
-			smclog(LOG_WARNING, "Unexpected error when accessing %s: %m", conf_file);
+			smclog(LOG_WARNING, "Unexpected error when accessing %s: %s", conf_file, strerror(errno));
 
 		smclog(LOG_NOTICE, "Continuing anyway, waiting for client to connect.");
 		return;
 	}
 
 	if (parse_conf_file(conf_file))
-		smclog(LOG_WARNING, "Failed parsing %s: %m", conf_file);
+		smclog(LOG_WARNING, "Failed parsing %s: %s", conf_file, strerror(errno));
 }
 
 /* Cleans up, i.e. releases allocated resources. Called via atexit() */
@@ -143,7 +143,7 @@ static void read_mroute4_socket(void)
 	memset(tmp, 0, sizeof(tmp));
 	result = read(mroute4_socket, tmp, sizeof(tmp));
 	if (result < 0) {
-		smclog(LOG_WARNING, "Failed reading IGMP message from kernel: %m");
+		smclog(LOG_WARNING, "Failed reading IGMP message from kernel: %s", strerror(errno));
 		return;
 	}
 
@@ -194,7 +194,7 @@ static void read_mroute4_socket(void)
 			status = run_script(&mrt);
 			if (status) {
 				if (status < 0)
-					smclog(LOG_WARNING, "Failed starting external script %s: %m", script_exec);
+					smclog(LOG_WARNING, "Failed starting external script %s: %s", script_exec, strerror(errno));
 				else
 					smclog(LOG_WARNING, "External script %s returned error code: %d", script_exec, status);
 			}
@@ -213,7 +213,7 @@ static void read_mroute6_socket(void)
 
 	result = read(mroute6_socket, tmp, sizeof(tmp));
 	if (result < 0)
-		smclog(LOG_INFO, "Failed clearing MLD message from kernel: %m");
+		smclog(LOG_INFO, "Failed clearing MLD message from kernel: %s", strerror(errno));
 }
 
 /* Receive command from the smcroute client */
@@ -229,7 +229,7 @@ static void read_ipc_command(void)
 	if (!packet) {
 		/* Skip logging client disconnects */
 		if (errno != ECONNRESET)
-			smclog(LOG_WARNING, "Failed receving IPC message from client: %m");
+			smclog(LOG_WARNING, "Failed receving IPC message from client: %s", strerror(errno));
 		return;
 	}
 
@@ -388,7 +388,7 @@ static int server_loop(int sd)
 		if (result <= 0) {
 			/* Log all errors, except when signalled, ignore failures. */
 			if (EINTR != errno)
-				smclog(LOG_WARNING, "Failed call to select() in server_loop(): %m");
+				smclog(LOG_WARNING, "Failed call to select() in server_loop(): %s", strerror(errno));
 			continue;
 		}
 
@@ -439,21 +439,21 @@ static int drop_root(const char* user, const char* group)
 
 	/* Allow this process to preserve permitted capabilities */
 	if (prctl(PR_SET_KEEPCAPS, 1) == -1) {
-		smclog(LOG_INIT, "Could not preserve capabilities for process: %m.");
+		smclog(LOG_INIT, "Could not preserve capabilities for process: %s", strerror(errno));
 		return -1;
 	}
 
 	/* Set supplementary groups, GID and UID */
 	if (initgroups(user, target_gid) == -1) {
-		smclog(LOG_INIT, "Could not set supplementary groups: %m.");
+		smclog(LOG_INIT, "Could not set supplementary groups: %s", strerror(errno));
 		return -1;
 	}
 	if (setgid(target_gid) == -1) {
-		smclog(LOG_INIT, "Could not set GID for process: %m.");
+		smclog(LOG_INIT, "Could not set GID for process: %s", strerror(errno));
 		return -1;
 	}
 	if (setuid(user_info->pw_uid) == -1) {
-		smclog(LOG_INIT, "Could not set UID for process: %m.");
+		smclog(LOG_INIT, "Could not set UID for process: %s", strerror(errno));
 		return -1;
 	}
 
@@ -463,7 +463,7 @@ static int drop_root(const char* user, const char* group)
 	cap_set_flag(caps, CAP_PERMITTED, 1, &cap_list, CAP_SET);
 	cap_set_flag(caps, CAP_EFFECTIVE, 1, &cap_list, CAP_SET);
 	if (cap_set_proc(caps) == -1) {
-		smclog(LOG_INIT, "Could not set capabilities for process: %m.");
+		smclog(LOG_INIT, "Could not set capabilities for process: %s", strerror(errno));
 		cap_free(caps);
 		return -1;
 	}
@@ -514,7 +514,7 @@ static int start_server(void)
 
 	sd = ipc_server_init();
 	if (sd < 0)
-		smclog(LOG_WARNING, "Failed setting up IPC socket, client communication disabled: %m");
+		smclog(LOG_WARNING, "Failed setting up IPC socket, client communication disabled: %s", strerror(errno));
 
 	atexit(clean);
 	signal_init();
@@ -522,7 +522,7 @@ static int start_server(void)
 
 	/* Everything setup, notify any clients by creating the pidfile */
 	if (pidfile(NULL))
-		smclog(LOG_WARNING, "Failed creating pidfile: %m");
+		smclog(LOG_WARNING, "Failed creating pidfile: %s", strerror(errno));
 
 	/* Drop root privileges before entering the server loop */
 	if (target_user) {
@@ -546,7 +546,7 @@ static int send_commands(int cmdnum, struct cmd *cmdv[])
 	while (ipc_client_init() && !result) {
 		switch (errno) {
 		case EACCES:
-			smclog(LOG_ERR, "Need root privileges to connect to daemon: %m");
+			smclog(LOG_ERR, "Need root privileges to connect to daemon: %s", strerror(errno));
 			result = 1;
 			goto error;
 
@@ -557,12 +557,12 @@ static int send_commands(int cmdnum, struct cmd *cmdv[])
 				continue;
 			}
 
-			smclog(LOG_WARNING, "Daemon not running: %m");
+			smclog(LOG_WARNING, "Daemon not running: %s", strerror(errno));
 			result = 1;
 			goto error;
 
 		default:
-			smclog(LOG_WARNING, "Failed connecting to daemon: %m");
+			smclog(LOG_WARNING, "Failed connecting to daemon: %s", strerror(errno));
 			result = 1;
 			goto error;
 		}
@@ -580,7 +580,7 @@ static int send_commands(int cmdnum, struct cmd *cmdv[])
 		/* Wait here for reply */
 		rlen = ipc_receive(buf, MX_CMDPKT_SZ);
 		if (slen < 0 || rlen < 0) {
-			smclog(LOG_WARNING, "Communication with daemon failed: %m");
+			smclog(LOG_WARNING, "Communication with daemon failed: %s", strerror(errno));
 			result = 1;
 			break;
 		}
@@ -774,7 +774,7 @@ int main(int argc, const char *argv[])
 		if (background) {
 			do_syslog = 1;
 			if (daemon(0, 0) < 0) {
-				smclog(LOG_ERR, "Failed daemonizing: %m");
+				smclog(LOG_ERR, "Failed daemonizing: %s", strerror(errno));
 				return 1;
 			}
 		}
