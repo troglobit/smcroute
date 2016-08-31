@@ -31,13 +31,13 @@
 
 /* MAX_MC_VIFS from mclab.h must have same value as MAXVIFS from mroute.h */
 #if MAX_MC_VIFS != MAXVIFS
-#error "IPv4 constants don't match, mclab.h needs to be fixed!"
+#error "IPv4 constants do not match, 'mclab.h' needs to be fixed!"
 #endif
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 /* MAX_MC_MIFS from mclab.h must have same value as MAXVIFS from mroute6.h */
 #if MAX_MC_MIFS != MAXMIFS
-#error "IPv6 constants don't match, mclab.h needs to be fixed!"
+#error "IPv6 constants do not match, 'mclab.h' needs to be fixed!"
 #endif
 #endif
 

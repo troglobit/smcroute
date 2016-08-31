@@ -408,70 +408,85 @@ static int server_loop(int sd)
 	return 0;
 }
 
-
-/* Drop root privileges except capability CAP_NET_ADMIN. This capability
- * enables the thread (among other networking related things) to add and
- * remove multicast routes */
-static int drop_root(const char* user, const char* group)
+static int setcaps(cap_value_t cv)
 {
-	struct passwd *user_info;
-	struct group  *group_info;
-	gid_t target_gid;
+	int result;
+	cap_t caps = cap_get_proc();
+	cap_value_t cap_list = cv;
 
-	cap_t caps;
-	cap_value_t cap_list = CAP_NET_ADMIN;
+	cap_clear(caps);
+
+	cap_set_flag(caps, CAP_PERMITTED, 1, &cap_list, CAP_SET);
+	cap_set_flag(caps, CAP_EFFECTIVE, 1, &cap_list, CAP_SET);
+	result = cap_set_proc(caps);
+
+	cap_free(caps);
+
+	return result;
+}
+
+/*
+ * Drop root privileges except capability CAP_NET_ADMIN. This capability
+ * enables the thread (among other networking related things) to add and
+ * remove multicast routes
+ */
+static int drop_root(const char *user, const char *group)
+{
+	uid_t uid;
+	gid_t gid;
+	struct passwd *pw;
+	struct group  *gr;
 
 	/* Get target UID and target GID */
-	if (!(user_info = getpwnam(user))) {
-		smclog(LOG_INIT, "User \"%s\" not found!", user);
+	pw = getpwnam(user);
+	if (!pw) {
+		smclog(LOG_INIT, "User '%s' not found!", user);
 		return -1;
 	}
 
+	uid = pw->pw_uid;
+	gid = pw->pw_gid;
 	if (group) {
-		if (!(group_info = getgrnam(group))) {
-			smclog(LOG_INIT, "Group \"%s\" not found!", group);
+		gr = getgrnam(group);
+		if (!gr) {
+			smclog(LOG_INIT, "Group '%s' not found!", group);
 			return -1;
 		}
-		target_gid = group_info->gr_gid;
+		gid = gr->gr_gid;
 	}
-	else
-		target_gid = user_info->pw_gid;
 
 	/* Allow this process to preserve permitted capabilities */
 	if (prctl(PR_SET_KEEPCAPS, 1) == -1) {
-		smclog(LOG_INIT, "Could not preserve capabilities for process: %s", strerror(errno));
+		smclog(LOG_ERR, "Cannot preserve capabilities: %s", strerror(errno));
 		return -1;
 	}
 
 	/* Set supplementary groups, GID and UID */
-	if (initgroups(user, target_gid) == -1) {
-		smclog(LOG_INIT, "Could not set supplementary groups: %s", strerror(errno));
+	if (initgroups(user, gid) == -1) {
+		smclog(LOG_ERR, "Failed setting supplementary groups: %s", strerror(errno));
 		return -1;
 	}
-	if (setgid(target_gid) == -1) {
-		smclog(LOG_INIT, "Could not set GID for process: %s", strerror(errno));
+
+	if (setgid(gid) == -1) {
+		smclog(LOG_ERR, "Failed setting group ID %d: %s", gid, strerror(errno));
 		return -1;
 	}
-	if (setuid(user_info->pw_uid) == -1) {
-		smclog(LOG_INIT, "Could not set UID for process: %s", strerror(errno));
+
+	if (setuid(uid) == -1) {
+		smclog(LOG_ERR, "Failed setting user ID %d: %s", uid, strerror(errno));
 		return -1;
 	}
 
 	/* Clear all capabilities except CAP_NET_ADMIN */
-	caps = cap_get_proc();
-	cap_clear(caps);
-	cap_set_flag(caps, CAP_PERMITTED, 1, &cap_list, CAP_SET);
-	cap_set_flag(caps, CAP_EFFECTIVE, 1, &cap_list, CAP_SET);
-	if (cap_set_proc(caps) == -1) {
-		smclog(LOG_INIT, "Could not set capabilities for process: %s", strerror(errno));
-		cap_free(caps);
+	if (setcaps(CAP_NET_ADMIN)) {
+		smclog(LOG_ERR, "Failed setting `CAP_NET_ADMIN`: %s", strerror(errno));
 		return -1;
 	}
-	cap_free(caps);
 
 	/* Try to regain root UID */
 	if (setuid(0) == 0)
 		return -1;
+
 	return 0;
 }
 
@@ -479,7 +494,7 @@ static int drop_root(const char* user, const char* group)
  * error code in the parent and the initscript will fail */
 static int start_server(void)
 {
-	int sd, api = 0, busy = 0;
+	int sd, api = 2, busy = 0;
 
 	/* Hello world! */
 	smclog(LOG_NOTICE, "%s", version_info);
@@ -491,15 +506,13 @@ static int start_server(void)
 	if (mroute4_enable()) {
 		if (errno == EADDRINUSE)
 			busy++;
-	} else {
-		api++;
+		api--;
 	}
 
 	if (mroute6_enable()) {
 		if (errno == EADDRINUSE)
 			busy++;
-	} else {
-		api++;
+		api--;
 	}
 
 	/* At least one API (IPv4 or IPv6) must have initialized successfully
