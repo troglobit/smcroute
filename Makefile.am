@@ -7,6 +7,7 @@ sbin_PROGRAMS		= smcroute
 smcroute_SOURCES	= smcroute.c mroute-api.c ifvc.c cmdpkt.c ipc.c	\
 			  mcgroup.c  parse-conf.c log.c pidfile.c mclab.h
 DISTCLEANFILES		= *~ DEADJOE semantic.cache *.gdb *.elf core core.* *.d
+LIBS			= -lcap
 
 ## Generate detached signature file (ascii-armored), like OpenVPN does
 GPG = gpg
