@@ -6,12 +6,13 @@
 .Nd SMCRoute, a static multicast router
 .Sh SYNOPSIS
 .Nm smcroute
-.Op dnkhv
-.Op -f Ar FILE
-.Op -e Ar CMD
-.Op -L Ar LVL
-.Op -a|-r Ar ROUTE
-.Op -j|-l Ar GROUP
+.Op Fl dnNkhsv
+.Op Fl f Ar FILE
+.Op Fl e Ar CMD
+.Op Fl L Ar LVL
+.Op Fl p Ar USER:GROUP
+.Op Fl a | Fl r Ar ROUTE
+.Op Fl j | Fl l Ar GROUP
 .Sh DESCRIPTION
 .Nm
 is a command line tool to manipulate the multicast routes of a UNIX
@@ -70,6 +71,12 @@ has loaded/reloaded all static multicast routes from the configuration
 file, or when a source-less (ANY) rule has been installed.
 .It Fl L Ar LEVEL
 Set log level: none, err, info, notice, debug.  Default is notice.
+.It Fl p Ar USER Op :GROUP
+Drop root privileges to USER:GROUP after start and retain CAP_NET_ADMIN
+capabilities only.  The :GROUP is optional.  This option is only
+available when
+.Nm
+was built with libcap support.
 .It Fl s
 Let daemon log to syslog, default unless running in foreground.
 .It Fl v
