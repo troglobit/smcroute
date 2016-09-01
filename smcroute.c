@@ -32,11 +32,12 @@
 #include <netinet/ip.h>
 #include <arpa/inet.h>
 
+#ifdef HAVE_LIBCAP
 #include <sys/prctl.h>
 #include <sys/capability.h>
 #include <pwd.h>
 #include <grp.h>
-#include <string.h>
+#endif
 
 #include <signal.h>
 #include <unistd.h>
@@ -408,6 +409,7 @@ static int server_loop(int sd)
 	return 0;
 }
 
+#ifdef HAVE_LIBCAP
 static int setcaps(cap_value_t cv)
 {
 	int result;
@@ -489,6 +491,7 @@ static int drop_root(const char *user, const char *group)
 
 	return 0;
 }
+#endif /* DISABLE_DROP_PRIVS */
 
 /* Init everything before forking, so we can fail and return an
  * error code in the parent and the initscript will fail */
@@ -538,12 +541,14 @@ static int start_server(void)
 		smclog(LOG_WARNING, "Failed creating pidfile: %s", strerror(errno));
 
 	/* Drop root privileges before entering the server loop */
+#ifdef HAVE_LIBCAP
 	if (target_user) {
 		if (drop_root(target_user, target_group) == -1)
 			smclog(LOG_INIT, "Could not drop root privileges, continuing as root.");
 		else
 			smclog(LOG_INIT, "Root privileges dropped: Current UID %u, GID %u.", getuid(), getgid());
 	}
+#endif
 
 	return server_loop(sd);
 }
@@ -629,7 +634,9 @@ static int usage(int code)
 	       "  -n              Run daemon in foreground, useful when run from finit\n"
 	       "  -N              No VIFs/MIFs created by default, use `phyint IFNAME enable`\n"
 	       "  -s              Use syslog, default unless running in foreground, -n\n"
+#ifdef HAVE_LIBCAP
 	       "  -p USER[:GROUP] After initialization set UID and GID to USER and GROUP\n"
+#endif
 	       "\n"
 	       "Client:\n"
 	       "  -h       This help text\n"
@@ -746,12 +753,14 @@ int main(int argc, const char *argv[])
 			log_level = loglvl(argv[1]);
 			continue;
 
+#ifdef HAVE_LIBCAP
 		case 'p':
 			if (num_opts != 2)
 				return usage(1);
 			target_user = strtok((char*) argv[1], ":");
 			target_group = strtok(NULL, ":");
 			continue;
+#endif
 
 		default:	/* unknown option */
 			return usage(1);

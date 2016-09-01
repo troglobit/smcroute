@@ -1,13 +1,5 @@
                                                                        -*-org-*-
 
-* Add support for disabling `libcap` on older/embedded systems
-Some older (?) UNIX systems, and some resource constrained embedded
-systems in particular, may not have or need libcap.
-
-The default should remain, to fail and warn if the user does not have
-`sys/capabilities.h`, but we could add a `--disable-libcap` or similar
-if the user wants to proceed anywy.
-
 * Add IPv6 support for (*, G), i.e., on-demand, routing rules.
 In SMCRoute 1.99.0 IPv4 support for source-less multicast routes was
 added. Adding support for IPv6 should be fairly straight forward, but

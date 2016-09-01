@@ -27,6 +27,8 @@ AC_ARG_ENABLE([build-id],
 	AS_HELP_STRING([--enable-build-id@<:@=ID@:>@], [enable build ID in 'smcroute -v', default: disabled]))
 AC_ARG_ENABLE([ipv6],
 	AS_HELP_STRING([--disable-ipv6], [disable IPv6 support, default: enabled]))
+AC_ARG_WITH([libcap],
+	AS_HELP_STRING([--without-libcap], [do not use libcap, disables -p USER:GROUP]))
 
 # Checks for header files.
 AC_HEADER_STDC
@@ -39,8 +41,12 @@ AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h		\
 ])
 
 # Separate check for libcap
-AC_CHECK_HEADER([sys/capability.h], [], [
-	AC_ERROR([SMCRoute v2.2 and later requries libcap to run, and libcap-dev or similar to build.])])
+AS_IF([test "x$with_libcap" != "xno"], [
+	AC_CHECK_HEADER([sys/capability.h], [], [
+		AC_MSG_NOTICE([As a safety measure, SMCRoute v2.2 and later requrie libcap to drop root privileges after startup.])
+		AC_MSG_NOTICE([Install libcap and missing headers from libcap-dev, or similar, to build.])
+		AC_MSG_ERROR([cannot continue, try --without-libcap to disable this feature.])
+	])])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -65,5 +71,10 @@ AS_IF([test "x$enable_ipv6" != "xno"],
 AS_IF([test "x$enable_build_id" = "xyes" ], [build_id=`date +%y%m%d`], [build_id=$enable_build_id],
 	AS_IF([test "x$build_id" != "xno" ],
 		AC_DEFINE_UNQUOTED([BUILD], "$build_id", [Build number, abbreviated date.])))
+
+# Support for dropping root privileges is enabled by default
+AS_IF([test "x$with_libcap" != "xno"],
+	AC_DEFINE([HAVE_LIBCAP], [], [Define to enable support for libcap.]))
+AM_CONDITIONAL(USE_LIBCAP, [test "x$with_libcap" != "xno"])
 
 AC_OUTPUT
