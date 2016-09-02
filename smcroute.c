@@ -540,8 +540,8 @@ static int start_server(void)
 	if (pidfile(NULL))
 		smclog(LOG_WARNING, "Failed creating pidfile: %s", strerror(errno));
 
-	/* Drop root privileges before entering the server loop */
 #ifdef HAVE_LIBCAP
+	/* Drop root privileges before entering the server loop */
 	if (target_user) {
 		if (drop_root(target_user, target_group) == -1)
 			smclog(LOG_INIT, "Could not drop root privileges, continuing as root.");
