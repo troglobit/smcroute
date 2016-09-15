@@ -3,6 +3,18 @@ ChangeLog
 
 All notable changes to the project are documented in this file.
 
+[v2.2][UNRELEASED] - 2016-09-XX
+-------------------------------
+
+### Changes
+- Support for dropping root priviliges after opening the multicast
+  routing socket and creating the PID file.
+
+### Fixes
+- Remove GNUisms to be able to build and run on Alpine Linux (musl libc)
+- Add OpenBSD queue.h for systems that do not have any *BSD sys/queue.h
+- Coding style cleanup and minro refactor
+
 
 [v2.1.1][] - 2016-08-19
 -----------------------
@@ -304,6 +316,7 @@ Initial public release by Carsten Schill.
 
 
 [UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.1.1...HEAD
+[v2.2]:       https://github.com/troglobit/smcroute/compare/2.1.1...2.2
 [v2.1.1]:     https://github.com/troglobit/smcroute/compare/2.1.0...2.1.1
 [v2.1.0]:     https://github.com/troglobit/smcroute/compare/2.0.0...2.1.0
 [v2.0.0]:     https://github.com/troglobit/smcroute/compare/1.99.2...2.0.0
