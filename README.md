@@ -120,8 +120,25 @@ Build & Install
 
 SMCRoute should in theory work on any UNIX like operating system which
 supports the BSD MROUTING API.  Both Linux and FreeBSD are tested on a
-regular basis.  As of SMCRoute v2.2 however, it depends on the `libcap`
-library for handling POSIX capabilities.  This is used at startup to
+regular basis.
+
+On Linux the following kernel config is needed:
+
+    CONFIG_IP_MROUTE=y
+    CONFIG_IP_PIMSM_V1=y
+    CONFIG_IP_PIMSM_V2=y
+
+Check the list of multicast capable interfaces:
+
+    cat /proc/net/dev_mcast
+
+On *BSD:
+
+    options    MROUTING    # Multicast routing
+    options    PIM         # Enable for pimd
+
+As of SMCRoute v2.2, the `libcap` library is required for full privilege
+separation using POSIX capabilities.  At startup this library is used to
 drop full root privileges, retaining only `CAP_NET_ADMIN` for managing
 the multicast routes.
 
@@ -130,7 +147,7 @@ the multicast routes.
 	$ sudo make install-strip
 
 
-Good Luck!
+Good Luck!  
 The SMCRoute Maintainers
 
 [GitHub]:          https://github.com/troglobit/smcroute
