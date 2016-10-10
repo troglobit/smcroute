@@ -278,7 +278,7 @@ static void read_ipc_command(void)
 			/* check source address */
 			if (!*sourceadr
 			    || !inet_aton(sourceadr, &source)) {
-				smclog(LOG_WARNING, "Invalid multicast source: %s", sourceadr);
+				smclog(LOG_WARNING, "Invalid IPv4 multicast source: %s", sourceadr);
 				ipc_send(log_message, strlen(log_message) + 1);
 				break;
 			}
@@ -289,7 +289,7 @@ static void read_ipc_command(void)
 			if (!*groupstr
 			    || !inet_aton(groupstr, &group)
 			    || !IN_MULTICAST(ntohl(group.s_addr))) {
-				smclog(LOG_WARNING, "Invalid multicast group: %s", groupstr);
+				smclog(LOG_WARNING, "Invalid IPv4 multicast group: %s", groupstr);
 				ipc_send(log_message, strlen(log_message) + 1);
 				break;
 			}
@@ -327,7 +327,7 @@ static void read_ipc_command(void)
 			if (!*groupstr
 			    || !inet_aton(groupstr, &group)
 			    || !IN_MULTICAST(ntohl(group.s_addr))) {
-				smclog(LOG_WARNING, "Invalid multicast group: %s", groupstr);
+				smclog(LOG_WARNING, "Invalid IPv4 multicast group: %s", groupstr);
 				ipc_send(log_message, strlen(log_message) + 1);
 				break;
 			}

@@ -153,6 +153,39 @@ static int join_mgroup(int lineno, char *ifname, char *group)
 	return result;
 }
 
+static int join_mgroup_ssm(int lineno, char *ifname, char *group, char *source)
+{
+	int result;
+
+	if (!ifname || !group || !source) {
+		errno = EINVAL;
+		return 1;
+	}
+
+	if (strchr(group, ':') || strchr(source, ':')) {
+		smclog(LOG_WARNING, 0, "%02: IPv6 is not supported for Source Specific Multicast.", lineno);
+		result = 0;
+	} else {
+		struct in_addr src;
+
+		if ((inet_pton(AF_INET, source, &src) <= 0)) {
+			smclog(LOG_WARNING, 0, "%02d: Invalid IPv4 multicast source: %s", lineno, source);
+			return 1;
+		}
+
+		struct in_addr grp;
+
+		if ((inet_pton(AF_INET, group, &grp) <= 0) || !IN_MULTICAST(ntohl(grp.s_addr))) {
+			smclog(LOG_WARNING, 0, "%02d: Invalid IPv4 multicast group: %s", lineno, group);
+			return 1;
+		}
+
+		result = mcgroup4_join_ssm(ifname, src, grp);
+	}
+
+	return 0;
+}
+
 static int add_mroute(int lineno, char *ifname, char *group, char *source, char *outbound[], int num)
 {
 	int i, total, result;
@@ -321,9 +354,11 @@ int parse_conf_file(const char *file)
 					ifname = pop_token(&line);
 					if (!ifname)
 						op = 0;
+				} else if (match("ssmgroup", token)) {
+					op = 4;
 				} else {
 #ifdef UNITTEST
-					printf("%02d: Unknonw command: %s", lineno, line);
+					printf("%02d: Unknown command: %s", lineno, line);
 #else
 					smclog(LOG_WARNING, 0, "%02d: Unknown command %s, skipping.", lineno, token);
 #endif
@@ -369,15 +404,17 @@ int parse_conf_file(const char *file)
 			printf("%02d: DUMP: %s\n", lineno, linebuf);
 		}
 #else
-		if (op == 1)
+		if (op == 1) {
 			join_mgroup(lineno, ifname, group);
-		else if (op == 2)
+		} else if (op == 2) {
 			add_mroute(lineno, ifname, group, source, dest, num);
-		else if (op == 3) {
+		} else if (op == 3) {
 			if (enable)
 				mroute_add_vif(ifname, threshold);
 			else
 				mroute_del_vif(ifname);
+		} else if (op == 4) {
+			join_mgroup_ssm(lineno, ifname, group, source);
 		}
 #endif	/* UNITTEST */
 
