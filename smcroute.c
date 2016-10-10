@@ -671,7 +671,7 @@ error:
 static int usage(int code)
 {
 	printf("\nUsage:\n"
-	       "  %s [dnkhv] [-f FILE] [-e CMD] [-L LVL] [-a|-r ROUTE] [-j|-l GROUP]\n"
+	       "  %s [dnkhv] [-f FILE] [-e CMD] [-L LVL] [-a|-r ROUTE] [-j|-l GROUP] [-x|-y SSM GROUP]\n"
 	       "\n"
 	       "Daemon:\n"
 	       "  -d              Start daemon\n"
