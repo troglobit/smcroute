@@ -54,6 +54,7 @@ By default SMCRoute looks for its configuration in `/etc/smcroute.conf`,
 which can look something like this:
 
     mgroup from eth0 group 225.1.2.3
+    ssmgroup from eth0 group 225.1.2.3 source 192.168.1.42
     mroute from eth0 group 225.1.2.3 source 192.168.1.42 to eth1 eth2
 
 The first line means "Join multicast group 225.1.2.3 on interface eth0",
@@ -66,7 +67,11 @@ this way, for more groups you should investigate the root cause for not
 receiving multicast at the multicast router, or use a dynamic multicast
 routing protocol.
 
-The second `mroute` line is the actual layer-3 routing entry.  Here we
+The second command `ssmgroup` do the same as `mgroup` one, but by
+joining source specific group the host specifies that it wants packets
+from source 192.168.1.42 and not any other source.
+
+The third `mroute` line is the actual layer-3 routing entry.  Here we
 say that multicast data originating from 192.168.1.42 on `eth0` to the
 multicast group 225.1.2.3 should be forwarded to interfaces `eth1` and
 `eth2`.

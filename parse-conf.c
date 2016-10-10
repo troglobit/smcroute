@@ -305,6 +305,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
  * Format:
  *    phyint IFNAME <enable|disable> [threshold <1-255>]
  *    mgroup from IFNAME group MCGROUP
+ *    ssmgroup from IFNAME group MCGROUP source SOURCE
  *    mroute from IFNAME source ADDRESS group MCGROUP to IFNAME [IFNAME ...]
  */
 int parse_conf_file(const char *file)

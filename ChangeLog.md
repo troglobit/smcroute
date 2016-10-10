@@ -9,6 +9,7 @@ All notable changes to the project are documented in this file.
 ### Changes
 - Support for dropping root priviliges after opening the multicast
   routing socket and creating the PID file.
+- Support for Source Specific Multicast groups subscription (only IPv4 now).
 
 ### Fixes
 - Remove GNUisms to be able to build and run on Alpine Linux (musl libc)
@@ -34,7 +35,7 @@ All notable changes to the project are documented in this file.
 - Fix issue #39: Removing wildcard route at runtime does not work if no
   kernel routes have been set.
 - Fix issue #44: IPv6 disabled by default, despite what `configure` says
-  in its help text.  Enabling it disables it ... fixed by enablig IPv6
+  in its help text.  Enabling it disables it ... fixed by enabling IPv6
   by default.
 
 
