@@ -272,7 +272,7 @@ static void read_ipc_command(void)
 		const char *sourceadr = ifname + strlen(ifname) + 1;
 		const char *groupstr = sourceadr + strlen(sourceadr) + 1;
 
-		if (strchr(groupstr, ':') == NULL && strchr(sourceadr, ':')) {
+		if (strchr(groupstr, ':') == NULL && strchr(sourceadr, ':') == NULL) {
 			struct in_addr source;
 
 			/* check source address */
