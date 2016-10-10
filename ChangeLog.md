@@ -3,9 +3,21 @@ ChangeLog
 
 All notable changes to the project are documented in this file.
 
+[v2.2][UNRELEASED] - 2016-09-XX
+-------------------------------
 
-[v2.1.1][UNRELEASED] - 2016-07-XX
----------------------------------
+### Changes
+- Support for dropping root priviliges after opening the multicast
+  routing socket and creating the PID file.
+
+### Fixes
+- Remove GNUisms to be able to build and run on Alpine Linux (musl libc)
+- Add OpenBSD queue.h for systems that do not have any *BSD sys/queue.h
+- Coding style cleanup and minro refactor
+
+
+[v2.1.1][] - 2016-08-19
+-----------------------
 
 ### Changes
 - When `SIGHUP` is received SMCRoute now touches its PID file as an
@@ -21,6 +33,9 @@ All notable changes to the project are documented in this file.
   older systems, or uClinux, memory is not freed at program exit.
 - Fix issue #39: Removing wildcard route at runtime does not work if no
   kernel routes have been set.
+- Fix issue #44: IPv6 disabled by default, despite what `configure` says
+  in its help text.  Enabling it disables it ... fixed by enablig IPv6
+  by default.
 
 
 [v2.1.0][] - 2016-02-17
@@ -300,7 +315,9 @@ v0.8 - August 2001
 Initial public release by Carsten Schill.
 
 
-[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.1.0...HEAD
+[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.1.1...HEAD
+[v2.2]:       https://github.com/troglobit/smcroute/compare/2.1.1...2.2
+[v2.1.1]:     https://github.com/troglobit/smcroute/compare/2.1.0...2.1.1
 [v2.1.0]:     https://github.com/troglobit/smcroute/compare/2.0.0...2.1.0
 [v2.0.0]:     https://github.com/troglobit/smcroute/compare/1.99.2...2.0.0
 [v1.99.2]:    https://github.com/troglobit/smcroute/compare/1.99.1...1.99.2

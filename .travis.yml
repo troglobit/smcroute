@@ -20,6 +20,7 @@ addons:
   apt:
     packages:
       - tree
+      - libcap-dev
   coverity_scan:
     project:
       name: "troglobit/smcroute"

@@ -56,7 +56,7 @@ static void mcgroup4_init(void)
 	if (mcgroup4_socket < 0) {
 		mcgroup4_socket = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 		if (mcgroup4_socket < 0) {
-			smclog(LOG_ERR, "Failed creating socket for joining IPv4 multicast groups: %m");
+			smclog(LOG_ERR, "Failed creating socket for joining IPv4 multicast groups: %s", strerror(errno));
 			exit(255);
 		}
 
@@ -131,7 +131,7 @@ static int mcgroup_join_leave_ipv4(int sd, int cmd, const char *ifname, struct i
 	mreq.imr_interface.s_addr = iface->inaddr.s_addr;
 	if (setsockopt(sd, IPPROTO_IP, joinleave, (void *)&mreq, sizeof(mreq))) {
 		if (EADDRINUSE != errno)
-			smclog(LOG_WARNING, "%s MEMBERSHIP failed: %m", cmd == 'j' ? "ADD" : "DROP");
+			smclog(LOG_WARNING, "%s MEMBERSHIP failed: %s", cmd == 'j' ? "ADD" : "DROP", strerror(errno));
 		return 1;
 	}
 
@@ -185,7 +185,7 @@ static void mcgroup6_init(void)
 	if (mcgroup6_socket < 0) {
 		mcgroup6_socket = socket(AF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_UDP);
 		if (mcgroup6_socket < 0) {
-			smclog(LOG_WARNING, "Failed creating socket for joining IPv6 multicast groups: %m");
+			smclog(LOG_WARNING, "Failed creating socket for joining IPv6 multicast groups: %s", strerror(errno));
 			return;
 		}
 
@@ -209,7 +209,7 @@ static int mcgroup_join_leave_ipv6(int sd, int cmd, const char *ifname, struct i
 	mreq.ipv6mr_interface = iface->ifindex;
 	if (setsockopt(sd, IPPROTO_IPV6, joinleave, (void *)&mreq, sizeof(mreq))) {
 		if (EADDRINUSE != errno)
-			smclog(LOG_WARNING, "%s MEMBERSHIP failed: %m", cmd == 'j' ? "ADD" : "DROP");
+			smclog(LOG_WARNING, "%s MEMBERSHIP failed: %s", cmd == 'j' ? "ADD" : "DROP", strerror(errno));
 		return 1;
 	}
 
