@@ -395,7 +395,7 @@ static void handler(int sig)
 		read_conf_file(conf_file);
 
 		/* Acknowledge client SIGHUP by touching the pidfile */
-		pidfile(NULL);
+		pidfile(NULL, uid, gid);
 		break;
 	}
 }
@@ -593,8 +593,8 @@ static int start_server(void)
 	read_conf_file(conf_file);
 
 	/* Everything setup, notify any clients by creating the pidfile */
-	if (pidfile(NULL))
-		smclog(LOG_WARNING, "Failed creating pidfile: %s", strerror(errno));
+	if (pidfile(NULL, uid, gid))
+		smclog(LOG_WARNING, "Failed create/chown pidfile: %s", strerror(errno));
 
 #ifdef HAVE_LIBCAP
 	/* Drop root privileges before entering the server loop */

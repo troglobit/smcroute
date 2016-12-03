@@ -52,7 +52,7 @@ const  char *__pidfile_name = NULL;
 extern char *__progname;
 
 int
-pidfile(const char *basename)
+pidfile(const char *basename, uid_t uid, gid_t gid)
 {
 	int save_errno;
 	int atexit_already;
@@ -96,7 +96,10 @@ pidfile(const char *basename)
 		errno = save_errno;
 		return (-1);
 	}
-	(void) fclose(f);
+	fclose(f);
+
+	if (chown(pidfile_path, uid, gid))
+		return (-1);
 
 	/*
 	 * LITE extension, no need to set up another atexit() handler

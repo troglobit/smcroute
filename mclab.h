@@ -248,7 +248,7 @@ int run_script(mroute_t *mroute);
 int parse_conf_file(const char *file);
 
 /* pidfile.c */
-int pidfile(const char *basename);
+int pidfile(const char *basename, uid_t uid, gid_t gid);
 
 /**
  * Local Variables:
