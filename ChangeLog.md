@@ -3,8 +3,9 @@ ChangeLog
 
 All notable changes to the project are documented in this file.
 
-[v2.2][UNRELEASED] - 2016-09-XX
--------------------------------
+
+[v2.2.0][] - 2016-12-03
+-----------------------
 
 ### Changes
 - Support for dropping root priviliges after opening the multicast
@@ -317,8 +318,8 @@ v0.8 - August 2001
 Initial public release by Carsten Schill.
 
 
-[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.1.1...HEAD
-[v2.2]:       https://github.com/troglobit/smcroute/compare/2.1.1...2.2
+[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.2.0...HEAD
+[v2.2.0]:     https://github.com/troglobit/smcroute/compare/2.1.1...2.2.0
 [v2.1.1]:     https://github.com/troglobit/smcroute/compare/2.1.0...2.1.1
 [v2.1.0]:     https://github.com/troglobit/smcroute/compare/2.0.0...2.1.0
 [v2.0.0]:     https://github.com/troglobit/smcroute/compare/1.99.2...2.0.0
