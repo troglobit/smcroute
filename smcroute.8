@@ -13,6 +13,7 @@
 .Op Fl p Ar USER:GROUP
 .Op Fl a | Fl r Ar ROUTE
 .Op Fl j | Fl l Ar GROUP
+.Op Fl x | Fl y Ar GROUP
 .Sh DESCRIPTION
 .Nm
 is a command line tool to manipulate the multicast routes of a UNIX
@@ -141,6 +142,10 @@ Remove a kernel multicast route.
 Join a multicast group on a given interface.
 .It Fl l Ar IFNAME GROUP
 Leave a multicast group on a given interface.
+.It Fl x Ar IFNAME SOURCE GROUP
+Join a source specific multicast (SSM) group on a given interface.
+.It Fl y Ar IFNAME SOURCE GROUP
+Leave a source specific multicast (SSM) group on a given interface.
 .El
 .Pp
 Multicast routes can be added with the
