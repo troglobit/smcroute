@@ -8,8 +8,9 @@ All notable changes to the project are documented in this file.
 
 ### Changes
 - Support for dropping root priviliges after opening the multicast
-  routing socket and creating the PID file.
-- Support for Source Specific Multicast groups subscription (only IPv4 now).
+  routing socket and creating the PID file
+- Support for Source Specific Multicast group subscription (only IPv4)
+- Support for systemd, service file included and installed by default
 
 ### Fixes
 - Remove GNUisms to be able to build and run on Alpine Linux (musl libc)
