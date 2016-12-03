@@ -540,7 +540,7 @@ static int drop_root(const char *user, const char *group)
 
 	return 0;
 }
-#endif /* DISABLE_DROP_PRIVS */
+#endif /* HAVE_LIBCAP */
 
 /* Init everything before forking, so we can fail and return an
  * error code in the parent and the initscript will fail */
