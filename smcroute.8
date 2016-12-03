@@ -119,10 +119,10 @@ and can thus not be used to pass information to the script from outside of
 .Sh COMMANDS
 The following are commands that can only be passed to an already running daemon.
 .Bl -tag -width Ds
-.It Fl a Ar INIFNAME SOURCE GROUP OUTIFNAME [OUTIFNAME ...]
+.It Fl a Ar IFNAME SOURCE GROUP OUTIFNAME [OUTIFNAME ...]
 Add a multicast route to the kernel routing cache so that multicast packets
 received on the network interface
-.Ar INIFNAME
+.Ar IFNAME
 originating from the IP address
 .Ar SOURCE
 and sent to the multicast group addess
@@ -143,11 +143,11 @@ Join a multicast group on a given interface.
 Leave a multicast group on a given interface.
 .El
 .Pp
-Multicast routes can be added with the 
-.Fl a 
-command and removed with the 
+Multicast routes can be added with the
+.Fl a
+command and removed with the
 .Fl r
-command. 
+command.
 .Pp
 To be able to add/remove routes or join/leave multicast groups using
 these commands the
@@ -172,7 +172,7 @@ then SMCRoute will operate on the IPv6 multicast routes.
 The output interfaces are not needed when removing routes using the
 .Fl r
 command. The first three parameters are sufficient to identify the
-source of the multicast route. 
+source of the multicast route.
 .Pp
 The intended purpose of
 .Nm
@@ -214,7 +214,7 @@ may be given in an IPv4 or IPv6 address format.
 The command is passed to the daemon that passes it to the kernel. The
 kernel then tries to join the multicast group
 .Ar GROUP
-on interface 
+on interface
 .Ar IFNAME
 by starting IGMP, or MLD for IPv6 group address, signaling on the given
 interface.  This signaling may be received by routers/switches connected
@@ -358,15 +358,15 @@ SIGHUP.
 Pidfile (re)created by
 .Nm
 daemon when it has started up and is ready to receive commands.
-.It Pa /proc/net/ip_mr_cache 
+.It Pa /proc/net/ip_mr_cache
 Holds active IPv4 multicast routes.
-.It Pa /proc/net/ip_mr_vif 
+.It Pa /proc/net/ip_mr_vif
 Holds the IPv4 virtual interfaces used by the active multicast routing daemon.
-.It Pa /proc/net/ip6_mr_cache 
+.It Pa /proc/net/ip6_mr_cache
 Holds active IPv6 multicast routes.
-.It Pa /proc/net/ip6_mr_vif 
+.It Pa /proc/net/ip6_mr_vif
 Holds the IPv6 virtual interfaces used by the active multicast routing daemon.
-.It Pa /var/run/smcroute 
+.It Pa /var/run/smcroute
 IPC socket created by the smcroute daemon.
 .It Pa /proc/net/igmp
 Holds active IGMP joins.
