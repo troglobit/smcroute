@@ -8,15 +8,15 @@ All notable changes to the project are documented in this file.
 -----------------------
 
 ### Changes
-- Support for dropping root priviliges after opening the multicast
+- Support for dropping root privileges after opening the multicast
   routing socket and creating the PID file
 - Support for Source Specific Multicast group subscription (only IPv4)
 - Support for systemd, service file included and installed by default
 
 ### Fixes
 - Remove GNUisms to be able to build and run on Alpine Linux (musl libc)
-- Add OpenBSD queue.h for systems that do not have any *BSD sys/queue.h
-- Coding style cleanup and minro refactor
+- Add OpenBSD `queue.h` for systems that do not have any *BSD `sys/queue.h`
+- Coding style cleanup and minor refactor
 
 
 [v2.1.1][] - 2016-08-19
