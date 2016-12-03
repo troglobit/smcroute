@@ -145,7 +145,7 @@ On *BSD:
 As of SMCRoute v2.2, the `libcap` library is required for full privilege
 separation using POSIX capabilities.  At startup this library is used to
 drop full root privileges, retaining only `CAP_NET_ADMIN` for managing
-the multicast routes.
+the multicast routes.  Use `--without-libcap` to disable this feature.
 
     $ ./configure
     $ make -j5
