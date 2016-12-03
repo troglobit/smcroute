@@ -8,7 +8,7 @@ AM_SILENT_RULES()
 
 AC_CONFIG_SRCDIR([mclab.h])
 AC_CONFIG_HEADER([config.h])
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile smcroute.service])
 
 # Older versions of autoconf (<2.58) do not have AC_CONFIG_MACRO_DIR()
 m4_include([m4/misc.m4])
@@ -18,6 +18,9 @@ AC_CONFIG_MACRO_DIR([m4])
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_INSTALL
+
+# Required to check for libsystemd-dev
+PKG_PROG_PKG_CONFIG
 
 # The pidfile() code needs asprintf(), which relies on -D_GNU_SOURCE
 AC_GNU_SOURCE
@@ -29,6 +32,9 @@ AC_ARG_ENABLE([ipv6],
 	AS_HELP_STRING([--disable-ipv6], [disable IPv6 support, default: enabled]))
 AC_ARG_WITH([libcap],
 	AS_HELP_STRING([--without-libcap], [do not use libcap, disables -p USER:GROUP]))
+AC_ARG_WITH([systemd],
+     [AS_HELP_STRING([--with-systemd=DIR], [Directory for systemd service files])],,
+     [with_systemd=auto])
 
 # Checks for header files.
 AC_HEADER_STDC
@@ -47,6 +53,18 @@ AS_IF([test "x$with_libcap" != "xno"], [
 		AC_MSG_NOTICE([Install libcap and missing headers from libcap-dev, or similar, to build.])
 		AC_MSG_ERROR([cannot continue, try --without-libcap to disable this feature.])
 	])])
+
+# Check where to install the systemd .service file
+AS_IF([test "x$with_systemd" = "xyes" -o "x$with_systemd" = "xauto"], [
+     def_systemd=$($PKG_CONFIG --variable=systemdsystemunitdir systemd)
+     AS_IF([test "x$def_systemd" = "x"],
+         [AS_IF([test "x$with_systemd" = "xyes"],
+	     [AC_MSG_ERROR([systemd support requested but pkg-config unable to query systemd package])])
+	     with_systemd=no], [with_systemd="$def_systemd"])]
+)
+AS_IF([test "x$with_systemd" != "xno"],
+     [AC_SUBST([systemddir], [$with_systemd])])
+AM_CONDITIONAL([HAVE_SYSTEMD], [test "x$with_systemd" != "xno"])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -76,5 +94,14 @@ AS_IF([test "x$enable_build_id" = "xyes" ], [build_id=`date +%y%m%d`], [build_id
 AS_IF([test "x$with_libcap" != "xno"],
 	AC_DEFINE([HAVE_LIBCAP], [], [Define to enable support for libcap.]))
 AM_CONDITIONAL(USE_LIBCAP, [test "x$with_libcap" != "xno"])
+
+# Expand $sbindir early, into $SBINDIR, for systemd unit file
+# NOTE: This does *not* take prefix/exec_prefix override at "make
+#       install" into account, unfortunately.
+test "x$prefix" = xNONE && prefix=$ac_default_prefix
+test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
+SBINDIR=`eval echo $sbindir`
+SBINDIR=`eval echo $SBINDIR`
+AC_SUBST(SBINDIR)
 
 AC_OUTPUT

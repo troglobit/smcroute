@@ -1,4 +1,6 @@
 ## SMCRoute - A static multicast routing tool             -*-Makefile-*-
+ACLOCAL_AMFLAGS           = -I m4
+DISTCHECK_CONFIGURE_FLAGS = --with-systemd=$$dc_install_base/$(systemd)
 
 dist_man8_MANS		= smcroute.8
 doc_DATA		= README.md AUTHORS TODO ChangeLog.md COPYING smcroute.conf smcroute.init
@@ -9,6 +11,10 @@ smcroute_SOURCES	= smcroute.c mroute-api.c ifvc.c cmdpkt.c ipc.c	\
 DISTCLEANFILES		= *~ DEADJOE semantic.cache *.gdb *.elf core core.* *.d
 if USE_LIBCAP
 smcroute_LDADD		= -lcap
+endif
+
+if HAVE_SYSTEMD
+systemd_DATA            = smcroute.service
 endif
 
 ## Generate detached signature file (ascii-armored), like OpenVPN does
@@ -54,4 +60,3 @@ release: distcheck release-hook md5-dist gpg-dist
 		printf "$$file.asc\tGPG signature "; gpg --verify $$file.asc 2>&1	\
 			| grep 'key ID' | sed 's/.*using \(.*\)/\1/'; echo;		\
 	done
-
