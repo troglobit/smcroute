@@ -57,6 +57,7 @@ gid_t gid      = 0;
 
 const        char *script_exec  = NULL;
 static const char *conf_file    = SMCROUTE_SYSTEM_CONF;
+static const char *username;
 extern       char *__progname;
 static const char version_info[] =
 	"SMCRoute version " PACKAGE_VERSION
@@ -486,6 +487,9 @@ static int whoami(const char *user, const char *group)
 		gid = gr->gr_gid;
 	}
 
+	/* Valid user */
+	username = user;
+
 	return 0;
 }
 
@@ -511,7 +515,7 @@ static int setcaps(cap_value_t cv)
  * enables the thread (among other networking related things) to add and
  * remove multicast routes
  */
-static int drop_root(void)
+static int drop_root(const char *user)
 {
 	/* Allow this process to preserve permitted capabilities */
 	if (prctl(PR_SET_KEEPCAPS, 1) == -1) {
@@ -598,8 +602,8 @@ static int start_server(void)
 
 #ifdef HAVE_LIBCAP
 	/* Drop root privileges before entering the server loop */
-	if (uid != 0) {
-		if (drop_root() == -1)
+	if (username) {
+		if (drop_root(username) == -1)
 			smclog(LOG_INIT, "Could not drop root privileges, continuing as root.");
 		else
 			smclog(LOG_INIT, "Root privileges dropped: Current UID %u, GID %u.", getuid(), getgid());
@@ -739,6 +743,9 @@ int main(int argc, const char *argv[])
 	int i, num_opts;
 	unsigned int cmdnum = 0;
 	struct cmd *cmdv[16];
+#ifdef HAVE_LIBCAP
+	char *ptr;
+#endif
 
 	if (argc <= 1)
 		return usage(1);
@@ -825,10 +832,18 @@ int main(int argc, const char *argv[])
 		case 'p':
 			if (num_opts != 2)
 				return usage(1);
-			if (whoami(strtok(argv[1], ":"), strtok(NULL, ":"))) {
-				perror("Invalid user:group argument");
+
+			ptr = strdup(argv[1]);
+			if (!ptr) {
+				perror("Failed parsing user:group argument");
 				return 1;
 			}
+			if (whoami(strtok(ptr, ":"), strtok(NULL, ":"))) {
+				perror("Invalid user:group argument");
+				free(ptr);
+				return 1;
+			}
+			free(ptr);
 			continue;
 #endif
 
