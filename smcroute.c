@@ -52,9 +52,10 @@ int do_vifs    = 1;
 int do_daemon  = 0;
 int do_syslog  = 0;
 
+uid_t uid      = 0;
+gid_t gid      = 0;
+
 const        char *script_exec  = NULL;
-const        char *target_user  = NULL;
-const        char *target_group = NULL;
 static const char *conf_file    = SMCROUTE_SYSTEM_CONF;
 extern       char *__progname;
 static const char version_info[] =
@@ -459,6 +460,35 @@ static int server_loop(int sd)
 }
 
 #ifdef HAVE_LIBCAP
+static int whoami(const char *user, const char *group)
+{
+	struct passwd *pw;
+	struct group  *gr;
+
+	if (!user)
+		return -1;
+
+	/* Get target UID and target GID */
+	pw = getpwnam(user);
+	if (!pw) {
+		smclog(LOG_INIT, "User '%s' not found!", user);
+		return -1;
+	}
+
+	uid = pw->pw_uid;
+	gid = pw->pw_gid;
+	if (group) {
+		gr = getgrnam(group);
+		if (!gr) {
+			smclog(LOG_INIT, "Group '%s' not found!", group);
+			return -1;
+		}
+		gid = gr->gr_gid;
+	}
+
+	return 0;
+}
+
 static int setcaps(cap_value_t cv)
 {
 	int result;
@@ -481,31 +511,8 @@ static int setcaps(cap_value_t cv)
  * enables the thread (among other networking related things) to add and
  * remove multicast routes
  */
-static int drop_root(const char *user, const char *group)
+static int drop_root(void)
 {
-	uid_t uid;
-	gid_t gid;
-	struct passwd *pw;
-	struct group  *gr;
-
-	/* Get target UID and target GID */
-	pw = getpwnam(user);
-	if (!pw) {
-		smclog(LOG_INIT, "User '%s' not found!", user);
-		return -1;
-	}
-
-	uid = pw->pw_uid;
-	gid = pw->pw_gid;
-	if (group) {
-		gr = getgrnam(group);
-		if (!gr) {
-			smclog(LOG_INIT, "Group '%s' not found!", group);
-			return -1;
-		}
-		gid = gr->gr_gid;
-	}
-
 	/* Allow this process to preserve permitted capabilities */
 	if (prctl(PR_SET_KEEPCAPS, 1) == -1) {
 		smclog(LOG_ERR, "Cannot preserve capabilities: %s", strerror(errno));
@@ -534,7 +541,7 @@ static int drop_root(const char *user, const char *group)
 		return -1;
 	}
 
-	/* Try to regain root UID */
+	/* Try to regain root UID, should not work at this point. */
 	if (setuid(0) == 0)
 		return -1;
 
@@ -591,8 +598,8 @@ static int start_server(void)
 
 #ifdef HAVE_LIBCAP
 	/* Drop root privileges before entering the server loop */
-	if (target_user) {
-		if (drop_root(target_user, target_group) == -1)
+	if (uid != 0) {
+		if (drop_root() == -1)
 			smclog(LOG_INIT, "Could not drop root privileges, continuing as root.");
 		else
 			smclog(LOG_INIT, "Root privileges dropped: Current UID %u, GID %u.", getuid(), getgid());
@@ -818,8 +825,10 @@ int main(int argc, const char *argv[])
 		case 'p':
 			if (num_opts != 2)
 				return usage(1);
-			target_user = strtok((char*) argv[1], ":");
-			target_group = strtok(NULL, ":");
+			if (whoami(strtok(argv[1], ":"), strtok(NULL, ":"))) {
+				perror("Invalid user:group argument");
+				return 1;
+			}
 			continue;
 #endif
 
