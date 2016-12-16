@@ -49,7 +49,7 @@ static void pidfile_cleanup(void);
 
 const  char *__pidfile_path = _PATH_VARRUN; /* Note: includes trailing slash '/' */
 const  char *__pidfile_name = NULL;
-extern char *__progname;
+extern char *prognm;
 
 int
 pidfile(const char *basename, uid_t uid, gid_t gid)
@@ -60,7 +60,7 @@ pidfile(const char *basename, uid_t uid, gid_t gid)
 	FILE *f;
 
 	if (basename == NULL)
-		basename = __progname;
+		basename = prognm;
 
 	pid = getpid();
 	atexit_already = 0;

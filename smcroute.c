@@ -55,10 +55,11 @@ int do_syslog  = 0;
 uid_t uid      = 0;
 gid_t gid      = 0;
 
+char *prognm   = PACKAGE_NAME;
+
 const        char *script_exec  = NULL;
 static const char *conf_file    = SMCROUTE_SYSTEM_CONF;
 static const char *username;
-extern       char *__progname;
 static const char version_info[] =
 	"SMCRoute version " PACKAGE_VERSION
 #ifdef BUILD
@@ -722,10 +723,24 @@ static int usage(int code)
 	       "  -x <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>\n"
 	       "  -y <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>\n\n"
 	       "Bug report address: %s\n"
-	       "Project homepage: %s\n\n", __progname, PACKAGE_BUGREPORT, PACKAGE_URL);
+	       "Project homepage: %s\n\n", prognm, PACKAGE_BUGREPORT, PACKAGE_URL);
 
 	return code;
 }
+
+static char *progname(const char *arg0)
+{
+	char *nm;
+
+	nm = strrchr(arg0, '/');
+	if (nm)
+		nm++;
+	else
+		nm = (char *)arg0;
+
+	return nm;
+}
+
 
 /**
  * main - Main program
@@ -747,6 +762,7 @@ int main(int argc, const char *argv[])
 	char *ptr;
 #endif
 
+	prognm = progname(argv[0]);
 	if (argc <= 1)
 		return usage(1);
 
@@ -869,7 +885,7 @@ int main(int argc, const char *argv[])
 
 	if (do_daemon) {
 		if (geteuid() != 0) {
-			smclog(LOG_ERR, "Need root privileges to start %s", __progname);
+			smclog(LOG_ERR, "Need root privileges to start %s", prognm);
 			return 1;
 		}
 
@@ -887,7 +903,7 @@ int main(int argc, const char *argv[])
 		}
 
 		if (do_syslog) {
-			openlog(__progname, LOG_PID, LOG_DAEMON);
+			openlog(prognm, LOG_PID, LOG_DAEMON);
 			setlogmask(LOG_UPTO(log_level));
 		}
 
