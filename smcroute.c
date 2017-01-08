@@ -427,6 +427,7 @@ static int server_loop(int sd)
 #endif
 	struct timeval now     = { 0 };
 	struct timeval timeout = { 0 }, *tmo = NULL;
+	struct timeval last_cache_flush = { 0 };
 
 	/* Watch the MRouter and the IPC socket to the smcroute client */
 	while (running) {
@@ -440,9 +441,12 @@ static int server_loop(int sd)
 			FD_SET(mroute6_socket, &fds);
 #endif
 
-		if (cache_tmo && timeout.tv_sec == 0) {
+		if (cache_tmo) {
 			gettimeofday(&now, NULL);
-			timeout.tv_sec  = cache_tmo;
+			timeout.tv_sec = cache_tmo;
+			if (last_cache_flush.tv_sec != 0) {
+				timeout.tv_sec -=  now.tv_sec - last_cache_flush.tv_sec;
+                        }
 			timeout.tv_usec = 0;
 			tmo = &timeout;
 		}
@@ -456,16 +460,10 @@ static int server_loop(int sd)
 			continue;
 		}
 
-		if (cache_tmo) {
-			gettimeofday(&timeout, NULL);
-			if (now.tv_sec + cache_tmo <= timeout.tv_sec) {
-				timeout.tv_sec = 0;
-				smclog(LOG_NOTICE, "Cache timeout, flushing all (*,G) routes!");
-				mroute4_dyn_cache_delete();
-			} else {
-				/* New timeout, compensate for any events on fds */
-				timeout.tv_sec = now.tv_sec + cache_tmo - timeout.tv_sec;
-			}
+		if (cache_tmo && (last_cache_flush.tv_sec + cache_tmo < now.tv_sec)) {
+			last_cache_flush = now;
+			smclog(LOG_NOTICE, "Cache timeout, flushing all (*,G) routes!");
+			mroute4_dyn_cache_delete();
 		}
 
 		if (FD_ISSET(mroute4_socket, &fds))
