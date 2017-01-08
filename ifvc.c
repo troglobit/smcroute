@@ -49,41 +49,52 @@ void iface_init(void)
 
 	iface_list = calloc(MAX_IF, sizeof(struct iface));
 	if (!iface_list) {
-		smclog(LOG_ERR, "Failed allocating space for interfaces: %m");
+		smclog(LOG_ERR, "Failed allocating space for interfaces: %s", strerror(errno));
 		exit(255);
 	}
 
 	if (getifaddrs(&ifaddr) == -1) {
-		smclog(LOG_ERR, "Failed retrieving interface addresses: %m");
+		smclog(LOG_ERR, "Failed retrieving interface addresses: %s", strerror(errno));
 		exit(255);
 	}
 
 	for (ifa = ifaddr; ifa && num_ifaces < MAX_IF; ifa = ifa->ifa_next) {
-		/* Skip interface without internet address */
-		if (!ifa->ifa_addr)
-			continue;
-
-		/* Skip non-IPv4 and non-IPv6 interfaces */
-		family = ifa->ifa_addr->sa_family;
-		if ((family != AF_INET) && (family != AF_INET6))
-			continue;
-
 		/* Check if already added? */
-		if (iface_find_by_name (ifa->ifa_name))
+		if (iface_find_by_name(ifa->ifa_name))
 			continue;
 
 		/* Copy data from interface iterator 'ifa' */
 		iface = &iface_list[num_ifaces++];
 		strncpy(iface->name, ifa->ifa_name, IFNAMSIZ);
 		iface->name[IFNAMSIZ] = 0;
-		if (family == AF_INET)
-			iface->inaddr.s_addr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr.s_addr;
+
+		/*
+		 * Only copy interface address if inteface has one.  On
+		 * Linux we can enumerate VIFs using ifindex, useful for
+		 * DHCP interfaces w/o any address yet.  Other UNIX
+		 * systems will fail on the MRT_ADD_VIF ioctl. if the
+		 * kernel cannot find a matching interface.
+		 */
+		if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET)
+			iface->inaddr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
 		iface->flags = ifa->ifa_flags;
 		iface->ifindex = if_nametoindex(iface->name);
 		iface->vif = -1;
 		iface->mif = -1;
+		iface->threshold = DEFAULT_THRESHOLD;
 	}
 	freeifaddrs(ifaddr);
+}
+
+/**
+ * iface_exit - Tear down interface list and clean up
+ */
+void iface_exit(void)
+{
+	if (iface_list) {
+		free(iface_list);
+		iface_list = NULL;
+	}
 }
 
 /**
@@ -100,6 +111,9 @@ struct iface *iface_find_by_name(const char *ifname)
 	unsigned int i;
 	struct iface *iface;
 	struct iface *candidate = NULL;
+
+	if (!ifname)
+		return NULL;
 
 	for (i = 0; i < num_ifaces; i++) {
 		iface = &iface_list[i];
@@ -238,7 +252,6 @@ int iface_get_mif_by_name(const char *ifname)
 
 /**
  * Local Variables:
- *  version-control: t
  *  indent-tabs-mode: t
  *  c-file-style: "linux"
  * End:

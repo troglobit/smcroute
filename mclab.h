@@ -36,13 +36,13 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <sys/queue.h>
 
 #include <net/if.h>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "queue.h"
 #include "config.h"
 
 #ifdef HAVE_LINUX_MROUTE_H
@@ -53,6 +53,10 @@
 
 #ifdef HAVE_LINUX_MROUTE6_H
 #include <linux/mroute6.h>
+#endif
+
+#ifdef HAVE_LINUX_FILTER_H
+#include <linux/filter.h>
 #endif
 
 #ifdef HAVE_NET_ROUTE_H
@@ -89,10 +93,10 @@ typedef u_int32_t uint32;
 #define MAX(a, b) ((a) < (b) ? (b) : (a))
 #endif
 
-/* http://stackoverflow.com/questions/1598773/is-there-a-standard-function-in-c-that-would-return-the-length-of-an-array/1598827#1598827
- * Evidently Google uses it in Chromium.  It is actually intended to look like 0[arr], read the link, or search the web.
- */
-#define ARRAY_ELEMENTS(arr) ((sizeof(arr)/sizeof(0[arr])) / ((size_t)(!(sizeof(arr) % sizeof(0[arr])))))
+/* From The Practice of Programming, by Kernighan and Pike */
+#ifndef NELEMS
+#define NELEMS(array) (sizeof(array) / sizeof(array[0]))
+#endif
 
 struct iface {
 	char name[IFNAMSIZ + 1];
@@ -101,14 +105,17 @@ struct iface {
 	short flags;
 	short vif;
 	short mif;
+	uint8_t threshold;	/* TTL threshold: 1-255, default: 1 */
 };
 
+extern int do_vifs;
 extern int do_syslog;
 
 /* ifvc.c */
 #define MAX_IF         40	// max. number of interfaces recognized
 
 void          iface_init            (void);
+void          iface_exit            (void);
 struct iface *iface_find_by_name    (const char *ifname);
 struct iface *iface_find_by_index   (unsigned int ifindex);
 struct iface *iface_find_by_vif     (int vif);
@@ -173,6 +180,8 @@ extern int mroute4_socket;
  * Raw ICMPv6 socket used as interface for the IPv6 mrouted API.
  * Receives MLD packets and upcall messages from the kenrel.
  */
+#define DEFAULT_THRESHOLD 1             /* Packet TTL must be at least 1 to pass */
+
 extern int mroute6_socket;
 
 int  mroute4_enable  (void);
@@ -186,6 +195,9 @@ int  mroute6_enable  (void);
 void mroute6_disable (void);
 int  mroute6_add     (mroute6_t *mroute);
 int  mroute6_del     (mroute6_t *mroute);
+
+int  mroute_add_vif  (char *ifname, uint8_t threshold);
+int  mroute_del_vif  (char *ifname);
 
 /* ipc.c */
 int         ipc_server_init (void);
@@ -214,12 +226,14 @@ const char *cmd_convert_to_mroute4 (mroute4_t *mroute, const struct cmd *packet)
 const char *cmd_convert_to_mroute6 (mroute6_t *mroute, const struct cmd *packet);
 
 /* mcgroup.c */
-int  mcgroup4_join    (const char *ifname, struct in_addr  group);
-int  mcgroup4_leave   (const char *ifname, struct in_addr  group);
-void mcgroup4_disable (void);
-int  mcgroup6_join    (const char *ifname, struct in6_addr group);
-int  mcgroup6_leave   (const char *ifname, struct in6_addr group);
-void mcgroup6_disable (void);
+int  mcgroup4_join_ssm  (const char *ifname, struct in_addr  source, struct in_addr  group);
+int  mcgroup4_leave_ssm (const char *ifname, struct in_addr  source, struct in_addr  group);
+int  mcgroup4_join   	  (const char *ifname, struct in_addr  group);
+int  mcgroup4_leave     (const char *ifname, struct in_addr  group);
+void mcgroup4_disable   (void);
+int  mcgroup6_join      (const char *ifname, struct in6_addr group);
+int  mcgroup6_leave     (const char *ifname, struct in6_addr group);
+void mcgroup6_disable   (void);
 
 /* log.c */
 #define LOG_INIT 10
@@ -235,11 +249,10 @@ int run_script(mroute_t *mroute);
 int parse_conf_file(const char *file);
 
 /* pidfile.c */
-int pidfile(const char *basename);
+int pidfile(const char *basename, uid_t uid, gid_t gid);
 
 /**
  * Local Variables:
- *  version-control: t
  *  indent-tabs-mode: t
  *  c-file-style: "linux"
  * End:

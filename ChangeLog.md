@@ -4,10 +4,75 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
-v2.1.0 - [UNRELEASED][]
+[v2.2.1][UNRELEASED] - 2017-01-XX
+---------------------------------
+
+### Fixes
+- Issue #49: systemd .service file missing -d to start daemon
+
+
+[v2.2.0][] - 2016-12-03
 -----------------------
 
 ### Changes
+- Support for dropping root privileges after opening the multicast
+  routing socket and creating the PID file
+- Support for Source Specific Multicast group subscription (only IPv4)
+- Support for systemd, service file included and installed by default
+
+### Fixes
+- Remove GNUisms to be able to build and run on Alpine Linux (musl libc)
+- Add OpenBSD `queue.h` for systems that do not have any *BSD `sys/queue.h`
+- Coding style cleanup and minor refactor
+
+
+[v2.1.1][] - 2016-08-19
+-----------------------
+
+### Changes
+- When `SIGHUP` is received SMCRoute now touches its PID file as an
+  acknowledgement.  This is used by some process supervision daemons,
+  like [Finit](https://github.com/troglobit/finit), on system
+  configuration changes to detect when a daemon is done.  The mtime is
+  set using the `utimensat()` function to ensure nanosecond resolution.
+
+### Fixes
+- Fix issue #38: Minor memory leak at exit.  The Valgrind tool warns
+  that all memory is not freed when smcroute exits.  On most modern
+  UNIX systems, on platforms with MMU, this is not a problem, but on
+  older systems, or uClinux, memory is not freed at program exit.
+- Fix issue #39: Removing wildcard route at runtime does not work if no
+  kernel routes have been set.
+- Fix issue #44: IPv6 disabled by default, despite what `configure` says
+  in its help text.  Enabling it disables it ... fixed by enabling IPv6
+  by default.
+
+
+[v2.1.0][] - 2016-02-17
+-----------------------
+
+### Changes
+- Allow more interfaces to be used for multicast routing, in particular
+  on Linux, where interfaces without an IP address can now be used!
+  Making it possible to run SMCRoute on DHCP/PPP interaces, issue #13
+- Add support for TTL scoping on interfaces, very useful for filtering
+  multicast without a firewall: `phyint IFNAME ttl-threshold TTL`
+- On Linux a socket filter now filters out ALL traffic on the helper
+  sockets where SMCRoute does IGMP/MLD join/leave on multicast groups.
+  This should eliminate the extra overhad required to, not only route
+  streams, but also send a copy of each packet to SMCRoute.
+- Add support for limiting the amount of multicast interfaces (VIFs)
+  SMCRoute creates at startup.  Two options are now available, by
+  default all multicast capable interfaces are given a VIF and the user
+  can selectively disable them one by one.  However, if the `-N` command
+  line option is given SMCRoute does *not* enable any VIFs by default,
+  the user must then selectively enable interface one by one.  The
+  syntax in the config file is:
+
+        phyint IFNAME <enable|disable>
+
+  Use `enable` per interface with `-N` option, or `disable` by default.
+
 - Make build ID optional.  SMCRoute has always had the build date
   hard coded in the binary.  This change makes this optional, and
   defaults to disabled, to facilitate reproducible builds.  For
@@ -20,22 +85,36 @@ v2.1.0 - [UNRELEASED][]
 - Add support for executing an external script on config reload and when
   installing a multicast route.  Issue #14
 
-        smcroute -s /path/to/cmd
+        smcroute -e /path/to/cmd
 
   The script is called when SMCRoute has started up, or has received
   `SIGHUP` and just reloaded the configuration file, and when a new
   source-less rule have been installed.  See the documentation for
-  more information on set environment variables etc.
-- Add `--disable-ipv6` option to `configure` script
+  more information on set environment variables etc.  Issue #14
+- Add `--disable-ipv6` option to `configure` script.  Disables IPv6
+  support in SMCRoute even though the kernel may support it
+- Replaced `-D` option with `-L LVL` to alter log level, issue #24
+- The smcroute daemon now behaves more like a regular UNIX daemon.  It
+  defaults to using syslog when running in the background and stderr
+  when running in the foreground.  A new option `-s` can be used to
+  enable syslog when running in the foreground, issue #25
+- The smcroute client no longer use syslog, only stderr, issue #25
+- When starting the smcroute daemon it is no longer possible to also
+  send client commands on the same command line.
+- Remove the (unmaintained) in-tree `mcsender` tool.  Both ping(8) and
+  iperf(1) can be used in its stead.  The omping(8) tool is another
+  tool, engineered specifically for testing multicast.  Issue #30
 
 ### Fixes
-- Install binaries to `/usr/sbin` rather than `/usr/bin`, regression
-  introduced in [v2.0.0][].  Fixed by Micha Lenk
 - Fix issue #10: `smcroute` client loops forever on command if no
   `smcroute` daemon is running
+- Install binaries to `/usr/sbin` rather than `/usr/bin`, regression
+  introduced in [v2.0.0][].  Fixed by Micha Lenk
 - Cleanup fix for no-MMU systems.  Multicast groups were not properly
   cleaned up in the `atexit()` handler -- *only* affects no-MMU systems.
 - Do not force automake v1.11, only require *at least* v.11
+- SMCRoute operates fine without a config file, so use a less obtrusive
+  warning message for missing `/etc/smcroute.conf`
 
 
 [v2.0.0][] - 2014-09-30
@@ -191,7 +270,7 @@ v0.93 - UNRELEASED
 ------------------
 
 ### Fixes
-- Fixed the "smcroute looses output interfaces" bug.  
+- Fixed the "smcroute looses output interfaces" bug.
   Carsten Schill, 0.93 unreleased
 
 
@@ -243,22 +322,25 @@ v0.9 - September 2001
 v0.8 - August 2001
 ------------------
 
-Initial public release
+Initial public release by Carsten Schill.
 
 
-[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.0.0...HEAD
-[v2.1.0]:     https://github.com/troglobit/libuev/compare/2.0.0...2.1.0
-[v2.0.0]:     https://github.com/troglobit/libuev/compare/1.99.2...2.0.0
-[v1.99.2]:    https://github.com/troglobit/libuev/compare/1.99.1...1.99.2
-[v1.99.1]:    https://github.com/troglobit/libuev/compare/1.99.0...1.99.1
-[v1.99.0]:    https://github.com/troglobit/libuev/compare/1.98.3...1.99.0
-[v1.98.3]:    https://github.com/troglobit/libuev/compare/1.98.2...1.98.3
-[v1.98.2]:    https://github.com/troglobit/libuev/compare/1.98.1...1.98.2
-[v1.98.1]:    https://github.com/troglobit/libuev/compare/1.98.0...1.98.1
-[v1.98.0]:    https://github.com/troglobit/libuev/compare/0.95...1.98.0
-[v0.95]:      https://github.com/troglobit/libuev/compare/0.94.1...0.95
-[v0.94.1]:    https://github.com/troglobit/libuev/compare/0.94...0.94.1
-[v0.94]:      https://github.com/troglobit/libuev/compare/0.94.1...0.95
+[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.2.0...HEAD
+[v2.2.1]:     https://github.com/troglobit/smcroute/compare/2.2.0...2.2.1
+[v2.2.0]:     https://github.com/troglobit/smcroute/compare/2.1.1...2.2.0
+[v2.1.1]:     https://github.com/troglobit/smcroute/compare/2.1.0...2.1.1
+[v2.1.0]:     https://github.com/troglobit/smcroute/compare/2.0.0...2.1.0
+[v2.0.0]:     https://github.com/troglobit/smcroute/compare/1.99.2...2.0.0
+[v1.99.2]:    https://github.com/troglobit/smcroute/compare/1.99.1...1.99.2
+[v1.99.1]:    https://github.com/troglobit/smcroute/compare/1.99.0...1.99.1
+[v1.99.0]:    https://github.com/troglobit/smcroute/compare/1.98.3...1.99.0
+[v1.98.3]:    https://github.com/troglobit/smcroute/compare/1.98.2...1.98.3
+[v1.98.2]:    https://github.com/troglobit/smcroute/compare/1.98.1...1.98.2
+[v1.98.1]:    https://github.com/troglobit/smcroute/compare/1.98.0...1.98.1
+[v1.98.0]:    https://github.com/troglobit/smcroute/compare/0.95...1.98.0
+[v0.95]:      https://github.com/troglobit/smcroute/compare/0.94.1...0.95
+[v0.94.1]:    https://github.com/troglobit/smcroute/compare/0.94...0.94.1
+[v0.94]:      https://github.com/troglobit/smcroute/compare/0.94.1...0.95
 
 <!--
   -- Local Variables:

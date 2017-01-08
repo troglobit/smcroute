@@ -3,6 +3,10 @@
 *.o
 *.log
 *.status
+GPATH
+GRTAGS
+GSYMS
+GTAGS
 Makefile
 Makefile.in
 aclocal.m4
@@ -17,5 +21,6 @@ install-sh
 mcsender
 missing
 smcroute
+smcroute.service
 stamp-h1
 unittest

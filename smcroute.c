@@ -33,6 +33,13 @@
 #include <netinet/ip.h>
 #include <arpa/inet.h>
 
+#ifdef HAVE_LIBCAP
+#include <sys/prctl.h>
+#include <sys/capability.h>
+#include <pwd.h>
+#include <grp.h>
+#endif
+
 #include <signal.h>
 #include <unistd.h>
 
@@ -42,13 +49,19 @@
 
 int running    = 1;
 int background = 1;
+int do_vifs    = 1;
 int do_daemon  = 0;
 int do_syslog  = 0;
 int cache_tmo  = 0;
 
-const        char *script_exec = NULL;
-static const char *conf_file   = SMCROUTE_SYSTEM_CONF;
-extern       char *__progname;
+uid_t uid      = 0;
+gid_t gid      = 0;
+
+char *prognm   = PACKAGE_NAME;
+
+const        char *script_exec  = NULL;
+static const char *conf_file    = SMCROUTE_SYSTEM_CONF;
+static const char *username;
 static const char version_info[] =
 	"SMCRoute version " PACKAGE_VERSION
 #ifdef BUILD
@@ -89,14 +102,14 @@ static void read_conf_file(const char *conf_file)
 		if (errno == ENOENT)
 			smclog(LOG_NOTICE, "Configuration file %s does not exist", conf_file);
 		else
-			smclog(LOG_WARNING, "Unexpected error when accessing %s: %m", conf_file);
+			smclog(LOG_WARNING, "Unexpected error when accessing %s: %s", conf_file, strerror(errno));
 
 		smclog(LOG_NOTICE, "Continuing anyway, waiting for client to connect.");
 		return;
 	}
 
 	if (parse_conf_file(conf_file))
-		smclog(LOG_WARNING, "Failed parsing %s: %m", conf_file);
+		smclog(LOG_WARNING, "Failed parsing %s: %s", conf_file, strerror(errno));
 }
 
 /* Cleans up, i.e. releases allocated resources. Called via atexit() */
@@ -107,6 +120,7 @@ static void clean(void)
 	mcgroup4_disable();
 	mcgroup6_disable();
 	ipc_exit();
+	iface_exit();
 	smclog(LOG_NOTICE, "Exiting.");
 }
 
@@ -135,7 +149,7 @@ static void read_mroute4_socket(void)
 	memset(tmp, 0, sizeof(tmp));
 	result = read(mroute4_socket, tmp, sizeof(tmp));
 	if (result < 0) {
-		smclog(LOG_WARNING, "Failed reading IGMP message from kernel: %m");
+		smclog(LOG_WARNING, "Failed reading IGMP message from kernel: %s", strerror(errno));
 		return;
 	}
 
@@ -178,12 +192,18 @@ static void read_mroute4_socket(void)
 		}
 
 		if (script_exec) {
+			int status;
 			mroute_t mrt;
 
 			mrt.version = 4;
 			mrt.u.mroute4 = mroute;
-			if (run_script(&mrt))
-				smclog(LOG_WARNING, "Failed calling %s with a new multicast route.", script_exec);
+			status = run_script(&mrt);
+			if (status) {
+				if (status < 0)
+					smclog(LOG_WARNING, "Failed starting external script %s: %s", script_exec, strerror(errno));
+				else
+					smclog(LOG_WARNING, "External script %s returned error code: %d", script_exec, status);
+			}
 		}
 	}
 }
@@ -199,7 +219,7 @@ static void read_mroute6_socket(void)
 
 	result = read(mroute6_socket, tmp, sizeof(tmp));
 	if (result < 0)
-		smclog(LOG_INFO, "Failed clearing MLD message from kernel: %m");
+		smclog(LOG_INFO, "Failed clearing MLD message from kernel: %s", strerror(errno));
 }
 
 /* Receive command from the smcroute client */
@@ -215,7 +235,7 @@ static void read_ipc_command(void)
 	if (!packet) {
 		/* Skip logging client disconnects */
 		if (errno != ECONNRESET)
-			smclog(LOG_WARNING, "Failed receving IPC message from client: %m");
+			smclog(LOG_WARNING, "Failed receving IPC message from client: %s", strerror(errno));
 		return;
 	}
 
@@ -249,6 +269,55 @@ static void read_ipc_command(void)
 		ipc_send("", 1);
 		break;
 
+	case 'x':	/* x <InputIntf> <SourceAdr> <McGroupAdr> */
+	case 'y':	/* y <InputIntf> <SourceAdr> <McGroupAdr> */
+	{
+		int result = -1;
+		const char *ifname = (const char *)(packet + 1);
+		const char *sourceadr = ifname + strlen(ifname) + 1;
+		const char *groupstr = sourceadr + strlen(sourceadr) + 1;
+
+		if (strchr(groupstr, ':') == NULL && strchr(sourceadr, ':') == NULL) {
+			struct in_addr source;
+
+			/* check source address */
+			if (!*sourceadr
+			    || !inet_aton(sourceadr, &source)) {
+				smclog(LOG_WARNING, "Invalid IPv4 multicast source: %s", sourceadr);
+				ipc_send(log_message, strlen(log_message) + 1);
+				break;
+			}
+
+			struct in_addr group;
+
+			/* check multicast address */
+			if (!*groupstr
+			    || !inet_aton(groupstr, &group)
+			    || !IN_MULTICAST(ntohl(group.s_addr))) {
+				smclog(LOG_WARNING, "Invalid IPv4 multicast group: %s", groupstr);
+				ipc_send(log_message, strlen(log_message) + 1);
+				break;
+			}
+
+			/* join or leave */
+			if (packet->cmd == 'x')
+				result = mcgroup4_join_ssm(ifname, source, group);
+			else
+				result = mcgroup4_leave_ssm(ifname, source, group);
+		} else {
+			smclog(LOG_WARNING, "IPv6 is not supported for Source Specific Multicast.");
+		}
+
+		/* failed */
+		if (result) {
+			ipc_send(log_message, strlen(log_message) + 1);
+			break;
+		}
+
+		ipc_send("", 1);
+		break;
+	}
+
 	case 'j':	/* j <InputIntf> <McGroupAdr> */
 	case 'l':	/* l <InputIntf> <McGroupAdr> */
 	{
@@ -263,7 +332,7 @@ static void read_ipc_command(void)
 			if (!*groupstr
 			    || !inet_aton(groupstr, &group)
 			    || !IN_MULTICAST(ntohl(group.s_addr))) {
-				smclog(LOG_WARNING, "Invalid multicast group: %s", groupstr);
+				smclog(LOG_WARNING, "Invalid IPv4 multicast group: %s", groupstr);
 				ipc_send(log_message, strlen(log_message) + 1);
 				break;
 			}
@@ -328,6 +397,9 @@ static void handler(int sig)
 		smclog(LOG_NOTICE, "Got SIGHUP, reloading %s ...", conf_file);
 		restart();
 		read_conf_file(conf_file);
+
+		/* Acknowledge client SIGHUP by touching the pidfile */
+		pidfile(NULL, uid, gid);
 		break;
 	}
 }
@@ -347,6 +419,7 @@ static void signal_init(void)
 static int server_loop(int sd)
 {
 	fd_set fds;
+
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 	int max_fd_num = MAX(sd, MAX(mroute4_socket, mroute6_socket));
 #else
@@ -379,7 +452,7 @@ static int server_loop(int sd)
 		if (result < 0) {
 			/* Log all errors, except when signalled, ignore failures. */
 			if (EINTR != errno)
-				smclog(LOG_WARNING, "Failed call to select() in server_loop(): %m");
+				smclog(LOG_WARNING, "Failed call to select() in server_loop(): %s", strerror(errno));
 			continue;
 		}
 
@@ -411,11 +484,104 @@ static int server_loop(int sd)
 	return 0;
 }
 
+#ifdef HAVE_LIBCAP
+static int whoami(const char *user, const char *group)
+{
+	struct passwd *pw;
+	struct group  *gr;
+
+	if (!user)
+		return -1;
+
+	/* Get target UID and target GID */
+	pw = getpwnam(user);
+	if (!pw) {
+		smclog(LOG_INIT, "User '%s' not found!", user);
+		return -1;
+	}
+
+	uid = pw->pw_uid;
+	gid = pw->pw_gid;
+	if (group) {
+		gr = getgrnam(group);
+		if (!gr) {
+			smclog(LOG_INIT, "Group '%s' not found!", group);
+			return -1;
+		}
+		gid = gr->gr_gid;
+	}
+
+	/* Valid user */
+	username = user;
+
+	return 0;
+}
+
+static int setcaps(cap_value_t cv)
+{
+	int result;
+	cap_t caps = cap_get_proc();
+	cap_value_t cap_list = cv;
+
+	cap_clear(caps);
+
+	cap_set_flag(caps, CAP_PERMITTED, 1, &cap_list, CAP_SET);
+	cap_set_flag(caps, CAP_EFFECTIVE, 1, &cap_list, CAP_SET);
+	result = cap_set_proc(caps);
+
+	cap_free(caps);
+
+	return result;
+}
+
+/*
+ * Drop root privileges except capability CAP_NET_ADMIN. This capability
+ * enables the thread (among other networking related things) to add and
+ * remove multicast routes
+ */
+static int drop_root(const char *user)
+{
+	/* Allow this process to preserve permitted capabilities */
+	if (prctl(PR_SET_KEEPCAPS, 1) == -1) {
+		smclog(LOG_ERR, "Cannot preserve capabilities: %s", strerror(errno));
+		return -1;
+	}
+
+	/* Set supplementary groups, GID and UID */
+	if (initgroups(user, gid) == -1) {
+		smclog(LOG_ERR, "Failed setting supplementary groups: %s", strerror(errno));
+		return -1;
+	}
+
+	if (setgid(gid) == -1) {
+		smclog(LOG_ERR, "Failed setting group ID %d: %s", gid, strerror(errno));
+		return -1;
+	}
+
+	if (setuid(uid) == -1) {
+		smclog(LOG_ERR, "Failed setting user ID %d: %s", uid, strerror(errno));
+		return -1;
+	}
+
+	/* Clear all capabilities except CAP_NET_ADMIN */
+	if (setcaps(CAP_NET_ADMIN)) {
+		smclog(LOG_ERR, "Failed setting `CAP_NET_ADMIN`: %s", strerror(errno));
+		return -1;
+	}
+
+	/* Try to regain root UID, should not work at this point. */
+	if (setuid(0) == 0)
+		return -1;
+
+	return 0;
+}
+#endif /* HAVE_LIBCAP */
+
 /* Init everything before forking, so we can fail and return an
  * error code in the parent and the initscript will fail */
 static int start_server(void)
 {
-	int sd, api = 0, busy = 0;
+	int sd, api = 2, busy = 0;
 
 	/* Hello world! */
 	smclog(LOG_NOTICE, "%s", version_info);
@@ -427,15 +593,13 @@ static int start_server(void)
 	if (mroute4_enable()) {
 		if (errno == EADDRINUSE)
 			busy++;
-	} else {
-		api++;
+		api--;
 	}
 
 	if (mroute6_enable()) {
 		if (errno == EADDRINUSE)
 			busy++;
-	} else {
-		api++;
+		api--;
 	}
 
 	/* At least one API (IPv4 or IPv6) must have initialized successfully
@@ -450,15 +614,25 @@ static int start_server(void)
 
 	sd = ipc_server_init();
 	if (sd < 0)
-		smclog(LOG_WARNING, "Failed setting up IPC socket, client communication disabled: %m");
+		smclog(LOG_WARNING, "Failed setting up IPC socket, client communication disabled: %s", strerror(errno));
 
 	atexit(clean);
 	signal_init();
 	read_conf_file(conf_file);
 
 	/* Everything setup, notify any clients by creating the pidfile */
-	if (pidfile(NULL))
-		smclog(LOG_WARNING, "Failed creating pidfile: %m");
+	if (pidfile(NULL, uid, gid))
+		smclog(LOG_WARNING, "Failed create/chown pidfile: %s", strerror(errno));
+
+#ifdef HAVE_LIBCAP
+	/* Drop root privileges before entering the server loop */
+	if (username) {
+		if (drop_root(username) == -1)
+			smclog(LOG_INIT, "Could not drop root privileges, continuing as root.");
+		else
+			smclog(LOG_INIT, "Root privileges dropped: Current UID %u, GID %u.", getuid(), getgid());
+	}
+#endif
 
 	return server_loop(sd);
 }
@@ -474,7 +648,7 @@ static int send_commands(int cmdnum, struct cmd *cmdv[])
 	while (ipc_client_init() && !result) {
 		switch (errno) {
 		case EACCES:
-			smclog(LOG_ERR, "Need root privileges to connect to daemon: %m");
+			smclog(LOG_ERR, "Need root privileges to connect to daemon: %s", strerror(errno));
 			result = 1;
 			goto error;
 
@@ -485,12 +659,12 @@ static int send_commands(int cmdnum, struct cmd *cmdv[])
 				continue;
 			}
 
-			smclog(LOG_WARNING, "Daemon not running: %m");
+			smclog(LOG_WARNING, "Daemon not running: %s", strerror(errno));
 			result = 1;
 			goto error;
 
 		default:
-			smclog(LOG_WARNING, "Failed connecting to daemon: %m");
+			smclog(LOG_WARNING, "Failed connecting to daemon: %s", strerror(errno));
 			result = 1;
 			goto error;
 		}
@@ -508,7 +682,7 @@ static int send_commands(int cmdnum, struct cmd *cmdv[])
 		/* Wait here for reply */
 		rlen = ipc_receive(buf, MX_CMDPKT_SZ);
 		if (slen < 0 || rlen < 0) {
-			smclog(LOG_WARNING, "Communication with daemon failed: %m");
+			smclog(LOG_WARNING, "Communication with daemon failed: %s", strerror(errno));
 			result = 1;
 			break;
 		}
@@ -531,18 +705,23 @@ error:
 
 static int usage(int code)
 {
-	printf("\nUsage: %s [dnkhv] [-f FILE] [-e CMD] [-L LVL] [-a|-r ROUTE] [-j|-l GROUP]\n"
+	printf("\nUsage:\n"
+	       "  %s [dnkhv] [-f FILE] [-e CMD] [-L LVL] [-a|-r ROUTE] [-j|-l GROUP] [-x|-y SSM GROUP]\n"
 	       "\n"
 	       "Daemon:\n"
-	       "  -d       Start daemon\n"
-	       "  -e CMD   Script or command to call on startup/reload when all routes\n"
-	       "           have been installed. Or when a source-less (ANY) route has\n"
-	       "           been installed.\n"
-	       "  -f FILE  File to use instead of default " SMCROUTE_SYSTEM_CONF "\n"
-	       "  -c SEC   Flush dynamic (*,G) multicast routes every SEC seconds\n"
-	       "  -L LVL   Set log level: none, err, info, notice*, debug\n"
-	       "  -n       Run daemon in foreground, useful when run from finit\n"
-	       "  -s       Use syslog, default unless running in foreground, -n\n"
+	       "  -c SEC          Flush dynamic (*,G) multicast routes every SEC seconds\n"
+	       "  -d              Start daemon\n"
+	       "  -e CMD          Script or command to call on startup/reload when all routes\n"
+	       "                  have been installed. Or when a source-less (ANY) route has\n"
+	       "                  been installed.\n"
+	       "  -f FILE         File to use instead of default " SMCROUTE_SYSTEM_CONF "\n"
+	       "  -L LVL          Set log level: none, err, info, notice*, debug\n"
+	       "  -n              Run daemon in foreground, useful when run from finit\n"
+	       "  -N              No VIFs/MIFs created by default, use `phyint IFNAME enable`\n"
+	       "  -s              Use syslog, default unless running in foreground, -n\n"
+#ifdef HAVE_LIBCAP
+	       "  -p USER[:GROUP] After initialization set UID and GID to USER and GROUP\n"
+#endif
 	       "\n"
 	       "Client:\n"
 	       "  -h       This help text\n"
@@ -555,16 +734,37 @@ static int usage(int code)
 	       "  -j ARGS  Join a multicast group\n"
 	       "  -l ARGS  Leave a multicast group\n"
 	       "\n"
+	       "  -x ARGS  Join a multicast group (Source Specific Multicast, SSM)\n"
+	       "  -y ARGS  Leave a multicast group (Source Specific Multicast, SSM)\n"
+	       "\n"
 	       "     <------------- INBOUND -------------->  <----- OUTBOUND ------>\n"
 	       "  -a <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>  <IFNAME> [<IFNAME> ...]\n"
 	       "  -r <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>\n"
 	       "\n"
 	       "  -j <IFNAME> <MULTICAST-GROUP>\n"
-	       "  -l <IFNAME> <MULTICAST-GROUP>\n\n"
-	       "Bug report address: %s\n\n", __progname, PACKAGE_BUGREPORT);
+	       "  -l <IFNAME> <MULTICAST-GROUP>\n"
+	       "\n"
+	       "  -x <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>\n"
+	       "  -y <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>\n\n"
+	       "Bug report address: %s\n"
+	       "Project homepage: %s\n\n", prognm, PACKAGE_BUGREPORT, PACKAGE_URL);
 
 	return code;
 }
+
+static char *progname(const char *arg0)
+{
+	char *nm;
+
+	nm = strrchr(arg0, '/');
+	if (nm)
+		nm++;
+	else
+		nm = (char *)arg0;
+
+	return nm;
+}
+
 
 /**
  * main - Main program
@@ -582,7 +782,11 @@ int main(int argc, const char *argv[])
 	int i, num_opts;
 	unsigned int cmdnum = 0;
 	struct cmd *cmdv[16];
+#ifdef HAVE_LIBCAP
+	char *ptr;
+#endif
 
+	prognm = progname(argv[0]);
 	if (argc <= 1)
 		return usage(1);
 
@@ -612,6 +816,12 @@ int main(int argc, const char *argv[])
 				return usage(1);
 			break;
 
+		case 'x':	/* join (ssm) */
+		case 'y':	/* leave (ssm) */
+			if (num_opts != 4)
+				return usage(1);
+			break;
+
 		case 'k':	/* kill daemon */
 			if (num_opts != 1)
 				return usage(1);
@@ -621,7 +831,7 @@ int main(int argc, const char *argv[])
 			return usage(0);
 
 		case 'v':	/* version */
-			fputs(version_info, stderr);
+			fprintf(stderr, "%s\n", version_info);
 			return 0;
 
 		case 'c':	/* cache timeout */
@@ -636,6 +846,10 @@ int main(int argc, const char *argv[])
 
 		case 'n':	/* run daemon in foreground, i.e., do not fork */
 			background = 0;
+			continue;
+
+		case 'N':
+			do_vifs = 0;
 			continue;
 
 		case 's':	/* Force syslog even though in foreground */
@@ -660,12 +874,31 @@ int main(int argc, const char *argv[])
 			log_level = loglvl(argv[1]);
 			continue;
 
+#ifdef HAVE_LIBCAP
+		case 'p':
+			if (num_opts != 2)
+				return usage(1);
+
+			ptr = strdup(argv[1]);
+			if (!ptr) {
+				perror("Failed parsing user:group argument");
+				return 1;
+			}
+			if (whoami(strtok(ptr, ":"), strtok(NULL, ":"))) {
+				perror("Invalid user:group argument");
+				free(ptr);
+				return 1;
+			}
+			free(ptr);
+			continue;
+#endif
+
 		default:	/* unknown option */
 			return usage(1);
 		}
 
 		/* Check and build command argument list. */
-		if (cmdnum >= ARRAY_ELEMENTS(cmdv)) {
+		if (cmdnum >= NELEMS(cmdv)) {
 			fprintf(stderr, "Too many command options\n");
 			return usage(1);
 		}
@@ -682,7 +915,7 @@ int main(int argc, const char *argv[])
 
 	if (do_daemon) {
 		if (geteuid() != 0) {
-			smclog(LOG_ERR, "Need root privileges to start %s", __progname);
+			smclog(LOG_ERR, "Need root privileges to start %s", prognm);
 			return 1;
 		}
 
@@ -694,13 +927,13 @@ int main(int argc, const char *argv[])
 		if (background) {
 			do_syslog = 1;
 			if (daemon(0, 0) < 0) {
-				smclog(LOG_ERR, "Failed daemonizing: %m");
+				smclog(LOG_ERR, "Failed daemonizing: %s", strerror(errno));
 				return 1;
 			}
 		}
 
 		if (do_syslog) {
-			openlog(__progname, LOG_PID, LOG_DAEMON);
+			openlog(prognm, LOG_PID, LOG_DAEMON);
 			setlogmask(LOG_UPTO(log_level));
 		}
 
@@ -712,7 +945,6 @@ int main(int argc, const char *argv[])
 
 /**
  * Local Variables:
- *  version-control: t
  *  indent-tabs-mode: t
  *  c-file-style: "linux"
  * End:

@@ -1,7 +1,7 @@
 # Macros to probe for multicast headers and IPv4/IPv6 support
 
 AC_DEFUN([AC_CHECK_MROUTE_HEADERS],[
-	AC_CHECK_HEADERS([linux/mroute.h], [], [],[
+	AC_CHECK_HEADERS([linux/mroute.h linux/filter.h], [], [],[
 		#ifdef HAVE_SYS_SOCKET_H
 		# include <sys/socket.h>
 		#endif

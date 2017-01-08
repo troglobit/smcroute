@@ -2,8 +2,13 @@
 # Defaults to GNU GCC and autotools: ./configure && make && make test
 language: c
 
-# We don't need to install packages, use dockerized build, quicker
+# Use docker for quicker builds, it now allows https://docs.travis-ci.com/user/apt/
 sudo: false
+
+# Test build with both GCC and Clang (LLVM)
+compiler:
+  - gcc
+  - clang
 
 env:
   global:
@@ -12,18 +17,29 @@ env:
    - secure: "BOySKarfB7ySP4SQ9vpeLz/Yrle3cxGYe+f5ep6OVk42M2bmonX27FdgVF5oKpII6Sq5hXrhoNrwRpkYRj+G5OUy4lguOALJ1AAtRpvlrfXCCL5Vxe9TDBNpmU/AfOcZoiGiR5Vpv96CIIoqvnB6XQJMMfTa2JHvU7tZCS2p9lU="
 
 addons:
+  apt:
+    packages:
+      - tree
+      - libcap-dev
   coverity_scan:
     project:
       name: "troglobit/smcroute"
       description: "SMCRoute -- Static Multicast Routing Daemon"
     notification_email: troglobit@gmail.com
     build_command_prepend: ./autogen.sh && ./configure
-    build_command:  make
-    branch_pattern: master
+    build_command: make -j5 clean all
+    branch_pattern: dev
 
 # We don't store generated files (configure and Makefile) in GIT,
 # so we must customize the default build script to run ./autogen.sh
 script:
   - ./autogen.sh
-  - ./configure --disable-silent-rules
+  - ./configure --disable-silent-rules --prefix=
+  - make clean
+  - make -j5
   - make
+  - DESTDIR=~/tmp make install-strip
+  - tree ~/tmp
+  - ldd ~/tmp/sbin/smcroute
+  - size ~/tmp/sbin/smcroute
+  - ~/tmp/sbin/smcroute -h

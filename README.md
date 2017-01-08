@@ -1,18 +1,19 @@
-SMCRoute - A static multicast route tool
-========================================
+SMCRoute - A static multicast routing daemon
+============================================
 [![Travis Status][]][Travis] [![Coverity Status][]][Coverity Scan]
 
-SMCRoute is a command line tool to manipulate the multicast routes of a
-UNIX kernel.  It supports both IPv4 and IPv6 multicast routing.
+SMCRoute is a command line tool to manipulate the multicast routes in
+the UNIX kernel.  It supports both IPv4 and IPv6 multicast routing.
 
 SMCRoute can be used as an alternative to dynamic multicast routers like
-mrouted or pimd in setups where static multicast routes should be
+`mrouted` or `pimd` in setups where static multicast routes should be
 maintained and/or no proper IGMP or MLD signaling exists.
 
-Generally multicast routes exists in the kernel only as long as SMCRoute
-or another multicast routing daemon is running.  Only one multicast
-routing daemon can be active at a time, so it's impossible to run
-SMCRoute and, e.g., mrouted at the same time.
+Multicast routes exist in the UNIX kernel only as long as a multicast
+routing daemon is running.  Only one multicast routing daemon can be
+active at a time, so it's impossible to run SMCRoute and, e.g.,
+`mrouted` at the same time.  Linux does however support multiple routing
+tables, which SMCRoute not yet supports.
 
 SMCRoute is maintained collaboratively at [GitHub][].  Previously the
 code was hosted and maintained by Debian at [Alioth][] and before that
@@ -29,17 +30,31 @@ to be able to set up multicast routes.
 
 or
 
-    # smcroute -d -s /path/to/script
+    # smcroute -d -N
+
+or
+
+    # smcroute -d -e /path/to/script
 
 The latter syntax calls your own script whenever `smcroute` receives a
 `SIGHUP` or installs a multicast route to the kernel.  This is useful if
 you, for instance, also run a NAT firewall and need to flush connection
 tracking after installing a multicast route.
 
+With the `-N` command line option SMCRoute does *not* prepare all system
+interfaces for multicast routing.  Very useful if your system has a lot
+of interfaces but only a select few are required for multicast routing.
+Use the following configuration file syntax to enable interfaces:
+
+    phyint eth0 enable
+    phyint eth1 enable
+    phyint eth2 enable
+
 By default SMCRoute looks for its configuration in `/etc/smcroute.conf`,
 which can look something like this:
 
     mgroup from eth0 group 225.1.2.3
+    ssmgroup from eth0 group 225.1.2.3 source 192.168.1.42
     mroute from eth0 group 225.1.2.3 source 192.168.1.42 to eth1 eth2
 
 The first line means "Join multicast group 225.1.2.3 on interface eth0",
@@ -52,7 +67,11 @@ this way, for more groups you should investigate the root cause for not
 receiving multicast at the multicast router, or use a dynamic multicast
 routing protocol.
 
-The second `mroute` line is the actual layer-3 routing entry.  Here we
+The second command `ssmgroup` do the same as `mgroup` one, but by
+joining source specific group the host specifies that it wants packets
+from source 192.168.1.42 and not any other source.
+
+The third `mroute` line is the actual layer-3 routing entry.  Here we
 say that multicast data originating from 192.168.1.42 on `eth0` to the
 multicast group 225.1.2.3 should be forwarded to interfaces `eth1` and
 `eth2`.
@@ -100,7 +119,40 @@ or, from the command line:
     # smcroute -j eth0 225.1.2.3
     # smcroute -a eth0 0.0.0.0 225.1.2.3 eth1 eth2
 
-Good Luck!
+
+Build & Install
+---------------
+
+SMCRoute should in theory work on any UNIX like operating system which
+supports the BSD MROUTING API.  Both Linux and FreeBSD are tested on a
+regular basis.
+
+On Linux the following kernel config is needed:
+
+    CONFIG_IP_MROUTE=y
+    CONFIG_IP_PIMSM_V1=y
+    CONFIG_IP_PIMSM_V2=y
+
+Check the list of multicast capable interfaces:
+
+    cat /proc/net/dev_mcast
+
+On *BSD:
+
+    options    MROUTING    # Multicast routing
+    options    PIM         # Enable for pimd
+
+As of SMCRoute v2.2, the `libcap` library is required for full privilege
+separation using POSIX capabilities.  At startup this library is used to
+drop full root privileges, retaining only `CAP_NET_ADMIN` for managing
+the multicast routes.  Use `--without-libcap` to disable this feature.
+
+    $ ./configure
+    $ make -j5
+	$ sudo make install-strip
+
+
+Good Luck!  
 The SMCRoute Maintainers
 
 [GitHub]:          https://github.com/troglobit/smcroute

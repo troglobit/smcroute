@@ -1,0 +1,14 @@
+[Unit]
+Description=Static multicast routing daemon
+Documentation=man:smcroute
+Documentation=https://github.com/troglobit/smcroute
+# ConditionPathExists=/etc/smcroute.conf
+After=network-online.target
+Requires=network-online.target
+
+[Service]
+Type=simple
+ExecStart=@SBINDIR@/smcroute -d -n -s
+
+[Install]
+WantedBy=multi-user.target
