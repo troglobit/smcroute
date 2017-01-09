@@ -4,10 +4,11 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
-[v2.2.1][UNRELEASED] - 2017-01-XX
----------------------------------
+[v2.2.1][] - 2017-01-09
+-----------------------
 
 ### Fixes
+- Portability, replace use of non-std `__progname` with small function
 - Issue #49: systemd .service file missing -d to start daemon
 
 
@@ -325,7 +326,7 @@ v0.8 - August 2001
 Initial public release by Carsten Schill.
 
 
-[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.2.0...HEAD
+[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.2.1...HEAD
 [v2.2.1]:     https://github.com/troglobit/smcroute/compare/2.2.0...2.2.1
 [v2.2.0]:     https://github.com/troglobit/smcroute/compare/2.1.1...2.2.0
 [v2.1.1]:     https://github.com/troglobit/smcroute/compare/2.1.0...2.1.1
