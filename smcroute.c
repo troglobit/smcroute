@@ -444,9 +444,8 @@ static int server_loop(int sd)
 		if (cache_tmo) {
 			gettimeofday(&now, NULL);
 			timeout.tv_sec = cache_tmo;
-			if (last_cache_flush.tv_sec != 0) {
+			if (last_cache_flush.tv_sec != 0)
 				timeout.tv_sec -=  now.tv_sec - last_cache_flush.tv_sec;
-                        }
 			timeout.tv_usec = 0;
 			tmo = &timeout;
 		}
@@ -463,7 +462,7 @@ static int server_loop(int sd)
 		if (cache_tmo && (last_cache_flush.tv_sec + cache_tmo < now.tv_sec)) {
 			last_cache_flush = now;
 			smclog(LOG_NOTICE, "Cache timeout, flushing all (*,G) routes!");
-			mroute4_dyn_cache_delete();
+			mroute4_dyn_flush();
 		}
 
 		if (FD_ISSET(mroute4_socket, &fds))

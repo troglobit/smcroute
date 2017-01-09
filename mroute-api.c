@@ -340,11 +340,15 @@ int mroute4_dyn_add(mroute4_t *route)
 	return -1;
 }
 
-/* Experimental: cache-timeout */
-void mroute4_dyn_cache_delete(void)
+/**
+ * mroute4_dyn_flush - Flush dynamically added (*,G) routes
+ *
+ * This function flushes all (*,G) routes.  It is currently only called
+ * on cache-timeout, a command line option, but could also be called on
+ * topology changes (e.g. VRRP fail-over) or similar.
+ */
+void mroute4_dyn_flush(void)
 {
-	mroute4_t *entry;
-
 	if (LIST_EMPTY(&mroute4_dyn_list))
 		return;
 

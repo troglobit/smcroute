@@ -187,7 +187,7 @@ extern int mroute6_socket;
 int  mroute4_enable  (void);
 void mroute4_disable (void);
 int  mroute4_dyn_add (mroute4_t *mroute);
-void mroute4_dyn_cache_delete(void);
+void mroute4_dyn_flush(void);
 int  mroute4_add     (mroute4_t *mroute);
 int  mroute4_del     (mroute4_t *mroute);
 
