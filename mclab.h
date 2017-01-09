@@ -184,20 +184,20 @@ extern int mroute4_socket;
 
 extern int mroute6_socket;
 
-int  mroute4_enable  (void);
-void mroute4_disable (void);
-int  mroute4_dyn_add (mroute4_t *mroute);
-void mroute4_dyn_flush(void);
-int  mroute4_add     (mroute4_t *mroute);
-int  mroute4_del     (mroute4_t *mroute);
+int  mroute4_enable    (void);
+void mroute4_disable   (void);
+int  mroute4_dyn_add   (mroute4_t *mroute);
+void mroute4_dyn_flush (void);
+int  mroute4_add       (mroute4_t *mroute);
+int  mroute4_del       (mroute4_t *mroute);
 
-int  mroute6_enable  (void);
-void mroute6_disable (void);
-int  mroute6_add     (mroute6_t *mroute);
-int  mroute6_del     (mroute6_t *mroute);
+int  mroute6_enable    (void);
+void mroute6_disable   (void);
+int  mroute6_add       (mroute6_t *mroute);
+int  mroute6_del       (mroute6_t *mroute);
 
-int  mroute_add_vif  (char *ifname, uint8_t threshold);
-int  mroute_del_vif  (char *ifname);
+int  mroute_add_vif    (char *ifname, uint8_t threshold);
+int  mroute_del_vif    (char *ifname);
 
 /* ipc.c */
 int         ipc_server_init (void);
@@ -228,7 +228,7 @@ const char *cmd_convert_to_mroute6 (mroute6_t *mroute, const struct cmd *packet)
 /* mcgroup.c */
 int  mcgroup4_join_ssm  (const char *ifname, struct in_addr  source, struct in_addr  group);
 int  mcgroup4_leave_ssm (const char *ifname, struct in_addr  source, struct in_addr  group);
-int  mcgroup4_join   	  (const char *ifname, struct in_addr  group);
+int  mcgroup4_join   	(const char *ifname, struct in_addr  group);
 int  mcgroup4_leave     (const char *ifname, struct in_addr  group);
 void mcgroup4_disable   (void);
 int  mcgroup6_join      (const char *ifname, struct in6_addr group);
