@@ -341,6 +341,25 @@ int mroute4_dyn_add(mroute4_t *route)
 }
 
 /**
+ * mroute4_dyn_flush - Flush dynamically added (*,G) routes
+ *
+ * This function flushes all (*,G) routes.  It is currently only called
+ * on cache-timeout, a command line option, but could also be called on
+ * topology changes (e.g. VRRP fail-over) or similar.
+ */
+void mroute4_dyn_flush(void)
+{
+	if (LIST_EMPTY(&mroute4_dyn_list))
+		return;
+
+	while (mroute4_dyn_list.lh_first) {
+		__mroute4_del((mroute4_t *)mroute4_dyn_list.lh_first);
+		LIST_REMOVE(mroute4_dyn_list.lh_first, link);
+		free(mroute4_dyn_list.lh_first);
+	}
+}
+
+/**
  * mroute4_add - Add route to kernel, or save a wildcard route for later use
  * @route: Pointer to &mroute4_t IPv4 multicast route to add
  *

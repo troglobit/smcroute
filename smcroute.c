@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/time.h>		/* gettimeofday() */
 #include <fcntl.h>
 
 #include <sys/socket.h>
@@ -51,6 +52,7 @@ int background = 1;
 int do_vifs    = 1;
 int do_daemon  = 0;
 int do_syslog  = 0;
+int cache_tmo  = 0;
 
 uid_t uid      = 0;
 gid_t gid      = 0;
@@ -423,6 +425,9 @@ static int server_loop(int sd)
 #else
 	int max_fd_num = MAX(sd, mroute4_socket);
 #endif
+	struct timeval now     = { 0 };
+	struct timeval timeout = { 0 }, *tmo = NULL;
+	struct timeval last_cache_flush = { 0 };
 
 	/* Watch the MRouter and the IPC socket to the smcroute client */
 	while (running) {
@@ -436,13 +441,28 @@ static int server_loop(int sd)
 			FD_SET(mroute6_socket, &fds);
 #endif
 
+		if (cache_tmo) {
+			gettimeofday(&now, NULL);
+			timeout.tv_sec = cache_tmo;
+			if (last_cache_flush.tv_sec != 0)
+				timeout.tv_sec -=  now.tv_sec - last_cache_flush.tv_sec;
+			timeout.tv_usec = 0;
+			tmo = &timeout;
+		}
+
 		/* wait for input */
-		result = select(max_fd_num + 1, &fds, NULL, NULL, NULL);
-		if (result <= 0) {
+		result = select(max_fd_num + 1, &fds, NULL, NULL, tmo);
+		if (result < 0) {
 			/* Log all errors, except when signalled, ignore failures. */
 			if (EINTR != errno)
 				smclog(LOG_WARNING, "Failed call to select() in server_loop(): %s", strerror(errno));
 			continue;
+		}
+
+		if (cache_tmo && (last_cache_flush.tv_sec + cache_tmo < now.tv_sec)) {
+			last_cache_flush = now;
+			smclog(LOG_NOTICE, "Cache timeout, flushing all (*,G) routes!");
+			mroute4_dyn_flush();
 		}
 
 		if (FD_ISSET(mroute4_socket, &fds))
@@ -686,6 +706,7 @@ static int usage(int code)
 	       "  %s [dnkhv] [-f FILE] [-e CMD] [-L LVL] [-a|-r ROUTE] [-j|-l GROUP] [-x|-y SSM GROUP]\n"
 	       "\n"
 	       "Daemon:\n"
+	       "  -c SEC          Flush dynamic (*,G) multicast routes every SEC seconds\n"
 	       "  -d              Start daemon\n"
 	       "  -e CMD          Script or command to call on startup/reload when all routes\n"
 	       "                  have been installed. Or when a source-less (ANY) route has\n"
@@ -809,6 +830,12 @@ int main(int argc, const char *argv[])
 		case 'v':	/* version */
 			fprintf(stderr, "%s\n", version_info);
 			return 0;
+
+		case 'c':	/* cache timeout */
+			if (num_opts != 2)
+				return usage(1);
+			cache_tmo = atoi(argv[1]);
+			continue;
 
 		case 'd':	/* daemon */
 			do_daemon = 1;
