@@ -10,6 +10,8 @@ All notable changes to the project are documented in this file.
 ### Changes
 - Add support for a new command line option, `-c SEC`, for timing out
   dynamically learned (*,G) routes.  Issue #17
+- Add support for a client command, `-F`, for immediately flushing
+  dynamically learned (*,G) routes.
 
 
 [v2.2.1][] - 2017-01-09

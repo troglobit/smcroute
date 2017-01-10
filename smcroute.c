@@ -375,6 +375,11 @@ static void read_ipc_command(void)
 		break;
 	}
 
+	case 'F':
+		mroute4_dyn_flush();
+		ipc_send("", 1);
+		break;
+
 	case 'k':
 		ipc_send("", 1);
 		exit(0);
@@ -721,6 +726,7 @@ static int usage(int code)
 #endif
 	       "\n"
 	       "Client:\n"
+	       "  -F       Flush dynamic (*,G) multicast routes now\n"
 	       "  -h       This help text\n"
 	       "  -k       Kill a running daemon\n"
 	       "  -v       Show program version\n"
@@ -820,6 +826,11 @@ int main(int argc, const char *argv[])
 			break;
 
 		case 'k':	/* kill daemon */
+			if (num_opts != 1)
+				return usage(1);
+			break;
+
+		case 'F':
 			if (num_opts != 1)
 				return usage(1);
 			break;

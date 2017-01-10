@@ -6,7 +6,7 @@
 .Nd SMCRoute, a static multicast router
 .Sh SYNOPSIS
 .Nm smcroute
-.Op Fl dnNkhsv
+.Op Fl dFnNkhsv
 .Op Fl f Ar FILE
 .Op Fl c Ar SEC
 .Op Fl e Ar CMD
@@ -66,6 +66,13 @@ enables only the interfaces needed.
 .It Fl f Ar FILE
 Alternate configuration file, default
 .Pa /etc/smcroute.conf
+.It Fl F
+Flush dynamic (*,G) multicast routes now.  Similar to how
+.Fl c Ar SEC
+works, this client command activates an immediate flush of all (*,G)
+routes.  Useful when a topology change has been detected and need to be
+propageted to
+.Nm .
 .It Fl c Ar SEC
 Flush dynamic (*,G) multicast routes every
 .Ar SEC
