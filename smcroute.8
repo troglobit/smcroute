@@ -1,4 +1,4 @@
-.Dd $Mdocdate: October 29 2015 $
+.Dd $Mdocdate: January 10 2017 $
 .Dt SMCROUTE 8 SMM
 .Os
 .Sh NAME
@@ -8,6 +8,7 @@
 .Nm smcroute
 .Op Fl dnNkhsv
 .Op Fl f Ar FILE
+.Op Fl c Ar SEC
 .Op Fl e Ar CMD
 .Op Fl L Ar LVL
 .Op Fl p Ar USER:GROUP
@@ -65,6 +66,14 @@ enables only the interfaces needed.
 .It Fl f Ar FILE
 Alternate configuration file, default
 .Pa /etc/smcroute.conf
+.It Fl c Ar SEC
+Flush dynamic (*,G) multicast routes every
+.Ar SEC
+seconds.  This option intended for systems that may experience topology
+changes, i.e. when inbound multicast may change both interface and
+source IP address.  If there is no way of detecting such a topology
+change this option will make sure to periodically flush all dynamically
+learned multicast routes so that traffic may resume.
 .It Fl e Ar CMD
 Specify external script or command to be called when
 .Nm
