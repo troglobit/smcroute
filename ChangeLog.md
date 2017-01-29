@@ -4,14 +4,16 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
-[v2.3.0][UNRELEASED] - 2017-XX-YY
+[v2.2.2][UNRELEASED] - 2017-01-XX
 ---------------------------------
 
 ### Changes
-- Add support for a new command line option, `-c SEC`, for timing out
-  dynamically learned (*,G) routes.  Issue #17
-- Add support for a client command, `-F`, for immediately flushing
-  dynamically learned (*,G) routes.
+- New client command, `-F`, for immediately flushing dynamically learned
+  (*,G) routes from the cache.
+
+### Fixes
+- Fix issue #51: New cache flush timeout option causes endless
+  `select()` loop.  Reported by Ramon Fried, @mellowcandle
 
 
 [v2.2.1][] - 2017-01-09
@@ -341,7 +343,8 @@ Initial public release by Carsten Schill.
 
 
 [UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.2.1...HEAD
-[v2.3.0]:     https://github.com/troglobit/smcroute/compare/2.2.1...2.3.0
+[v2.3.0]:     https://github.com/troglobit/smcroute/compare/2.2.2...2.3.0
+[v2.2.1]:     https://github.com/troglobit/smcroute/compare/2.2.1...2.2.2
 [v2.2.1]:     https://github.com/troglobit/smcroute/compare/2.2.0...2.2.1
 [v2.2.0]:     https://github.com/troglobit/smcroute/compare/2.1.1...2.2.0
 [v2.1.1]:     https://github.com/troglobit/smcroute/compare/2.1.0...2.1.1
