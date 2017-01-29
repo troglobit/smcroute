@@ -448,9 +448,10 @@ static int server_loop(int sd)
 
 		if (cache_tmo) {
 			gettimeofday(&now, NULL);
-			timeout.tv_sec = cache_tmo;
 			if (last_cache_flush.tv_sec != 0)
 				timeout.tv_sec -=  now.tv_sec - last_cache_flush.tv_sec;
+			if (timeout.tv_sec <= 0)
+				timeout.tv_sec = cache_tmo;
 			timeout.tv_usec = 0;
 			tmo = &timeout;
 		}
