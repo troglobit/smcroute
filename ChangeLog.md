@@ -17,6 +17,10 @@ All notable changes to the project are documented in this file.
 [v2.2.1][] - 2017-01-09
 -----------------------
 
+### Changes
+- Add support for a new command line option, `-c SEC`, for timing out
+  dynamically learned (*,G) routes.  Issue #17
+
 ### Fixes
 - Portability, replace use of non-std `__progname` with small function
 - Issue #49: systemd .service file missing -d to start daemon
