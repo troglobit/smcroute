@@ -4,8 +4,8 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
-[v2.2.2][UNRELEASED] - 2017-01-XX
----------------------------------
+[v2.2.2][] - 2017-02-02
+-----------------------
 
 ### Changes
 - New client command, `-F`, for immediately flushing dynamically learned
@@ -342,9 +342,9 @@ v0.8 - August 2001
 Initial public release by Carsten Schill.
 
 
-[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.2.1...HEAD
+[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.2.2...HEAD
 [v2.3.0]:     https://github.com/troglobit/smcroute/compare/2.2.2...2.3.0
-[v2.2.1]:     https://github.com/troglobit/smcroute/compare/2.2.1...2.2.2
+[v2.2.2]:     https://github.com/troglobit/smcroute/compare/2.2.1...2.2.2
 [v2.2.1]:     https://github.com/troglobit/smcroute/compare/2.2.0...2.2.1
 [v2.2.0]:     https://github.com/troglobit/smcroute/compare/2.1.1...2.2.0
 [v2.1.1]:     https://github.com/troglobit/smcroute/compare/2.1.0...2.1.1
