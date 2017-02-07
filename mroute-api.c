@@ -228,7 +228,7 @@ static int mroute4_add_vif(struct iface *iface)
 static int mroute4_del_vif(struct iface *iface)
 {
 	int ret;
-	uint16_t vif = iface->vif;
+	int16_t vif = iface->vif;
 
 	if (-1 == vif)
 		return 0;	/* No VIF setup for iface, skip */
@@ -613,7 +613,7 @@ static int mroute6_add_mif(struct iface *iface)
 
 static int mroute6_del_mif(struct iface *iface)
 {
-	uint16_t mif = iface->mif;
+	int16_t mif = iface->mif;
 
 	if (-1 == mif)
 		return 0;	/* No MIF setup for iface, skip */
