@@ -40,6 +40,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "common.h"
 
 #ifndef pidfile
 static char *pidfile_path = NULL;
@@ -50,7 +51,6 @@ static void pidfile_cleanup(void);
 const  char *__pidfile_path = _PATH_VARRUN; /* Note: includes trailing slash '/' */
 const  char *__pidfile_name = NULL;
 extern char *prognm;
-extern int utimensat(int dirfd, const char *pathname, const struct timespec ts[2], int flags);
 
 int
 pidfile(const char *basename, uid_t uid, gid_t gid)

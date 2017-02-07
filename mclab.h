@@ -46,6 +46,7 @@
 
 #include "queue.h"
 #include "config.h"
+#include "common.h"
 
 #ifdef HAVE_LINUX_MROUTE_H
 #define _LINUX_IN_H             /* For Linux <= 2.6.25 */
@@ -116,9 +117,6 @@ struct iface {
 
 extern int do_vifs;
 extern int do_syslog;
-
-/* common.c */
-int create_socket(int domain, int type, int proto);
 
 /* ifvc.c */
 #define MAX_IF         40	// max. number of interfaces recognized
