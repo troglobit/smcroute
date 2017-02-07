@@ -1,4 +1,6 @@
-/*
+/* Imported from Apple XNU sources, 2050.18.24
+ * https://opensource.apple.com/source/xnu/xnu-2050.18.24/bsd/netinet/ip_mroute.h
+ *
  * Copyright (c) 2000 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
