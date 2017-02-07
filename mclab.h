@@ -138,6 +138,10 @@ int           iface_get_mif_by_name (const char *ifname);
 /*
  * IPv4 multicast route
  */
+#ifndef MAXVIFS
+#define MAXVIFS 32
+#endif
+
 #define MAX_MC_VIFS MAXVIFS		/* from linux/mroute.h */
 
 struct mroute4 {
@@ -154,6 +158,10 @@ typedef struct mroute4 mroute4_t;
  * IPv6 multicast route
  */
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
+#ifndef MAXMIFS
+#define MAXMIFS 32
+#endif
+
 #define MAX_MC_MIFS MAXMIFS		/* from linux/mroute6.h */
 #else
 #define MAX_MC_MIFS 1			/* Dummy value for builds w/o IPv6 routing */
