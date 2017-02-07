@@ -26,6 +26,9 @@
 
 #define MAX_LINE_LEN 512
 
+#define WARN(fmt, args...) \
+	smclog(LOG_WARNING, 0, "%02d: " fmt, lineno, ##args)
+
 extern char *script_exec;
 
 
@@ -127,13 +130,13 @@ static int join_mgroup(int lineno, char *ifname, char *group)
 
 	if (strchr(group, ':')) {
 #if !defined(HAVE_IPV6_MULTICAST_HOST) || !defined(HAVE_IPV6_MULTICAST_ROUTING)
-		smclog(LOG_WARNING, 0, "%02: Ignored, IPv6 disabled.", lineno);
+		WARN("Ignored, IPv6 disabled.");
 		result = 0;
 #else
 		struct in6_addr grp;
 
 		if (inet_pton(AF_INET6, group, &grp) <= 0 || !IN6_IS_ADDR_MULTICAST(&grp)) {
-			smclog(LOG_WARNING, 0, "%02d: Invalid IPv6 multicast group: %s", lineno, group);
+			WARN("Invalid IPv6 multicast group: %s", group);
 			return 1;
 		}
 
@@ -143,7 +146,7 @@ static int join_mgroup(int lineno, char *ifname, char *group)
 		struct in_addr grp;
 
 		if ((inet_pton(AF_INET, group, &grp) <= 0) || !IN_MULTICAST(ntohl(grp.s_addr))) {
-			smclog(LOG_WARNING, 0, "%02d: Invalid IPv4 multicast group: %s", lineno, group);
+			WARN("Invalid IPv4 multicast group: %s", group);
 			return 1;
 		}
 
@@ -163,20 +166,20 @@ static int join_mgroup_ssm(int lineno, char *ifname, char *group, char *source)
 	}
 
 	if (strchr(group, ':') || strchr(source, ':')) {
-		smclog(LOG_WARNING, 0, "%02: IPv6 is not supported for Source Specific Multicast.", lineno);
+		WARN("IPv6 is not supported for Source Specific Multicast.");
 		result = 0;
 	} else {
 		struct in_addr src;
 
 		if ((inet_pton(AF_INET, source, &src) <= 0)) {
-			smclog(LOG_WARNING, 0, "%02d: Invalid IPv4 multicast source: %s", lineno, source);
+			WARN("Invalid IPv4 multicast source: %s", source);
 			return 1;
 		}
 
 		struct in_addr grp;
 
 		if ((inet_pton(AF_INET, group, &grp) <= 0) || !IN_MULTICAST(ntohl(grp.s_addr))) {
-			smclog(LOG_WARNING, 0, "%02d: Invalid IPv4 multicast group: %s", lineno, group);
+			WARN("Invalid IPv4 multicast group: %s", group);
 			return 1;
 		}
 
@@ -197,7 +200,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 
 	if (strchr(group, ':')) {
 #if !defined(HAVE_IPV6_MULTICAST_HOST) || !defined(HAVE_IPV6_MULTICAST_ROUTING)
-		smclog(LOG_WARNING, 0, "%02: Ignored, IPv6 disabled.", lineno);
+		WARN("Ignored, IPv6 disabled.");
 		result = 0;
 #else
 		mroute6_t mroute;
@@ -205,16 +208,16 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 		memset(&mroute, 0, sizeof(mroute));
 		mroute.inbound = iface_get_mif_by_name(ifname);
 		if (mroute.inbound < 0) {
-			smclog(LOG_WARNING, 0, "%02d: Invalid inbound IPv6 interface: %s", lineno, ifname);
+			WARN("Invalid inbound IPv6 interface: %s", ifname);
 			return 1;
 		}
 		if (!source || inet_pton(AF_INET6, source, &mroute.sender.sin6_addr) <= 0) {
-			smclog(LOG_WARNING, 0, "%02d: Invalid source IPv6 address: %s", lineno, source ?: "NONE");
+			WARN("Invalid source IPv6 address: %s", source ?: "NONE");
 			return 1;
 		}
 
 		if (inet_pton(AF_INET6, group, &mroute.group.sin6_addr) <= 0 || !IN6_IS_ADDR_MULTICAST(&mroute.group.sin6_addr)) {
-			smclog(LOG_WARNING, 0, "%02d: Invalid IPv6 multicast group: %s", lineno, group);
+			WARN("Invalid IPv6 multicast group: %s", group);
 			return 1;
 		}
 
@@ -225,19 +228,19 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 			iface = iface_find_by_name(outbound[i]);
 			if (!iface || iface->mif == -1) {
 				total--;
-				smclog(LOG_WARNING, 0, "%02d: Invalid outbound IPv6 interface: %s", lineno, outbound[i]);
+				WARN("Invalid outbound IPv6 interface: %s", outbound[i]);
 				continue; /* Try next, if any. */
 			}
 
 			if (iface->mif == mroute.inbound)
-				smclog(LOG_WARNING, 0, "%02d: Same outbound IPv6 interface (%s) as inbound (%s)?", lineno, outbound[i], ifname);
+				WARN("Same outbound IPv6 interface (%s) as inbound (%s)?", outbound[i], ifname);
 
 			/* Use a TTL threshold to indicate the list of outbound interfaces. */
 			mroute.ttl[iface->mif] = iface->threshold;
 		}
 
 		if (!total) {
-			smclog(LOG_WARNING, 0, "%02d: No valid outbound interfaces, skipping multicast route.", lineno);
+			WARN("No valid outbound interfaces, skipping multicast route.");
 			result = 1;
 		} else {
 			result = mroute6_add(&mroute);
@@ -249,19 +252,19 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 		memset(&mroute, 0, sizeof(mroute));
 		mroute.inbound = iface_get_vif_by_name(ifname);
 		if (mroute.inbound < 0) {
-			smclog(LOG_WARNING, 0, "%02d: Invalid inbound IPv4 interface: %s", lineno, ifname);
+			WARN("Invalid inbound IPv4 interface: %s", ifname);
 			return 1;
 		}
 
 		if (!source) {
 			mroute.sender.s_addr = INADDR_ANY;
 		} else if (inet_pton(AF_INET, source, &mroute.sender) <= 0) {
-			smclog(LOG_WARNING, 0, "%02d: Invalid source IPv4 address: %s", lineno, source);
+			WARN("Invalid source IPv4 address: %s", source);
 			return 1;
 		}
 
 		if ((inet_pton(AF_INET, group, &mroute.group) <= 0) || !IN_MULTICAST(ntohl(mroute.group.s_addr))) {
-			smclog(LOG_WARNING, 0, "%02d: Invalid IPv4 multicast group: %s", lineno, group);
+			WARN("Invalid IPv4 multicast group: %s", group);
 			return 1;
 		}
 
@@ -272,19 +275,19 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 			iface = iface_find_by_name(outbound[i]);
 			if (!iface || iface->vif == -1) {
 				total--;
-				smclog(LOG_WARNING, 0, "%02d: Invalid outbound IPv4 interface: %s", lineno, outbound[i]);
+				WARN("Invalid outbound IPv4 interface: %s", outbound[i]);
 				continue; /* Try next, if any. */
 			}
 
 			if (iface->vif == mroute.inbound)
-				smclog(LOG_WARNING, 0, "%02d: Same outbound IPv4 interface (%s) as inbound (%s)?", lineno, outbound[i], ifname);
+				WARN("Same outbound IPv4 interface (%s) as inbound (%s)?", outbound[i], ifname);
 
 			/* Use a TTL threshold to indicate the list of outbound interfaces. */
 			mroute.ttl[iface->vif] = iface->threshold;
 		}
 
 		if (!total) {
-			smclog(LOG_WARNING, 0, "%02d: No valid outbound IPv4 interfaces, skipping multicast route.", lineno);
+			WARN("No valid outbound IPv4 interfaces, skipping multicast route.");
 			result = 1;
 		} else {
 			result = mroute4_add(&mroute);
@@ -361,7 +364,7 @@ int parse_conf_file(const char *file)
 #ifdef UNITTEST
 					printf("%02d: Unknown command: %s", lineno, line);
 #else
-					smclog(LOG_WARNING, 0, "%02d: Unknown command %s, skipping.", lineno, token);
+					WARN("Unknown command %s, skipping.", token);
 #endif
 					continue;
 				}
