@@ -31,7 +31,9 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#ifdef HAVE_FCNTL_H
 #include <fcntl.h>
+#endif
 
 #include <sys/ioctl.h>
 #include <sys/socket.h>
