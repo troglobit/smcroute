@@ -34,10 +34,12 @@
 #include <arpa/inet.h>
 
 #ifdef HAVE_LIBCAP
-#include <sys/prctl.h>
-#include <sys/capability.h>
-#include <pwd.h>
-#include <grp.h>
+# ifdef HAVE_SYS_PRCTL_H
+#  include <sys/prctl.h>
+# endif
+# include <sys/capability.h>
+# include <pwd.h>
+# include <grp.h>
 #endif
 
 #include <signal.h>
@@ -544,12 +546,13 @@ static int setcaps(cap_value_t cv)
  */
 static int drop_root(const char *user)
 {
+#ifdef HAVE_SYS_PRCTL_H
 	/* Allow this process to preserve permitted capabilities */
 	if (prctl(PR_SET_KEEPCAPS, 1) == -1) {
 		smclog(LOG_ERR, "Cannot preserve capabilities: %s", strerror(errno));
 		return -1;
 	}
-
+#endif
 	/* Set supplementary groups, GID and UID */
 	if (initgroups(user, gid) == -1) {
 		smclog(LOG_ERR, "Failed setting supplementary groups: %s", strerror(errno));
