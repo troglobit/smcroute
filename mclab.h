@@ -65,6 +65,10 @@
 
 #ifdef HAVE_NETINET_IP_MROUTE_H
 #include <netinet/ip_mroute.h>
+#else
+# ifdef __APPLE__
+#  include "ip_mroute.h"
+# endif
 #endif
 
 #ifdef HAVE_NETINET6_IP6_MROUTE_H
