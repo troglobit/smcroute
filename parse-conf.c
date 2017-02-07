@@ -25,8 +25,7 @@
 #endif
 
 #define MAX_LINE_LEN 512
-
-#define WARN(fmt, args...) \
+#define WARN(fmt, args...)			\
 	smclog(LOG_WARNING, 0, "%02d: " fmt, lineno, ##args)
 
 extern char *script_exec;
@@ -341,12 +340,8 @@ int parse_conf_file(const char *file)
 
 		while ((token = pop_token(&line))) {
 			/* Strip comments. */
-			if (match("#", token)) {
-#ifdef UNITTEST
-				printf("%02d: COMMENT: %s", lineno, line);
-#endif
+			if (match("#", token))
 				break;
-			}
 
 			if (!op) {
 				if (match("mgroup", token)) {
@@ -361,11 +356,7 @@ int parse_conf_file(const char *file)
 				} else if (match("ssmgroup", token)) {
 					op = 4;
 				} else {
-#ifdef UNITTEST
-					printf("%02d: Unknown command: %s", lineno, line);
-#else
 					WARN("Unknown command %s, skipping.", token);
-#endif
 					continue;
 				}
 			}
@@ -394,20 +385,6 @@ int parse_conf_file(const char *file)
 			}
 		}
 
-#ifdef UNITTEST
-		if (op == 1) {
-			printf("%02d: Found: %s %s\n", lineno, ifname, group);
-		} else if (op == 2) {
-			int i;
-
-			printf("%02d: Found: %s %s %s ", lineno, ifname, source, group);
-			for (i = 0; i < num; i++)
-				printf("%s ", dest[i]);
-			printf("\n");
-		} else {
-			printf("%02d: DUMP: %s\n", lineno, linebuf);
-		}
-#else
 		if (op == 1) {
 			join_mgroup(lineno, ifname, group);
 		} else if (op == 2) {
@@ -420,7 +397,6 @@ int parse_conf_file(const char *file)
 		} else if (op == 4) {
 			join_mgroup_ssm(lineno, ifname, group, source);
 		}
-#endif	/* UNITTEST */
 
 		lineno++;
 	}
@@ -450,7 +426,6 @@ int main(int argc, char *argv[])
 
 /**
  * Local Variables:
- *  compile-command: "gcc -g -o unittest -DUNITTEST parse-conf.c && ./unittest ../smcroute.conf"
  *  indent-tabs-mode: t
  *  c-file-style: "linux"
  * End:
