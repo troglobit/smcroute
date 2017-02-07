@@ -7,7 +7,7 @@ doc_DATA		= README.md AUTHORS TODO ChangeLog.md COPYING smcroute.conf smcroute.i
 EXTRA_DIST		= README.md ChangeLog.md autogen.sh smcroute.conf smcroute.init
 sbin_PROGRAMS		= smcroute
 smcroute_SOURCES	= smcroute.c mroute-api.c ifvc.c cmdpkt.c ipc.c	mcgroup.c	\
-			  parse-conf.c log.c pidfile.c mclab.h queue.h
+			  parse-conf.c log.c pidfile.c common.c mclab.h queue.h
 DISTCLEANFILES		= *~ DEADJOE semantic.cache *.gdb *.elf core core.* *.d
 smcroute_CPPFLAGS       = -Wno-deprecated-declarations
 if USE_LIBCAP

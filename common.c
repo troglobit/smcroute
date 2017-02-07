@@ -1,0 +1,44 @@
+/* Helper functions
+ *
+ * Copyright (C) 2017  Joachim Nilsson <troglobit@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+ */
+
+#include "config.h"
+#include "mclab.h"
+
+int create_socket(int domain, int type, int proto)
+{
+	int sd;
+
+#ifdef HAVE_SOCK_CLOEXEC
+	type |= SOCK_CLOEXEC;
+#endif
+	sd = socket(domain, type, proto);
+#if !defined(HAVE_SOCK_CLOEXEC) && defined(HAVE_FCNTL_H)
+	if (sd >= 0)
+		fcntl(sd, F_SETFD, fcntl(sd, F_GETFD) | FD_CLOEXEC);
+#endif
+
+	return sd;
+}
+
+/**
+ * Local Variables:
+ *  indent-tabs-mode: t
+ *  c-file-style: "linux"
+ * End:
+ */

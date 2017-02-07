@@ -117,6 +117,9 @@ struct iface {
 extern int do_vifs;
 extern int do_syslog;
 
+/* common.c */
+int create_socket(int domain, int type, int proto);
+
 /* ifvc.c */
 #define MAX_IF         40	// max. number of interfaces recognized
 

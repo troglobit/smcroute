@@ -50,7 +50,7 @@ int ipc_server_init(void)
 	if (server_sd >= 0)
 		close(server_sd);
 
-	server_sd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+	server_sd = create_socket(AF_UNIX, SOCK_STREAM, 0);
 	if (server_sd < 0)
 		return -1;
 
@@ -89,7 +89,7 @@ int ipc_client_init(void)
 	if (client_sd >= 0)
 		close(client_sd);
 
-	client_sd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+	client_sd = create_socket(AF_UNIX, SOCK_STREAM, 0);
 	if (client_sd < 0)
 		return -1;
 

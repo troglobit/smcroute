@@ -95,6 +95,20 @@ AS_IF([test "x$with_libcap" != "xno"],
 	AC_DEFINE([HAVE_LIBCAP], [], [Define to enable support for libcap.]))
 AM_CONDITIONAL(USE_LIBCAP, [test "x$with_libcap" != "xno"])
 
+# Mac OS does not (yet) support SOCK_CLOEXEC
+AC_CACHE_CHECK([for SOCK_CLOEXEC support], [ac_cv_sock_cloexec],
+	[AC_TRY_RUN([
+#include <sys/types.h>
+#include <sys/socket.h>
+
+int main()
+{
+    return socket(AF_INET, SOCK_STREAM|SOCK_CLOEXEC, 0) == -1;
+}], [ac_cv_sock_cloexec=yes], [ac_cv_sock_cloexec=no], [ac_cv_sock_cloexec=no])])
+
+AS_IF([test "$ac_cv_sock_cloexec" = "yes" ],
+   AC_DEFINE([HAVE_SOCK_CLOEXEC], 1, [Define if the SOCK_CLOEXEC flag is supported]))
+
 # Expand $sbindir early, into $SBINDIR, for systemd unit file
 # NOTE: This does *not* take prefix/exec_prefix override at "make
 #       install" into account, unfortunately.
