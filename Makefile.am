@@ -9,6 +9,7 @@ sbin_PROGRAMS		= smcroute
 smcroute_SOURCES	= smcroute.c mroute-api.c ifvc.c cmdpkt.c ipc.c	mcgroup.c	\
 			  parse-conf.c log.c pidfile.c mclab.h queue.h
 DISTCLEANFILES		= *~ DEADJOE semantic.cache *.gdb *.elf core core.* *.d
+smcroute_CPPFLAGS       = -Wno-deprecated-declarations
 if USE_LIBCAP
 smcroute_LDADD		= -lcap
 endif
