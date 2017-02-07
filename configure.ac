@@ -40,7 +40,8 @@ AC_ARG_WITH([systemd],
 AC_HEADER_STDC
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h		\
                   sys/ioctl.h sys/prctl.h sys/socket.h sys/types.h syslog.h	\
-                  unistd.h net/route.h sys/param.h ifaddrs.h linux/sockios.h], [], [],[
+                  unistd.h net/route.h sys/param.h sys/stat.h sys/time.h	\
+		  ifaddrs.h linux/sockios.h], [], [],[
 	#ifdef HAVE_SYS_SOCKET_H
 	# include <sys/socket.h>
 	#endif
@@ -73,7 +74,7 @@ AC_TYPE_UINT32_T
 
 # Checks for library functions.
 AC_FUNC_FORK
-AC_CHECK_FUNCS([atexit dup2 memset select socket strchr strerror strrchr asprintf])
+AC_CHECK_FUNCS([atexit dup2 memset select socket strchr strerror strrchr asprintf utimensat])
 
 # Check for sun_len in struct sockaddr_un
 AC_CHECK_SUN_LEN()
