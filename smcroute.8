@@ -12,6 +12,7 @@
 .Op Fl e Ar CMD
 .Op Fl L Ar LVL
 .Op Fl p Ar USER:GROUP
+.Op Fl t Ar SEC
 .Op Fl a | Fl r Ar ROUTE
 .Op Fl j | Fl l Ar GROUP
 .Op Fl x | Fl y Ar GROUP
@@ -101,6 +102,16 @@ available when
 was built with libcap support.
 .It Fl s
 Let daemon log to syslog, default unless running in foreground.
+.It Fl t Ar SEC
+Daemon startup delay.  Useful for delaying probe of interfaces at system
+bootstrap.  The daemon is started, but the configuration file is not read
+and intefaces are not probed until the delay has passed.
+.Pp
+This command line option is fragile.  It is always better to use an
+init, or process supervisor, that can handle dependencys properly, like
+.Xr finit 8
+which can wait for interfaces to come up and files to be created before
+starting a service.
 .It Fl v
 Display program version and exit.
 .It Fl h

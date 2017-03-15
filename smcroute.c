@@ -54,6 +54,7 @@ int do_vifs    = 1;
 int do_daemon  = 0;
 int do_syslog  = 0;
 int cache_tmo  = 0;
+int startup_delay = 0;
 
 uid_t uid      = 0;
 gid_t gid      = 0;
@@ -591,6 +592,11 @@ static int start_server(void)
 	/* Hello world! */
 	smclog(LOG_NOTICE, "%s", version_info);
 
+	if (startup_delay > 0) {
+		smclog(LOG_INFO, "Startup delay requested, waiting %d sec before continuing.", startup_delay);
+		sleep(startup_delay);
+	}
+
 	/* Build list of multicast-capable physical interfaces that
 	 * are currently assigned an IP address. */
 	iface_init();
@@ -724,6 +730,7 @@ static int usage(int code)
 	       "  -n              Run daemon in foreground, useful when run from finit\n"
 	       "  -N              No VIFs/MIFs created by default, use `phyint IFNAME enable`\n"
 	       "  -s              Use syslog, default unless running in foreground, -n\n"
+	       "  -t SEC          Startup delay, useful for delaying interface probe at boot\n"
 #ifdef HAVE_LIBCAP
 	       "  -p USER[:GROUP] After initialization set UID and GID to USER and GROUP\n"
 #endif
@@ -865,6 +872,10 @@ int main(int argc, const char *argv[])
 
 		case 's':	/* Force syslog even though in foreground */
 			do_syslog = 1;
+			continue;
+
+		case 't':
+			startup_delay = atoi(argv[1]);
 			continue;
 
 		case 'f':
