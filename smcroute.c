@@ -962,6 +962,12 @@ int main(int argc, const char *argv[])
 		return start_server();
 	}
 
+	if (!background) {
+		fprintf(stderr, "Foreground option given, but not -d (daemon) mode.\n");
+		fprintf(stderr, "%s has both a daemon and a client mode, cowardly not guessing for you.\n", PACKAGE_NAME);
+		return 1;
+	}
+
 	return send_commands(cmdnum, cmdv);
 }
 
