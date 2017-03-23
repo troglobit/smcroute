@@ -85,7 +85,9 @@ how `git commit -s` is used to automatically add a `Signed-off-by`:
     Signed-off-by: Jane Doe <jane.doe@example.com>
 
 
-[1]: http://www.gnu.org/philosophy/free-sw.en.html
+[1]:       http://www.gnu.org/philosophy/free-sw.en.html
+[KNF]:     https://en.wikipedia.org/wiki/Kernel_Normal_Form
+[gitbook]: https://git-scm.com/book/ch5-2.html
 
 <!--
   -- Local Variables:
