@@ -147,8 +147,10 @@ struct mroute4 {
 
 	struct in_addr sender;
 	struct in_addr group;           /* multicast group */
-	short inbound;                  /* incoming VIF    */
-	uint8 ttl[MAX_MC_VIFS];         /* outgoing VIFs   */
+	short          len;		/* prefix len, or 0:disabled */
+
+	short          inbound;         /* incoming VIF    */
+	uint8          ttl[MAX_MC_VIFS];/* outgoing VIFs   */
 };
 typedef struct mroute4 mroute4_t;
 

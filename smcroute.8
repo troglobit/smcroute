@@ -168,6 +168,15 @@ and
 .Ar OUTIFNAME
 can be any network interface as listed by 'ifconfig' or 'ip link
 list' (incl. tunnel interfaces), but not the loopback interface.
+.Pp
+It is possible to add (*,G) routes with the client.  Set the
+.Ar SOURCE
+to
+.Ar 0.0.0.0 ,
+and if you want to specify a range, set
+.Ar GROUP/LEN ,
+e.g.
+.Ar 225.0.0.0/24 .
 .It Fl r Ar IFNAME SOURCE GROUP
 Remove a kernel multicast route.
 .It Fl j Ar IFNAME GROUP
@@ -265,14 +274,16 @@ allows the integration of nodes that need static multicast routing into
 dynamic multicast routing domains.
 .Pp
 .Sh CONFIGURATION FILE
-From version 1.98.0 smcroute supports reading and setting up multicast
-routes from a config file. The default location is
+From version 1.98.0
+.Nm
+supports reading and setting up multicast routes from a config file. The
+default location is
 .Ar /etc/smcroute.conf ,
 but this can be overridden using the
 .Fl f Ar FILE
 command line option.
 .Pp
-.Bd -unfilled -offset left
+.Bd -unfilled -offset indent
 #
 # smcroute.conf example
 #
@@ -287,12 +298,13 @@ command line option.
 #       maximum.  If you need more, you probably need to find another
 #       way of forwarding multicast to your router.
 #
-# Similarily supported is setting mroutes. Removing mroutes is not
+# Similarily supported is setting mroutes.  Removing mroutes is not
 # supported, remove/comment out the mroute or send a remove command.
 #
 # Syntax:
 #   phyint IFNAME <enable|disable> [ttl-threshold <1-255>]
-#   mgroup from IFNAME group MCGROUP
+#   mgroup from IFNAME group MCGROUP[/LEN]
+#   ssmgroup from IFNAME group MCGROUP source SOURCE
 #   mroute from IFNAME [source ADDRESS] group MCGROUP to IFNAME [IFNAME ...]
 
 # This example disables the creation of a multicast VIF for WiFi
@@ -317,6 +329,19 @@ mroute from eth0 group 225.1.2.3 source 192.168.1.42 to eth1 eth2
 #       multicast.
 mgroup from eth0 group 225.3.2.1
 mroute from eth0 group 225.3.2.1 to eth1 eth2
+
+# The previous is an example of the (*,G) support.  Such rules cause
+# SMCRoute to dynamically add multicast routes to the kernel when the
+# first frame of a stream reaches the router.  It is also possible to
+# specify a range of such rules, again, note that this currently only
+# works for IPv4.  Also, it is not possible to set a range of groups
+# to join atm.
+mroute from eth0 group 225.0.0.0/24 to eth1 eth2
+
+# The following example instructs the kernel to join the source
+# specific multicast group 225.2.1.3 on interface eth0 with
+# source 192.168.10.25.
+ssmgroup from eth0 group 225.2.1.3 source 192.168.10.25
 .Ed
 .Pp
 Fairly simple. As usual, to identify the origin of the inbound multicast

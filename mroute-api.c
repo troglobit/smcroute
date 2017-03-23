@@ -41,9 +41,6 @@
 #endif
 #endif
 
-/* Used for (*,G) matches */
-#define mroute4_match(r1, r2) (!memcmp(&(r1)->group, &(r2)->group, sizeof((r1)->group)) && (r1)->inbound == (r2)->inbound)
-
 /*
  * Need a raw IGMP socket as interface for the IPv4 mrouted API
  * Receives IGMP packets and kernel upcall messages.
@@ -305,6 +302,29 @@ static int __mroute4_del(mroute4_t *route)
 	return result;
 }
 
+/*
+ * Used for (*,G) matches
+ *
+ * The incoming candidate is compared to the configured rule, e.g.
+ * does 225.1.2.3 fall inside 225.0.0.0/8?  => Yes
+ * does 225.1.2.3 fall inside 225.0.0.0/15? => Yes
+ * does 225.1.2.3 fall inside 225.0.0.0/16? => No
+ */
+static int __mroute4_match(mroute4_t *rule, mroute4_t *cand)
+{
+	uint32_t g1, g2, mask;
+
+	if (rule->inbound != cand->inbound)
+		return 0;
+
+	/* This handles len == 0 => 255.255.255.255 */
+	mask = htonl(0xFFFFFFFFu << (32 - rule->len));
+	g1 = rule->group.s_addr & mask;
+	g2 = cand->group.s_addr & mask;
+
+	return g1 == g2;
+}
+
 /**
  * mroute4_dyn_add - Add route to kernel if it matches a known (*,G) route.
  * @route: Pointer to candidate &mroute4_t IPv4 multicast route
@@ -318,7 +338,7 @@ int mroute4_dyn_add(mroute4_t *route)
 
 	LIST_FOREACH(entry, &mroute4_conf_list, link) {
 		/* Find matching (*,G) ... and interface. */
-		if (mroute4_match(entry, route)) {
+		if (__mroute4_match(entry, route)) {
 			/* Use configured template (*,G) outbound interfaces. */
 			memcpy(route->ttl, entry->ttl, NELEMS(route->ttl) * sizeof(route->ttl[0]));
 
@@ -418,14 +438,14 @@ int mroute4_del(mroute4_t *route)
 
 	entry = LIST_FIRST(&mroute4_conf_list);
 	while (entry) {
-		/* Find matching (*,G) ... and interface. */
-		if (mroute4_match(entry, route)) {
+		/* Find matching (*,G) ... and interface .. and prefix length. */
+		if (__mroute4_match(entry, route) && entry->len == route->len) {
 			if (LIST_EMPTY(&mroute4_dyn_list))
 				goto empty;
 
 			set = LIST_FIRST(&mroute4_dyn_list);
 			while (set) {
-				if (mroute4_match(entry, set)) {
+				if (__mroute4_match(entry, set) && entry->len == route->len) {
 					__mroute4_del(set);
 					LIST_REMOVE(set, link);
 					free(set);

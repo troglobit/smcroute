@@ -124,14 +124,13 @@ const char *cmd_convert_to_mroute(struct mroute *mroute, const struct cmd *packe
 		if (packet->cmd == 'a' || packet->count > 2)
 			arg += strlen(arg) + 1;
 
-		if (strchr(arg, ':') != NULL) {
+		if (strchr(arg, ':')) {
 			mroute->version = 6;
 			return cmd_convert_to_mroute6(&mroute->u.mroute6, packet);
-		} else {
-			mroute->version = 4;
-			return cmd_convert_to_mroute4(&mroute->u.mroute4, packet);
 		}
-		break;
+
+		mroute->version = 4;
+		return cmd_convert_to_mroute4(&mroute->u.mroute4, packet);
 
 	default:
 		return "Invalid command";
@@ -142,6 +141,7 @@ const char *cmd_convert_to_mroute(struct mroute *mroute, const struct cmd *packe
 
 const char *cmd_convert_to_mroute4(struct mroute4 *mroute, const struct cmd *packet)
 {
+	char *ptr;
 	char *arg = (char *)packet->argv;
 
 	memset(mroute, 0, sizeof(*mroute));
@@ -166,10 +166,27 @@ const char *cmd_convert_to_mroute4(struct mroute4 *mroute, const struct cmd *pac
 	if (!*arg || (inet_pton(AF_INET, arg, &mroute->sender) <= 0))
 		return "Invalid origin IPv4 address";
 
-	/* get multicast group */
+	/* get multicast group with optional prefix length */
 	arg += strlen(arg) + 1;
+
+	/* check for prefix length, only applicable for (*,G) routes */
+	ptr = strchr(arg, '/');
+	if (ptr) {
+		if (mroute->sender.s_addr != INADDR_ANY)
+			return "GROUP/LEN not yet supported for source specific multicast.";
+
+		*ptr++ = 0;
+		mroute->len = atoi(ptr);
+		if (mroute->len < 0 || mroute->len > 32)
+			return "Invalid prefix length (/LEN), must be 0-32";
+	}
+
 	if (!*arg || (inet_pton(AF_INET, arg, &mroute->group) <= 0) || !IN_MULTICAST(ntohl(mroute->group.s_addr)))
 		return "Invalid multicast group";
+
+	/* adjust arg if we just parsed a GROUP/LEN argument */
+	if (ptr)
+		arg = ptr;
 
 	/*
 	 * Scan output interfaces for the 'add' command only, just ignore it
