@@ -191,6 +191,7 @@ static int join_mgroup_ssm(int lineno, char *ifname, char *group, char *source)
 static int add_mroute(int lineno, char *ifname, char *group, char *source, char *outbound[], int num)
 {
 	int i, total, ret;
+	char *ptr;
 	struct mroute4 mroute;
 
 	if (!ifname || !group || !outbound || !num) {
@@ -260,6 +261,21 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 	} else if (inet_pton(AF_INET, source, &mroute.sender) <= 0) {
 		WARN("Invalid source IPv4 address: %s", source);
 		return 1;
+	}
+
+	ptr = strchr(group, '/');
+	if (ptr) {
+		if (mroute.sender.s_addr != INADDR_ANY) {
+			WARN("GROUP/LEN not yet supported for source specific multicast.");
+			return 1;
+		}
+
+		*ptr++ = 0;
+		mroute.len = atoi(ptr);
+		if (mroute.len < 0 || mroute.len > 32) {
+			WARN("Invalid prefix length, %s/%d", group, mroute.len);
+			return 1;
+		}
 	}
 
 	ret = inet_pton(AF_INET, group, &mroute.group);

@@ -141,6 +141,7 @@ const char *cmd_convert_to_mroute(struct mroute *mroute, const struct cmd *packe
 
 const char *cmd_convert_to_mroute4(struct mroute4 *mroute, const struct cmd *packet)
 {
+	char *ptr;
 	char *arg = (char *)packet->argv;
 
 	memset(mroute, 0, sizeof(*mroute));
@@ -165,8 +166,21 @@ const char *cmd_convert_to_mroute4(struct mroute4 *mroute, const struct cmd *pac
 	if (!*arg || (inet_pton(AF_INET, arg, &mroute->sender) <= 0))
 		return "Invalid origin IPv4 address";
 
-	/* get multicast group */
+	/* get multicast group with optional prefix length */
 	arg += strlen(arg) + 1;
+
+	/* check for prefix length, only applicable for (*,G) routes */
+	ptr = strchr(arg, '/');
+	if (ptr) {
+		if (mroute->sender.s_addr != INADDR_ANY)
+			return "GROUP/LEN not yet supported for source specific multicast.";
+
+		*ptr++ = 0;
+		mroute->len = atoi(ptr);
+		if (mroute->len < 0 || mroute->len > 32)
+			return "Invalid prefix length (/LEN), must be 0-32";
+	}
+
 	if (!*arg || (inet_pton(AF_INET, arg, &mroute->group) <= 0) || !IN_MULTICAST(ntohl(mroute->group.s_addr)))
 		return "Invalid multicast group";
 
