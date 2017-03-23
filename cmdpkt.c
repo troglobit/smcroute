@@ -184,6 +184,10 @@ const char *cmd_convert_to_mroute4(struct mroute4 *mroute, const struct cmd *pac
 	if (!*arg || (inet_pton(AF_INET, arg, &mroute->group) <= 0) || !IN_MULTICAST(ntohl(mroute->group.s_addr)))
 		return "Invalid multicast group";
 
+	/* adjust arg if we just parsed a GROUP/LEN argument */
+	if (ptr)
+		arg = ptr;
+
 	/*
 	 * Scan output interfaces for the 'add' command only, just ignore it
 	 * for the 'remove' command to be compatible to the first release.
