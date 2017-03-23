@@ -124,14 +124,13 @@ const char *cmd_convert_to_mroute(struct mroute *mroute, const struct cmd *packe
 		if (packet->cmd == 'a' || packet->count > 2)
 			arg += strlen(arg) + 1;
 
-		if (strchr(arg, ':') != NULL) {
+		if (strchr(arg, ':')) {
 			mroute->version = 6;
 			return cmd_convert_to_mroute6(&mroute->u.mroute6, packet);
-		} else {
-			mroute->version = 4;
-			return cmd_convert_to_mroute4(&mroute->u.mroute4, packet);
 		}
-		break;
+
+		mroute->version = 4;
+		return cmd_convert_to_mroute4(&mroute->u.mroute4, packet);
 
 	default:
 		return "Invalid command";
