@@ -58,12 +58,7 @@ char *prognm   = PACKAGE_NAME;
 const        char *script_exec  = NULL;
 static const char *conf_file    = SMCROUTE_SYSTEM_CONF;
 static const char *username;
-static const char version_info[] =
-	PACKAGE_NAME " version " PACKAGE_VERSION
-#ifdef BUILD
-        " build " BUILD
-#endif
-	;
+static const char version_info[] = PACKAGE_NAME " v" PACKAGE_VERSION;
 
 /* Parse .conf file and setup routes */
 static void read_conf_file(const char *conf_file)

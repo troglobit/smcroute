@@ -26,13 +26,8 @@
 #include <stdio.h>
 #include "mclab.h"
 
-char *prognm   = PACKAGE_NAME;
-static const char version_info[] =
-	PACKAGE_NAME " version " PACKAGE_VERSION
-#ifdef BUILD
-        " build " BUILD
-#endif
-	;
+char *prognm = PACKAGE_NAME;
+
 
 /**
  * cmd_build - Create IPC command to send to daemon
@@ -293,7 +288,7 @@ int main(int argc, const char *argv[])
 			return usage(0);
 
 		case 'v':	/* version */
-			fprintf(stderr, "%s\n", version_info);
+			fprintf(stderr, "%s v%s\n", PACKAGE_NAME, PACKAGE_VERSION);
 			return 0;
 
 		default:	/* unknown option */
