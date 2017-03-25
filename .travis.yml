@@ -40,6 +40,9 @@ script:
   - make
   - DESTDIR=~/tmp make install-strip
   - tree ~/tmp
-  - ldd ~/tmp/sbin/smcroute
-  - size ~/tmp/sbin/smcroute
-  - ~/tmp/sbin/smcroute -h
+  - ldd ~/tmp/sbin/smcrouted
+  - size ~/tmp/sbin/smcrouted
+  - ldd ~/tmp/sbin/smcroutectl
+  - size ~/tmp/sbin/smcroutectl
+  - ~/tmp/sbin/smcrouted -h
+  - ~/tmp/sbin/smcroutectl -h
