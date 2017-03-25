@@ -4,7 +4,7 @@
  * Copyright (C) 2006-2009  Julien BLACHE <jb@jblache.org>
  * Copyright (C) 2009       Todd Hayton <todd.hayton@gmail.com>
  * Copyright (C) 2009-2011  Micha Lenk <micha@debian.org>
- * Copyright (C) 2011-2013  Joachim Nilsson <troglobit@gmail.com>
+ * Copyright (C) 2011-2017  Joachim Nilsson <troglobit@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

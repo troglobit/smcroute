@@ -8,7 +8,7 @@ Requires=network-online.target
 
 [Service]
 Type=simple
-ExecStart=@SBINDIR@/smcroute -d -n -s
+ExecStart=@SBINDIR@/smcrouted -n -s
 
 [Install]
 WantedBy=multi-user.target

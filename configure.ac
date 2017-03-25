@@ -26,8 +26,6 @@ PKG_PROG_PKG_CONFIG
 AC_GNU_SOURCE
 
 # Check user options
-AC_ARG_ENABLE([build-id],
-	AS_HELP_STRING([--enable-build-id@<:@=ID@:>@], [enable build ID in 'smcroute -v', default: disabled]))
 AC_ARG_ENABLE([ipv6],
 	AS_HELP_STRING([--disable-ipv6], [disable IPv6 support, default: enabled]))
 AC_ARG_WITH([libcap],
@@ -85,11 +83,6 @@ AC_CHECK_MROUTE()
 # If IPv6 is enabled we must probe the system some more
 AS_IF([test "x$enable_ipv6" != "xno"],
         AC_CHECK_MROUTE6())
-
-# Define BUILD in config.h, if enabled
-AS_IF([test "x$enable_build_id" = "xyes" ], [build_id=`date +%y%m%d`], [build_id=$enable_build_id],
-	AS_IF([test "x$build_id" != "xno" ],
-		AC_DEFINE_UNQUOTED([BUILD], "$build_id", [Build number, abbreviated date.])))
 
 # Support for dropping root privileges is enabled by default
 AS_IF([test "x$with_libcap" != "xno"],

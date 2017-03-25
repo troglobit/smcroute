@@ -1,10 +1,10 @@
-/* Daemon and client main routines
+/* Static multicast routing daemon
  *
  * Copyright (C) 2001-2005  Carsten Schill <carsten@cschill.de>
  * Copyright (C) 2006-2009  Julien BLACHE <jb@jblache.org>
  * Copyright (C) 2009       Todd Hayton <todd.hayton@gmail.com>
  * Copyright (C) 2009-2011  Micha Lenk <micha@debian.org>
- * Copyright (C) 2011-2013  Joachim Nilsson <troglobit@gmail.com>
+ * Copyright (C) 2011-2017  Joachim Nilsson <troglobit@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,14 +23,9 @@
 
 #include "config.h"
 #include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <getopt.h>
 #include <sys/time.h>		/* gettimeofday() */
-
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <netinet/ip.h>
-#include <arpa/inet.h>
 
 #ifdef HAVE_LIBCAP
 # ifdef HAVE_SYS_PRCTL_H
@@ -51,7 +46,6 @@
 int running    = 1;
 int background = 1;
 int do_vifs    = 1;
-int do_daemon  = 0;
 int do_syslog  = 0;
 int cache_tmo  = 0;
 int startup_delay = 0;
@@ -64,38 +58,7 @@ char *prognm   = PACKAGE_NAME;
 const        char *script_exec  = NULL;
 static const char *conf_file    = SMCROUTE_SYSTEM_CONF;
 static const char *username;
-static const char version_info[] =
-	"SMCRoute version " PACKAGE_VERSION
-#ifdef BUILD
-        " build " BUILD
-#endif
-	;
-
-/*
- * Counts the number of arguments belonging to an option. Option is any argument
- * begining with a '-'.
- *
- * returns: - the number of arguments (without the option itself),
- *          - 0, if we start already from the end of the argument vector
- *          - -1, if we start not from an option
- */
-static int num_option_arguments(const char *argv[])
-{
-	const char **ptr;
-
-	/* end of vector */
-	if (argv == NULL || *argv == NULL)
-		return 0;
-
-	/* starting on wrong position */
-	if (**argv != '-')
-		return -1;
-
-	for (ptr = argv + 1; *ptr && **ptr != '-'; ptr++)
-		;
-
-	return ptr - argv;
-}
+static const char version_info[] = PACKAGE_NAME " v" PACKAGE_VERSION;
 
 /* Parse .conf file and setup routes */
 static void read_conf_file(const char *conf_file)
@@ -648,84 +611,18 @@ static int start_server(void)
 	return server_loop(sd);
 }
 
-static int send_commands(int cmdnum, struct cmd *cmdv[])
-{
-	int i, result = 0;
-	int retry_count = 30;
-
-	if (!cmdnum)
-		return 0;
-
-	while (ipc_client_init() && !result) {
-		switch (errno) {
-		case EACCES:
-			smclog(LOG_ERR, "Need root privileges to connect to daemon: %s", strerror(errno));
-			result = 1;
-			goto error;
-
-		case ENOENT:
-		case ECONNREFUSED:
-			if (--retry_count) {
-				usleep(100000);
-				continue;
-			}
-
-			smclog(LOG_WARNING, "Daemon not running: %s", strerror(errno));
-			result = 1;
-			goto error;
-
-		default:
-			smclog(LOG_WARNING, "Failed connecting to daemon: %s", strerror(errno));
-			result = 1;
-			goto error;
-		}
-	}
-
-	for (i = 0; i < cmdnum; i++) {
-		int slen, rlen;
-		uint8 buf[MX_CMDPKT_SZ + 1];
-		struct cmd *command = cmdv[i];
-
-		/* Send command */
-		fprintf(stderr, "Sending command(s) ... ");
-		slen = ipc_send(command, command->len);
-
-		/* Wait here for reply */
-		rlen = ipc_receive(buf, MX_CMDPKT_SZ);
-		if (slen < 0 || rlen < 0) {
-			smclog(LOG_WARNING, "Communication with daemon failed: %s", strerror(errno));
-			result = 1;
-			break;
-		}
-
-		if (rlen != 1 || *buf != '\0') {
-			buf[MX_CMDPKT_SZ] = 0;
-			fprintf(stderr, "Daemon error: %s\n", buf);
-			result = 1;
-			break;
-		}
-		fprintf(stderr, "OK!\n");
-	}
-
-error:
-	for (i = 0; i < cmdnum; i++)
-		free(cmdv[i]);
-
-	return result;
-}
 
 static int usage(int code)
 {
 	printf("\nUsage:\n"
-	       "  %s [dnkhv] [-f FILE] [-e CMD] [-L LVL] [-a|-r ROUTE] [-j|-l GROUP] [-x|-y SSM GROUP]\n"
+	       "  %s [hnNsv] [-c SEC] [-f FILE] [-e CMD] [-L LVL] [-p USER[:GROUP]] [-t SEC]\n"
 	       "\n"
-	       "Daemon:\n"
 	       "  -c SEC          Flush dynamic (*,G) multicast routes every SEC seconds\n"
-	       "  -d              Start daemon\n"
 	       "  -e CMD          Script or command to call on startup/reload when all routes\n"
 	       "                  have been installed. Or when a source-less (ANY) route has\n"
 	       "                  been installed.\n"
 	       "  -f FILE         File to use instead of default " SMCROUTE_SYSTEM_CONF "\n"
+	       "  -h              This help text\n"
 	       "  -L LVL          Set log level: none, err, info, notice*, debug\n"
 	       "  -n              Run daemon in foreground, useful when run from finit\n"
 	       "  -N              No VIFs/MIFs created by default, use `phyint IFNAME enable`\n"
@@ -734,31 +631,8 @@ static int usage(int code)
 #ifdef HAVE_LIBCAP
 	       "  -p USER[:GROUP] After initialization set UID and GID to USER and GROUP\n"
 #endif
+	       "  -v              Show program version\n"
 	       "\n"
-	       "Client:\n"
-	       "  -F       Flush dynamic (*,G) multicast routes now\n"
-	       "  -h       This help text\n"
-	       "  -k       Kill a running daemon\n"
-	       "  -v       Show program version\n"
-	       "\n"
-	       "  -a ARGS  Add a multicast route\n"
-	       "  -r ARGS  Remove a multicast route\n"
-	       "\n"
-	       "  -j ARGS  Join a multicast group\n"
-	       "  -l ARGS  Leave a multicast group\n"
-	       "\n"
-	       "  -x ARGS  Join a multicast group (Source Specific Multicast, SSM)\n"
-	       "  -y ARGS  Leave a multicast group (Source Specific Multicast, SSM)\n"
-	       "\n"
-	       "     <------------- INBOUND -------------->  <----- OUTBOUND ------>\n"
-	       "  -a <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>  <IFNAME> [<IFNAME> ...]\n"
-	       "  -r <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>\n"
-	       "\n"
-	       "  -j <IFNAME> <MULTICAST-GROUP>\n"
-	       "  -l <IFNAME> <MULTICAST-GROUP>\n"
-	       "\n"
-	       "  -x <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>\n"
-	       "  -y <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>\n\n"
 	       "Bug report address: %s\n"
 	       "Project homepage: %s\n\n", prognm, PACKAGE_BUGREPORT, PACKAGE_URL);
 
@@ -790,117 +664,49 @@ static char *progname(const char *arg0)
  * In client mode, creates commands from command line and sends them to
  * the daemon.
  */
-int main(int argc, const char *argv[])
+int main(int argc, char *argv[])
 {
-	int i, num_opts;
-	unsigned int cmdnum = 0;
-	struct cmd *cmdv[16];
+	int c;
 #ifdef HAVE_LIBCAP
 	char *ptr;
 #endif
 
 	prognm = progname(argv[0]);
-	if (argc <= 1)
-		return usage(1);
-
-	/* Parse command line options */
-	for (num_opts = 1; (num_opts = num_option_arguments(argv += num_opts));) {
-		const char *arg;
-
-		if (num_opts < 0)	/* error */
-			return usage(1);
-
-		/* handle option */
-		arg = argv[0];
-		switch (arg[1]) {
-		case 'a':	/* add route */
-			if (num_opts < 5)
-				return usage(1);
+	while ((c = getopt(argc, argv, "c:e:f:hLnNp:st:v")) != EOF) {
+		switch (c) {
+		case 'c':	/* cache timeout */
+			cache_tmo = atoi(argv[1]);
 			break;
 
-		case 'r':	/* remove route */
-			if (num_opts < 4)
-				return usage(1);
+		case 'e':
+
+			script_exec = argv[1];
 			break;
 
-		case 'j':	/* join */
-		case 'l':	/* leave */
-			if (num_opts != 3)
-				return usage(1);
-			break;
-
-		case 'x':	/* join (ssm) */
-		case 'y':	/* leave (ssm) */
-			if (num_opts != 4)
-				return usage(1);
-			break;
-
-		case 'k':	/* kill daemon */
-			if (num_opts != 1)
-				return usage(1);
-			break;
-
-		case 'F':
-			if (num_opts != 1)
-				return usage(1);
+		case 'f':
+			conf_file = argv[1];
 			break;
 
 		case 'h':	/* help */
 			return usage(0);
 
-		case 'v':	/* version */
-			fprintf(stderr, "%s\n", version_info);
-			return 0;
-
-		case 'c':	/* cache timeout */
-			if (num_opts != 2)
-				return usage(1);
-			cache_tmo = atoi(argv[1]);
-			continue;
-
-		case 'd':	/* daemon */
-			do_daemon = 1;
-			continue;
+		case 'L':
+			log_level = loglvl(argv[1]);
+			break;
 
 		case 'n':	/* run daemon in foreground, i.e., do not fork */
 			background = 0;
-			continue;
+			break;
 
 		case 'N':
 			do_vifs = 0;
-			continue;
+			break;
 
-		case 's':	/* Force syslog even though in foreground */
-			do_syslog = 1;
-			continue;
-
-		case 't':
-			startup_delay = atoi(argv[1]);
-			continue;
-
-		case 'f':
-			if (num_opts != 2)
-				return usage(1);
-			conf_file = argv[1];
-			continue;
-
-		case 'e':
-			if (num_opts != 2)
-				return usage(1);
-			script_exec = argv[1];
-			continue;
-
-		case 'L':
-			if (num_opts != 2)
-				return usage(1);
-			log_level = loglvl(argv[1]);
-			continue;
-
-#ifdef HAVE_LIBCAP
 		case 'p':
-			if (num_opts != 2)
-				return usage(1);
-
+#ifndef HAVE_LIBCAP
+			warn("Drop privs support not available.");
+			break;
+#else
 			ptr = strdup(argv[1]);
 			if (!ptr) {
 				perror("Failed parsing user:group argument");
@@ -912,63 +718,50 @@ int main(int argc, const char *argv[])
 				return 1;
 			}
 			free(ptr);
-			continue;
+			break;
 #endif
+
+		case 's':	/* Force syslog even though in foreground */
+			do_syslog = 1;
+			break;
+
+		case 't':
+			startup_delay = atoi(argv[1]);
+			break;
+
+		case 'v':	/* version */
+			fprintf(stderr, "%s\n", version_info);
+			return 0;
 
 		default:	/* unknown option */
 			return usage(1);
 		}
-
-		/* Check and build command argument list. */
-		if (cmdnum >= NELEMS(cmdv)) {
-			fprintf(stderr, "Too many command options\n");
-			return usage(1);
-		}
-
-		cmdv[cmdnum] = cmd_build(arg[1], argv + 1, num_opts - 1);
-		if (!cmdv[cmdnum]) {
-			perror("Failed parsing command");
-			for (i = 0; i < cmdnum; i++)
-				free(cmdv[i]);
-			return 1;
-		}
-		cmdnum++;
 	}
 
-	if (do_daemon) {
-		if (geteuid() != 0) {
-			smclog(LOG_ERR, "Need root privileges to start %s", prognm);
-			return 1;
-		}
-
-		if (script_exec && access(script_exec, X_OK)) {
-			smclog(LOG_ERR, "%s is not an executable, exiting.", script_exec);
-			return 1;
-		}
-
-		if (background) {
-			do_syslog = 1;
-			if (daemon(0, 0) < 0) {
-				smclog(LOG_ERR, "Failed daemonizing: %s", strerror(errno));
-				return 1;
-			}
-		}
-
-		if (do_syslog) {
-			openlog(prognm, LOG_PID, LOG_DAEMON);
-			setlogmask(LOG_UPTO(log_level));
-		}
-
-		return start_server();
-	}
-
-	if (!background) {
-		fprintf(stderr, "Foreground option given, but not -d (daemon) mode.\n");
-		fprintf(stderr, "%s has both a daemon and a client mode, cowardly not guessing for you.\n", PACKAGE_NAME);
+	if (geteuid() != 0) {
+		smclog(LOG_ERR, "Need root privileges to start %s", prognm);
 		return 1;
 	}
 
-	return send_commands(cmdnum, cmdv);
+	if (script_exec && access(script_exec, X_OK)) {
+		smclog(LOG_ERR, "%s is not an executable, exiting.", script_exec);
+		return 1;
+	}
+
+	if (background) {
+		do_syslog = 1;
+		if (daemon(0, 0) < 0) {
+			smclog(LOG_ERR, "Failed daemonizing: %s", strerror(errno));
+			return 1;
+		}
+	}
+
+	if (do_syslog) {
+		openlog(prognm, LOG_PID, LOG_DAEMON);
+		setlogmask(LOG_UPTO(log_level));
+	}
+
+	return start_server();
 }
 
 /**
