@@ -23,14 +23,9 @@
 
 #include "config.h"
 #include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <getopt.h>
 #include <sys/time.h>		/* gettimeofday() */
-
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <netinet/ip.h>
-#include <arpa/inet.h>
 
 #ifdef HAVE_LIBCAP
 # ifdef HAVE_SYS_PRCTL_H
@@ -64,37 +59,11 @@ const        char *script_exec  = NULL;
 static const char *conf_file    = SMCROUTE_SYSTEM_CONF;
 static const char *username;
 static const char version_info[] =
-	"SMCRoute version " PACKAGE_VERSION
+	PACKAGE_NAME " version " PACKAGE_VERSION
 #ifdef BUILD
         " build " BUILD
 #endif
 	;
-
-/*
- * Counts the number of arguments belonging to an option. Option is any argument
- * begining with a '-'.
- *
- * returns: - the number of arguments (without the option itself),
- *          - 0, if we start already from the end of the argument vector
- *          - -1, if we start not from an option
- */
-static int num_option_arguments(const char *argv[])
-{
-	const char **ptr;
-
-	/* end of vector */
-	if (argv == NULL || *argv == NULL)
-		return 0;
-
-	/* starting on wrong position */
-	if (**argv != '-')
-		return -1;
-
-	for (ptr = argv + 1; *ptr && **ptr != '-'; ptr++)
-		;
-
-	return ptr - argv;
-}
 
 /* Parse .conf file and setup routes */
 static void read_conf_file(const char *conf_file)
@@ -647,71 +616,6 @@ static int start_server(void)
 	return server_loop(sd);
 }
 
-static int send_commands(int cmdnum, struct cmd *cmdv[])
-{
-	int i, result = 0;
-	int retry_count = 30;
-
-	if (!cmdnum)
-		return 0;
-
-	while (ipc_client_init() && !result) {
-		switch (errno) {
-		case EACCES:
-			smclog(LOG_ERR, "Need root privileges to connect to daemon: %s", strerror(errno));
-			result = 1;
-			goto error;
-
-		case ENOENT:
-		case ECONNREFUSED:
-			if (--retry_count) {
-				usleep(100000);
-				continue;
-			}
-
-			smclog(LOG_WARNING, "Daemon not running: %s", strerror(errno));
-			result = 1;
-			goto error;
-
-		default:
-			smclog(LOG_WARNING, "Failed connecting to daemon: %s", strerror(errno));
-			result = 1;
-			goto error;
-		}
-	}
-
-	for (i = 0; i < cmdnum; i++) {
-		int slen, rlen;
-		uint8 buf[MX_CMDPKT_SZ + 1];
-		struct cmd *command = cmdv[i];
-
-		/* Send command */
-		fprintf(stderr, "Sending command(s) ... ");
-		slen = ipc_send(command, command->len);
-
-		/* Wait here for reply */
-		rlen = ipc_receive(buf, MX_CMDPKT_SZ);
-		if (slen < 0 || rlen < 0) {
-			smclog(LOG_WARNING, "Communication with daemon failed: %s", strerror(errno));
-			result = 1;
-			break;
-		}
-
-		if (rlen != 1 || *buf != '\0') {
-			buf[MX_CMDPKT_SZ] = 0;
-			fprintf(stderr, "Daemon error: %s\n", buf);
-			result = 1;
-			break;
-		}
-		fprintf(stderr, "OK!\n");
-	}
-
-error:
-	for (i = 0; i < cmdnum; i++)
-		free(cmdv[i]);
-
-	return result;
-}
 
 static int usage(int code)
 {
@@ -765,81 +669,49 @@ static char *progname(const char *arg0)
  * In client mode, creates commands from command line and sends them to
  * the daemon.
  */
-int main(int argc, const char *argv[])
+int main(int argc, char *argv[])
 {
-	int i, num_opts;
-	unsigned int cmdnum = 0;
-	struct cmd *cmdv[16];
+	int c;
 #ifdef HAVE_LIBCAP
 	char *ptr;
 #endif
 
 	prognm = progname(argv[0]);
-	if (argc <= 1)
-		return usage(1);
+	while ((c = getopt(argc, argv, "c:e:f:hLnNp:st:v")) != EOF) {
+		switch (c) {
+		case 'c':	/* cache timeout */
+			cache_tmo = atoi(argv[1]);
+			break;
 
-	/* Parse command line options */
-	for (num_opts = 1; (num_opts = num_option_arguments(argv += num_opts));) {
-		const char *arg;
+		case 'e':
 
-		if (num_opts < 0)	/* error */
-			return usage(1);
+			script_exec = argv[1];
+			break;
 
-		/* handle option */
-		arg = argv[0];
-		switch (arg[1]) {
+		case 'f':
+			conf_file = argv[1];
+			break;
+
 		case 'h':	/* help */
 			return usage(0);
 
-		case 'v':	/* version */
-			fprintf(stderr, "%s\n", version_info);
-			return 0;
-
-		case 'c':	/* cache timeout */
-			if (num_opts != 2)
-				return usage(1);
-			cache_tmo = atoi(argv[1]);
-			continue;
+		case 'L':
+			log_level = loglvl(argv[1]);
+			break;
 
 		case 'n':	/* run daemon in foreground, i.e., do not fork */
 			background = 0;
-			continue;
+			break;
 
 		case 'N':
 			do_vifs = 0;
-			continue;
+			break;
 
-		case 's':	/* Force syslog even though in foreground */
-			do_syslog = 1;
-			continue;
-
-		case 't':
-			startup_delay = atoi(argv[1]);
-			continue;
-
-		case 'f':
-			if (num_opts != 2)
-				return usage(1);
-			conf_file = argv[1];
-			continue;
-
-		case 'e':
-			if (num_opts != 2)
-				return usage(1);
-			script_exec = argv[1];
-			continue;
-
-		case 'L':
-			if (num_opts != 2)
-				return usage(1);
-			log_level = loglvl(argv[1]);
-			continue;
-
-#ifdef HAVE_LIBCAP
 		case 'p':
-			if (num_opts != 2)
-				return usage(1);
-
+#ifndef HAVE_LIBCAP
+			warn("Drop privs support not available.");
+			break;
+#else
 			ptr = strdup(argv[1]);
 			if (!ptr) {
 				perror("Failed parsing user:group argument");
@@ -851,8 +723,20 @@ int main(int argc, const char *argv[])
 				return 1;
 			}
 			free(ptr);
-			continue;
+			break;
 #endif
+
+		case 's':	/* Force syslog even though in foreground */
+			do_syslog = 1;
+			break;
+
+		case 't':
+			startup_delay = atoi(argv[1]);
+			break;
+
+		case 'v':	/* version */
+			fprintf(stderr, "%s\n", version_info);
+			return 0;
 
 		default:	/* unknown option */
 			return usage(1);

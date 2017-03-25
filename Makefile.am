@@ -9,6 +9,7 @@ EXTRA_DIST		= README.md ChangeLog.md autogen.sh smcroute.conf smcroute.init
 sbin_PROGRAMS		= smcrouted
 smcrouted_SOURCES	= smcrouted.c mroute-api.c ifvc.c cmdpkt.c ipc.c mcgroup.c	\
 			  parse-conf.c log.c pidfile.c common.c common.h mclab.h queue.h
+smcrouted_CFLAGS        = -W -Wall -Wextra
 smcrouted_CPPFLAGS	= -Wno-deprecated-declarations
 if USE_LIBCAP
 smcrouted_LDADD		= -lcap
