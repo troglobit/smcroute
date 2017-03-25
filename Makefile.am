@@ -6,7 +6,9 @@ DISTCLEANFILES		= *~ DEADJOE semantic.cache *.gdb *.elf core core.* *.d
 dist_man8_MANS		= smcroute.8
 doc_DATA		= README.md AUTHORS TODO ChangeLog.md COPYING smcroute.conf smcroute.init
 EXTRA_DIST		= README.md ChangeLog.md autogen.sh smcroute.conf smcroute.init
-sbin_PROGRAMS		= smcrouted
+sbin_PROGRAMS		= smcrouted smcroutectl
+smcroutectl_SOURCES	= smcroutectl.c ipc.c common.c common.h mclab.h
+smcroutectl_CFLAGS      = -W -Wall -Wextra
 smcrouted_SOURCES	= smcrouted.c mroute-api.c ifvc.c cmdpkt.c ipc.c mcgroup.c	\
 			  parse-conf.c log.c pidfile.c common.c common.h mclab.h queue.h
 smcrouted_CFLAGS        = -W -Wall -Wextra

@@ -29,58 +29,6 @@
 
 
 /**
- * cmd_build - Create IPC command to send to daemon
- * @cmd:   Command, one of 'a', 'r', 'j' or 'l'
- * @argv:  Vector of arguments for @cmd
- * @count: Number of arguments in @argv
- *
- * Builds an command packet with the command @cmd and @count number of
- * arguments from @argv.
- *
- * Returns:
- * Pointer to a dynamically allocated command packet, or %NULL on failure
- * to allocate enought memory.
- */
-void *cmd_build(char cmd, const char *argv[], int count)
-{
-	int i;
-	char *ptr;
-	size_t arg_len = 0, packet_len;
-	struct cmd *packet;
-
-	/* Summarize length of all arguments/commands */
-	for (i = 0; i < count; i++)
-		arg_len += strlen(argv[i]) + 1;
-
-	/* resulting packet size */
-	packet_len = sizeof(struct cmd) + arg_len + 1;
-	if (packet_len > MX_CMDPKT_SZ) {
-		errno = EMSGSIZE;
-		return NULL;
-	}
-
-	/* build packet */
-	packet = malloc(packet_len);
-	if (!packet)
-		return NULL;
-
-	packet->len   = packet_len;
-	packet->cmd   = cmd;
-	packet->count = count;
-
-	/* copy args */
-	ptr = (char *)(packet->argv);
-	for (i = 0; i < count; i++) {
-		arg_len = strlen(argv[i]) + 1;
-		memcpy(ptr, argv[i], arg_len);
-		ptr += arg_len;
-	}
-	*ptr = '\0';	/* '\0' behind last string */
-
-	return packet;
-}
-
-/**
  * cmd_convert_to_mroute - Convert IPC command from client to desired mulicast route
  * @mroute: Pointer to &struct mroute to convert to
  * @packet: Pointer to &struct cmd IPC command
