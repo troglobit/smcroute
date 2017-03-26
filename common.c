@@ -21,6 +21,20 @@
 #include "mclab.h"
 #include <sys/time.h>		/* lutimes(), utimes(), utimensat() */
 
+
+char *progname(const char *arg0)
+{
+	char *nm;
+
+	nm = strrchr(arg0, '/');
+	if (nm)
+		nm++;
+	else
+		nm = (char *)arg0;
+
+	return nm;
+}
+
 int create_socket(int domain, int type, int proto)
 {
 	int sd;

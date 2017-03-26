@@ -639,20 +639,6 @@ static int usage(int code)
 	return code;
 }
 
-static char *progname(const char *arg0)
-{
-	char *nm;
-
-	nm = strrchr(arg0, '/');
-	if (nm)
-		nm++;
-	else
-		nm = (char *)arg0;
-
-	return nm;
-}
-
-
 /**
  * main - Main program
  *
