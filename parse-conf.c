@@ -185,7 +185,7 @@ static int join_mgroup_ssm(int lineno, char *ifname, char *group, char *source)
 		result = mcgroup4_join_ssm(ifname, src, grp);
 	}
 
-	return 0;
+	return result;
 }
 
 static int add_mroute(int lineno, char *ifname, char *group, char *source, char *outbound[], int num)

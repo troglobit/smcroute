@@ -38,7 +38,6 @@ static struct iface *iface_list = NULL;
  */
 void iface_init(void)
 {
-	int family;
 	struct iface *iface;
 	struct ifaddrs *ifaddr, *ifa;
 
