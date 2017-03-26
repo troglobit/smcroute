@@ -614,8 +614,7 @@ static int start_server(void)
 
 static int usage(int code)
 {
-	printf("\nUsage:\n"
-	       "  %s [hnNsv] [-c SEC] [-f FILE] [-e CMD] [-L LVL] [-p USER[:GROUP]] [-t SEC]\n"
+	printf("Usage: %s [hnNsv] [-c SEC] [-f FILE] [-e CMD] [-L LVL] [-t SEC]\n"
 	       "\n"
 	       "  -c SEC          Flush dynamic (*,G) multicast routes every SEC seconds\n"
 	       "  -e CMD          Script or command to call on startup/reload when all routes\n"
@@ -658,10 +657,13 @@ int main(int argc, char *argv[])
 #endif
 
 	prognm = progname(argv[0]);
-	while ((c = getopt(argc, argv, "c:e:f:hLnNp:st:v")) != EOF) {
+	while ((c = getopt(argc, argv, "c:de:f:hLnNp:st:v")) != EOF) {
 		switch (c) {
 		case 'c':	/* cache timeout */
 			cache_tmo = atoi(argv[1]);
+			break;
+
+		case 'd':	/* compat, ignore */
 			break;
 
 		case 'e':
