@@ -165,7 +165,7 @@ static int join_mgroup_ssm(int lineno, char *ifname, char *group, char *source)
 	}
 
 	if (strchr(group, ':') || strchr(source, ':')) {
-		WARN("IPv6 is not supported for Source Specific Multicast.");
+		WARN("IPv6 is not (yet) supported for Source Specific Multicast.");
 		result = 0;
 	} else {
 		struct in_addr src;
