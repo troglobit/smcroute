@@ -174,6 +174,7 @@ static void read_mroute4_socket(void)
 }
 
 /* Receive and drop ICMPv6 stuff. This is either MLD packets or upcall messages sent up from the kernel. */
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
 static void read_mroute6_socket(void)
 {
 	int result;
@@ -186,6 +187,7 @@ static void read_mroute6_socket(void)
 	if (result < 0)
 		smclog(LOG_INFO, "Failed clearing MLD message from kernel: %s", strerror(errno));
 }
+#endif
 
 /* Receive command from the smcroute client */
 static void read_ipc_command(void)
