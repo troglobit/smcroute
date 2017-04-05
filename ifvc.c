@@ -59,8 +59,14 @@ void iface_init(void)
 
 	for (ifa = ifaddr; ifa && num_ifaces < MAX_IF; ifa = ifa->ifa_next) {
 		/* Check if already added? */
-		if (iface_find_by_name(ifa->ifa_name))
+		if ((iface = iface_find_by_name(ifa->ifa_name))) {
+			if (!iface->inaddr.s_addr && ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET)
+				/* If we know the interface but don't know an address
+				 * yet, remember this one.
+				 */
+				iface->inaddr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
 			continue;
+		}
 
 		/* Copy data from interface iterator 'ifa' */
 		iface = &iface_list[num_ifaces++];
