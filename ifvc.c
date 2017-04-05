@@ -27,7 +27,7 @@
 #include <ifaddrs.h>
 #include "mclab.h"
 
-static unsigned int num_ifaces = 0;
+static unsigned int num_ifaces = 0, num_ifaces_alloc = 0;
 static struct iface *iface_list = NULL;
 
 /**
@@ -46,7 +46,8 @@ void iface_init(void)
 	if (iface_list)
 		free(iface_list);
 
-	iface_list = calloc(MAX_IF, sizeof(struct iface));
+	num_ifaces_alloc = 1;
+	iface_list = calloc(num_ifaces_alloc, sizeof(struct iface));
 	if (!iface_list) {
 		smclog(LOG_ERR, "Failed allocating space for interfaces: %s", strerror(errno));
 		exit(255);
@@ -57,7 +58,7 @@ void iface_init(void)
 		exit(255);
 	}
 
-	for (ifa = ifaddr; ifa && num_ifaces < MAX_IF; ifa = ifa->ifa_next) {
+	for (ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
 		/* Check if already added? */
 		if ((iface = iface_find_by_name(ifa->ifa_name))) {
 			if (!iface->inaddr.s_addr && ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET)
@@ -66,6 +67,18 @@ void iface_init(void)
 				 */
 				iface->inaddr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
 			continue;
+		}
+
+		/* Allocate more space? */
+		if (num_ifaces == num_ifaces_alloc) {
+			num_ifaces_alloc *= 2;
+			iface_list = realloc(iface_list, num_ifaces_alloc * sizeof(struct iface));
+			if (!iface_list) {
+				smclog(LOG_ERR, "Failed allocating space for interfaces: %m");
+				exit(255);
+			}
+			/* Initialize 2nd half of interface list */
+			memset(&iface_list[num_ifaces], 0, num_ifaces * sizeof(struct iface));
 		}
 
 		/* Copy data from interface iterator 'ifa' */
