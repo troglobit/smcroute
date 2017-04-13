@@ -50,7 +50,7 @@ int running    = 1;
 int background = 1;
 int do_vifs    = 1;
 int do_syslog  = 1;
-int cache_tmo  = 0;
+int cache_tmo  = 60;
 int interval   = MRDISC_INTERVAL_DEFAULT;
 int startup_delay = 0;
 
