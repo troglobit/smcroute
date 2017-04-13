@@ -415,30 +415,41 @@ static int __mroute4_match(struct mroute4 *rule, struct mroute4 *cand)
  */
 int mroute4_dyn_add(struct mroute4 *route)
 {
-	struct mroute4 *entry;
+	struct mroute4 *entry, *new_entry;
+	int ret;
 
 	LIST_FOREACH(entry, &mroute4_conf_list, link) {
 		/* Find matching (*,G) ... and interface. */
 		if (__mroute4_match(entry, route)) {
 			/* Use configured template (*,G) outbound interfaces. */
 			memcpy(route->ttl, entry->ttl, NELEMS(route->ttl) * sizeof(route->ttl[0]));
-
-			/* Add to list of dynamically added routes. Necessary if the user
-			 * removes the (*,G) using the command line interface rather than
-			 * updating the conf file and SIGHUP. Note: if we fail to alloc()
-			 * memory we don't do anything, just add kernel route silently. */
-			entry = malloc(sizeof(struct mroute4));
-			if (entry) {
-				memcpy(entry, route, sizeof(struct mroute4));
-				LIST_INSERT_HEAD(&mroute4_dyn_list, entry, link);
-			}
-
-			return __mroute4_add(route);
+			break;
 		}
 	}
+	if (!entry) {
+		/* No match, add entry without outbound interfaces
+		 * nevertheless to avoid continuous cache misses from the
+		 * kernel. Note that this still gets reported as an error
+		 * (ENOENT) below. */
+		memset(route->ttl, 0, NELEMS(route->ttl) * sizeof(route->ttl[0]));
+	}
 
-	errno = ENOENT;
-	return -1;
+	/* Add to list of dynamically added routes. Necessary if the user
+	 * removes the (*,G) using the command line interface rather than
+	 * updating the conf file and SIGHUP. Note: if we fail to alloc()
+	 * memory we don't do anything, just add kernel route silently. */
+	new_entry = malloc(sizeof(struct mroute4));
+	if (new_entry) {
+		memcpy(new_entry, route, sizeof(struct mroute4));
+		LIST_INSERT_HEAD(&mroute4_dyn_list, new_entry, link);
+	}
+
+	ret = __mroute4_add(route);
+	if (!entry) {
+		errno = ENOENT;
+		ret = -1;
+	}
+	return ret;
 }
 
 /* Get usage statistics from the kernel for an installed MFC entry */
