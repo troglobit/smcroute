@@ -1,6 +1,6 @@
 SMCRoute - A static multicast routing daemon
 ============================================
-[![Travis Status][]][Travis] [![Coverity Status][]][Coverity Scan]
+[![License Badge][]][License] [![Travis Status][]][Travis] [![Coverity Status][]][Coverity Scan]
 
 SMCRoute is a command line tool to manipulate the multicast routes in
 the UNIX kernel.  It supports both IPv4 and IPv6 multicast routing.
@@ -158,6 +158,8 @@ The SMCRoute Maintainers
 [GitHub]:          https://github.com/troglobit/smcroute
 [Alioth]:          https://alioth.debian.org/projects/smcroute
 [Carsten Schill]:  http://www.cschill.de/smcroute/
+[License]:         https://en.wikipedia.org/wiki/GPL_license
+[License Badge]:   https://img.shields.io/badge/License-GPL%20v2-blue.svg
 [Travis]:          https://travis-ci.org/troglobit/smcroute
 [Travis Status]:   https://travis-ci.org/troglobit/smcroute.png?branch=master
 [Coverity Scan]:   https://scan.coverity.com/projects/3061
