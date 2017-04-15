@@ -24,17 +24,18 @@ Usage
 -----
 
 SMCRoute is both a daemon and a client.  You must start the daemon first
-to be able to set up multicast routes.
+to be able to set up multicast routes.  Use `smcroute -n` to start the
+daemon in foreground, for systemd or [Finit][].
 
-    # smcroute -d
-
-or
-
-    # smcroute -d -N
+    # smcrouted
 
 or
 
-    # smcroute -d -e /path/to/script
+    # smcrouted -N
+
+or
+
+    # smcrouted -e /path/to/script
 
 The latter syntax calls your own script whenever `smcroute` receives a
 `SIGHUP` or installs a multicast route to the kernel.  This is useful if
@@ -155,6 +156,7 @@ the multicast routes.  Use `--without-libcap` to disable this feature.
 Good Luck!  
 The SMCRoute Maintainers
 
+[Finit]:           https://github.com/troglobit/finit
 [GitHub]:          https://github.com/troglobit/smcroute
 [Alioth]:          https://alioth.debian.org/projects/smcroute
 [Carsten Schill]:  http://www.cschill.de/smcroute/
