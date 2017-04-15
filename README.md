@@ -96,8 +96,8 @@ with the daemon.  To achieve the above two config file lines you have to:
 
 To allow the daemon to startup properly (above) before interacting with it.
 
-    # smcroute -j eth0 225.1.2.3
-    # smcroute -a eth0 192.168.1.42 225.1.2.3 eth1 eth2
+    # smcroutectl -j eth0 225.1.2.3
+    # smcroutectl -a eth0 192.168.1.42 225.1.2.3 eth1 eth2
 
 
 Experimental
@@ -117,8 +117,8 @@ Example smcroute.conf:
 
 or, from the command line:
 
-    # smcroute -j eth0 225.1.2.3
-    # smcroute -a eth0 0.0.0.0 225.1.2.3 eth1 eth2
+    # smcroutectl -j eth0 225.1.2.3
+    # smcroutectl -a eth0 0.0.0.0 225.1.2.3 eth1 eth2
 
 
 Build & Install
