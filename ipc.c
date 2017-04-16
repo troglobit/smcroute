@@ -124,9 +124,9 @@ int ipc_client_init(void)
  * Returns:
  * Pointer to a successfuly read command packet in @buf, or %NULL on error.
  */
-struct cmd *ipc_server_read(uint8 buf[], int len)
+void *ipc_server_read(uint8 buf[], int len)
 {
-	size_t size;
+	size_t sz;
 	socklen_t socklen = 0;
 
 	/* sanity check */
@@ -142,8 +142,8 @@ struct cmd *ipc_server_read(uint8 buf[], int len)
 			return NULL;
 	}
 
-	size = recv(client_sd, buf, len, 0);
-	if (!size) {
+	sz = recv(client_sd, buf, len, 0);
+	if (!sz) {
 		close(client_sd);
 		client_sd = -1;
 		errno = ECONNRESET;
@@ -151,11 +151,11 @@ struct cmd *ipc_server_read(uint8 buf[], int len)
 	}
 
 	/* successful read */
-	if (size >= sizeof(struct cmd)) {
-		struct cmd *p = (struct cmd *)buf;
+	if (sz >= sizeof(struct ipc_msg)) {
+		struct ipc_msg *msg = (struct ipc_msg *)buf;
 
-		if (size == p->len)
-			return p;
+		if (sz == msg->len)
+			return msg;
 	}
 
 	errno = EAGAIN;

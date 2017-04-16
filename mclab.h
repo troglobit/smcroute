@@ -215,18 +215,18 @@ int  mroute_add_vif    (char *ifname, uint8_t threshold);
 int  mroute_del_vif    (char *ifname);
 
 /* ipc.c */
-int         ipc_server_init (void);
-struct cmd *ipc_server_read (uint8 buf[], int len);
-int         ipc_client_init (void);
-int         ipc_send        (const void *buf, int len);
-int         ipc_receive     (uint8 buf[], int len);
-void        ipc_exit        (void);
+int   ipc_server_init  (void);
+void *ipc_server_read  (uint8 buf[], int len);
+int   ipc_client_init  (void);
+int   ipc_send         (const void *buf, int len);
+int   ipc_receive      (uint8 buf[], int len);
+void  ipc_exit         (void);
 
 /* cmdpkt.c
  *
  * XXX: Add example packet layouts
  */
-struct cmd {
+struct ipc_msg {
 	size_t   len;		/* total size of packet including cmd header */
 	uint16   cmd;		/* 'a'=Add,'r'=Remove,'j'=Join,'l'=Leave,'k'=Kill */
 	uint16   count;		/* command argument count */
@@ -235,10 +235,9 @@ struct cmd {
 
 #define MX_CMDPKT_SZ 1024	/* command size including appended strings */
 
-void       *cmd_build              (char cmd, const char *argv[], int count);
-const char *cmd_convert_to_mroute  (mroute_t *mroute, const struct cmd *packet);
-const char *cmd_convert_to_mroute4 (mroute4_t *mroute, const struct cmd *packet);
-const char *cmd_convert_to_mroute6 (mroute6_t *mroute, const struct cmd *packet);
+const char *cmd_convert_to_mroute  (mroute_t  *mroute, const struct ipc_msg *msg);
+const char *cmd_convert_to_mroute4 (mroute4_t *mroute, const struct ipc_msg *msg);
+const char *cmd_convert_to_mroute6 (mroute6_t *mroute, const struct ipc_msg *msg);
 
 /* mcgroup.c */
 int  mcgroup4_join_ssm  (const char *ifname, struct in_addr  source, struct in_addr  group);

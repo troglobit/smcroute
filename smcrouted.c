@@ -193,31 +193,31 @@ static void read_mroute6_socket(void)
 static void read_ipc_command(void)
 {
 	const char *str;
-	struct cmd *packet;
+	struct ipc_msg *msg;
 	struct mroute mroute;
 	uint8 buf[MX_CMDPKT_SZ];
 
 	memset(buf, 0, sizeof(buf));
-	packet = ipc_server_read(buf, sizeof(buf));
-	if (!packet) {
+	msg = ipc_server_read(buf, sizeof(buf));
+	if (!msg) {
 		/* Skip logging client disconnects */
 		if (errno != ECONNRESET)
 			smclog(LOG_WARNING, "Failed receving IPC message from client: %s", strerror(errno));
 		return;
 	}
 
-	switch (packet->cmd) {
+	switch (msg->cmd) {
 	case 'a':
 	case 'r':
-		if ((str = cmd_convert_to_mroute(&mroute, packet))) {
+		if ((str = cmd_convert_to_mroute(&mroute, msg))) {
 			smclog(LOG_WARNING, "%s", str);
 			ipc_send(log_message, strlen(log_message) + 1);
 			break;
 		}
 
 		if (mroute.version == 4) {
-			if ((packet->cmd == 'a' && mroute4_add(&mroute.u.mroute4))
-			    || (packet->cmd == 'r' && mroute4_del(&mroute.u.mroute4))) {
+			if ((msg->cmd == 'a' && mroute4_add(&mroute.u.mroute4))
+			    || (msg->cmd == 'r' && mroute4_del(&mroute.u.mroute4))) {
 				ipc_send(log_message, strlen(log_message) + 1);
 				break;
 			}
@@ -225,8 +225,8 @@ static void read_ipc_command(void)
 #ifndef HAVE_IPV6_MULTICAST_ROUTING
 			smclog(LOG_WARNING, "IPv6 multicast routing support disabled.");
 #else
-			if ((packet->cmd == 'a' && mroute6_add(&mroute.u.mroute6))
-			    || (packet->cmd == 'r' && mroute6_del(&mroute.u.mroute6))) {
+			if ((msg->cmd == 'a' && mroute6_add(&mroute.u.mroute6))
+			    || (msg->cmd == 'r' && mroute6_del(&mroute.u.mroute6))) {
 				ipc_send(log_message, strlen(log_message) + 1);
 				break;
 			}
@@ -240,7 +240,7 @@ static void read_ipc_command(void)
 	case 'y':	/* y <InputIntf> <SourceAdr> <McGroupAdr> */
 	{
 		int result = -1;
-		const char *ifname = (const char *)(packet + 1);
+		const char *ifname = (const char *)(msg + 1);
 		const char *sourceadr = ifname + strlen(ifname) + 1;
 		const char *groupstr = sourceadr + strlen(sourceadr) + 1;
 
@@ -267,7 +267,7 @@ static void read_ipc_command(void)
 			}
 
 			/* join or leave */
-			if (packet->cmd == 'x')
+			if (msg->cmd == 'x')
 				result = mcgroup4_join_ssm(ifname, source, group);
 			else
 				result = mcgroup4_leave_ssm(ifname, source, group);
@@ -289,7 +289,7 @@ static void read_ipc_command(void)
 	case 'l':	/* l <InputIntf> <McGroupAdr> */
 	{
 		int result = -1;
-		const char *ifname = (const char *)(packet + 1);
+		const char *ifname = (const char *)(msg + 1);
 		const char *groupstr = ifname + strlen(ifname) + 1;
 
 		if (strchr(groupstr, ':') == NULL) {
@@ -305,7 +305,7 @@ static void read_ipc_command(void)
 			}
 
 			/* join or leave */
-			if (packet->cmd == 'j')
+			if (msg->cmd == 'j')
 				result = mcgroup4_join(ifname, group);
 			else
 				result = mcgroup4_leave(ifname, group);
@@ -325,7 +325,7 @@ static void read_ipc_command(void)
 			}
 
 			/* join or leave */
-			if (packet->cmd == 'j')
+			if (msg->cmd == 'j')
 				result = mcgroup6_join(ifname, group);
 			else
 				result = mcgroup6_leave(ifname, group);

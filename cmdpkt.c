@@ -31,22 +31,22 @@
 /**
  * cmd_convert_to_mroute - Convert IPC command from client to desired mulicast route
  * @mroute: Pointer to &struct mroute to convert to
- * @packet: Pointer to &struct cmd IPC command
+ * @msg: Pointer to &struct ipc_msg IPC command
  *
- * Converts a command @packet to an @mroute for the 'add' and 'remove'
- * commands.  The IP version is determined by searching for ':' in the
- * address strings to indicate IPv6 addresses.
+ * Converts a @msg to an @mroute for the 'add' and 'remove' commands.
+ * The IP version is determined by searching for ':' in the address
+ * strings to indicate IPv6 addresses.
  *
  * Returns:
  * %NULL on success, or an error string with a hint why the operation failed.
  */
-const char *cmd_convert_to_mroute(struct mroute *mroute, const struct cmd *packet)
+const char *cmd_convert_to_mroute(struct mroute *mroute, const struct ipc_msg *msg)
 {
-	char *arg = (char *)packet->argv;
+	char *arg = (char *)msg->argv;
 
 	memset(mroute, 0, sizeof(*mroute));
 
-	switch (packet->cmd) {
+	switch (msg->cmd) {
 	case 'a':
 	case 'r':
 		/* -a eth0 1.1.1.1 239.1.1.1 eth1 eth2
@@ -69,16 +69,16 @@ const char *cmd_convert_to_mroute(struct mroute *mroute, const struct cmd *packe
 		 *  |              |
 		 *  +-----cmd------+
 		 */
-		if (packet->cmd == 'a' || packet->count > 2)
+		if (msg->cmd == 'a' || msg->count > 2)
 			arg += strlen(arg) + 1;
 
 		if (strchr(arg, ':')) {
 			mroute->version = 6;
-			return cmd_convert_to_mroute6(&mroute->u.mroute6, packet);
+			return cmd_convert_to_mroute6(&mroute->u.mroute6, msg);
 		}
 
 		mroute->version = 4;
-		return cmd_convert_to_mroute4(&mroute->u.mroute4, packet);
+		return cmd_convert_to_mroute4(&mroute->u.mroute4, msg);
 
 	default:
 		return "Invalid command";
@@ -87,10 +87,10 @@ const char *cmd_convert_to_mroute(struct mroute *mroute, const struct cmd *packe
 	return NULL;
 }
 
-const char *cmd_convert_to_mroute4(struct mroute4 *mroute, const struct cmd *packet)
+const char *cmd_convert_to_mroute4(struct mroute4 *mroute, const struct ipc_msg *msg)
 {
 	char *ptr;
-	char *arg = (char *)packet->argv;
+	char *arg = (char *)msg->argv;
 
 	memset(mroute, 0, sizeof(*mroute));
 
@@ -140,7 +140,7 @@ const char *cmd_convert_to_mroute4(struct mroute4 *mroute, const struct cmd *pac
 	 * Scan output interfaces for the 'add' command only, just ignore it
 	 * for the 'remove' command to be compatible to the first release.
 	 */
-	if (packet->cmd == 'a') {
+	if (msg->cmd == 'a') {
 		for (arg += strlen(arg) + 1; *arg; arg += strlen(arg) + 1) {
 			int vif;
 
@@ -157,9 +157,9 @@ const char *cmd_convert_to_mroute4(struct mroute4 *mroute, const struct cmd *pac
 	return NULL;
 }
 
-const char *cmd_convert_to_mroute6(struct mroute6 *mroute, const struct cmd *packet)
+const char *cmd_convert_to_mroute6(struct mroute6 *mroute, const struct ipc_msg *msg)
 {
-	const char *arg = (const char *)(packet + 1);
+	const char *arg = (const char *)(msg + 1);
 
 	memset(mroute, 0, sizeof(*mroute));
 
@@ -183,7 +183,7 @@ const char *cmd_convert_to_mroute6(struct mroute6 *mroute, const struct cmd *pac
 	 * Scan output interfaces for the 'add' command only, just ignore it
 	 * for the 'remove' command to be compatible to the first release.
 	 */
-	if (packet->cmd == 'a') {
+	if (msg->cmd == 'a') {
 		for (arg += strlen(arg) + 1; *arg; arg += strlen(arg) + 1) {
 			int mif;
 
