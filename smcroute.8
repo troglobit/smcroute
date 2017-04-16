@@ -1,36 +1,46 @@
-.Dd $Mdocdate: January 10 2017 $
+.Dd $Mdocdate: April 16 2017 $
 .Dt SMCROUTE 8 SMM
 .Os
 .Sh NAME
 .Nm smcroute
 .Nd SMCRoute, a static multicast router
 .Sh SYNOPSIS
-.Nm smcroute
-.Op Fl dFnNkhsv
-.Op Fl f Ar FILE
+.Nm smcrouted
+.Op Fl nNhsv
 .Op Fl c Ar SEC
 .Op Fl e Ar CMD
+.Op Fl f Ar FILE
 .Op Fl L Ar LVL
 .Op Fl p Ar USER:GROUP
 .Op Fl t Ar SEC
-.Op Fl a | Fl r Ar ROUTE
-.Op Fl j | Fl l Ar GROUP
-.Op Fl x | Fl y Ar GROUP
+.Nm smcroutectl
+.Op Fl Fkhv
+.Oo Ao add | del Ac Ao ROUTE Ac Oc Oo Ao join | leave Ac Ao GROUP Ac Oc
+.Pp
+\#.Nm smcroutectl
+\#.Op help | flush | kill | version
+.Nm smcroutectl
+.Oo \ add | \ \ del Oc Ao IFNAME Ac Oo SOURCE Oc Ar GROUP[/LEN] IFNAME Op IFNAME ...
+.Nm smcroutectl
+.Oo join | leave Oc Ao IFNAME Ac Oo SOURCE Oc Ar GROUP
 .Sh DESCRIPTION
 .Nm
-is a command line tool to manipulate the multicast routes of a UNIX
-kernel. It supports both IPv4 and IPv6 multicast routing. SMCRoute can
-be used as an alternative to dynamic multicast routers like
+is both a daemon and command line tool to manipulate the multicast
+routing table of a UNIX kernel.  It supports both IPv4 and IPv6
+multicast routing.
+.Nm
+can be used as an alternative to dynamic multicast routers like
 .Nm mrouted
 or
 .Nm pimd
 in situations where static multicast routes should be maintained and/or
 no proper IGMP or MLD signaling exists.
 .Pp
-Generally multicast routes exists in the kernel only as long as smcroute
-or another multicast routing daemon is running. Only one multicast
-routing daemon can be active at a time, so it's impossible to run
-smcroute and, e.g.,
+Multicast routes exist in the kernel only as long as the multicast
+routing daemon is running.  Only one multicast routing daemon can be
+active at a time, so it's impossible to run
+.Nm smcrouted
+and, e.g.
 .Nm mrouted
 at the same time.
 .Pp
@@ -46,13 +56,6 @@ input interface also as output interface (direct loop) or constructing
 some other forms of indirect loops you can easily flood your networks!
 .Sh OPTIONS
 .Bl -tag -width Ds
-.It Fl d
-Start the smcroute daemon.  Will attempt to set up multicast routes and
-group joins from the file
-.Pa /etc/smcroute.conf ,
-or any alternate config file specified by
-.Fl f Ar FILE
-is also provided.
 .It Fl n
 Run daemon in foreground, do not detach from controlling terminal
 .It Fl N
@@ -67,13 +70,6 @@ enables only the interfaces needed.
 .It Fl f Ar FILE
 Alternate configuration file, default
 .Pa /etc/smcroute.conf
-.It Fl F
-Flush dynamic (*,G) multicast routes now.  Similar to how
-.Fl c Ar SEC
-works, this client command activates an immediate flush of all (*,G)
-routes.  Useful when a topology change has been detected and need to be
-propageted to
-.Nm .
 .It Fl c Ar SEC
 Flush dynamic (*,G) multicast routes every
 .Ar SEC
@@ -112,12 +108,6 @@ init, or process supervisor, that can handle dependencys properly, like
 .Xr finit 8
 which can wait for interfaces to come up and files to be created before
 starting a service.
-.It Fl v
-Display program version and exit.
-.It Fl h
-Print a help message and exit.
-.It Fl k
-Stop (kill) running daemon.
 .El
 .Pp
 The
@@ -150,9 +140,11 @@ Beware that these environment variables are unconditionally overwritten by
 and can thus not be used to pass information to the script from outside of
 .Nm .
 .Sh COMMANDS
-The following are commands that can only be passed to an already running daemon.
+The following
+.Nm smcroutectl
+commands are availble:
 .Bl -tag -width Ds
-.It Fl a Ar IFNAME SOURCE GROUP OUTIFNAME [OUTIFNAME ...]
+.It Nm add Ar IFNAME [SOURCE] GROUP[/LEN] OUTIFNAME [OUTIFNAME ...]
 Add a multicast route to the kernel routing cache so that multicast packets
 received on the network interface
 .Ar IFNAME
@@ -169,55 +161,54 @@ and
 can be any network interface as listed by 'ifconfig' or 'ip link
 list' (incl. tunnel interfaces), but not the loopback interface.
 .Pp
-It is possible to add (*,G) routes with the client.  Set the
+To add a (*,G) route, either leave
 .Ar SOURCE
-to
+out completely or set it to
 .Ar 0.0.0.0 ,
 and if you want to specify a range, set
 .Ar GROUP/LEN ,
 e.g.
 .Ar 225.0.0.0/24 .
-.It Fl r Ar IFNAME SOURCE GROUP
+.It Nm del Ar IFNAME [SOURCE] GROUP
 Remove a kernel multicast route.
-.It Fl j Ar IFNAME GROUP
-Join a multicast group on a given interface.
-.It Fl l Ar IFNAME GROUP
-Leave a multicast group on a given interface.
-.It Fl x Ar IFNAME SOURCE GROUP
-Join a source specific multicast (SSM) group on a given interface.
-.It Fl y Ar IFNAME SOURCE GROUP
-Leave a source specific multicast (SSM) group on a given interface.
-.El
-.Pp
-Multicast routes can be added with the
-.Fl a
-command and removed with the
-.Fl r
-command.
-.Pp
-To be able to add/remove routes or join/leave multicast groups using
-these commands the
+.It Nm flush
+Flush dynamic (*,G) multicast routes now.  Similar to how
+.Fl c Ar SEC
+works in the daemon, this client command initiates an immediate flush of
+all dynamically set (*,G) routes.  Useful when a topology change has
+been detected and need to be propageted to
+.Nm smcrouted.
+.It Nm join Ar IFNAME [SOURCE] GROUP
+Join a multicast group on a given interface.  The source address is
+optional, but if given a source specific (SSM) join is performed.
+.It Nm leave Ar IFNAME [SOURCE] GROUP
+Leave a multicast group on a given interface.  As with the join command,
+above, the source address is optional.
+.It Nm help [cmd]
+Print a usage infomration message.
+.It Nm kill
+Stop (kill) running daemon.
+.It Nm version
+Display
 .Nm
-daemon must run.  You can also write all rules in the configuration file
-and send SIGHUP to the daemon.
+version.
+.El
 .Pp
 A multicast route is defined by an input interface
 .Ar IFNAME ,
 the sender's unicast IP address
 .Ar SOURCE ,
-the multicast group
+which is optional, the multicast group
 .Ar GROUP
 and a list of, at least one, output interface
 .Ar IFNAME [IFNAME ...] .
 .Pp
-The sender's address and the multicast group must both be IPv4 addresses
-or IPv6 addresses.  If IPv4 addresses are specified then SMCRoute will
-operate on the IPv4 multicast routes. If IPv6 addresses are specified
-then SMCRoute will operate on the IPv6 multicast routes.
+The sender's address and the multicast group must both be either IPv4
+or IPv6 addresses.
 .Pp
 The output interfaces are not needed when removing routes using the
-.Fl r
-command. The first three parameters are sufficient to identify the
+.Nm del
+command.  The first three parameters are sufficient to identify the
 source of the multicast route.
 .Pp
 The intended purpose of
@@ -247,9 +238,9 @@ groups on its input interface(s).
 To emulate a multicast client using
 .Nm
 you use the
-.Fl j
+.Nm join
 and
-.Fl l
+.Nm leave
 commands to issue join and leave commands for a given multicast group
 on a given interface
 .Ar IFNAME .
@@ -267,17 +258,10 @@ interface.  This signaling may be received by routers/switches connected
 on that network supporting IGMP/MLD multicast signaling and, in turn,
 start forwarding the requested multicast stream eventually reach your
 desired interface.
-.Pp
-With this command
-.Nm
-allows the integration of nodes that need static multicast routing into
-dynamic multicast routing domains.
-.Pp
 .Sh CONFIGURATION FILE
-From version 1.98.0
-.Nm
-supports reading and setting up multicast routes from a config file. The
-default location is
+.Nm smcrouted
+supports reading and setting up multicast routes from a config file.
+The default location is
 .Ar /etc/smcroute.conf ,
 but this can be overridden using the
 .Fl f Ar FILE
@@ -303,9 +287,8 @@ command line option.
 #
 # Syntax:
 #   phyint IFNAME <enable|disable> [ttl-threshold <1-255>]
-#   mgroup from IFNAME group MCGROUP[/LEN]
-#   ssmgroup from IFNAME group MCGROUP source SOURCE
-#   mroute from IFNAME [source ADDRESS] group MCGROUP to IFNAME [IFNAME ...]
+#   mgroup from IFNAME [source ADDRESS] group MCGROUP
+#   mroute from IFNAME [source ADDRESS] group MCGROUP[/LEN] to IFNAME [IFNAME ...]
 
 # This example disables the creation of a multicast VIF for WiFi
 # interface wlan0.  The kernel (at least Linux) sets the ALLMULTI
@@ -320,8 +303,8 @@ phyint wlan0 disable
 # mroute of the same multicast stream, but from the explicit sender
 # 192.168.1.42 on the eth0 network and forward to eth1 and eth2.
 #
-mgroup from eth0 group 225.1.2.3
-mroute from eth0 group 225.1.2.3 source 192.168.1.42 to eth1 eth2
+mgroup from eth0 source 192.168.1.42 group 225.1.2.3
+mroute from eth0 source 192.168.1.42 group 225.1.2.3 to eth1 eth2
 
 # Here we allow routing of multicast to group 225.3.2.1 from ANY
 # source coming in from interface eth0 and forward to eth1 and eth2.
@@ -337,11 +320,6 @@ mroute from eth0 group 225.3.2.1 to eth1 eth2
 # works for IPv4.  Also, it is not possible to set a range of groups
 # to join atm.
 mroute from eth0 group 225.0.0.0/24 to eth1 eth2
-
-# The following example instructs the kernel to join the source
-# specific multicast group 225.2.1.3 on interface eth0 with
-# source 192.168.10.25.
-ssmgroup from eth0 group 225.2.1.3 source 192.168.10.25
 .Ed
 .Pp
 Fairly simple. As usual, to identify the origin of the inbound multicast
@@ -351,19 +329,20 @@ the sender's IP address and, of course, the multicast group address,
 .Ar MCGROUP .
 The last argument is a list of outbound interfaces.
 .Pp
-From 1.99.0 the sender's IP address is actually optional for IPv4
-multicast routes. If omitted it defaults to 0.0.0.0 (INADDR_ANY) and
-will cause
-.Nm
-to dynamically at runtime add new routes, matching the group and inbound
-interface, to the kernel. This feauture is experimental.
+The source address is optional for IPv4 multicast routes.  If omitted it
+defaults to 0.0.0.0 (INADDR_ANY) and will cause
+.Nm smcrouted
+to dynamically add new routes, matching the group and inbound interface,
+to the kernel.  This is an experimental feature which may not work as
+intended, in particular not with 1:1 NAT.
 .Pp
-Following the standard UNIX tradition the file format support comments
+Following the UNIX tradition the file format supports comments starting
 at the beginning of the line using a hash sign.  It is untested to have
 comments at the end of a line, but should work.
 .Pp
-When starting up, the daemon by default lists the success of parsing each
-line and setting up a route.
+When starting up in debug mode,
+.Nm smcrouted
+logs the success of parsing each line and setting up a route.
 .Sh LIMITS
 The current version compiles and runs fine on Linux kernel version
 2.4, 2.6 and 3.0. Known limits:
@@ -382,7 +361,7 @@ responds to the following signals:
 .Bl -tag -width TERM -compact
 .It HUP
 Restarts
-.Nm .
+.Nm smcrouted .
 The configuration file is re-read every time this signal is received.
 .It INT
 Terminates execution gracefully.
@@ -391,7 +370,7 @@ The same as INT.
 .El
 .Pp
 For convenience in sending signals,
-.Nm
+.Nm smcrouted
 writes its process ID to
 .Pa /var/run/smcroute.pid
 upon startup.
@@ -414,12 +393,13 @@ tool can be used.
 .Sh FILES
 .Bl -tag -width /proc/net/ip6_mr_cache -compact
 .It Pa /etc/smcroute.conf
-Routes to be added/restored when starting, or restarting the daemon on
-SIGHUP.
+Routes to be added/restored when starting, or restarting
+.Nm smcrouted
+on SIGHUP.
 .It Pa /var/run/smcroute.pid
 Pidfile (re)created by
-.Nm
-daemon when it has started up and is ready to receive commands.
+.Nm smcrouted
+when it has started up and is ready to receive commands.
 .It Pa /proc/net/ip_mr_cache
 Holds active IPv4 multicast routes.
 .It Pa /proc/net/ip_mr_vif
@@ -429,7 +409,8 @@ Holds active IPv6 multicast routes.
 .It Pa /proc/net/ip6_mr_vif
 Holds the IPv6 virtual interfaces used by the active multicast routing daemon.
 .It Pa /var/run/smcroute
-IPC socket created by the smcroute daemon.
+IPC socket created by
+.Nm smcrouted .
 .It Pa /proc/net/igmp
 Holds active IGMP joins.
 .It Pa /proc/net/igmp6
