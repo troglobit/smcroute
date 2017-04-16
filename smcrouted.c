@@ -659,10 +659,10 @@ int main(int argc, char *argv[])
 #endif
 
 	prognm = progname(argv[0]);
-	while ((c = getopt(argc, argv, "c:de:f:hLnNp:st:v")) != EOF) {
+	while ((c = getopt(argc, argv, "c:de:f:hL:nNp:st:v")) != EOF) {
 		switch (c) {
 		case 'c':	/* cache timeout */
-			cache_tmo = atoi(argv[1]);
+			cache_tmo = atoi(optarg);
 			break;
 
 		case 'd':	/* compat, ignore */
@@ -670,18 +670,18 @@ int main(int argc, char *argv[])
 
 		case 'e':
 
-			script_exec = argv[1];
+			script_exec = optarg;
 			break;
 
 		case 'f':
-			conf_file = argv[1];
+			conf_file = optarg;
 			break;
 
 		case 'h':	/* help */
 			return usage(0);
 
 		case 'L':
-			log_level = loglvl(argv[1]);
+			log_level = loglvl(optarg);
 			break;
 
 		case 'n':	/* run daemon in foreground, i.e., do not fork */
@@ -697,7 +697,7 @@ int main(int argc, char *argv[])
 			warn("Drop privs support not available.");
 			break;
 #else
-			ptr = strdup(argv[1]);
+			ptr = strdup(optarg);
 			if (!ptr) {
 				perror("Failed parsing user:group argument");
 				return 1;
@@ -716,7 +716,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 't':
-			startup_delay = atoi(argv[1]);
+			startup_delay = atoi(optarg);
 			break;
 
 		case 'v':	/* version */
