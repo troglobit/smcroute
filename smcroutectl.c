@@ -26,94 +26,81 @@
 #include <stdio.h>
 #include "mclab.h"
 
-char *prognm = PACKAGE_NAME;
+struct arg {
+	char *name;
+	int   min_args;		/* 0: command takes no arguments */
+	int   val;
+	char *help;
+	char *example;		/* optional */
+} args[] = {
+	{ "help",    0, 'h', "Show help text", NULL },
+	{ "version", 0, 'v', "Show program version", NULL },
+	{ "flush" ,  0, 'F', "Flush all dynamically set (*,G) multicast routes", NULL },
+	{ "kill",    0, 'k', "Kill running daemon", NULL },
+	{ "add",     3, 'a', "Add a multicast route",    "eth0 192.168.2.42 225.1.2.3 eth1 eth2" },
+	{ "del",     3, 'r', "Remove a multicast route", "eth0 192.168.2.42 225.1.2.3" },
+	{ "remove",  3, 'r', NULL, NULL }, /* Alias for 'del' */
+	{ "join",    2, 'j', "Join multicast group on an interface", "eth0 225.1.2.3" },
+	{ "leave",   2, 'l', "Leave joined multicast group",         "eth0 225.1.2.3" },
+	{ NULL, 0, 0, NULL, NULL }
+};
+
+static char *prognm = PACKAGE_NAME;
 
 
-/**
- * cmd_build - Create IPC command to send to daemon
- * @cmd:   Command, one of 'a', 'r', 'j' or 'l'
- * @argv:  Vector of arguments for @cmd
- * @count: Number of arguments in @argv
- *
- * Builds an command packet with the command @cmd and @count number of
- * arguments from @argv.
- *
- * Returns:
- * Pointer to a dynamically allocated command packet, or %NULL on failure
- * to allocate enought memory.
+/*
+ * Build IPC message to send to the daemon using @cmd and @count
+ * number of arguments from @argv.
  */
-void *cmd_build(char cmd, const char *argv[], int count)
+static struct ipc_msg *msg_create(uint16_t cmd, char *argv[], size_t count)
 {
-	int i;
 	char *ptr;
-	size_t arg_len = 0, packet_len;
-	struct cmd *packet;
+	size_t i, len = 0, sz;
+	struct ipc_msg *msg;
 
 	/* Summarize length of all arguments/commands */
 	for (i = 0; i < count; i++)
-		arg_len += strlen(argv[i]) + 1;
+		len += strlen(argv[i]) + 1;
 
-	/* resulting packet size */
-	packet_len = sizeof(struct cmd) + arg_len + 1;
-	if (packet_len > MX_CMDPKT_SZ) {
+	/* resulting msg size */
+	sz = sizeof(struct ipc_msg) + len + 1;
+	if (sz > MX_CMDPKT_SZ) {
 		errno = EMSGSIZE;
 		return NULL;
 	}
 
-	/* build packet */
-	packet = malloc(packet_len);
-	if (!packet)
+	/* build msg */
+	msg = malloc(sz);
+	if (!msg)
 		return NULL;
 
-	packet->len   = packet_len;
-	packet->cmd   = cmd;
-	packet->count = count;
+	msg->len   = sz;
+	msg->cmd   = cmd;
+	msg->count = count;
 
 	/* copy args */
-	ptr = (char *)(packet->argv);
+	ptr = (char *)(msg->argv);
 	for (i = 0; i < count; i++) {
-		arg_len = strlen(argv[i]) + 1;
-		memcpy(ptr, argv[i], arg_len);
-		ptr += arg_len;
+		len = strlen(argv[i]) + 1;
+		memcpy(ptr, argv[i], len);
+		ptr += len;
 	}
 	*ptr = '\0';	/* '\0' behind last string */
 
-	return packet;
+	return msg;
 }
 
-/*
- * Counts the number of arguments belonging to an option. Option is any argument
- * begining with a '-'.
- *
- * returns: - the number of arguments (without the option itself),
- *          - 0, if we start already from the end of the argument vector
- *          - -1, if we start not from an option
- */
-static int num_option_arguments(const char *argv[])
+static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 {
-	const char **ptr;
-
-	/* end of vector */
-	if (argv == NULL || *argv == NULL)
-		return 0;
-
-	/* starting on wrong position */
-	if (**argv != '-')
-		return -1;
-
-	for (ptr = argv + 1; *ptr && **ptr != '-'; ptr++)
-		;
-
-	return ptr - argv;
-}
-
-static int send_commands(int cmdnum, struct cmd *cmdv[])
-{
-	int i, result = 0;
+	int result = 0;
 	int retry_count = 30;
+	int slen, rlen;
+	struct ipc_msg *msg;
+	uint8_t buf[MX_CMDPKT_SZ + 1];
 
-	if (!cmdnum)
-		return 0;
+	msg = msg_create(cmd, argv, count);
+	if (!msg)
+		err(1, "Failed constructing IPC command");
 
 	while (ipc_client_init() && !result) {
 		switch (errno) {
@@ -140,164 +127,127 @@ static int send_commands(int cmdnum, struct cmd *cmdv[])
 		}
 	}
 
-	for (i = 0; i < cmdnum; i++) {
-		int slen, rlen;
-		uint8 buf[MX_CMDPKT_SZ + 1];
-		struct cmd *command = cmdv[i];
+	/* Send command */
+	slen = ipc_send(msg, msg->len);
 
-		/* Send command */
-		fprintf(stderr, "Sending command(s) ... ");
-		slen = ipc_send(command, command->len);
+	/* Wait here for reply */
+	rlen = ipc_receive(buf, MX_CMDPKT_SZ);
+	if (slen < 0 || rlen < 0) {
+		warn("Communication with daemon failed");
+		result = 1;
+		goto error;
+	}
 
-		/* Wait here for reply */
-		rlen = ipc_receive(buf, MX_CMDPKT_SZ);
-		if (slen < 0 || rlen < 0) {
-			warn("Communication with daemon failed");
-			result = 1;
-			break;
-		}
-
-		if (rlen != 1 || *buf != '\0') {
-			buf[MX_CMDPKT_SZ] = 0;
-			fprintf(stderr, "Daemon error: %s\n", buf);
-			result = 1;
-			break;
-		}
-		puts("OK!");
+	if (rlen != 1 || *buf != '\0') {
+		buf[MX_CMDPKT_SZ] = 0;
+		warnx("Daemon error: %s", buf);
+		result = 1;
+		goto error;
 	}
 
 error:
-	for (i = 0; i < cmdnum; i++)
-		free(cmdv[i]);
+	ipc_exit();
+	free(msg);
 
 	return result;
 }
 
 static int usage(int code)
 {
-	printf("\nUsage:\n"
-	       "  %s [Fhkv] [-a|-r ROUTE] [-j|-l GROUP] [-x|-y SSM GROUP]\n"
+	int i;
+
+	printf("Usage:\n\t%s CMD [ARGS]\n\n", prognm);
+	printf("Commands:\n");
+	for (i = 0; args[i].name; i++) {
+		if (!args[i].help)
+			continue;
+
+		printf("\t%-7s %s  %s\n", args[i].name,
+		       args[i].min_args ? "ARGS" : "    ", args[i].help);
+	}
+	printf("\nArguments:\n"
+	       "\t       <----------- INBOUND ------------>  <--- OUTBOUND ---->\n"
+	       "\tadd    IFNAME [SOURCE-IP] MULTICAST-GROUP  IFNAME [IFNAME ...]\n"
+	       "\tdel    IFNAME [SOURCE-IP] MULTICAST-GROUP\n"
 	       "\n"
-	       "  -F       Flush dynamic (*,G) multicast routes now\n"
-	       "  -h       This help text\n"
-	       "  -k       Kill a running daemon\n"
-	       "  -v       Show program version\n"
+	       "\tjoin   IFNAME [SOURCE-IP] MULTICAST-GROUP\n"
+	       "\tleave  IFNAME [SOURCE-IP] MULTICAST-GROUP\n"
 	       "\n"
-	       "  -a ARGS  Add a multicast route\n"
-	       "  -r ARGS  Remove a multicast route\n"
-	       "\n"
-	       "  -j ARGS  Join a multicast group\n"
-	       "  -l ARGS  Leave a multicast group\n"
-	       "\n"
-	       "  -x ARGS  Join a multicast group (Source Specific Multicast, SSM)\n"
-	       "  -y ARGS  Leave a multicast group (Source Specific Multicast, SSM)\n"
-	       "\n"
-	       "     <------------- INBOUND -------------->  <----- OUTBOUND ------>\n"
-	       "  -a <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>  <IFNAME> [<IFNAME> ...]\n"
-	       "  -r <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>\n"
-	       "\n"
-	       "  -j <IFNAME> <MULTICAST-GROUP>\n"
-	       "  -l <IFNAME> <MULTICAST-GROUP>\n"
-	       "\n"
-	       "  -x <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>\n"
-	       "  -y <IFNAME> <SOURCE-IP> <MULTICAST-GROUP>\n\n"
 	       "Bug report address: %s\n"
-	       "Project homepage: %s\n\n", prognm, PACKAGE_BUGREPORT, PACKAGE_URL);
+	       "Project homepage:   %s\n\n", PACKAGE_BUGREPORT, PACKAGE_URL);
 
 	return code;
 }
 
-/**
- * main - Main program
- *
- * Parses command line options and enters either daemon or client mode.
- *
- * In daemon mode, acquires multicast routing sockets, opens IPC socket
- * and goes in receive-execute command loop.
- *
- * In client mode, creates commands from command line and sends them to
- * the daemon.
- */
-int main(int argc, const char *argv[])
+int main(int argc, char *argv[])
 {
-	int num_opts;
-	unsigned int i, cmdnum = 0;
-	struct cmd *cmdv[16];
+	int i, help = 0, pos = 1;
+	uint16_t cmd = 0;
 
 	prognm = progname(argv[0]);
-	if (argc <= 1)
+	if (argc < 2)
 		return usage(1);
 
-	/* Parse command line options */
-	for (num_opts = 1; (num_opts = num_option_arguments(argv += num_opts));) {
-		const char *arg;
+	for (i = 0; !cmd && pos < argc; i++) {
+		int       c = args[i].val;
+		char    *nm = args[i].name;
+		char   *arg = argv[pos];
+		size_t  len;
 
-		if (num_opts < 0)	/* error */
-			return usage(1);
-
-		/* handle option */
-		arg = argv[0];
-		switch (arg[1]) {
-		case 'a':	/* add route */
-			if (num_opts < 5)
-				return usage(1);
+		if (!nm)
 			break;
 
-		case 'r':	/* remove route */
-			if (num_opts < 4)
-				return usage(1);
-			break;
+		len = MIN(MIN(strlen(nm), strlen(arg)), 2);
+		while (*arg == '-') {
+			arg++;
+			len--;
+		}
 
-		case 'j':	/* join */
-		case 'l':	/* leave */
-			if (num_opts != 3)
-				return usage(1);
-			break;
+		if (len <= 0)
+			continue;
 
-		case 'x':	/* join (ssm) */
-		case 'y':	/* leave (ssm) */
-			if (num_opts != 4)
-				return usage(1);
-			break;
+		if (strncmp(arg, nm, len))
+			continue;
 
-		case 'k':	/* kill daemon */
-			if (num_opts != 1)
-				return usage(1);
-			break;
-
-		case 'F':
-			if (num_opts != 1)
-				return usage(1);
-			break;
-
+		switch (c) {
 		case 'h':	/* help */
-			return usage(0);
+			help++;
+			break;
 
 		case 'v':	/* version */
 			fprintf(stderr, "%s v%s\n", PACKAGE_NAME, PACKAGE_VERSION);
 			return 0;
 
-		default:	/* unknown option */
-			return usage(1);
+		default:
+			if (argc - ++pos < args[i].min_args) {
+				warnx("Not enough arguments to command %s", nm);
+				cmd = c;
+				goto help;
+			}
+			cmd = c;
+			break;
 		}
-
-		/* Check and build command argument list. */
-		if (cmdnum >= NELEMS(cmdv)) {
-			fprintf(stderr, "Too many command options\n");
-			return usage(1);
-		}
-
-		cmdv[cmdnum] = cmd_build(arg[1], argv + 1, num_opts - 1);
-		if (!cmdv[cmdnum]) {
-			perror("Failed parsing command");
-			for (i = 0; i < cmdnum; i++)
-				free(cmdv[i]);
-			return 1;
-		}
-		cmdnum++;
 	}
 
-	return send_commands(cmdnum, cmdv);
+	if (help) {
+		if (!cmd)
+			return usage(0);
+	help:
+		while (!args[i].help)
+			i--;
+
+		printf("Help:\n"
+		       "\t%s\n"
+		       "Example:\n"
+		       "\t%s %s %s\n", args[i].help,
+		       prognm, args[i].name, args[i].example);
+		return 0;
+	}
+
+	if (!cmd)
+		return usage(1);
+
+	return ipc_command(cmd, &argv[pos], argc - pos);
 }
 
 /**
