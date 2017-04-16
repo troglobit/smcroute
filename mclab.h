@@ -116,7 +116,6 @@ struct iface {
 };
 
 extern int do_vifs;
-extern int do_syslog;
 
 /* ifvc.c */
 void          iface_init            (void);

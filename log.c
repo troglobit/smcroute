@@ -67,13 +67,7 @@ void smclog(int severity, const char *fmt, ...)
 	vsnprintf(log_message, sizeof(log_message), fmt, args);
 	va_end(args);
 
-	if (do_syslog) {
-		syslog(severity, "%s", log_message);
-		return;
-	}
-
-	if (severity <= log_level || severity == LOG_INIT)
-		fprintf(stderr, "%s\n", log_message);
+	syslog(severity, "%s", log_message);
 }
 
 /**

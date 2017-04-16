@@ -46,7 +46,7 @@
 int running    = 1;
 int background = 1;
 int do_vifs    = 1;
-int do_syslog  = 0;
+int do_syslog  = 1;
 int cache_tmo  = 0;
 int startup_delay = 0;
 
@@ -428,7 +428,7 @@ static int server_loop(int sd)
 		if (result < 0) {
 			/* Log all errors, except when signalled, ignore failures. */
 			if (EINTR != errno)
-				smclog(LOG_WARNING, "Failed call to select() in server_loop(): %s", strerror(errno));
+				smclog(LOG_WARNING, "Failed select() in %s(): %s", strerror(errno), __func__);
 			continue;
 		}
 
@@ -627,11 +627,11 @@ static int usage(int code)
 	       "  -L LVL          Set log level: none, err, info, notice*, debug\n"
 	       "  -n              Run daemon in foreground, useful when run from finit\n"
 	       "  -N              No VIFs/MIFs created by default, use `phyint IFNAME enable`\n"
-	       "  -s              Use syslog, default unless running in foreground, -n\n"
-	       "  -t SEC          Startup delay, useful for delaying interface probe at boot\n"
 #ifdef HAVE_LIBCAP
 	       "  -p USER[:GROUP] After initialization set UID and GID to USER and GROUP\n"
 #endif
+	       "  -s              Use syslog, default unless running in foreground, -n\n"
+	       "  -t SEC          Startup delay, useful for delaying interface probe at boot\n"
 	       "  -v              Show program version\n"
 	       "\n"
 	       "Bug report address: %s\n"
@@ -654,6 +654,7 @@ static int usage(int code)
 int main(int argc, char *argv[])
 {
 	int c;
+	int log_opts = LOG_CONS | LOG_PID;
 #ifdef HAVE_LIBCAP
 	char *ptr;
 #endif
@@ -686,6 +687,7 @@ int main(int argc, char *argv[])
 
 		case 'n':	/* run daemon in foreground, i.e., do not fork */
 			background = 0;
+			do_syslog--;
 			break;
 
 		case 'N':
@@ -712,7 +714,7 @@ int main(int argc, char *argv[])
 #endif
 
 		case 's':	/* Force syslog even though in foreground */
-			do_syslog = 1;
+			do_syslog++;
 			break;
 
 		case 't':
@@ -728,6 +730,12 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (!background && do_syslog < 1)
+		log_opts |= LOG_PERROR;
+
+	openlog(prognm, log_opts, LOG_DAEMON);
+	setlogmask(LOG_UPTO(log_level));
+
 	if (geteuid() != 0) {
 		smclog(LOG_ERR, "Need root privileges to start %s", prognm);
 		return 1;
@@ -739,16 +747,10 @@ int main(int argc, char *argv[])
 	}
 
 	if (background) {
-		do_syslog = 1;
 		if (daemon(0, 0) < 0) {
 			smclog(LOG_ERR, "Failed daemonizing: %s", strerror(errno));
 			return 1;
 		}
-	}
-
-	if (do_syslog) {
-		openlog(prognm, LOG_PID, LOG_DAEMON);
-		setlogmask(LOG_UPTO(log_level));
 	}
 
 	return start_server();
