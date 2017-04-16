@@ -1,4 +1,4 @@
-                                                                       -*-org-*-
+#                                                              -*-org-*-
 
 * Add IPv6 support for (*, G), i.e., on-demand, routing rules
 In SMCRoute 1.99.0 IPv4 support for source-less multicast routes was
@@ -12,4 +12,15 @@ Optimal, and almost required, behavior would be to handle such
 transitions  without losing any traffic over established/active
 routing rules.
 
-* Add unit tests, trigger in Travis using --enable-maintainer-mode
+* Add unit tests
+
+#+BEGIN_SRC
+./configure --enable-maintainer-mode
+make test
+#+END_SRC
+
+* Add support for filtering based on source ADDRESS/LEN
+
+#+BEGIN_SRC
+mroute from eth0 except 192.168.1.0/24 group 225.1.2.0/24 to eth1 eth2
+#+END_SRC
