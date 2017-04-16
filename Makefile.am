@@ -4,8 +4,8 @@ DISTCHECK_CONFIGURE_FLAGS = --with-systemd=$$dc_install_base/$(systemd)
 
 DISTCLEANFILES		= *~ DEADJOE semantic.cache *.gdb *.elf core core.* *.d
 dist_man8_MANS		= smcroute.8
-doc_DATA		= README.md AUTHORS TODO ChangeLog.md COPYING smcroute.conf smcroute.init
-EXTRA_DIST		= README.md ChangeLog.md autogen.sh smcroute.conf smcroute.init
+doc_DATA		= README.md ChangeLog.md COPYING smcroute.conf smcroute.init
+EXTRA_DIST		= README.md AUTHORS ChangeLog.md autogen.sh smcroute.conf smcroute.init
 sbin_PROGRAMS		= smcrouted smcroutectl
 smcroutectl_SOURCES	= smcroutectl.c ipc.c common.c common.h mclab.h
 smcroutectl_CFLAGS      = -W -Wall -Wextra
