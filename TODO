@@ -1,6 +1,6 @@
                                                                        -*-org-*-
 
-* Add IPv6 support for (*, G), i.e., on-demand, routing rules.
+* Add IPv6 support for (*, G), i.e., on-demand, routing rules
 In SMCRoute 1.99.0 IPv4 support for source-less multicast routes was
 added. Adding support for IPv6 should be fairly straight forward, but
 needs figuring out the kernel interface and extensive testing.
@@ -12,3 +12,4 @@ Optimal, and almost required, behavior would be to handle such
 transitions  without losing any traffic over established/active
 routing rules.
 
+* Add unit tests, trigger in Travis using --enable-maintainer-mode
