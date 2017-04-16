@@ -21,6 +21,8 @@ install-sh
 mcsender
 missing
 smcroute
+smcrouted
+smcroutectl
 smcroute.service
 stamp-h1
 unittest
