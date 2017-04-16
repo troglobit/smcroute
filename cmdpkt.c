@@ -27,6 +27,49 @@
 
 #include "mclab.h"
 
+/* -j/-l eth0 [1.1.1.1] 239.1.1.1
+ *
+ *  +----+-----+---+--------------------------------------------+
+ *  | 32 | 'j' | 3 | "eth0\01.1.1.1\0239.1.1.1\0\0"             |
+ *  +----+-----+---+--------------------------------------------+
+ */
+char *cmd_convert_to_mgroup4(struct ipc_msg *msg, struct in_addr *src, struct in_addr *grp)
+{
+	int ret = 0;
+
+	if (msg->count == 3) {
+		ret += inet_pton(AF_INET, msg->argv[1], src);
+		ret += inet_pton(AF_INET, msg->argv[2], grp);
+	} else {
+		src->s_addr = 0;
+		ret  = 1;
+		ret += inet_pton(AF_INET, msg->argv[1], grp);
+	}
+
+	if (ret < 2)
+		return NULL;
+
+	return msg->argv[0];
+}
+
+char *cmd_convert_to_mgroup6(struct ipc_msg *msg, struct in6_addr *src, struct in6_addr *grp)
+{
+	int ret = 0;
+
+	if (msg->count == 3) {
+		ret += inet_pton(AF_INET6, msg->argv[1], src);
+		ret += inet_pton(AF_INET6, msg->argv[2], grp);
+	} else {
+		memset(src, 0, sizeof(*src));
+		ret = 1;
+		ret += inet_pton(AF_INET6, msg->argv[1], grp);
+	}
+
+	if (ret < 2)
+		return NULL;
+
+	return msg->argv[0];
+}
 
 /**
  * cmd_convert_to_mroute - Convert IPC command from client to desired mulicast route

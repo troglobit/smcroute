@@ -236,103 +236,44 @@ static void read_ipc_command(void)
 		ipc_send("", 1);
 		break;
 
-	case 'x':	/* x <InputIntf> <SourceAdr> <McGroupAdr> */
-	case 'y':	/* y <InputIntf> <SourceAdr> <McGroupAdr> */
+	case 'j':
+	case 'l':
 	{
 		int result = -1;
-		const char *ifname = (const char *)(msg + 1);
-		const char *sourceadr = ifname + strlen(ifname) + 1;
-		const char *groupstr = sourceadr + strlen(sourceadr) + 1;
 
-		if (strchr(groupstr, ':') == NULL && strchr(sourceadr, ':') == NULL) {
-			struct in_addr source;
-
-			/* check source address */
-			if (!*sourceadr
-			    || !inet_aton(sourceadr, &source)) {
-				smclog(LOG_WARNING, "Invalid IPv4 multicast source: %s", sourceadr);
-				ipc_send(log_message, strlen(log_message) + 1);
-				break;
-			}
-
-			struct in_addr group;
-
-			/* check multicast address */
-			if (!*groupstr
-			    || !inet_aton(groupstr, &group)
-			    || !IN_MULTICAST(ntohl(group.s_addr))) {
-				smclog(LOG_WARNING, "Invalid IPv4 multicast group: %s", groupstr);
-				ipc_send(log_message, strlen(log_message) + 1);
-				break;
-			}
-
-			/* join or leave */
-			if (msg->cmd == 'x')
-				result = mcgroup4_join_ssm(ifname, source, group);
-			else
-				result = mcgroup4_leave_ssm(ifname, source, group);
-		} else {
-			smclog(LOG_WARNING, "IPv6 is not supported for Source Specific Multicast.");
-		}
-
-		/* failed */
-		if (result) {
-			ipc_send(log_message, strlen(log_message) + 1);
-			break;
-		}
-
-		ipc_send("", 1);
-		break;
-	}
-
-	case 'j':	/* j <InputIntf> <McGroupAdr> */
-	case 'l':	/* l <InputIntf> <McGroupAdr> */
-	{
-		int result = -1;
-		const char *ifname = (const char *)(msg + 1);
-		const char *groupstr = ifname + strlen(ifname) + 1;
-
-		if (strchr(groupstr, ':') == NULL) {
-			struct in_addr group;
-
-			/* check multicast address */
-			if (!*groupstr
-			    || !inet_aton(groupstr, &group)
-			    || !IN_MULTICAST(ntohl(group.s_addr))) {
-				smclog(LOG_WARNING, "Invalid IPv4 multicast group: %s", groupstr);
-				ipc_send(log_message, strlen(log_message) + 1);
-				break;
-			}
-
-			/* join or leave */
-			if (msg->cmd == 'j')
-				result = mcgroup4_join(ifname, group);
-			else
-				result = mcgroup4_leave(ifname, group);
-		} else {	/* IPv6 */
+		str = msg->cmd == 'j' ? "join" : "leave";
+		if (strchr(msg->argv[1], ':')) {
 #ifndef HAVE_IPV6_MULTICAST_HOST
 			smclog(LOG_WARNING, "IPv6 multicast support disabled.");
 #else
-			struct in6_addr group;
+			char *ifname;
+			struct in6_addr source, group;
 
-			/* check multicast address */
-			if (!*groupstr
-			    || (inet_pton(AF_INET6, groupstr, &group) <= 0)
-			    || !IN6_IS_ADDR_MULTICAST(&group)) {
-				smclog(LOG_WARNING, "Invalid multicast group: %s", groupstr);
-				ipc_send(log_message, strlen(log_message) + 1);
-				break;
+			ifname = cmd_convert_to_mgroup6(msg, &source, &group);
+			if (!ifname || !IN6_IS_ADDR_MULTICAST(&group)) {
+				smclog(LOG_WARNING, "%s: Invalid IPv6 source our group address.", str);
+			} else {
+				if (msg->cmd == 'j')
+					result = mcgroup6_join(ifname, group);
+				else
+					result = mcgroup6_leave(ifname, group);
 			}
-
-			/* join or leave */
-			if (msg->cmd == 'j')
-				result = mcgroup6_join(ifname, group);
-			else
-				result = mcgroup6_leave(ifname, group);
 #endif /* HAVE_IPV6_MULTICAST_HOST */
+		} else {
+			char *ifname;
+			struct in_addr source, group;
+
+			ifname = cmd_convert_to_mgroup4(msg, &source, &group);
+			if (!ifname || !IN_MULTICAST(ntohl(group.s_addr))) {
+				smclog(LOG_WARNING, "%s: Invalid IPv4 source our group address.", str);
+			} else {
+				if (msg->cmd == 'j')
+					result = mcgroup4_join(ifname, source, group);
+				else
+					result = mcgroup4_leave(ifname, source, group);
+			}
 		}
 
-		/* failed */
 		if (result) {
 			ipc_send(log_message, strlen(log_message) + 1);
 			break;

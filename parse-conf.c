@@ -118,7 +118,7 @@ static int match(char *keyword, char *token)
 	return !strncmp(keyword, token, len);
 }
 
-static int join_mgroup(int lineno, char *ifname, char *group)
+static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 {
 	int result;
 
@@ -134,6 +134,9 @@ static int join_mgroup(int lineno, char *ifname, char *group)
 #else
 		struct in6_addr grp;
 
+		if (source)
+			WARN("IPv6 is not (yet) supported for Source Specific Multicast.");
+
 		if (inet_pton(AF_INET6, group, &grp) <= 0 || !IN6_IS_ADDR_MULTICAST(&grp)) {
 			WARN("Invalid IPv6 multicast group: %s", group);
 			return 1;
@@ -142,47 +145,20 @@ static int join_mgroup(int lineno, char *ifname, char *group)
 		result = mcgroup6_join(ifname, grp);
 #endif
 	} else {
-		struct in_addr grp;
-
-		if ((inet_pton(AF_INET, group, &grp) <= 0) || !IN_MULTICAST(ntohl(grp.s_addr))) {
-			WARN("Invalid IPv4 multicast group: %s", group);
-			return 1;
-		}
-
-		result = mcgroup4_join(ifname, grp);
-	}
-
-	return result;
-}
-
-static int join_mgroup_ssm(int lineno, char *ifname, char *group, char *source)
-{
-	int result;
-
-	if (!ifname || !group || !source) {
-		errno = EINVAL;
-		return 1;
-	}
-
-	if (strchr(group, ':') || strchr(source, ':')) {
-		WARN("IPv6 is not (yet) supported for Source Specific Multicast.");
-		result = 0;
-	} else {
 		struct in_addr src;
+		struct in_addr grp;
 
 		if ((inet_pton(AF_INET, source, &src) <= 0)) {
 			WARN("Invalid IPv4 multicast source: %s", source);
 			return 1;
 		}
 
-		struct in_addr grp;
-
 		if ((inet_pton(AF_INET, group, &grp) <= 0) || !IN_MULTICAST(ntohl(grp.s_addr))) {
 			WARN("Invalid IPv4 multicast group: %s", group);
 			return 1;
 		}
 
-		result = mcgroup4_join_ssm(ifname, src, grp);
+		result = mcgroup4_join(ifname, src, grp);
 	}
 
 	return result;
@@ -368,7 +344,7 @@ int parse_conf_file(const char *file)
 					if (!ifname)
 						op = 0;
 				} else if (match("ssmgroup", token)) {
-					op = 4;
+					op = 1; /* Compat */
 				} else {
 					WARN("Unknown command %s, skipping.", token);
 					continue;
@@ -400,7 +376,7 @@ int parse_conf_file(const char *file)
 		}
 
 		if (op == 1) {
-			join_mgroup(lineno, ifname, group);
+			join_mgroup(lineno, ifname, source, group);
 		} else if (op == 2) {
 			add_mroute(lineno, ifname, group, source, dest, num);
 		} else if (op == 3) {
@@ -408,8 +384,6 @@ int parse_conf_file(const char *file)
 				mroute_add_vif(ifname, threshold);
 			else
 				mroute_del_vif(ifname);
-		} else if (op == 4) {
-			join_mgroup_ssm(lineno, ifname, group, source);
 		}
 
 		lineno++;

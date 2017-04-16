@@ -234,16 +234,18 @@ struct ipc_msg {
 
 #define MX_CMDPKT_SZ 1024	/* command size including appended strings */
 
+char *cmd_convert_to_mgroup4(struct ipc_msg *msg, struct in_addr *src, struct in_addr *grp);
+char *cmd_convert_to_mgroup6(struct ipc_msg *msg, struct in6_addr *src, struct in6_addr *grp);
+
 const char *cmd_convert_to_mroute  (mroute_t  *mroute, const struct ipc_msg *msg);
 const char *cmd_convert_to_mroute4 (mroute4_t *mroute, const struct ipc_msg *msg);
 const char *cmd_convert_to_mroute6 (mroute6_t *mroute, const struct ipc_msg *msg);
 
 /* mcgroup.c */
-int  mcgroup4_join_ssm  (const char *ifname, struct in_addr  source, struct in_addr  group);
-int  mcgroup4_leave_ssm (const char *ifname, struct in_addr  source, struct in_addr  group);
-int  mcgroup4_join   	(const char *ifname, struct in_addr  group);
-int  mcgroup4_leave     (const char *ifname, struct in_addr  group);
+int  mcgroup4_join      (const char *ifname, struct in_addr  source, struct in_addr  group);
+int  mcgroup4_leave     (const char *ifname, struct in_addr  source, struct in_addr  group);
 void mcgroup4_disable   (void);
+
 int  mcgroup6_join      (const char *ifname, struct in6_addr group);
 int  mcgroup6_leave     (const char *ifname, struct in6_addr group);
 void mcgroup6_disable   (void);

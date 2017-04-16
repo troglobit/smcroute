@@ -116,11 +116,14 @@ static int mcgroup_join_leave_ssm_ipv4(int sd, int cmd, const char *ifname, stru
  * returns: - 0 if the function succeeds
  *          - 1 if parameters are wrong or the join fails
  */
-int mcgroup4_join(const char *ifname, struct in_addr group)
+int mcgroup4_join(const char *ifname, struct in_addr source, struct in_addr group)
 {
 	mcgroup4_init();
 
-	return mcgroup_join_leave_ipv4(mcgroup4_socket, 'j', ifname, group);
+	if (!source.s_addr)
+		return mcgroup_join_leave_ipv4(mcgroup4_socket, 'j', ifname, group);
+
+	return mcgroup_join_leave_ssm_ipv4(mcgroup4_socket, 'j', ifname, source, group);
 }
 
 /*
@@ -129,39 +132,12 @@ int mcgroup4_join(const char *ifname, struct in_addr group)
  * returns: - 0 if the function succeeds
  *          - 1 if parameters are wrong or the join fails
  */
-int mcgroup4_leave(const char *ifname, struct in_addr group)
+int mcgroup4_leave(const char *ifname, struct in_addr source, struct in_addr group)
 {
 	mcgroup4_init();
 
-	return mcgroup_join_leave_ipv4(mcgroup4_socket, 'l', ifname, group);
-}
-
-/*
- * Joins the MC group with the address 'group' with source 'source' on the interface 'ifname'.
- * (Source Specific Multicast)
- * The join is bound to the UDP socket 'sd', so if this socket is
- * closed the membership is dropped.
- *
- * returns: - 0 if the function succeeds
- *          - 1 if parameters are wrong or the join fails
- */
-int mcgroup4_join_ssm(const char *ifname, struct in_addr source, struct in_addr group)
-{
-	mcgroup4_init();
-
-	return mcgroup_join_leave_ssm_ipv4(mcgroup4_socket, 'j', ifname, source, group);
-}
-
-/*
- * Leaves the MC group with the address 'group' with source 'source' on the interface 'ifname'.
- * (Source Specific Multicast)
- *
- * returns: - 0 if the function succeeds
- *          - 1 if parameters are wrong or the join fails
- */
-int mcgroup4_leave_ssm(const char *ifname, struct in_addr source, struct in_addr group)
-{
-	mcgroup4_init();
+	if (!source.s_addr)
+		return mcgroup_join_leave_ipv4(mcgroup4_socket, 'l', ifname, group);
 
 	return mcgroup_join_leave_ssm_ipv4(mcgroup4_socket, 'l', ifname, source, group);
 }
