@@ -26,6 +26,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include "msg.h"
 #include "mclab.h"
 
 #define SOCKET_PATH "/var/run/smcroute"

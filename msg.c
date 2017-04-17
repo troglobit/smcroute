@@ -25,6 +25,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "msg.h"
 #include "mclab.h"
 
 /* -j/-l eth0 [1.1.1.1] 239.1.1.1
@@ -33,7 +34,7 @@
  *  | 32 | 'j' | 3 | "eth0\01.1.1.1\0239.1.1.1\0\0"             |
  *  +----+-----+---+--------------------------------------------+
  */
-char *cmd_convert_to_mgroup4(struct ipc_msg *msg, struct in_addr *src, struct in_addr *grp)
+char *msg_to_mgroup4(struct ipc_msg *msg, struct in_addr *src, struct in_addr *grp)
 {
 	int ret = 0;
 
@@ -52,7 +53,7 @@ char *cmd_convert_to_mgroup4(struct ipc_msg *msg, struct in_addr *src, struct in
 	return msg->argv[0];
 }
 
-char *cmd_convert_to_mgroup6(struct ipc_msg *msg, struct in6_addr *src, struct in6_addr *grp)
+char *msg_to_mgroup6(struct ipc_msg *msg, struct in6_addr *src, struct in6_addr *grp)
 {
 	int ret = 0;
 
@@ -72,7 +73,7 @@ char *cmd_convert_to_mgroup6(struct ipc_msg *msg, struct in6_addr *src, struct i
 }
 
 /**
- * cmd_convert_to_mroute - Convert IPC command from client to desired mulicast route
+ * msg_to_mroute - Convert IPC command from client to desired mulicast route
  * @mroute: Pointer to &struct mroute to convert to
  * @msg: Pointer to &struct ipc_msg IPC command
  *
@@ -83,7 +84,7 @@ char *cmd_convert_to_mgroup6(struct ipc_msg *msg, struct in6_addr *src, struct i
  * Returns:
  * %NULL on success, or an error string with a hint why the operation failed.
  */
-const char *cmd_convert_to_mroute(struct mroute *mroute, const struct ipc_msg *msg)
+const char *msg_to_mroute(struct mroute *mroute, const struct ipc_msg *msg)
 {
 	char *arg = (char *)msg->argv;
 
@@ -117,11 +118,11 @@ const char *cmd_convert_to_mroute(struct mroute *mroute, const struct ipc_msg *m
 
 		if (strchr(arg, ':')) {
 			mroute->version = 6;
-			return cmd_convert_to_mroute6(&mroute->u.mroute6, msg);
+			return msg_to_mroute6(&mroute->u.mroute6, msg);
 		}
 
 		mroute->version = 4;
-		return cmd_convert_to_mroute4(&mroute->u.mroute4, msg);
+		return msg_to_mroute4(&mroute->u.mroute4, msg);
 
 	default:
 		return "Invalid command";
@@ -130,7 +131,7 @@ const char *cmd_convert_to_mroute(struct mroute *mroute, const struct ipc_msg *m
 	return NULL;
 }
 
-const char *cmd_convert_to_mroute4(struct mroute4 *mroute, const struct ipc_msg *msg)
+const char *msg_to_mroute4(struct mroute4 *mroute, const struct ipc_msg *msg)
 {
 	char *ptr;
 	char *arg = (char *)msg->argv;
@@ -200,7 +201,7 @@ const char *cmd_convert_to_mroute4(struct mroute4 *mroute, const struct ipc_msg 
 	return NULL;
 }
 
-const char *cmd_convert_to_mroute6(struct mroute6 *mroute, const struct ipc_msg *msg)
+const char *msg_to_mroute6(struct mroute6 *mroute, const struct ipc_msg *msg)
 {
 	const char *arg = (const char *)(msg + 1);
 

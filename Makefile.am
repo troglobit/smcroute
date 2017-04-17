@@ -21,8 +21,8 @@ endif
 
 if HAVE_CLIENT
 sbin_PROGRAMS	       += smcroutectl
-smcrouted_SOURCES      += cmdpkt.c ipc.c
-smcroutectl_SOURCES	= smcroutectl.c ipc.c common.c common.h mclab.h
+smcrouted_SOURCES      += msg.c msg.h ipc.c
+smcroutectl_SOURCES	= smcroutectl.c ipc.c common.c common.h msg.h
 smcroutectl_CFLAGS      = -W -Wall -Wextra
 endif
 

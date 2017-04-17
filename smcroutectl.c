@@ -24,6 +24,8 @@
 #include "config.h"
 #include <err.h>
 #include <stdio.h>
+
+#include "msg.h"
 #include "mclab.h"
 
 struct arg {

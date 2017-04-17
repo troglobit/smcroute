@@ -21,6 +21,9 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
+#ifndef SMCROUTE_MCLAB_H_
+#define SMCROUTE_MCLAB_H_
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -221,26 +224,6 @@ int   ipc_send         (const void *buf, int len);
 int   ipc_receive      (uint8 buf[], int len);
 void  ipc_exit         (void);
 
-/* cmdpkt.c
- *
- * XXX: Add example packet layouts
- */
-struct ipc_msg {
-	size_t   len;		/* total size of packet including cmd header */
-	uint16   cmd;		/* 'a'=Add,'r'=Remove,'j'=Join,'l'=Leave,'k'=Kill */
-	uint16   count;		/* command argument count */
-	char    *argv[0]; 	/* 'count' * '\0' terminated strings + '\0' */
-};
-
-#define MX_CMDPKT_SZ 1024	/* command size including appended strings */
-
-char *cmd_convert_to_mgroup4(struct ipc_msg *msg, struct in_addr *src, struct in_addr *grp);
-char *cmd_convert_to_mgroup6(struct ipc_msg *msg, struct in6_addr *src, struct in6_addr *grp);
-
-const char *cmd_convert_to_mroute  (mroute_t  *mroute, const struct ipc_msg *msg);
-const char *cmd_convert_to_mroute4 (mroute4_t *mroute, const struct ipc_msg *msg);
-const char *cmd_convert_to_mroute6 (mroute6_t *mroute, const struct ipc_msg *msg);
-
 /* mcgroup.c */
 int  mcgroup4_join      (const char *ifname, struct in_addr  source, struct in_addr  group);
 int  mcgroup4_leave     (const char *ifname, struct in_addr  source, struct in_addr  group);
@@ -265,6 +248,8 @@ int parse_conf_file(const char *file);
 
 /* pidfile.c */
 int pidfile(const char *basename, uid_t uid, gid_t gid);
+
+#endif /* SMCROUTE_MCLAB_H_ */
 
 /**
  * Local Variables:

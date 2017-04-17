@@ -39,6 +39,7 @@
 #include <signal.h>
 #include <unistd.h>
 
+#include "msg.h"
 #include "mclab.h"
 
 #define SMCROUTE_SYSTEM_CONF "/etc/smcroute.conf"
@@ -212,7 +213,7 @@ static void read_ipc_command(void)
 	switch (msg->cmd) {
 	case 'a':
 	case 'r':
-		if ((str = cmd_convert_to_mroute(&mroute, msg))) {
+		if ((str = msg_to_mroute(&mroute, msg))) {
 			smclog(LOG_WARNING, "%s", str);
 			ipc_send(log_message, strlen(log_message) + 1);
 			break;
@@ -252,7 +253,7 @@ static void read_ipc_command(void)
 			char *ifname;
 			struct in6_addr source, group;
 
-			ifname = cmd_convert_to_mgroup6(msg, &source, &group);
+			ifname = msg_to_mgroup6(msg, &source, &group);
 			if (!ifname || !IN6_IS_ADDR_MULTICAST(&group)) {
 				smclog(LOG_WARNING, "%s: Invalid IPv6 source our group address.", str);
 			} else {
@@ -266,7 +267,7 @@ static void read_ipc_command(void)
 			char *ifname;
 			struct in_addr source, group;
 
-			ifname = cmd_convert_to_mgroup4(msg, &source, &group);
+			ifname = msg_to_mgroup4(msg, &source, &group);
 			if (!ifname || !IN_MULTICAST(ntohl(group.s_addr))) {
 				smclog(LOG_WARNING, "%s: Invalid IPv4 source our group address.", str);
 			} else {
