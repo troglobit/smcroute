@@ -21,6 +21,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
+#include "ifvc.h"
 #include "mclab.h"
 
 static int mcgroup4_socket = -1;

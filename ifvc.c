@@ -25,6 +25,8 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <ifaddrs.h>
+
+#include "ifvc.h"
 #include "mclab.h"
 
 static unsigned int num_ifaces = 0, num_ifaces_alloc = 0;

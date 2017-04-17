@@ -20,9 +20,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
-#ifndef UNITTEST
+
+#include "ifvc.h"
 #include "mclab.h"
-#endif
 
 #define MAX_LINE_LEN 512
 #define WARN(fmt, args...)			\
@@ -399,18 +399,6 @@ int parse_conf_file(const char *file)
 
 	return 0;
 }
-
-#ifdef UNITTEST
-int main(int argc, char *argv[])
-{
-	if (argc < 2) {
-		printf("Missing file argument.\n");
-		return 1;
-	}
-
-	return parse_conf_file(argv[1]);
-}
-#endif	/* UNITTEST */
 
 /**
  * Local Variables:

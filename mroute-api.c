@@ -23,6 +23,8 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include "config.h"
+
+#include "ifvc.h"
 #include "mclab.h"
 
 #ifdef HAVE_NETINET6_IP6_MROUTE_H

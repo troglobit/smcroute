@@ -26,6 +26,7 @@
 #include <arpa/inet.h>
 
 #include "msg.h"
+#include "ifvc.h"
 #include "mclab.h"
 
 /* -j/-l eth0 [1.1.1.1] 239.1.1.1

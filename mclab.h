@@ -116,17 +116,6 @@ struct iface {
 
 extern int do_vifs;
 
-/* ifvc.c */
-void          iface_init            (void);
-void          iface_exit            (void);
-struct iface *iface_find_by_name    (const char *ifname);
-struct iface *iface_find_by_index   (unsigned int ifindex);
-struct iface *iface_find_by_vif     (int vif);
-int           iface_get_vif         (struct iface *iface);
-int           iface_get_mif         (struct iface *iface);
-int           iface_get_vif_by_name (const char *ifname);
-int           iface_get_mif_by_name (const char *ifname);
-
 /* mroute-api.c */
 
 /*

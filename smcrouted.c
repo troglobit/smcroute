@@ -41,6 +41,7 @@
 
 #include "ipc.h"
 #include "msg.h"
+#include "ifvc.h"
 #include "mclab.h"
 
 #define SMCROUTE_SYSTEM_CONF "/etc/smcroute.conf"
