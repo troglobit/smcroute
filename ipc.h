@@ -2,14 +2,14 @@
 #ifndef SMCROUTE_IPC_H_
 #define SMCROUTE_IPC_H_
 
-#include <stdint.h>
-
 int   ipc_server_init (void);
-void *ipc_server_read (uint8_t buf[], int len);
 int   ipc_client_init (void);
-int   ipc_send        (const void *buf, int len);
-int   ipc_receive     (uint8_t buf[], int len);
 void  ipc_exit        (void);
+
+void *ipc_server_read (char *buf, size_t len);
+
+int   ipc_send        (char *buf, size_t len);
+int   ipc_receive     (char *buf, size_t len);
 
 #endif /* SMCROUTE_IPC_H_ */
 

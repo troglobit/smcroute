@@ -201,7 +201,7 @@ static void read_ipc_command(void)
 	const char *str;
 	struct ipc_msg *msg;
 	struct mroute mroute;
-	uint8_t buf[MX_CMDPKT_SZ];
+	char buf[MX_CMDPKT_SZ];
 
 	memset(buf, 0, sizeof(buf));
 	msg = ipc_server_read(buf, sizeof(buf));

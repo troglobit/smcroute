@@ -115,6 +115,20 @@ int ipc_client_init(void)
 }
 
 /**
+ * ipc_exit - Tear down and cleanup IPC communication.
+ */
+void ipc_exit(void)
+{
+	if (server_sd >= 0) {
+		close(server_sd);
+		unlink(SOCKET_PATH);
+	}
+
+	if (client_sd >= 0)
+		close(client_sd);
+}
+
+/**
  * ipc_server_read - Read IPC message from client
  * @buf: Buffer for message
  * @len: Size of @buf in bytes
@@ -125,7 +139,7 @@ int ipc_client_init(void)
  * Returns:
  * Pointer to a successfuly read command packet in @buf, or %NULL on error.
  */
-void *ipc_server_read(uint8_t buf[], int len)
+void *ipc_server_read(char *buf, size_t len)
 {
 	size_t sz;
 	socklen_t socklen = 0;
@@ -173,7 +187,7 @@ void *ipc_server_read(uint8_t buf[], int len)
  * Returns:
  * Number of bytes successfully sent, or -1 with @errno on failure.
  */
-int ipc_send(const void *buf, int len)
+int ipc_send(char *buf, size_t len)
 {
 	/* sanity check */
 	if (client_sd < 0) {
@@ -181,7 +195,7 @@ int ipc_send(const void *buf, int len)
 		return -1;
 	}
 
-	if (write(client_sd, buf, len) != len)
+	if (write(client_sd, buf, len) != (ssize_t)len)
 		return -1;
 
 	return len;
@@ -197,7 +211,7 @@ int ipc_send(const void *buf, int len)
  * Returns:
  * Number of bytes successfully received, or -1 with @errno on failure.
  */
-int ipc_receive(uint8_t buf[], int len)
+int ipc_receive(char *buf, size_t len)
 {
 	/* sanity check */
 	if (client_sd < 0) {
@@ -206,20 +220,6 @@ int ipc_receive(uint8_t buf[], int len)
 	}
 
 	return read(client_sd, buf, len);
-}
-
-/**
- * ipc_exit - Tear down and cleanup IPC communication.
- */
-void ipc_exit(void)
-{
-	if (server_sd >= 0) {
-		close(server_sd);
-		unlink(SOCKET_PATH);
-	}
-
-	if (client_sd >= 0)
-		close(client_sd);
 }
 
 /**

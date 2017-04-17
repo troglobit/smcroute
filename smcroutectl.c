@@ -99,7 +99,7 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 	int retry_count = 30;
 	int slen, rlen;
 	struct ipc_msg *msg;
-	uint8_t buf[MX_CMDPKT_SZ + 1];
+	char buf[MX_CMDPKT_SZ + 1];
 
 	msg = msg_create(cmd, argv, count);
 	if (!msg)
@@ -131,7 +131,7 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 	}
 
 	/* Send command */
-	slen = ipc_send(msg, msg->len);
+	slen = ipc_send((char *)msg, msg->len);
 
 	/* Wait here for reply */
 	rlen = ipc_receive(buf, MX_CMDPKT_SZ);
