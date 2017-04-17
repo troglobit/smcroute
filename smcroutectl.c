@@ -25,6 +25,7 @@
 #include <err.h>
 #include <stdio.h>
 
+#include "ipc.h"
 #include "msg.h"
 #include "mclab.h"
 

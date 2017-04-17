@@ -39,6 +39,7 @@
 #include <signal.h>
 #include <unistd.h>
 
+#include "ipc.h"
 #include "msg.h"
 #include "mclab.h"
 

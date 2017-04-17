@@ -216,14 +216,6 @@ int  mroute6_del       (mroute6_t *mroute);
 int  mroute_add_vif    (char *ifname, uint8_t threshold);
 int  mroute_del_vif    (char *ifname);
 
-/* ipc.c */
-int   ipc_server_init  (void);
-void *ipc_server_read  (uint8 buf[], int len);
-int   ipc_client_init  (void);
-int   ipc_send         (const void *buf, int len);
-int   ipc_receive      (uint8 buf[], int len);
-void  ipc_exit         (void);
-
 /* mcgroup.c */
 int  mcgroup4_join      (const char *ifname, struct in_addr  source, struct in_addr  group);
 int  mcgroup4_leave     (const char *ifname, struct in_addr  source, struct in_addr  group);
