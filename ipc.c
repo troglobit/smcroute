@@ -125,7 +125,7 @@ int ipc_client_init(void)
  * Returns:
  * Pointer to a successfuly read command packet in @buf, or %NULL on error.
  */
-void *ipc_server_read(uint8 buf[], int len)
+void *ipc_server_read(uint8_t buf[], int len)
 {
 	size_t sz;
 	socklen_t socklen = 0;
@@ -197,7 +197,7 @@ int ipc_send(const void *buf, int len)
  * Returns:
  * Number of bytes successfully received, or -1 with @errno on failure.
  */
-int ipc_receive(uint8 buf[], int len)
+int ipc_receive(uint8_t buf[], int len)
 {
 	/* sanity check */
 	if (client_sd < 0) {

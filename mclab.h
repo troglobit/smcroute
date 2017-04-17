@@ -84,10 +84,6 @@
 #include <netinet6/ip6_mroute.h>
 #endif
 
-typedef u_int8_t uint8;
-typedef u_int16_t uint16;
-typedef u_int32_t uint32;
-
 #define SA(x)   ((struct sockaddr *)x)
 #define SIN4(x) ((struct sockaddr_in *)x)
 #define SIN6(x) ((struct sockaddr_in6 *)x)
@@ -150,7 +146,7 @@ struct mroute4 {
 	short          len;		/* prefix len, or 0:disabled */
 
 	short          inbound;         /* incoming VIF    */
-	uint8          ttl[MAX_MC_VIFS];/* outgoing VIFs   */
+	uint8_t        ttl[MAX_MC_VIFS];/* outgoing VIFs   */
 };
 typedef struct mroute4 mroute4_t;
 
@@ -170,8 +166,8 @@ typedef struct mroute4 mroute4_t;
 struct mroute6 {
 	struct sockaddr_in6 sender;
 	struct sockaddr_in6 group;      /* multicast group */
-	short inbound;                  /* incoming VIF    */
-	uint8 ttl[MAX_MC_MIFS];         /* outgoing VIFs   */
+	short   inbound;                /* incoming VIF    */
+	uint8_t ttl[MAX_MC_MIFS];       /* outgoing VIFs   */
 };
 typedef struct mroute6 mroute6_t;
 
