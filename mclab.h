@@ -148,7 +148,6 @@ struct mroute4 {
 	short          inbound;         /* incoming VIF    */
 	uint8_t        ttl[MAX_MC_VIFS];/* outgoing VIFs   */
 };
-typedef struct mroute4 mroute4_t;
 
 /*
  * IPv6 multicast route
@@ -169,7 +168,6 @@ struct mroute6 {
 	short   inbound;                /* incoming VIF    */
 	uint8_t ttl[MAX_MC_MIFS];       /* outgoing VIFs   */
 };
-typedef struct mroute6 mroute6_t;
 
 /*
  * Generic multicast route (wrapper for IPv4/IPv6 mroute)
@@ -177,11 +175,10 @@ typedef struct mroute6 mroute6_t;
 struct mroute {
 	int version;		/* 4 or 6 */
 	union {
-		mroute4_t mroute4;
-		mroute6_t mroute6;
+		struct mroute4 mroute4;
+		struct mroute6 mroute6;
 	} u;
 };
-typedef struct mroute mroute_t;
 
 /*
  * Raw IGMP socket used as interface for the IPv4 mrouted API.
@@ -199,15 +196,15 @@ extern int mroute6_socket;
 
 int  mroute4_enable    (void);
 void mroute4_disable   (void);
-int  mroute4_dyn_add   (mroute4_t *mroute);
+int  mroute4_dyn_add   (struct mroute4 *mroute);
 void mroute4_dyn_flush (void);
-int  mroute4_add       (mroute4_t *mroute);
-int  mroute4_del       (mroute4_t *mroute);
+int  mroute4_add       (struct mroute4 *mroute);
+int  mroute4_del       (struct mroute4 *mroute);
 
 int  mroute6_enable    (void);
 void mroute6_disable   (void);
-int  mroute6_add       (mroute6_t *mroute);
-int  mroute6_del       (mroute6_t *mroute);
+int  mroute6_add       (struct mroute6 *mroute);
+int  mroute6_del       (struct mroute6 *mroute);
 
 int  mroute_add_vif    (char *ifname, uint8_t threshold);
 int  mroute_del_vif    (char *ifname);
@@ -231,7 +228,7 @@ int loglvl(const char *level);
 void smclog(int severity, const char *fmt, ...);
 
 /* parse-conf.c */
-int run_script(mroute_t *mroute);
+int run_script(struct mroute *mroute);
 int parse_conf_file(const char *file);
 
 /* pidfile.c */

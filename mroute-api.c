@@ -143,7 +143,7 @@ int mroute4_enable(void)
  */
 void mroute4_disable(void)
 {
-	mroute4_t *entry;
+	struct mroute4 *entry;
 
 	if (mroute4_socket < 0)
 		return;
@@ -247,7 +247,7 @@ static int mroute4_del_vif(struct iface *iface)
 }
 
 /* Actually set in kernel - called by mroute4_add() and mroute4_check_add() */
-static int __mroute4_add(mroute4_t *route)
+static int __mroute4_add(struct mroute4 *route)
 {
 	int result = 0;
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
@@ -280,7 +280,7 @@ static int __mroute4_add(mroute4_t *route)
 }
 
 /* Actually remove from kernel - called by mroute4_del() */
-static int __mroute4_del(mroute4_t *route)
+static int __mroute4_del(struct mroute4 *route)
 {
 	int result = 0;
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
@@ -310,7 +310,7 @@ static int __mroute4_del(mroute4_t *route)
  * does 225.1.2.3 fall inside 225.0.0.0/15? => Yes
  * does 225.1.2.3 fall inside 225.0.0.0/16? => No
  */
-static int __mroute4_match(mroute4_t *rule, mroute4_t *cand)
+static int __mroute4_match(struct mroute4 *rule, struct mroute4 *cand)
 {
 	uint32_t g1, g2, mask;
 
@@ -327,14 +327,14 @@ static int __mroute4_match(mroute4_t *rule, mroute4_t *cand)
 
 /**
  * mroute4_dyn_add - Add route to kernel if it matches a known (*,G) route.
- * @route: Pointer to candidate &mroute4_t IPv4 multicast route
+ * @route: Pointer to candidate struct mroute4 IPv4 multicast route
  *
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute4_dyn_add(mroute4_t *route)
+int mroute4_dyn_add(struct mroute4 *route)
 {
-	mroute4_t *entry;
+	struct mroute4 *entry;
 
 	LIST_FOREACH(entry, &mroute4_conf_list, link) {
 		/* Find matching (*,G) ... and interface. */
@@ -346,9 +346,9 @@ int mroute4_dyn_add(mroute4_t *route)
 			 * removes the (*,G) using the command line interface rather than
 			 * updating the conf file and SIGHUP. Note: if we fail to alloc()
 			 * memory we don't do anything, just add kernel route silently. */
-			entry = malloc(sizeof(mroute4_t));
+			entry = malloc(sizeof(struct mroute4));
 			if (entry) {
-				memcpy(entry, route, sizeof(mroute4_t));
+				memcpy(entry, route, sizeof(struct mroute4));
 				LIST_INSERT_HEAD(&mroute4_dyn_list, entry, link);
 			}
 
@@ -373,7 +373,7 @@ void mroute4_dyn_flush(void)
 		return;
 
 	while (mroute4_dyn_list.lh_first) {
-		__mroute4_del((mroute4_t *)mroute4_dyn_list.lh_first);
+		__mroute4_del((struct mroute4 *)mroute4_dyn_list.lh_first);
 		LIST_REMOVE(mroute4_dyn_list.lh_first, link);
 		free(mroute4_dyn_list.lh_first);
 	}
@@ -381,7 +381,7 @@ void mroute4_dyn_flush(void)
 
 /**
  * mroute4_add - Add route to kernel, or save a wildcard route for later use
- * @route: Pointer to &mroute4_t IPv4 multicast route to add
+ * @route: Pointer to struct mroute4 IPv4 multicast route to add
  *
  * Adds the given multicast @route to the kernel multicast routing table
  * unless the source IP is %INADDR_ANY, i.e., a (*,G) route.  Those we
@@ -390,19 +390,19 @@ void mroute4_dyn_flush(void)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute4_add(mroute4_t *route)
+int mroute4_add(struct mroute4 *route)
 {
 	/* For (*,G) we save to a linked list to be added on-demand
 	 * when the kernel sends IGMPMSG_NOCACHE. */
 	if (route->sender.s_addr == INADDR_ANY) {
-		mroute4_t *entry = malloc(sizeof(mroute4_t));
+		struct mroute4 *entry = malloc(sizeof(struct mroute4));
 
 		if (!entry) {
 			smclog(LOG_WARNING, "Failed adding (*,G) multicast route: %s", strerror(errno));
 			return errno;
 		}
 
-		memcpy(entry, route, sizeof(mroute4_t));
+		memcpy(entry, route, sizeof(struct mroute4));
 		LIST_INSERT_HEAD(&mroute4_conf_list, entry, link);
 
 		return 0;
@@ -413,7 +413,7 @@ int mroute4_add(mroute4_t *route)
 
 /**
  * mroute4_del - Remove route from kernel, or all matching routes if wildcard
- * @route: Pointer to &mroute4_t IPv4 multicast route to remove
+ * @route: Pointer to struct mroute4 IPv4 multicast route to remove
  *
  * Removes the given multicast @route from the kernel multicast routing
  * table, or if the @route is a wildcard, then all matching kernel
@@ -422,9 +422,9 @@ int mroute4_add(mroute4_t *route)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute4_del(mroute4_t *route)
+int mroute4_del(struct mroute4 *route)
 {
-	mroute4_t *entry, *set;
+	struct mroute4 *entry, *set;
 
 	/* For (*,G) we have saved all dynamically added kernel routes
 	 * to a linked list which we need to traverse again and remove
@@ -650,14 +650,14 @@ static int mroute6_del_mif(struct iface *iface)
 
 /**
  * mroute6_add - Add route to kernel, or save a wildcard route for later use
- * @route: Pointer to &mroute6_t IPv6 multicast route to add
+ * @route: Pointer to struct mroute6 IPv6 multicast route to add
  *
  * Adds the given multicast @route to the kernel multicast routing table.
  *
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute6_add(mroute6_t *route)
+int mroute6_add(struct mroute6 *route)
 {
 	int result = 0;
 	size_t i;
@@ -690,7 +690,7 @@ int mroute6_add(mroute6_t *route)
 
 /**
  * mroute6_del - Remove route from kernel
- * @route: Pointer to &mroute6_t IPv6 multicast route to remove
+ * @route: Pointer to struct mroute6 IPv6 multicast route to remove
  *
  * Removes the given multicast @route from the kernel multicast routing
  * table.
@@ -698,7 +698,7 @@ int mroute6_add(mroute6_t *route)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute6_del(mroute6_t *route)
+int mroute6_del(struct mroute6 *route)
 {
 	int result = 0;
 	char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];

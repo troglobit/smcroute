@@ -31,7 +31,7 @@
 extern char *script_exec;
 
 
-int run_script(mroute_t *mroute)
+int run_script(struct mroute *mroute)
 {
 	int status;
 	pid_t pid;
@@ -180,7 +180,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 		WARN("Ignored, IPv6 disabled.");
 		return 0;
 #else
-		mroute6_t mroute;
+		struct mroute6 mroute;
 
 		memset(&mroute, 0, sizeof(mroute));
 		mroute.inbound = iface_get_mif_by_name(ifname);

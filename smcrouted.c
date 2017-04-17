@@ -129,7 +129,7 @@ static void read_mroute4_socket(void)
 	/* Check for IGMPMSG_NOCACHE to do (*,G) based routing. */
 	if (ip->ip_p == 0 && igmpctl->im_msgtype == IGMPMSG_NOCACHE) {
 		struct iface *iface;
-		mroute4_t mroute;
+		struct mroute4 mroute;
 		char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 
 		mroute.group.s_addr  = igmpctl->im_dst.s_addr;
@@ -162,7 +162,7 @@ static void read_mroute4_socket(void)
 
 		if (script_exec) {
 			int status;
-			mroute_t mrt;
+			struct mroute mrt;
 
 			mrt.version = 4;
 			mrt.u.mroute4 = mroute;
