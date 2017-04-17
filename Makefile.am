@@ -7,8 +7,8 @@ dist_man8_MANS		= smcroute.8
 doc_DATA		= README.md ChangeLog.md COPYING smcroute.conf
 EXTRA_DIST		= README.md AUTHORS ChangeLog.md autogen.sh smcroute.conf smcroute.init
 sbin_PROGRAMS		= smcrouted
-smcrouted_SOURCES	= smcrouted.c mroute-api.c ifvc.c cmdpkt.c ipc.c mcgroup.c	\
-			  parse-conf.c log.c pidfile.c common.c common.h mclab.h queue.h
+smcrouted_SOURCES	= smcrouted.c mroute-api.c ifvc.c mcgroup.c parse-conf.c log.c \
+			  pidfile.c common.c common.h mclab.h queue.h
 smcrouted_CFLAGS        = -W -Wall -Wextra
 smcrouted_CPPFLAGS	= -Wno-deprecated-declarations
 if USE_LIBCAP
@@ -21,6 +21,7 @@ endif
 
 if HAVE_CLIENT
 sbin_PROGRAMS	       += smcroutectl
+smcrouted_SOURCES      += cmdpkt.c ipc.c
 smcroutectl_SOURCES	= smcroutectl.c ipc.c common.c common.h mclab.h
 smcroutectl_CFLAGS      = -W -Wall -Wextra
 endif

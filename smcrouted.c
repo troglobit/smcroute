@@ -84,7 +84,9 @@ static void clean(void)
 	mroute6_disable();
 	mcgroup4_disable();
 	mcgroup6_disable();
+#ifdef ENABLE_CLIENT
 	ipc_exit();
+#endif
 	iface_exit();
 	smclog(LOG_NOTICE, "Exiting.");
 }
@@ -189,7 +191,8 @@ static void read_mroute6_socket(void)
 }
 #endif
 
-/* Receive command from the smcroute client */
+#ifdef ENABLE_CLIENT
+/* Receive command from the smcroutectl */
 static void read_ipc_command(void)
 {
 	const char *str;
@@ -293,6 +296,7 @@ static void read_ipc_command(void)
 		exit(0);
 	}
 }
+#endif
 
 /*
  * Signal handler.  Take note of the fact that the signal arrived
@@ -347,7 +351,9 @@ static int server_loop(int sd)
 		int result;
 
 		FD_ZERO(&fds);
+#ifdef ENABLE_CLIENT
 		FD_SET(sd, &fds);
+#endif
 		FD_SET(mroute4_socket, &fds);
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 		if (-1 != mroute6_socket)
@@ -387,9 +393,11 @@ static int server_loop(int sd)
 			read_mroute6_socket();
 #endif
 
+#ifdef ENABLE_CLIENT
 		/* loop back to select if there is no smcroute command */
 		if (FD_ISSET(sd, &fds))
 			read_ipc_command();
+#endif
 	}
 
 	return 0;
@@ -493,7 +501,7 @@ static int drop_root(const char *user)
  * error code in the parent and the initscript will fail */
 static int start_server(void)
 {
-	int sd, api = 2, busy = 0;
+	int sd = 0, api = 2, busy = 0;
 
 	/* Hello world! */
 	smclog(LOG_NOTICE, "%s", version_info);
@@ -529,9 +537,11 @@ static int start_server(void)
 		exit(1);
 	}
 
+#ifdef ENABLE_CLIENT
 	sd = ipc_server_init();
 	if (sd < 0)
 		smclog(LOG_WARNING, "Failed setting up IPC socket, client communication disabled: %s", strerror(errno));
+#endif
 
 	atexit(clean);
 	signal_init();
