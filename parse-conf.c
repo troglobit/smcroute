@@ -148,7 +148,9 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 		struct in_addr src;
 		struct in_addr grp;
 
-		if ((inet_pton(AF_INET, source, &src) <= 0)) {
+		memset(&src, 0, sizeof(src));
+
+		if (source && (inet_pton(AF_INET, source, &src) <= 0)) {
 			WARN("Invalid IPv4 multicast source: %s", source);
 			return 1;
 		}
