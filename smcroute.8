@@ -15,10 +15,11 @@
 .Op Fl t Ar SEC
 .Nm smcroutectl
 .Op Fl Fkhv
+.Op Ar COMMAND
 .Oo Ao add | del Ac Ao ROUTE Ac Oc Oo Ao join | leave Ac Ao GROUP Ac Oc
 .Pp
-\#.Nm smcroutectl
-\#.Op help | flush | kill | version
+.Nm smcroutectl
+.Op help | flush | kill | restart | version
 .Nm smcroutectl
 .Oo \ add | \ \ del Oc Ao IFNAME Ac Oo SOURCE Oc Ar GROUP[/LEN] IFNAME Op IFNAME ...
 .Nm smcroutectl
@@ -182,7 +183,7 @@ optional, but if given a source specific (SSM) join is performed.
 Leave a multicast group on a given interface.  As with the join command,
 above, the source address is optional.
 .It Nm help [cmd]
-Print a usage infomration message.
+Print a usage information message.
 .It Nm kill
 Stop (kill) running daemon.
 .It Nm restart
@@ -362,7 +363,7 @@ responds to the following signals:
 .It HUP
 Restarts
 .Nm smcrouted .
-The configuration file is re-read every time this signal is received.
+Tell daemon to restart and reload its configuration file.
 .It INT
 Terminates execution gracefully.
 .It TERM
