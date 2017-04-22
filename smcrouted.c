@@ -41,6 +41,7 @@
 
 #include "ipc.h"
 #include "msg.h"
+#include "conf.h"
 #include "ifvc.h"
 #include "mclab.h"
 
