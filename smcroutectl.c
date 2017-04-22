@@ -160,22 +160,22 @@ static int usage(int code)
 {
 	int i;
 
-	printf("Usage:\n\t%s CMD [ARGS]\n\n", prognm);
+	printf("Usage:\n  %s CMD [ARGS]\n\n", prognm);
 	printf("Commands:\n");
 	for (i = 0; args[i].name; i++) {
 		if (!args[i].help)
 			continue;
 
-		printf("\t%-7s %s  %s\n", args[i].name,
+		printf("  %-7s %s  %s\n", args[i].name,
 		       args[i].min_args ? "ARGS" : "    ", args[i].help);
 	}
 	printf("\nArguments:\n"
-	       "\t       <----------- INBOUND ------------>  <--- OUTBOUND ---->\n"
-	       "\tadd    IFNAME [SOURCE-IP] MULTICAST-GROUP  IFNAME [IFNAME ...]\n"
-	       "\tdel    IFNAME [SOURCE-IP] MULTICAST-GROUP\n"
+	       "         <----------- INBOUND ------------>  <--- OUTBOUND ---->\n"
+	       "  add    IFNAME [SOURCE-IP] MULTICAST-GROUP  IFNAME [IFNAME ...]\n"
+	       "  del    IFNAME [SOURCE-IP] MULTICAST-GROUP\n"
 	       "\n"
-	       "\tjoin   IFNAME [SOURCE-IP] MULTICAST-GROUP\n"
-	       "\tleave  IFNAME [SOURCE-IP] MULTICAST-GROUP\n"
+	       "  join   IFNAME [SOURCE-IP] MULTICAST-GROUP\n"
+	       "  leave  IFNAME [SOURCE-IP] MULTICAST-GROUP\n"
 	       "\n"
 	       "Bug report address: %s\n"
 	       "Project homepage:   %s\n\n", PACKAGE_BUGREPORT, PACKAGE_URL);
@@ -241,9 +241,9 @@ int main(int argc, char *argv[])
 			i--;
 
 		printf("Help:\n"
-		       "\t%s\n"
+		       "  %s\n"
 		       "Example:\n"
-		       "\t%s %s %s\n", args[i].help,
+		       "  %s %s %s\n", args[i].help,
 		       prognm, args[i].name, args[i].example);
 		return 0;
 	}
