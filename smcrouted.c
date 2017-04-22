@@ -22,6 +22,7 @@
  */
 
 #include "config.h"
+#include <err.h>
 #include <stdio.h>
 #include <getopt.h>
 #include <sys/time.h>		/* gettimeofday() */
@@ -43,6 +44,7 @@
 #include "msg.h"
 #include "conf.h"
 #include "ifvc.h"
+#include "util.h"
 #include "mclab.h"
 
 #define SMCROUTE_SYSTEM_CONF "/etc/smcroute.conf"
@@ -59,9 +61,11 @@ gid_t gid      = 0;
 
 char *prognm   = PACKAGE_NAME;
 
-const        char *script_exec  = NULL;
-static const char *conf_file    = SMCROUTE_SYSTEM_CONF;
+#ifdef HAVE_LIBCAP
 static const char *username;
+#endif
+
+static const char *conf_file    = SMCROUTE_SYSTEM_CONF;
 static const char version_info[] = PACKAGE_NAME " v" PACKAGE_VERSION;
 
 /* Cleans up, i.e. releases allocated resources. Called via atexit() */
@@ -654,7 +658,7 @@ int main(int argc, char *argv[])
 				return 1;
 			}
 			if (whoami(strtok(ptr, ":"), strtok(NULL, ":"))) {
-				perror("Invalid user:group argument");
+				warn("Invalid user:group argument");
 				free(ptr);
 				return 1;
 			}

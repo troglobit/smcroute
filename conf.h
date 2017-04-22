@@ -3,7 +3,6 @@
 
 #include "mclab.h"
 
-int run_script(struct mroute *mroute);
 int parse_conf_file(const char *file);
 void read_conf_file(const char *file);
 
