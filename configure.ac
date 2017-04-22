@@ -54,9 +54,14 @@ AS_IF([test "x$with_client" != "xno"],
     AC_DEFINE([ENABLE_CLIENT], 1, [Enable smcroutectl and the daemon IPC API]))
 AM_CONDITIONAL([HAVE_CLIENT], [test "x$with_client" != "xno"])
 
+# Build w/o smcroute.conf support?
 AS_IF([test "x$with_config" != "xno"],
     AC_DEFINE([ENABLE_DOTCONF], 1, [Enable /etc/smcroute.conf support]))
 AM_CONDITIONAL([USE_DOTCONF], [test "x$with_config" != "xno"])
+
+# Sanity check ...
+AS_IF([test "x$with_client" = "xno" -a "x$with_config" = "xno"],
+    AC_MSG_ERROR([Cannot disable both smcroutectl and /etc/smcroute.conf support.]))
 
 # Separate check for libcap
 AS_IF([test "x$with_libcap" != "xno"], [
