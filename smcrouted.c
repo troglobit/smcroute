@@ -661,19 +661,16 @@ int main(int argc, char *argv[])
 
 		case 'p':
 #ifndef HAVE_LIBCAP
-			warn("Drop privs support not available.");
+			warnx("Drop privs support not available.");
 			break;
 #else
 			ptr = strdup(optarg);
-			if (!ptr) {
-				perror("Failed parsing user:group argument");
-				return 1;
-			}
-			if (whoami(strtok(ptr, ":"), strtok(NULL, ":"))) {
-				warn("Invalid user:group argument");
-				free(ptr);
-				return 1;
-			}
+			if (!ptr)
+				err(1, "Failed parsing user:group argument");
+
+			if (whoami(strtok(ptr, ":"), strtok(NULL, ":")))
+				err(1, "Invalid user:group argument");
+
 			free(ptr);
 			break;
 #endif
