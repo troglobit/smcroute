@@ -92,6 +92,15 @@ static void restart(void)
 	mroute6_enable();
 }
 
+static void reload(void)
+{
+	restart();
+	read_conf_file(conf_file);
+
+	/* Acknowledge client SIGHUP/reload by touching the pidfile */
+	pidfile(NULL, uid, gid);
+}
+
 /* Check for kernel IGMPMSG_NOCACHE for (*,G) hits. I.e., source-less routes. */
 static void read_mroute4_socket(void)
 {
@@ -273,6 +282,12 @@ static void read_ipc_command(void)
 		break;
 	}
 
+	case 'H':		/* HUP */
+		smclog(LOG_NOTICE, "Got client reload command, reloading %s ...", conf_file);
+		reload();
+		ipc_send("", 1);
+		break;
+
 	case 'F':
 		mroute4_dyn_flush();
 		ipc_send("", 1);
@@ -299,11 +314,7 @@ static void handler(int sig)
 
 	case SIGHUP:
 		smclog(LOG_NOTICE, "Got SIGHUP, reloading %s ...", conf_file);
-		restart();
-		read_conf_file(conf_file);
-
-		/* Acknowledge client SIGHUP by touching the pidfile */
-		pidfile(NULL, uid, gid);
+		reload();
 		break;
 	}
 }

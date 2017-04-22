@@ -40,6 +40,7 @@ struct arg {
 	{ "version", 0, 'v', "Show program version", NULL },
 	{ "flush" ,  0, 'F', "Flush all dynamically set (*,G) multicast routes", NULL },
 	{ "kill",    0, 'k', "Kill running daemon", NULL },
+	{ "restart", 0, 'H', "Tell daemon to restart and reload its .conf file, like SIGHUP", NULL },
 	{ "add",     3, 'a', "Add a multicast route",    "eth0 192.168.2.42 225.1.2.3 eth1 eth2" },
 	{ "del",     3, 'r', "Remove a multicast route", "eth0 192.168.2.42 225.1.2.3" },
 	{ "remove",  3, 'r', NULL, NULL }, /* Alias for 'del' */
