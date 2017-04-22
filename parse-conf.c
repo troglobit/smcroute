@@ -402,6 +402,23 @@ int parse_conf_file(const char *file)
 	return 0;
 }
 
+/* Parse .conf file and setup routes */
+void read_conf_file(const char *file)
+{
+	if (access(file, R_OK)) {
+		if (errno == ENOENT)
+			smclog(LOG_NOTICE, "Configuration file %s does not exist", file);
+		else
+			smclog(LOG_WARNING, "Unexpected error when accessing %s: %s", file, strerror(errno));
+
+		smclog(LOG_NOTICE, "Continuing anyway, waiting for client to connect.");
+		return;
+	}
+
+	if (parse_conf_file(file))
+		smclog(LOG_WARNING, "Failed parsing %s: %s", file, strerror(errno));
+}
+
 /**
  * Local Variables:
  *  indent-tabs-mode: t

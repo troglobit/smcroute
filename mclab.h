@@ -219,6 +219,7 @@ void smclog(int severity, const char *fmt, ...);
 /* parse-conf.c */
 int run_script(struct mroute *mroute);
 int parse_conf_file(const char *file);
+void read_conf_file(const char *file);
 
 /* pidfile.c */
 int pidfile(const char *basename, uid_t uid, gid_t gid);

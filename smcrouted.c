@@ -63,23 +63,6 @@ static const char *conf_file    = SMCROUTE_SYSTEM_CONF;
 static const char *username;
 static const char version_info[] = PACKAGE_NAME " v" PACKAGE_VERSION;
 
-/* Parse .conf file and setup routes */
-static void read_conf_file(const char *conf_file)
-{
-	if (access(conf_file, R_OK)) {
-		if (errno == ENOENT)
-			smclog(LOG_NOTICE, "Configuration file %s does not exist", conf_file);
-		else
-			smclog(LOG_WARNING, "Unexpected error when accessing %s: %s", conf_file, strerror(errno));
-
-		smclog(LOG_NOTICE, "Continuing anyway, waiting for client to connect.");
-		return;
-	}
-
-	if (parse_conf_file(conf_file))
-		smclog(LOG_WARNING, "Failed parsing %s: %s", conf_file, strerror(errno));
-}
-
 /* Cleans up, i.e. releases allocated resources. Called via atexit() */
 static void clean(void)
 {
