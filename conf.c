@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "conf.h"
 #include "ifvc.h"
 #include "util.h"
 #include "mclab.h"
@@ -26,6 +27,8 @@
 #define MAX_LINE_LEN 512
 #define WARN(fmt, args...)			\
 	smclog(LOG_WARNING, 0, "%02d: " fmt, lineno, ##args)
+
+const char *conf_file = SMCROUTE_SYSTEM_CONF;
 
 static char *pop_token(char **line)
 {

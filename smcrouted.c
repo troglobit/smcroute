@@ -47,8 +47,6 @@
 #include "util.h"
 #include "mclab.h"
 
-#define SMCROUTE_SYSTEM_CONF "/etc/smcroute.conf"
-
 int running    = 1;
 int background = 1;
 int do_vifs    = 1;
@@ -65,7 +63,6 @@ char *prognm   = PACKAGE_NAME;
 static const char *username;
 #endif
 
-static const char *conf_file    = SMCROUTE_SYSTEM_CONF;
 static const char version_info[] = PACKAGE_NAME " v" PACKAGE_VERSION;
 
 /* Cleans up, i.e. releases allocated resources. Called via atexit() */
@@ -574,7 +571,11 @@ static int start_server(void)
 
 static int usage(int code)
 {
-	printf("Usage: %s [hnNsv] [-c SEC] [-f FILE] [-e CMD] [-L LVL] [-t SEC]\n"
+	printf("Usage: %s [hnNsv] [-c SEC] "
+#ifdef ENABLE_DOTCONF
+	       "[-f FILE] "
+#endif
+	       "[-e CMD] [-L LVL] [-t SEC]\n"
 	       "\n"
 	       "  -c SEC          Flush dynamic (*,G) multicast routes every SEC seconds\n"
 	       "  -e CMD          Script or command to call on startup/reload when all routes\n"
@@ -635,7 +636,11 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'f':
+#ifdef ENABLE_DOTCONF
 			conf_file = optarg;
+#else
+			warnx("Built without .conf file support.");
+#endif
 			break;
 
 		case 'h':	/* help */
