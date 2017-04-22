@@ -15,9 +15,13 @@ active at a time, so it's impossible to run SMCRoute and, e.g.,
 `mrouted` at the same time.  Linux does however support multiple routing
 tables, which SMCRoute not yet supports.
 
-SMCRoute is maintained collaboratively at [GitHub][].  Previously the
-code was hosted and maintained by Debian at [Alioth][] and before that
-by [Carsten Schill][], the original author.
+
+Features
+--------
+
+- Configuration file support, `/etc/smcroute.conf`
+- Support for restarting and re-reading `.conf` on `SIGHUP`
+- Source-less on-demand routing, a.k.a. (*,G) based static routing
 
 
 Usage
@@ -153,8 +157,13 @@ the multicast routes.  Use `--without-libcap` to disable this feature.
 	$ sudo make install-strip
 
 
-Good Luck!  
-The SMCRoute Maintainers
+Origin & References
+-------------------
+
+SMCRoute is maintained collaboratively at [GitHub][].  Previously the
+code was hosted and maintained by Debian at [Alioth][] and before that
+by [Carsten Schill][], the original author.
+
 
 [Finit]:           https://github.com/troglobit/finit
 [GitHub]:          https://github.com/troglobit/smcroute
