@@ -178,7 +178,7 @@ static int mroute4_add_vif(struct iface *iface)
 	int vif = -1;
 	size_t i;
 
-	if ((iface->flags & (IFF_LOOPBACK | IFF_MULTICAST)) != IFF_MULTICAST) {
+	if ((iface->flags & IFF_MULTICAST) != IFF_MULTICAST) {
 		smclog(LOG_INFO, "Interface %s is not multicast capable, skipping VIF.", iface->name);
 		iface->vif = -1;
 		return 0;
@@ -587,7 +587,7 @@ static int mroute6_add_mif(struct iface *iface)
 	int mif = -1;
 	size_t i;
 
-	if ((iface->flags & (IFF_LOOPBACK | IFF_MULTICAST)) != IFF_MULTICAST) {
+	if ((iface->flags & IFF_MULTICAST) != IFF_MULTICAST) {
 		smclog(LOG_INFO, "Interface %s is not multicast capable, skipping MIF.", iface->name);
 		iface->mif = -1;
 		return 0;
