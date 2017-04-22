@@ -96,8 +96,15 @@ static void restart(void)
 	mroute6_enable();
 }
 
-static void reload(void)
+static void reload(int signo)
 {
+#ifdef ENABLE_DOTCONF
+	smclog(LOG_NOTICE, "Got %s, reloading %s ...",
+	       signo ? "SIGHUP" : "client restart command", conf_file);
+#else
+	smclog(LOG_NOTICE, "Got %s, restarting ...",
+	       signo ? "SIGHUP" : "client restart command");
+#endif
 	restart();
 	read_conf_file(conf_file);
 
@@ -287,8 +294,7 @@ static void read_ipc_command(void)
 	}
 
 	case 'H':		/* HUP */
-		smclog(LOG_NOTICE, "Got client reload command, reloading %s ...", conf_file);
-		reload();
+		reload(0);
 		ipc_send("", 1);
 		break;
 
@@ -308,17 +314,16 @@ static void read_ipc_command(void)
  * Signal handler.  Take note of the fact that the signal arrived
  * so that the main loop can take care of it.
  */
-static void handler(int sig)
+static void handler(int signo)
 {
-	switch (sig) {
+	switch (signo) {
 	case SIGINT:
 	case SIGTERM:
 		running = 0;
 		break;
 
 	case SIGHUP:
-		smclog(LOG_NOTICE, "Got SIGHUP, reloading %s ...", conf_file);
-		reload();
+		reload(signo);
 		break;
 	}
 }
@@ -575,7 +580,9 @@ static int usage(int code)
 	       "  -e CMD          Script or command to call on startup/reload when all routes\n"
 	       "                  have been installed. Or when a source-less (ANY) route has\n"
 	       "                  been installed.\n"
+#ifdef ENABLE_DOTCONF
 	       "  -f FILE         File to use instead of default " SMCROUTE_SYSTEM_CONF "\n"
+#endif
 	       "  -h              This help text\n"
 	       "  -L LVL          Set log level: none, err, info, notice*, debug\n"
 	       "  -n              Run daemon in foreground, useful when run from finit\n"
