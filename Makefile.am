@@ -7,7 +7,7 @@ dist_man8_MANS		= smcroute.8
 doc_DATA		= README.md ChangeLog.md COPYING smcroute.conf
 EXTRA_DIST		= README.md AUTHORS ChangeLog.md autogen.sh smcroute.conf smcroute.init
 sbin_PROGRAMS		= smcrouted
-smcrouted_SOURCES	= smcrouted.c mroute-api.c ifvc.c mcgroup.c script.c util.h log.c \
+smcrouted_SOURCES	= smcrouted.c mroute.c mroute.h ifvc.c mcgroup.c script.c util.h log.c \
 			  pidfile.c common.c common.h utimensat.c mclab.h queue.h
 smcrouted_CFLAGS        = -W -Wall -Wextra
 smcrouted_CPPFLAGS	= -Wno-deprecated-declarations

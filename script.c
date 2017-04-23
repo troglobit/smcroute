@@ -16,8 +16,12 @@
  */
 
 #include <stdlib.h>
+#include <unistd.h>
+#include <arpa/inet.h>
 #include <sys/wait.h>
-#include "mclab.h"
+#include <netinet/in.h>
+
+#include "mroute.h"
 
 char *script_exec = NULL;
 

@@ -21,13 +21,16 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
+#include <errno.h>
 #include <stddef.h>
 #include <unistd.h>
+#include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 
 #include "msg.h"
-#include "mclab.h"
+#include "common.h"
 
 #define SOCKET_PATH "/var/run/smcroute"
 

@@ -22,7 +22,6 @@
 #include "conf.h"
 #include "ifvc.h"
 #include "util.h"
-#include "mclab.h"
 
 #define MAX_LINE_LEN 512
 #define WARN(fmt, args...)			\

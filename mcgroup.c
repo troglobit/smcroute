@@ -21,12 +21,24 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
+#include "config.h"
+
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#ifdef HAVE_LINUX_FILTER_H
+#include <linux/filter.h>
+#endif
+
+#include "log.h"
 #include "ifvc.h"
-#include "mclab.h"
+#include "common.h"
 
 static int mcgroup4_socket = -1;
 
-#ifdef __linux__
+#ifdef HAVE_LINUX_FILTER_H
 /* Extremely simple "drop everything" filter for Linux so we do not get
  * a copy each packet of every routed group we join. */
 static struct sock_filter filter[] = {
@@ -37,7 +49,7 @@ static struct sock_fprog fprog = {
 	sizeof(filter) / sizeof(filter[0]),
 	filter
 };
-#endif
+#endif /* HAVE_LINUX_FILTER_H */
 
 static struct iface *find_valid_iface(const char *ifname, int cmd)
 {
@@ -61,7 +73,7 @@ static void mcgroup4_init(void)
 			exit(255);
 		}
 
-#ifdef __linux__
+#ifdef HAVE_LINUX_FILTER_H
 		if (setsockopt(mcgroup4_socket, SOL_SOCKET, SO_ATTACH_FILTER, &fprog, sizeof(fprog)) < 0)
 			smclog(LOG_DEBUG, "Failed setting IPv4 socket filter, continuing anyway");
 #endif

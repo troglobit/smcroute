@@ -2,6 +2,21 @@
 #ifndef SMCROUTE_IFVC_H_
 #define SMCROUTE_IFVC_H_
 
+#include <net/if.h>
+#include <netinet/in.h>
+
+#define DEFAULT_THRESHOLD 1	/* Packet TTL must be at least 1 to pass */
+
+struct iface {
+	char name[IFNAMSIZ + 1];
+	struct in_addr inaddr;	/* == 0 for non IP interfaces */
+	u_short ifindex;	/* Physical interface index   */
+	short flags;
+	short vif;
+	short mif;
+	uint8_t threshold;	/* TTL threshold: 1-255, default: 1 */
+};
+
 void          iface_init            (void);
 void          iface_exit            (void);
 struct iface *iface_find_by_name    (const char *ifname);

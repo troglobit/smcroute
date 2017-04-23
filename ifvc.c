@@ -21,11 +21,13 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
+#include <stdlib.h>
+#include <ifaddrs.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <netinet/in.h>
-#include <ifaddrs.h>
 
+#include "log.h"
 #include "ifvc.h"
 #include "mclab.h"
 

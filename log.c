@@ -22,7 +22,12 @@
  */
 
 #define SYSLOG_NAMES
-#include "mclab.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "log.h"
+#include "common.h"
 
 int  log_level = LOG_NOTICE;
 char log_message[128];

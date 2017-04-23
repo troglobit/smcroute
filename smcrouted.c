@@ -22,6 +22,7 @@
  */
 
 #include "config.h"
+
 #include <err.h>
 #include <stdio.h>
 #include <getopt.h>
@@ -41,11 +42,13 @@
 #include <unistd.h>
 
 #include "ipc.h"
+#include "log.h"
 #include "msg.h"
 #include "conf.h"
 #include "ifvc.h"
 #include "util.h"
-#include "mclab.h"
+#include "common.h"
+#include "mroute.h"
 
 int running    = 1;
 int background = 1;
@@ -89,8 +92,8 @@ static void restart(void)
 
 	/* Update list of interfaces and create new virtual interface mappings in kernel. */
 	iface_init();
-	mroute4_enable();
-	mroute6_enable();
+	mroute4_enable(do_vifs);
+	mroute6_enable(do_vifs);
 }
 
 static void reload(int signo)
@@ -519,13 +522,13 @@ static int start_server(void)
 	 * are currently assigned an IP address. */
 	iface_init();
 
-	if (mroute4_enable()) {
+	if (mroute4_enable(do_vifs)) {
 		if (errno == EADDRINUSE)
 			busy++;
 		api--;
 	}
 
-	if (mroute6_enable()) {
+	if (mroute6_enable(do_vifs)) {
 		if (errno == EADDRINUSE)
 			busy++;
 		api--;

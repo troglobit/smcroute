@@ -6,7 +6,7 @@
 #define SMCROUTE_MSG_H_
 
 #include <stdint.h>
-#include "mclab.h"
+#include "mroute.h"
 
 struct ipc_msg {
 	size_t   len;		/* total size of packet including cmd header */

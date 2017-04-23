@@ -22,12 +22,16 @@
  */
 
 #include "config.h"
+
 #include <err.h>
+#include <errno.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <netinet/in.h>
 
 #include "ipc.h"
 #include "msg.h"
-#include "mclab.h"
+#include "common.h"
 
 struct arg {
 	char *name;

@@ -20,16 +20,19 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
-#include <unistd.h>
-#include <arpa/inet.h>
+
 #include "config.h"
 
-#include "ifvc.h"
-#include "mclab.h"
+#include <errno.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <net/if.h>
 
-#ifdef HAVE_NETINET6_IP6_MROUTE_H
-#include <netinet6/ip6_mroute.h>
-#endif
+#include "log.h"
+#include "ifvc.h"
+#include "common.h"
+#include "mroute.h"
 
 /* MAX_MC_VIFS from mclab.h must have same value as MAXVIFS from mroute.h */
 #if MAX_MC_VIFS != MAXVIFS
@@ -91,7 +94,7 @@ static int mroute6_add_mif(struct iface *iface);
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute4_enable(void)
+int mroute4_enable(int do_vifs)
 {
 	int arg = 1;
 	unsigned int i;
@@ -504,9 +507,10 @@ static int proc_set_val(char *file, int val)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute6_enable(void)
+int mroute6_enable(int do_vifs)
 {
 #ifndef HAVE_IPV6_MULTICAST_ROUTING
+	(void)do_vifs;
 	return -1;
 #else
 	int arg = 1;

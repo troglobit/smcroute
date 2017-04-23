@@ -25,6 +25,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "log.h"
 #include "msg.h"
 #include "ifvc.h"
 #include "mclab.h"

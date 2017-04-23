@@ -20,7 +20,25 @@
 #ifndef SMCROUTE_COMMON_H_
 #define SMCROUTE_COMMON_H_
 
+#include <stdarg.h>
+#include <string.h>
 #include "config.h"
+
+#ifndef MIN
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
+#ifndef MAX
+#define MAX(a, b) ((a) < (b) ? (b) : (a))
+#endif
+
+/* From The Practice of Programming, by Kernighan and Pike */
+#ifndef NELEMS
+#define NELEMS(array) (sizeof(array) / sizeof(array[0]))
+#endif
+
+#ifndef IN6_IS_ADDR_MULTICAST
+#define IN6_IS_ADDR_MULTICAST(a) (((__const uint8_t *) (a))[0] == 0xff)
+#endif
 
 char *progname(const char *arg0);
 int create_socket(int domain, int type, int proto);
