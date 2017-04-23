@@ -6,9 +6,9 @@ AC_INIT(SMCRoute, 2.3.0-dev, https://github.com/troglobit/smcroute/issues, smcro
 AM_INIT_AUTOMAKE([1.11 foreign no-dist-gzip dist-xz])
 AM_SILENT_RULES()
 
-AC_CONFIG_SRCDIR([smcrouted.c])
+AC_CONFIG_SRCDIR([src/smcrouted.c])
 AC_CONFIG_HEADER([config.h])
-AC_CONFIG_FILES([Makefile smcroute.service])
+AC_CONFIG_FILES([Makefile src/Makefile smcroute.service])
 
 # Older versions of autoconf (<2.58) do not have AC_CONFIG_MACRO_DIR()
 m4_include([m4/misc.m4])
