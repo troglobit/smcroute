@@ -2,15 +2,14 @@
 #define SMCROUTE_CONF_H_
 
 #include "config.h"
-#include "mclab.h"
 
 #define SMCROUTE_SYSTEM_CONF "/etc/smcroute.conf"
 
 extern const char *conf_file;
 
 #ifdef ENABLE_DOTCONF
-int parse_conf_file(const char *file);
-void read_conf_file(const char *file);
+int parse_conf_file(const char *file, int enable);
+void read_conf_file(const char *file, int enable);
 
 #else
 #define parse_conf_file(file)

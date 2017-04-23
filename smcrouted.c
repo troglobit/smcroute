@@ -24,8 +24,10 @@
 #include "config.h"
 
 #include <err.h>
+#include <errno.h>
 #include <stdio.h>
 #include <getopt.h>
+#include <arpa/inet.h>
 #include <sys/time.h>		/* gettimeofday() */
 #include <netinet/ip.h>
 
@@ -49,6 +51,7 @@
 #include "util.h"
 #include "common.h"
 #include "mroute.h"
+#include "mcgroup.h"
 
 int running    = 1;
 int background = 1;
@@ -106,7 +109,7 @@ static void reload(int signo)
 	       signo ? "SIGHUP" : "client restart command");
 #endif
 	restart();
-	read_conf_file(conf_file);
+	read_conf_file(conf_file, do_vifs);
 
 	/* Acknowledge client SIGHUP/reload by touching the pidfile */
 	pidfile(NULL, uid, gid);
@@ -552,7 +555,7 @@ static int start_server(void)
 
 	atexit(clean);
 	signal_init();
-	read_conf_file(conf_file);
+	read_conf_file(conf_file, do_vifs);
 
 	/* Everything setup, notify any clients by creating the pidfile */
 	if (pidfile(NULL, uid, gid))

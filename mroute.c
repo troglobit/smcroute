@@ -24,25 +24,26 @@
 #include "config.h"
 
 #include <errno.h>
+#include <fcntl.h>
 #include <string.h>
-#include <unistd.h>
 #include <arpa/inet.h>
 #include <net/if.h>
+#include <unistd.h>
 
 #include "log.h"
 #include "ifvc.h"
 #include "common.h"
 #include "mroute.h"
 
-/* MAX_MC_VIFS from mclab.h must have same value as MAXVIFS from mroute.h */
+/* MAX_MC_VIFS from mroute.h must have same value as MAXVIFS from mroute.h */
 #if MAX_MC_VIFS != MAXVIFS
-#error "IPv4 constants do not match, 'mclab.h' needs to be fixed!"
+#error "IPv4 constants do not match, 'mroute.h' needs to be fixed!"
 #endif
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
-/* MAX_MC_MIFS from mclab.h must have same value as MAXVIFS from mroute6.h */
+/* MAX_MC_MIFS from mroute.h must have same value as MAXVIFS from mroute6.h */
 #if MAX_MC_MIFS != MAXMIFS
-#error "IPv6 constants do not match, 'mclab.h' needs to be fixed!"
+#error "IPv6 constants do not match, 'mroute.h' needs to be fixed!"
 #endif
 #endif
 

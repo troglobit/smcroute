@@ -15,13 +15,18 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <errno.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
 
+#include "log.h"
 #include "conf.h"
 #include "ifvc.h"
 #include "util.h"
+#include "mcgroup.h"
 
 #define MAX_LINE_LEN 512
 #define WARN(fmt, args...)			\
@@ -254,7 +259,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
  *    ssmgroup from IFNAME group MCGROUP source SOURCE
  *    mroute from IFNAME source ADDRESS group MCGROUP to IFNAME [IFNAME ...]
  */
-int parse_conf_file(const char *file)
+int parse_conf_file(const char *file, int enable)
 {
 	int lineno = 1;
 	char *linebuf, *line;
@@ -275,7 +280,7 @@ int parse_conf_file(const char *file)
 
 	while ((line = fgets(linebuf, MAX_LINE_LEN, fp))) {
 		int   op = 0, num = 0;
-		int   enable = do_vifs, threshold = DEFAULT_THRESHOLD;
+		int   threshold = DEFAULT_THRESHOLD;
 		char *token;
 		char *ifname = NULL;
 		char *source = NULL;
@@ -353,7 +358,7 @@ int parse_conf_file(const char *file)
 }
 
 /* Parse .conf file and setup routes */
-void read_conf_file(const char *file)
+void read_conf_file(const char *file, int enable)
 {
 	if (access(file, R_OK)) {
 		if (errno == ENOENT)
@@ -365,7 +370,7 @@ void read_conf_file(const char *file)
 		return;
 	}
 
-	if (parse_conf_file(file))
+	if (parse_conf_file(file, enable))
 		smclog(LOG_WARNING, "Failed parsing %s: %s", file, strerror(errno));
 }
 

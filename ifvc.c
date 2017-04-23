@@ -21,6 +21,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
+#include <errno.h>
+#include <string.h>
 #include <stdlib.h>
 #include <ifaddrs.h>
 #include <unistd.h>
@@ -29,7 +31,6 @@
 
 #include "log.h"
 #include "ifvc.h"
-#include "mclab.h"
 
 static unsigned int num_ifaces = 0, num_ifaces_alloc = 0;
 static struct iface *iface_list = NULL;

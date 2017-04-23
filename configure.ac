@@ -6,7 +6,7 @@ AC_INIT(SMCRoute, 2.3.0-dev, https://github.com/troglobit/smcroute/issues, smcro
 AM_INIT_AUTOMAKE([1.11 foreign no-dist-gzip dist-xz])
 AM_SILENT_RULES()
 
-AC_CONFIG_SRCDIR([mclab.h])
+AC_CONFIG_SRCDIR([smcrouted.c])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_FILES([Makefile smcroute.service])
 

@@ -21,6 +21,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
+#include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -28,7 +29,7 @@
 #include "log.h"
 #include "msg.h"
 #include "ifvc.h"
-#include "mclab.h"
+
 
 /* -j/-l eth0 [1.1.1.1] 239.1.1.1
  *
