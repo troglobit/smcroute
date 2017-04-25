@@ -25,8 +25,11 @@
 
 #include <err.h>
 #include <errno.h>
-#include <stdio.h>
 #include <getopt.h>
+#include <stdio.h>
+#include <string.h>
+#include <signal.h>
+#include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/time.h>		/* gettimeofday() */
 #include <netinet/ip.h>
@@ -40,16 +43,13 @@
 # include <grp.h>
 #endif
 
-#include <signal.h>
-#include <unistd.h>
-
 #include "ipc.h"
 #include "log.h"
 #include "msg.h"
 #include "conf.h"
 #include "ifvc.h"
 #include "util.h"
-#include "common.h"
+#include "socket.h"
 #include "mroute.h"
 #include "mcgroup.h"
 
@@ -619,6 +619,19 @@ static int usage(int code)
 	       "Project homepage: %s\n\n", prognm, PACKAGE_BUGREPORT, PACKAGE_URL);
 
 	return code;
+}
+
+static char *progname(const char *arg0)
+{
+	char *nm;
+
+	nm = strrchr(arg0, '/');
+	if (nm)
+		nm++;
+	else
+		nm = (char *)arg0;
+
+	return nm;
 }
 
 /**

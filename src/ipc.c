@@ -30,7 +30,7 @@
 #include <sys/un.h>
 
 #include "msg.h"
-#include "common.h"
+#include "socket.h"
 
 #define SOCKET_PATH "/var/run/smcroute"
 

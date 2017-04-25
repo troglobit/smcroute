@@ -24,13 +24,6 @@
 #include <string.h>
 #include "config.h"
 
-#ifndef MIN
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#endif
-#ifndef MAX
-#define MAX(a, b) ((a) < (b) ? (b) : (a))
-#endif
-
 /* From The Practice of Programming, by Kernighan and Pike */
 #ifndef NELEMS
 #define NELEMS(array) (sizeof(array) / sizeof(array[0]))
@@ -41,7 +34,6 @@
 #endif
 
 int nfds(void);
-char *progname(const char *arg0);
 int create_socket(int domain, int type, int proto);
 
 #endif /* SMCROUTE_COMMON_H_ */

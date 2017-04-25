@@ -26,12 +26,13 @@
 #include <err.h>
 #include <errno.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include <netinet/in.h>
 
 #include "ipc.h"
 #include "msg.h"
-#include "common.h"
+#include "util.h"
 
 struct arg {
 	char *name;
@@ -185,6 +186,19 @@ static int usage(int code)
 	       "Project homepage:   %s\n\n", PACKAGE_BUGREPORT, PACKAGE_URL);
 
 	return code;
+}
+
+static char *progname(const char *arg0)
+{
+	char *nm;
+
+	nm = strrchr(arg0, '/');
+	if (nm)
+		nm++;
+	else
+		nm = (char *)arg0;
+
+	return nm;
 }
 
 int main(int argc, char *argv[])

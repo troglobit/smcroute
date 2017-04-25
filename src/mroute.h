@@ -5,6 +5,7 @@
 #include "config.h"
 #include <stdint.h>
 #include <stdlib.h>
+#include <netinet/in.h>
 
 #ifdef HAVE_LINUX_MROUTE_H
 #define _LINUX_IN_H             /* For Linux <= 2.6.25 */

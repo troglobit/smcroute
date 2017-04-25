@@ -22,7 +22,6 @@
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
 #endif
-#include <string.h>
 #include <sys/socket.h>
 
 static int max_fdnum = -1;
@@ -30,19 +29,6 @@ static int max_fdnum = -1;
 int nfds(void)
 {
 	return max_fdnum + 1;
-}
-
-char *progname(const char *arg0)
-{
-	char *nm;
-
-	nm = strrchr(arg0, '/');
-	if (nm)
-		nm++;
-	else
-		nm = (char *)arg0;
-
-	return nm;
 }
 
 int create_socket(int domain, int type, int proto)

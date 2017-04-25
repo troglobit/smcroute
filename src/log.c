@@ -24,10 +24,11 @@
 #define SYSLOG_NAMES
 
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 
 #include "log.h"
-#include "common.h"
+#include "util.h"
 
 int  log_level = LOG_NOTICE;
 char log_message[128];

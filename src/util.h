@@ -2,7 +2,15 @@
 #ifndef SMCROUTE_UTIL_H_
 #define SMCROUTE_UTIL_H_
 
+#include <string.h>
 #include "mroute.h"
+
+#ifndef MIN
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
+#ifndef MAX
+#define MAX(a, b) ((a) < (b) ? (b) : (a))
+#endif
 
 extern char *script_exec;
 

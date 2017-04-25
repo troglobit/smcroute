@@ -34,7 +34,7 @@
 
 #include "log.h"
 #include "ifvc.h"
-#include "common.h"
+#include "socket.h"
 
 static int mcgroup4_socket = -1;
 

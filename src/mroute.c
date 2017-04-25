@@ -32,7 +32,7 @@
 
 #include "log.h"
 #include "ifvc.h"
-#include "common.h"
+#include "socket.h"
 #include "mroute.h"
 
 /* MAX_MC_VIFS from mroute.h must have same value as MAXVIFS from mroute.h */
