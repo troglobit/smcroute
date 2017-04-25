@@ -42,6 +42,5 @@
 
 char *progname(const char *arg0);
 int create_socket(int domain, int type, int proto);
-int utimensat(int dirfd, const char *pathname, const struct timespec ts[2], int flags);
 
 #endif /* SMCROUTE_COMMON_H_ */
