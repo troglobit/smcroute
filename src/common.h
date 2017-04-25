@@ -40,6 +40,7 @@
 #define IN6_IS_ADDR_MULTICAST(a) (((__const uint8_t *) (a))[0] == 0xff)
 #endif
 
+int nfds(void);
 char *progname(const char *arg0);
 int create_socket(int domain, int type, int proto);
 

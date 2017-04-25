@@ -382,13 +382,6 @@ static int server_loop(int sd)
 {
 	fd_set fds;
 
-#ifdef HAVE_IPV6_MULTICAST_ROUTING
-	int max_fd_num = MAX(sd, MAX(mroute4_socket, mroute6_socket));
-#else
-	int max_fd_num = MAX(sd, mroute4_socket);
-#endif
-
-	/* Watch the MRouter and the IPC socket to the smcroute client */
 	while (running) {
 		int result;
 
@@ -403,7 +396,7 @@ static int server_loop(int sd)
 #endif
 
 		/* wait for input */
-		result = select(max_fd_num + 1, &fds, NULL, NULL, timeout());
+		result = select(nfds(), &fds, NULL, NULL, timeout());
 		if (result < 0) {
 			/* Log all errors, except when signalled, ignore failures. */
 			if (EINTR != errno)

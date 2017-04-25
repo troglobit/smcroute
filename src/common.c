@@ -25,6 +25,13 @@
 #include <string.h>
 #include <sys/socket.h>
 
+static int max_fdnum = -1;
+
+int nfds(void)
+{
+	return max_fdnum + 1;
+}
+
 char *progname(const char *arg0)
 {
 	char *nm;
@@ -50,6 +57,10 @@ int create_socket(int domain, int type, int proto)
 	if (sd >= 0)
 		fcntl(sd, F_SETFD, fcntl(sd, F_GETFD) | FD_CLOEXEC);
 #endif
+
+	/* Keep track for select() */
+	if (sd > max_fdnum)
+		max_fdnum = sd;
 
 	return sd;
 }
