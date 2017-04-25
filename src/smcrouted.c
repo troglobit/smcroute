@@ -71,6 +71,10 @@ static const char *username;
 
 static const char version_info[] = PACKAGE_NAME " v" PACKAGE_VERSION;
 
+static struct timeval now = { 0 };
+static struct timeval last_cache_flush = { 0 };
+
+
 /* Cleans up, i.e. releases allocated resources. Called via atexit() */
 static void clean(void)
 {
@@ -343,6 +347,37 @@ static void signal_init(void)
 	sigaction(SIGINT, &sa, NULL);
 }
 
+static void check_flush_timeout(void)
+{
+	if (!cache_tmo)
+		return;
+
+	if (last_cache_flush.tv_sec + cache_tmo < now.tv_sec) {
+		last_cache_flush = now;
+		smclog(LOG_NOTICE, "Cache timeout, flushing all (*,G) routes!");
+		mroute4_dyn_flush();
+	}
+}
+
+/* Return timeout for next timer, or NULL if no active timers */
+static struct timeval *timeout(void)
+{
+	static struct timeval tmo = { 0 };
+
+	if (!cache_tmo)
+		return NULL;
+
+	gettimeofday(&now, NULL);
+
+	if (last_cache_flush.tv_sec != 0)
+		tmo.tv_sec -=  now.tv_sec - last_cache_flush.tv_sec;
+	if (tmo.tv_sec <= 0)
+		tmo.tv_sec = cache_tmo;
+	tmo.tv_usec = 0;
+
+	return &tmo;
+}
+
 static int server_loop(int sd)
 {
 	fd_set fds;
@@ -352,9 +387,6 @@ static int server_loop(int sd)
 #else
 	int max_fd_num = MAX(sd, mroute4_socket);
 #endif
-	struct timeval now     = { 0 };
-	struct timeval timeout = { 0 }, *tmo = NULL;
-	struct timeval last_cache_flush = { 0 };
 
 	/* Watch the MRouter and the IPC socket to the smcroute client */
 	while (running) {
@@ -370,18 +402,8 @@ static int server_loop(int sd)
 			FD_SET(mroute6_socket, &fds);
 #endif
 
-		if (cache_tmo) {
-			gettimeofday(&now, NULL);
-			if (last_cache_flush.tv_sec != 0)
-				timeout.tv_sec -=  now.tv_sec - last_cache_flush.tv_sec;
-			if (timeout.tv_sec <= 0)
-				timeout.tv_sec = cache_tmo;
-			timeout.tv_usec = 0;
-			tmo = &timeout;
-		}
-
 		/* wait for input */
-		result = select(max_fd_num + 1, &fds, NULL, NULL, tmo);
+		result = select(max_fd_num + 1, &fds, NULL, NULL, timeout());
 		if (result < 0) {
 			/* Log all errors, except when signalled, ignore failures. */
 			if (EINTR != errno)
@@ -389,22 +411,21 @@ static int server_loop(int sd)
 			continue;
 		}
 
-		if (cache_tmo && (last_cache_flush.tv_sec + cache_tmo < now.tv_sec)) {
-			last_cache_flush = now;
-			smclog(LOG_NOTICE, "Cache timeout, flushing all (*,G) routes!");
-			mroute4_dyn_flush();
-		}
+		/* Check (*,G) flush timer */
+		check_flush_timeout();
 
+		/* Check activity on IPv4 multicast routing socket */
 		if (FD_ISSET(mroute4_socket, &fds))
 			read_mroute4_socket();
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
+		/* Check activity on IPv6 multicast routing socket */
 		if (-1 != mroute6_socket && FD_ISSET(mroute6_socket, &fds))
 			read_mroute6_socket();
 #endif
 
 #ifdef ENABLE_CLIENT
-		/* loop back to select if there is no smcroute command */
+		/* Check activity on smcroutectl command socket (IPC) */
 		if (FD_ISSET(sd, &fds))
 			read_ipc_command();
 #endif
