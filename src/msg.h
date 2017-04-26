@@ -5,8 +5,12 @@
 #ifndef SMCROUTE_MSG_H_
 #define SMCROUTE_MSG_H_
 
+#include <paths.h>
 #include <stdint.h>
 #include "mroute.h"
+
+/* XXX: Move to config.h, should be configurable */
+#define SOCKET_PATH _PATH_VARRUN "smcroute.sock"
 
 struct ipc_msg {
 	size_t   len;		/* total size of packet including cmd header */

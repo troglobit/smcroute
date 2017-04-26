@@ -26,11 +26,14 @@
 #include <err.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stddef.h>
 #include <string.h>
 #include <unistd.h>
 #include <netinet/in.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
-#include "ipc.h"
 #include "msg.h"
 #include "util.h"
 
@@ -99,19 +102,54 @@ static struct ipc_msg *msg_create(uint16_t cmd, char *argv[], size_t count)
 	return msg;
 }
 
+/*
+ * Connects to the IPC socket of the server
+ */
+static int ipc_connect(void)
+{
+	int sd;
+	struct sockaddr_un sa;
+	socklen_t len;
+
+	sd = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (sd < 0)
+		return -1;
+
+#ifdef HAVE_SOCKADDR_UN_SUN_LEN
+	sa.sun_len = 0;	/* <- correct length is set by the OS */
+#endif
+	sa.sun_family = AF_UNIX;
+	strcpy(sa.sun_path, SOCKET_PATH);
+
+	len = offsetof(struct sockaddr_un, sun_path) + strlen(SOCKET_PATH);
+	if (connect(sd, (struct sockaddr *)&sa, len) < 0) {
+		int err = errno;
+
+		close(sd);
+		errno = err;
+
+		return -1;
+	}
+
+	return sd;
+}
+
 static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 {
+	int sd;
 	int result = 0;
 	int retry_count = 30;
-	int slen, rlen;
+	ssize_t len;
 	struct ipc_msg *msg;
 	char buf[MX_CMDPKT_SZ + 1];
 
 	msg = msg_create(cmd, argv, count);
-	if (!msg)
-		err(1, "Failed constructing IPC command");
+	if (!msg) {
+		warn("Failed constructing IPC command");
+		return 1;
+	}
 
-	while (ipc_client_init() && !result) {
+	while ((sd = ipc_connect()) < 0) {
 		switch (errno) {
 		case EACCES:
 			warn("Need root privileges to connect to daemon");
@@ -137,17 +175,19 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 	}
 
 	/* Send command */
-	slen = ipc_send((char *)msg, msg->len);
+	if (write(sd, msg, msg->len) != (ssize_t)msg->len)
+		goto comms_err;
 
 	/* Wait here for reply */
-	rlen = ipc_receive(buf, MX_CMDPKT_SZ);
-	if (slen < 0 || rlen < 0) {
+	len = read(sd, buf, MX_CMDPKT_SZ);
+	if (len < 0) {
+	comms_err:
 		warn("Communication with daemon failed");
 		result = 1;
 		goto error;
 	}
 
-	if (rlen != 1 || *buf != '\0') {
+	if (len != 1 || *buf != '\0') {
 		buf[MX_CMDPKT_SZ] = 0;
 		warnx("Daemon error: %s", buf);
 		result = 1;
@@ -155,7 +195,7 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 	}
 
 error:
-	ipc_exit();
+	close(sd);
 	free(msg);
 
 	return result;

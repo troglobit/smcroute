@@ -32,8 +32,6 @@
 #include "msg.h"
 #include "socket.h"
 
-#define SOCKET_PATH "/var/run/smcroute"
-
 /* server's listen socket */
 static int server_sd = -1;
 
@@ -76,45 +74,6 @@ int ipc_server_init(void)
 	}
 
 	return server_sd;
-}
-
-/**
- * ipc_client_init - Connects to the IPC socket of the server
- *
- * Returns:
- * POSIX OK(0) on success, non-zero on error with @errno set.
- * Typically %EACCES, %ENOENT, or %ECONREFUSED.
- */
-int ipc_client_init(void)
-{
-	struct sockaddr_un sa;
-	socklen_t len;
-
-	if (client_sd >= 0)
-		close(client_sd);
-
-	client_sd = create_socket(AF_UNIX, SOCK_STREAM, 0);
-	if (client_sd < 0)
-		return -1;
-
-#ifdef HAVE_SOCKADDR_UN_SUN_LEN
-	sa.sun_len = 0;	/* <- correct length is set by the OS */
-#endif
-	sa.sun_family = AF_UNIX;
-	strcpy(sa.sun_path, SOCKET_PATH);
-
-	len = offsetof(struct sockaddr_un, sun_path) + strlen(SOCKET_PATH);
-	if (connect(client_sd, (struct sockaddr *)&sa, len) < 0) {
-		int err = errno;
-
-		close(client_sd);
-		client_sd = -1;
-
-		errno = err;
-		return -1;
-	}
-
-	return 0;
 }
 
 /**

@@ -10,7 +10,7 @@ endif
 if HAVE_CLIENT
 sbin_PROGRAMS	       += smcroutectl
 smcrouted_SOURCES      += msg.c msg.h ipc.c ipc.h
-smcroutectl_SOURCES	= smcroutectl.c ipc.c ipc.h socket.c socket.h msg.h
+smcroutectl_SOURCES	= smcroutectl.c msg.h
 smcroutectl_CFLAGS      = -W -Wall -Wextra
 endif
 
