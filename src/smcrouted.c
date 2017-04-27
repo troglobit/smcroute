@@ -302,7 +302,7 @@ static void read_ipc_command(void)
 		break;
 
 	case 'F':
-		mroute4_dyn_flush();
+		mroute4_dyn_expire(0);
 		ipc_send("", 1);
 		break;
 
@@ -391,8 +391,8 @@ static int server_loop(int sd)
 
 		if (cache_tmo && (last_cache_flush.tv_sec + cache_tmo < now.tv_sec)) {
 			last_cache_flush = now;
-			smclog(LOG_NOTICE, "Cache timeout, flushing all (*,G) routes!");
-			mroute4_dyn_flush();
+			smclog(LOG_NOTICE, "Cache timeout, flushing unused (*,G) routes!");
+			mroute4_dyn_expire(cache_tmo);
 		}
 
 		if (FD_ISSET(mroute4_socket, &fds))

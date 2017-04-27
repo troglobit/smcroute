@@ -72,13 +72,20 @@ enables only the interfaces needed.
 Alternate configuration file, default
 .Pa /etc/smcroute.conf
 .It Fl c Ar SEC
-Flush cache of dynamically learned (*,G) multicast routes every
+Flush unused dynamic (*,G) multicast routes every
 .Ar SEC
 seconds.  This option is intended for systems with topology changes,
 i.e., when inbound multicast may change both interface and source IP
 address.  If there is no way of detecting such a topology change this
 option will make sure to periodically flush all dynamically learned
-multicast routes so that traffic may resume.  See also the
+multicast routes so that traffic may resume.  Flushing of a specific
+route only occurs if it was unused during the last flush interval,
+i.e. there was no traffic matching it.  This avoids toggling between
+different inbound interfaces if traffic arrives on several interfaces
+simultaneously.  In this case, the first selected inbound interface is
+retained until traffic on it ceases.
+.Pp
+See also the
 .Nm smcroutectl Ar flush
 command for another way of handling topology changes.
 .It Fl e Ar CMD
