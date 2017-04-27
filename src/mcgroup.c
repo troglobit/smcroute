@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 #ifdef HAVE_LINUX_FILTER_H
 #include <linux/filter.h>
 #endif
@@ -51,13 +52,13 @@ static struct sock_fprog fprog = {
 };
 #endif /* HAVE_LINUX_FILTER_H */
 
-static struct iface *find_valid_iface(const char *ifname, int cmd)
+static struct iface *find_valid_iface(const char *ifname)
 {
-	const char *command = cmd == 'j' ? "Join" : "Leave";
-	struct iface *iface = iface_find_by_name(ifname);
+	struct iface *iface;
 
+	iface = iface_find_by_name(ifname);
 	if (!iface) {
-		smclog(LOG_WARNING, "%s multicast group, unknown interface %s", command, ifname);
+		smclog(LOG_DEBUG, "unknown interface %s", ifname);
 		return NULL;
 	}
 
@@ -69,31 +70,35 @@ static void mcgroup4_init(void)
 	if (mcgroup4_socket < 0) {
 		mcgroup4_socket = socket_create(AF_INET, SOCK_DGRAM, 0, NULL, NULL);
 		if (mcgroup4_socket < 0) {
-			smclog(LOG_ERR, "Failed creating socket for joining IPv4 multicast groups: %s", strerror(errno));
+			smclog(LOG_ERR, "failed creating IPv4 mcgroup socket: %s", strerror(errno));
 			exit(255);
 		}
 
 #ifdef HAVE_LINUX_FILTER_H
 		if (setsockopt(mcgroup4_socket, SOL_SOCKET, SO_ATTACH_FILTER, &fprog, sizeof(fprog)) < 0)
-			smclog(LOG_DEBUG, "Failed setting IPv4 socket filter, continuing anyway");
+			smclog(LOG_WARNING, "failed setting IPv4 socket filter, continuing anyway");
 #endif
 	}
 }
 
 static int mcgroup_join_leave_ipv4(int sd, int cmd, const char *ifname, struct in_addr group)
 {
-	int joinleave = cmd == 'j' ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP;
 	struct ip_mreq mreq;
-	struct iface *iface = find_valid_iface(ifname, cmd);
+	struct iface *iface;
 
+	iface = find_valid_iface(ifname);
 	if (!iface)
 		return 1;
 
 	mreq.imr_multiaddr.s_addr = group.s_addr;
 	mreq.imr_interface.s_addr = iface->inaddr.s_addr;
-	if (setsockopt(sd, IPPROTO_IP, joinleave, (void *)&mreq, sizeof(mreq))) {
-		if (EADDRINUSE != errno)
-			smclog(LOG_WARNING, "%s MEMBERSHIP failed: %s", cmd == 'j' ? "ADD" : "DROP", strerror(errno));
+	if (setsockopt(sd, IPPROTO_IP, cmd == 'j' ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP, &mreq, sizeof(mreq))) {
+		if (EADDRNOTAVAIL == errno && cmd == 'l')
+			smclog(LOG_DEBUG, "failed leaving group, not a member of %s", inet_ntoa(group));
+		else if (EADDRINUSE == errno && cmd == 'j')
+			smclog(LOG_DEBUG, "failed joining group, already member of %s", inet_ntoa(group));
+		else
+			smclog(LOG_DEBUG, "failed group %s: %s", cmd == 'j' ? "join" : "leave", strerror(errno));
 		return 1;
 	}
 
@@ -102,19 +107,26 @@ static int mcgroup_join_leave_ipv4(int sd, int cmd, const char *ifname, struct i
 
 static int mcgroup_join_leave_ssm_ipv4(int sd, int cmd, const char *ifname, struct in_addr source, struct in_addr group)
 {
-	int joinleave = cmd == 'j' ? IP_ADD_SOURCE_MEMBERSHIP : IP_DROP_SOURCE_MEMBERSHIP;
+	int opt = cmd == 'j' ? IP_ADD_SOURCE_MEMBERSHIP : IP_DROP_SOURCE_MEMBERSHIP;
+	struct iface *iface;
 	struct ip_mreq_source mreqsrc;
-	struct iface *iface = find_valid_iface(ifname, cmd);
 
+	iface = find_valid_iface(ifname);
 	if (!iface)
 		return 1;
 
-	mreqsrc.imr_multiaddr.s_addr = group.s_addr;
+	mreqsrc.imr_multiaddr.s_addr  = group.s_addr;
 	mreqsrc.imr_sourceaddr.s_addr = source.s_addr;
-	mreqsrc.imr_interface.s_addr = iface->inaddr.s_addr;
-	if (setsockopt(sd, IPPROTO_IP, joinleave, (void *)&mreqsrc, sizeof(mreqsrc))) {
-		if (EADDRINUSE != errno)
-			smclog(LOG_WARNING, "%s SOURCE_MEMBERSHIP failed: %s", cmd == 'j' ? "ADD" : "DROP", strerror(errno));
+	mreqsrc.imr_interface.s_addr  = iface->inaddr.s_addr;
+	if (setsockopt(sd, IPPROTO_IP, opt, &mreqsrc, sizeof(mreqsrc))) {
+		if (EADDRNOTAVAIL == errno && cmd == 'j')
+			smclog(LOG_DEBUG, "failed join, already member of %s", inet_ntoa(group));
+		else if (EADDRNOTAVAIL == errno && cmd == 'l')
+			smclog(LOG_DEBUG, "failed leave, not a member of %s from that source", inet_ntoa(group));
+		else if (EINVAL == errno && cmd == 'l')
+			smclog(LOG_DEBUG, "failed leave, not a member of %s", inet_ntoa(group));
+		else
+			smclog(LOG_WARNING, "failed %s: %s", cmd == 'j' ? "join" : "leave", strerror(errno));
 		return 1;
 	}
 
@@ -174,31 +186,39 @@ static void mcgroup6_init(void)
 	if (mcgroup6_socket < 0) {
 		mcgroup6_socket = socket_create(AF_INET6, SOCK_DGRAM, IPPROTO_UDP, NULL, NULL);
 		if (mcgroup6_socket < 0) {
-			smclog(LOG_WARNING, "Failed creating socket for joining IPv6 multicast groups: %s", strerror(errno));
+			smclog(LOG_WARNING, "failed creating IPv6 mcgroup socket: %s", strerror(errno));
 			return;
 		}
 
-#ifdef __linux__
+#ifdef HAVE_LINUX_FILTER_H
 		if (setsockopt(mcgroup6_socket, SOL_SOCKET, SO_ATTACH_FILTER, &fprog, sizeof(fprog)) < 0)
-			smclog(LOG_DEBUG, "Failed setting IPv6 socket filter, continuing anyway");
+			smclog(LOG_WARNING, "failed setting IPv6 socket filter, continuing anyway");
 #endif
 	}
 }
 
 static int mcgroup_join_leave_ipv6(int sd, int cmd, const char *ifname, struct in6_addr group)
 {
-	int joinleave = cmd == 'j' ? IPV6_JOIN_GROUP : IPV6_LEAVE_GROUP;
+	struct iface *iface;
 	struct ipv6_mreq mreq;
-	struct iface *iface = find_valid_iface(ifname, cmd);
 
+	iface = find_valid_iface(ifname);
 	if (!iface)
 		return 1;
 
 	mreq.ipv6mr_multiaddr = group;
 	mreq.ipv6mr_interface = iface->ifindex;
-	if (setsockopt(sd, IPPROTO_IPV6, joinleave, (void *)&mreq, sizeof(mreq))) {
-		if (EADDRINUSE != errno)
-			smclog(LOG_WARNING, "%s MEMBERSHIP failed: %s", cmd == 'j' ? "ADD" : "DROP", strerror(errno));
+	if (setsockopt(sd, IPPROTO_IPV6, cmd == 'j' ? IPV6_JOIN_GROUP : IPV6_LEAVE_GROUP, &mreq, sizeof(mreq))) {
+		char buf[INET6_ADDRSTRLEN];
+
+		if (EADDRNOTAVAIL == errno && cmd == 'l')
+			smclog(LOG_DEBUG, "failed leaving group, not a member of %s",
+			       inet_ntop(AF_INET6, &group, buf, sizeof(buf)));
+		else if (EADDRINUSE == errno && cmd == 'j')
+			smclog(LOG_DEBUG, "failed joining group, already member of %s",
+			       inet_ntop(AF_INET6, &group, buf, sizeof(buf)));
+		else
+			smclog(LOG_DEBUG, "failed group %s: %s", cmd == 'j' ? "join" : "leave", strerror(errno));
 		return 1;
 	}
 

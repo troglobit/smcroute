@@ -184,7 +184,7 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 
 	if (len != 1 || *buf != '\0') {
 		buf[MX_CMDPKT_SZ] = 0;
-		warnx("Daemon error: %s", buf);
+		warnx("%s", buf);
 		result = 1;
 		goto error;
 	}
