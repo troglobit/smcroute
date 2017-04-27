@@ -89,115 +89,94 @@ char *msg_to_mgroup6(struct ipc_msg *msg, struct in6_addr *src, struct in6_addr 
  */
 const char *msg_to_mroute(struct mroute *mroute, const struct ipc_msg *msg)
 {
-	char *arg = (char *)msg->argv;
+	if (msg->count < 2)
+		return NULL;
 
 	memset(mroute, 0, sizeof(*mroute));
 
-	switch (msg->cmd) {
-	case 'a':
-	case 'r':
-		/* -a eth0 1.1.1.1 239.1.1.1 eth1 eth2
-		 *
-		 *  +----+-----+---+--------------------------------------------+
-		 *  | 42 | 'a' | 5 | "eth0\01.1.1.1\0239.1.1.1\0eth1\0eth2\0\0" |
-		 *  +----+-----+---+--------------------------------------------+
-		 *  ^              ^
-		 *  |              |
-		 *  |              |
-		 *  +-----cmd------+
-		 *
-		 * -r 1.1.1.1 239.1.1.1
-		 *
-		 *  +----+-----+---+--------------------------+
-		 *  | 27 | 'r' | 2 | "1.1.1.1\0239.1.1.1\0\0" |
-		 *  +----+-----+---+--------------------------+
-		 *  ^              ^
-		 *  |              |
-		 *  |              |
-		 *  +-----cmd------+
-		 */
-		if (msg->cmd == 'a' || msg->count > 2)
-			arg += strlen(arg) + 1;
-
-		if (strchr(arg, ':')) {
-			mroute->version = 6;
-			return msg_to_mroute6(&mroute->u.mroute6, msg);
-		}
-
-		mroute->version = 4;
-		return msg_to_mroute4(&mroute->u.mroute4, msg);
-
-	default:
-		return "Invalid command";
+	if (strchr(msg->argv[1], ':')) {
+		mroute->version = 6;
+		return msg_to_mroute6(&mroute->u.mroute6, msg);
 	}
 
-	return NULL;
+	mroute->version = 4;
+	return msg_to_mroute4(&mroute->u.mroute4, msg);
 }
 
-const char *msg_to_mroute4(struct mroute4 *mroute, const struct ipc_msg *msg)
+/* check for prefix length, only applicable for (*,G) routes */
+static int is_range(char *arg)
 {
 	char *ptr;
-	char *arg = (char *)msg->argv;
 
-	memset(mroute, 0, sizeof(*mroute));
-
-	/* -a eth0 1.1.1.1 239.1.1.1 eth1 eth2
-	 *
-	 *  +----+-----+---+--------------------------------------------+
-	 *  | 42 | 'a' | 5 | "eth0\01.1.1.1\0239.1.1.1\0eth1\0eth2\0\0" |
-	 *  +----+-----+---+--------------------------------------------+
-	 *  ^              ^
-	 *  |              |
-	 *  |              |
-	 *  +-----cmd------+
-	 */
-
-	/* get input interface index */
-	if (!*arg || (mroute->inbound = iface_get_vif_by_name(arg)) < 0)
-		return "Invalid input interface";
-
-	/* get origin */
-	arg += strlen(arg) + 1;
-	if (!*arg || (inet_pton(AF_INET, arg, &mroute->sender) <= 0))
-		return "Invalid origin IPv4 address";
-
-	/* get multicast group with optional prefix length */
-	arg += strlen(arg) + 1;
-
-	/* check for prefix length, only applicable for (*,G) routes */
 	ptr = strchr(arg, '/');
 	if (ptr) {
-		if (mroute->sender.s_addr != INADDR_ANY)
-			return "GROUP/LEN not yet supported for source specific multicast.";
-
 		*ptr++ = 0;
-		mroute->len = atoi(ptr);
-		if (mroute->len < 0 || mroute->len > 32)
-			return "Invalid prefix length (/LEN), must be 0-32";
+		return atoi(ptr);
 	}
 
-	if (!*arg || (inet_pton(AF_INET, arg, &mroute->group) <= 0) || !IN_MULTICAST(ntohl(mroute->group.s_addr)))
-		return "Invalid multicast group";
+	return 0;
+}
 
-	/* adjust arg if we just parsed a GROUP/LEN argument */
-	if (ptr)
-		arg = ptr;
+/* -a eth0 [1.1.1.1] 239.1.1.1 eth1 eth2
+ *
+ *  +----+-----+---+--------------------------------------------+
+ *  | 42 | 'a' | 5 | "eth0\01.1.1.1\0239.1.1.1\0eth1\0eth2\0\0" |
+ *  +----+-----+---+--------------------------------------------+
+ *  ^              ^
+ *  |              |
+ *  |              |
+ *  +-----cmd------+
+ */
+const char *msg_to_mroute4(struct mroute4 *mroute, const struct ipc_msg *msg)
+{
+	int len, pos = 0;
+	struct in_addr src, grp;
+
+	memset(mroute, 0, sizeof(*mroute));
+	mroute->inbound = iface_get_vif_by_name(msg->argv[pos++]);
+	if (mroute->inbound < 0)
+		return "Invalid input interface";
+
+	len = is_range(msg->argv[pos]);
+	if (inet_pton(AF_INET, msg->argv[pos++], &src) <= 0)
+		return "Invalid IPv4 source or group address";
+
+	if (!IN_MULTICAST(ntohl(src.s_addr))) {
+		len = is_range(msg->argv[pos]);
+		if (inet_pton(AF_INET, msg->argv[pos++], &grp) <= 0 || !IN_MULTICAST(ntohl(grp.s_addr)))
+			return "Invalid IPv4 group address";
+
+		if (len && (len < 0 || len > 32))
+			return "Invalid prefix length (/LEN), must be 0-32";
+	} else {
+		grp = src;
+		src.s_addr = htonl(INADDR_ANY);
+	}
+
+	mroute->sender = src;
+	mroute->len    = len;
+	mroute->group  = grp;
+
+	if (len && mroute->sender.s_addr != htonl(INADDR_ANY))
+		return "GROUP/LEN not yet supported for source specific multicast.";
 
 	/*
-	 * Scan output interfaces for the 'add' command only, just ignore it
-	 * for the 'remove' command to be compatible to the first release.
+	 * Scan output interfaces for the 'add' command only, just
+	 * ignore it for the 'remove' command.
 	 */
 	if (msg->cmd == 'a') {
-		for (arg += strlen(arg) + 1; *arg; arg += strlen(arg) + 1) {
+		while (pos < msg->count) {
 			int vif;
+			char *ifname = msg->argv[pos++];
 
-			if ((vif = iface_get_vif_by_name(arg)) < 0)
+			vif = iface_get_vif_by_name(ifname);
+			if (vif < 0)
 				return "Invalid output interface";
 
 			if (vif == mroute->inbound)
-				smclog(LOG_WARNING, 0, "Same outbound interface as inbound %s?", arg);
+				smclog(LOG_WARNING, 0, "Same outbound interface as inbound %s?", ifname);
 
-			mroute->ttl[vif] = 1;	/* Use a TTL threashold */
+			mroute->ttl[vif] = 1;	/* Use a TTL threshold */
 		}
 	}
 
@@ -206,39 +185,35 @@ const char *msg_to_mroute4(struct mroute4 *mroute, const struct ipc_msg *msg)
 
 const char *msg_to_mroute6(struct mroute6 *mroute, const struct ipc_msg *msg)
 {
-	const char *arg = (const char *)(msg + 1);
+	int pos = 0;
 
 	memset(mroute, 0, sizeof(*mroute));
-
-	/* get input interface index */
-	if (!*arg || (mroute->inbound = iface_get_mif_by_name(arg)) < 0)
+	mroute->inbound = iface_get_mif_by_name(msg->argv[pos++]);
+	if (mroute->inbound < 0)
 		return "Invalid input interface";
 
-	/* get origin */
-	arg += strlen(arg) + 1;
-	if (!*arg || (inet_pton(AF_INET6, arg, &mroute->sender.sin6_addr) <= 0))
-		return "Invalid origin IPv6 address";
+	if (inet_pton(AF_INET6, msg->argv[pos++], &mroute->sender.sin6_addr) <= 0)
+		return "Invalid IPv6 source address";
 
-	/* get multicast group */
-	arg += strlen(arg) + 1;
-
-	if (!*arg || (inet_pton(AF_INET6, arg, &mroute->group.sin6_addr) <= 0)
-	    || !IN6_IS_ADDR_MULTICAST(&mroute->group.sin6_addr))
-		return "Invalid multicast group";
+	if (inet_pton(AF_INET6, msg->argv[pos++], &mroute->group.sin6_addr) <= 0 ||
+	    !IN6_IS_ADDR_MULTICAST(&mroute->group.sin6_addr))
+		return "Invalid IPv4 group address";
 
 	/*
 	 * Scan output interfaces for the 'add' command only, just ignore it
 	 * for the 'remove' command to be compatible to the first release.
 	 */
 	if (msg->cmd == 'a') {
-		for (arg += strlen(arg) + 1; *arg; arg += strlen(arg) + 1) {
+		while (pos < msg->count) {
 			int mif;
+			char *ifname = msg->argv[pos++];
 
-			if ((mif = iface_get_mif_by_name(arg)) < 0)
+			mif = iface_get_mif_by_name(ifname);
+			if (mif < 0)
 				return "Invalid output interface";
 
 			if (mif == mroute->inbound)
-				smclog(LOG_WARNING, 0, "Same outbound interface as inbound %s?", arg);
+				smclog(LOG_WARNING, 0, "Same outbound interface as inbound %s?", ifname);
 
 			mroute->ttl[mif] = 1;	/* Use a TTL threashold */
 		}

@@ -70,19 +70,16 @@ static struct ipc_msg *msg_create(uint16_t cmd, char *argv[], size_t count)
 	size_t i, len = 0, sz;
 	struct ipc_msg *msg;
 
-	/* Summarize length of all arguments/commands */
 	for (i = 0; i < count; i++)
 		len += strlen(argv[i]) + 1;
 
-	/* resulting msg size */
 	sz = sizeof(struct ipc_msg) + len + 1;
 	if (sz > MX_CMDPKT_SZ) {
 		errno = EMSGSIZE;
 		return NULL;
 	}
 
-	/* build msg */
-	msg = malloc(sz);
+	msg = calloc(1, sz);
 	if (!msg)
 		return NULL;
 
@@ -90,12 +87,10 @@ static struct ipc_msg *msg_create(uint16_t cmd, char *argv[], size_t count)
 	msg->cmd   = cmd;
 	msg->count = count;
 
-	/* copy args */
-	ptr = (char *)(msg->argv);
+	ptr = (char *)msg->argv;
 	for (i = 0; i < count; i++) {
 		len = strlen(argv[i]) + 1;
-		memcpy(ptr, argv[i], len);
-		ptr += len;
+		ptr = memcpy(ptr, argv[i], len) + len;
 	}
 	*ptr = '\0';	/* '\0' behind last string */
 

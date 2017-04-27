@@ -248,8 +248,24 @@ void *ipc_receive(int sd, char *buf, size_t len)
 	if (sz >= sizeof(struct ipc_msg)) {
 		struct ipc_msg *msg = (struct ipc_msg *)buf;
 
-		if (sz == msg->len)
+		if (sz == msg->len) {
+			char *ptr;
+			size_t i;
+
+			msg = malloc(sizeof(struct ipc_msg) + msg->count * sizeof(char *));
+			if (!msg)
+				return NULL;
+
+			memcpy(msg, buf, sizeof(struct ipc_msg));
+
+			ptr = buf + offsetof(struct ipc_msg, argv);
+			for (i = 0; i < msg->count; i++) {
+				msg->argv[i] = ptr;
+				ptr += strlen(ptr) + 1;
+			}
+
 			return msg;
+		}
 	}
 
 	errno = EAGAIN;
