@@ -64,6 +64,8 @@ struct mroute4 {
 
 	short          inbound;         /* incoming VIF    */
 	uint8_t        ttl[MAX_MC_VIFS];/* outgoing VIFs   */
+	unsigned long  valid_pkt;       /* packet counter at last mroute4_dyn_expire() */
+	time_t         last_use;        /* timestamp of last forwarded packet */
 };
 
 /*
@@ -112,7 +114,7 @@ extern int mroute6_socket;
 int  mroute4_enable    (int do_vifs);
 void mroute4_disable   (void);
 int  mroute4_dyn_add   (struct mroute4 *mroute);
-void mroute4_dyn_flush (void);
+void mroute4_dyn_expire(int max_idle);
 int  mroute4_add       (struct mroute4 *mroute);
 int  mroute4_del       (struct mroute4 *mroute);
 

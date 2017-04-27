@@ -30,6 +30,8 @@
 #include <net/if.h>
 #include <netinet/ip.h>
 #include <unistd.h>
+#include <sys/time.h>
+#include <sys/ioctl.h>
 
 #include "log.h"
 #include "ifvc.h"
@@ -439,22 +441,78 @@ int mroute4_dyn_add(struct mroute4 *route)
 	return -1;
 }
 
-/**
- * mroute4_dyn_flush - Flush dynamically added (*,G) routes
- *
- * This function flushes all (*,G) routes.  It is currently only called
- * on cache-timeout, a command line option, but could also be called on
- * topology changes (e.g. VRRP fail-over) or similar.
- */
-void mroute4_dyn_flush(void)
+/* Get usage statistics from the kernel for an installed MFC entry */
+static int mroute4_get_stats(struct mroute4 *route, unsigned long *pktcnt, unsigned long *bytecnt, unsigned long *wrong_if)
 {
-	if (LIST_EMPTY(&mroute4_dyn_list))
-		return;
+	int result = 0;
+	struct sioc_sg_req sg_req;
 
-	while (mroute4_dyn_list.lh_first) {
-		__mroute4_del((struct mroute4 *)mroute4_dyn_list.lh_first);
-		LIST_REMOVE(mroute4_dyn_list.lh_first, link);
-		free(mroute4_dyn_list.lh_first);
+	memset(&sg_req, 0, sizeof(sg_req));
+	sg_req.src = route->sender;
+	sg_req.grp = route->group;
+
+	if (ioctl(mroute4_socket, SIOCGETSGCNT, (void *)&sg_req) < 0) {
+		result = errno;
+		smclog(LOG_WARNING, "Failed getting MFC stats: %m");
+	} else {
+		if (pktcnt) *pktcnt = sg_req.pktcnt;
+		if (bytecnt) *bytecnt = sg_req.bytecnt;
+		if (wrong_if) *wrong_if = sg_req.wrong_if;
+	}
+
+	return result;
+}
+
+/* Get valid packet usage statistics (i.e. number of actually forwarded
+ * packets) from the kernel for an installed MFC entry */
+static unsigned long mroute4_get_stats_valid_pkt(struct mroute4 *route)
+{
+	unsigned long pktcnt = 0, wrong_if = 0;
+
+	if (mroute4_get_stats(route, &pktcnt, NULL, &wrong_if) < 0)
+		return 0;
+	return pktcnt - wrong_if;
+}
+
+/**
+ * mroute4_dyn_expire - Expire dynamically added (*,G) routes
+ * @max_idle: Timeout for routes in seconds, 0 to expire all dynamic routes
+ *
+ * This function flushes all (*,G) routes which haven't been used (i.e. no
+ * packets matching them have been forwarded) in the last max_idle seconds.
+ * It is called periodically on cache-timeout or on request of smcroutectl.
+ * The latter is useful in case of topology changes (e.g. VRRP fail-over)
+ * or similar.
+ */
+void mroute4_dyn_expire(int max_idle)
+{
+	struct mroute4 *entry, *next;
+	struct timeval now = { 0 };
+	
+	gettimeofday(&now, NULL);
+
+	entry = LIST_FIRST(&mroute4_dyn_list);
+	while (entry) {
+		next = LIST_NEXT(entry, link);
+		if (!entry->last_use) {
+			/* New entry */
+			entry->last_use = now.tv_sec;
+			entry->valid_pkt = mroute4_get_stats_valid_pkt(entry);
+		}
+		if (entry->last_use + max_idle <= now.tv_sec) {
+			unsigned long valid_pkt = mroute4_get_stats_valid_pkt(entry);
+			if (valid_pkt != entry->valid_pkt) {
+				/* Used since last check, update */
+				entry->last_use = now.tv_sec;
+				entry->valid_pkt = valid_pkt;
+			} else {
+				/* Not used, expire */
+				__mroute4_del(entry);
+				LIST_REMOVE(entry, link);
+				free(entry);
+			}
+		}
+		entry = next;
 	}
 }
 
