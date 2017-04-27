@@ -17,15 +17,15 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#ifndef SMCROUTE_COMMON_H_
-#define SMCROUTE_COMMON_H_
+#ifndef SMCROUTE_SOCKET_H_
+#define SMCROUTE_SOCKET_H_
 
 #include <stdarg.h>
 #include <string.h>
 #include "config.h"
 
+int socket_create (int domain, int type, int proto, void (*cb)(int, void *), void *arg);
+int socket_close  (int sd);
+int socket_poll   (struct timeval *timeout);
 
-int nfds(void);
-int create_socket(int domain, int type, int proto);
-
-#endif /* SMCROUTE_COMMON_H_ */
+#endif /* SMCROUTE_SOCKET_H_ */

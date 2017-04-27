@@ -1,4 +1,4 @@
-/* Daemon and client IPC API
+/* Daemon IPC API
  *
  * Copyright (C) 2001-2005  Carsten Schill <carsten@cschill.de>
  * Copyright (C) 2006-2009  Julien BLACHE <jb@jblache.org>
@@ -29,14 +29,136 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#include "ipc.h"
+#include "log.h"
 #include "msg.h"
+#include "mcgroup.h"
 #include "socket.h"
 
-/* server's listen socket */
-static int server_sd = -1;
+extern int running;
+extern void reload(int signo);
 
-/* connected server or client socket */
-static int client_sd = -1;
+/* Receive command from the smcroutectl */
+static void read_ipc_command(int sd)
+{
+	const char *str;
+	struct ipc_msg *msg;
+	struct mroute mroute;
+	char buf[MX_CMDPKT_SZ];
+
+	memset(buf, 0, sizeof(buf));
+	msg = (struct ipc_msg *)ipc_receive(sd, buf, sizeof(buf));
+	if (!msg) {
+		/* Skip logging client disconnects */
+		if (errno != ECONNRESET)
+			smclog(LOG_WARNING, "Failed receving IPC message from client: %s", strerror(errno));
+		return;
+	}
+
+	switch (msg->cmd) {
+	case 'a':
+	case 'r':
+		if ((str = msg_to_mroute(&mroute, msg))) {
+			smclog(LOG_WARNING, "%s", str);
+			ipc_send(sd, log_message, strlen(log_message) + 1);
+			goto error;
+		}
+
+		if (mroute.version == 4) {
+			if ((msg->cmd == 'a' && mroute4_add(&mroute.u.mroute4))
+			    || (msg->cmd == 'r' && mroute4_del(&mroute.u.mroute4))) {
+				ipc_send(sd, log_message, strlen(log_message) + 1);
+				goto error;
+			}
+		} else {
+#ifndef HAVE_IPV6_MULTICAST_ROUTING
+			smclog(LOG_WARNING, "IPv6 multicast routing support disabled.");
+#else
+			if ((msg->cmd == 'a' && mroute6_add(&mroute.u.mroute6))
+			    || (msg->cmd == 'r' && mroute6_del(&mroute.u.mroute6))) {
+				ipc_send(sd, log_message, strlen(log_message) + 1);
+				goto error;
+			}
+#endif /* HAVE_IPV6_MULTICAST_ROUTING */
+		}
+		break;
+
+	case 'j':
+	case 'l':
+	{
+		int result = -1;
+
+		str = msg->cmd == 'j' ? "join" : "leave";
+		if (strchr(msg->argv[1], ':')) {
+#ifndef HAVE_IPV6_MULTICAST_HOST
+			smclog(LOG_WARNING, "IPv6 multicast support disabled.");
+#else
+			char *ifname;
+			struct in6_addr source, group;
+
+			ifname = msg_to_mgroup6(msg, &source, &group);
+			if (!ifname || !IN6_IS_ADDR_MULTICAST(&group)) {
+				smclog(LOG_WARNING, "%s: Invalid IPv6 source our group address.", str);
+			} else {
+				if (msg->cmd == 'j')
+					result = mcgroup6_join(ifname, group);
+				else
+					result = mcgroup6_leave(ifname, group);
+			}
+#endif /* HAVE_IPV6_MULTICAST_HOST */
+		} else {
+			char *ifname;
+			struct in_addr source, group;
+
+			ifname = msg_to_mgroup4(msg, &source, &group);
+			if (!ifname || !IN_MULTICAST(ntohl(group.s_addr))) {
+				smclog(LOG_WARNING, "%s: Invalid IPv4 source our group address.", str);
+			} else {
+				if (msg->cmd == 'j')
+					result = mcgroup4_join(ifname, source, group);
+				else
+					result = mcgroup4_leave(ifname, source, group);
+			}
+		}
+
+		if (result) {
+			ipc_send(sd, log_message, strlen(log_message) + 1);
+			goto error;
+		}
+		break;
+	}
+
+	case 'H':		/* HUP */
+		reload(0);
+		break;
+
+	case 'F':
+		mroute4_dyn_flush();
+		break;
+
+	case 'k':
+		running = 0;
+		break;
+	}
+
+	ipc_send(sd, "", 1);
+error:
+	free(msg);
+}
+
+static void ipc_accept(int sd, void *arg)
+{
+	int client;
+	socklen_t socklen = 0;
+
+	(void)arg;
+	client = accept(sd, NULL, &socklen);
+	if (client < 0)
+		return;
+
+	read_ipc_command(client);
+	close(client);
+}
 
 /**
  * ipc_server_init - Initialise an IPC server socket
@@ -44,16 +166,14 @@ static int client_sd = -1;
  * Returns:
  * The socket descriptor, or -1 on error with @errno set.
  */
-int ipc_server_init(void)
+int ipc_init(void)
 {
-	struct sockaddr_un sa;
+	int sd;
 	socklen_t len;
+	struct sockaddr_un sa;
 
-	if (server_sd >= 0)
-		close(server_sd);
-
-	server_sd = create_socket(AF_UNIX, SOCK_STREAM, 0);
-	if (server_sd < 0)
+	sd = socket_create(AF_UNIX, SOCK_STREAM, 0, ipc_accept, NULL);
+	if (sd < 0)
 		return -1;
 
 #ifdef HAVE_SOCKADDR_UN_SUN_LEN
@@ -65,15 +185,14 @@ int ipc_server_init(void)
 	unlink(SOCKET_PATH);
 
 	len = offsetof(struct sockaddr_un, sun_path) + strlen(SOCKET_PATH);
-	if (bind(server_sd, (struct sockaddr *)&sa, len) < 0 || listen(server_sd, 1)) {
+	if (bind(sd, (struct sockaddr *)&sa, len) < 0 || listen(sd, 1)) {
 		int err = errno;
 
-		close(server_sd);
-		server_sd = -1;
+		close(sd);
 		errno = err;
 	}
 
-	return server_sd;
+	return sd;
 }
 
 /**
@@ -81,17 +200,31 @@ int ipc_server_init(void)
  */
 void ipc_exit(void)
 {
-	if (server_sd >= 0) {
-		close(server_sd);
-		unlink(SOCKET_PATH);
-	}
+	unlink(SOCKET_PATH);
+}
 
-	if (client_sd >= 0)
-		close(client_sd);
+/**
+ * ipc_send - Send message to peer
+ * @sd:  Client socket from ipc_accept()
+ * @buf: Message to send
+ * @len: Message length in bytes of @buf
+ *
+ * Sends the IPC message in @buf of the size @len to the peer.
+ *
+ * Returns:
+ * Number of bytes successfully sent, or -1 with @errno on failure.
+ */
+int ipc_send(int sd, char *buf, size_t len)
+{
+	if (write(sd, buf, len) != (ssize_t)len)
+		return -1;
+
+	return len;
 }
 
 /**
  * ipc_server_read - Read IPC message from client
+ * @sd:  Client socket from ipc_accept()
  * @buf: Buffer for message
  * @len: Size of @buf in bytes
  *
@@ -101,28 +234,12 @@ void ipc_exit(void)
  * Returns:
  * Pointer to a successfuly read command packet in @buf, or %NULL on error.
  */
-void *ipc_server_read(char *buf, size_t len)
+void *ipc_receive(int sd, char *buf, size_t len)
 {
 	size_t sz;
-	socklen_t socklen = 0;
 
-	/* sanity check */
-	if (server_sd < 0) {
-		errno = EBADF;
-		return NULL;
-	}
-
-	/* wait for connections */
-	if (client_sd < 0) {
-		client_sd = accept(server_sd, NULL, &socklen);
-		if (client_sd < 0)
-			return NULL;
-	}
-
-	sz = recv(client_sd, buf, len, 0);
+	sz = recv(sd, buf, len, 0);
 	if (!sz) {
-		close(client_sd);
-		client_sd = -1;
 		errno = ECONNRESET;
 		return NULL;
 	}
@@ -137,51 +254,6 @@ void *ipc_server_read(char *buf, size_t len)
 
 	errno = EAGAIN;
 	return NULL;
-}
-
-/**
- * ipc_send - Send message to peer
- * @buf: Message to send
- * @len: Message length in bytes of @buf
- *
- * Sends the IPC message in @buf of the size @len to the peer.
- *
- * Returns:
- * Number of bytes successfully sent, or -1 with @errno on failure.
- */
-int ipc_send(char *buf, size_t len)
-{
-	/* sanity check */
-	if (client_sd < 0) {
-		errno = EBADF;
-		return -1;
-	}
-
-	if (write(client_sd, buf, len) != (ssize_t)len)
-		return -1;
-
-	return len;
-}
-
-/**
- * ipc_receive - Receive message from peer
- * @buf: Buffer to receive message in
- * @len: Buffer size in bytes
- *
- * Waits to receive an IPC message in @buf of max @len bytes from the peer.
- *
- * Returns:
- * Number of bytes successfully received, or -1 with @errno on failure.
- */
-int ipc_receive(char *buf, size_t len)
-{
-	/* sanity check */
-	if (client_sd < 0) {
-		errno = EBADF;
-		return -1;
-	}
-
-	return read(client_sd, buf, len);
 }
 
 /**

@@ -28,6 +28,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <net/if.h>
+#include <netinet/ip.h>
 #include <unistd.h>
 
 #include "log.h"
@@ -88,6 +89,77 @@ static struct mif {
 static int mroute6_add_mif(struct iface *iface);
 #endif
 
+/* Check for kernel IGMPMSG_NOCACHE for (*,G) hits. I.e., source-less routes. */
+static void read_mroute4_socket(int sd, void *arg)
+{
+	int result;
+	char tmp[128];
+	struct ip *ip;
+	struct igmpmsg *igmpctl;
+
+	(void)arg;
+	memset(tmp, 0, sizeof(tmp));
+	result = read(sd, tmp, sizeof(tmp));
+	if (result < 0) {
+		smclog(LOG_WARNING, "Failed reading IGMP message from kernel: %s", strerror(errno));
+		return;
+	}
+
+	/* packets sent up from kernel to daemon have ip->ip_p = 0 */
+	ip = (struct ip *)tmp;
+	igmpctl = (struct igmpmsg *)tmp;
+
+	/* Check for IGMPMSG_NOCACHE to do (*,G) based routing. */
+	if (ip->ip_p == 0 && igmpctl->im_msgtype == IGMPMSG_NOCACHE) {
+		struct iface *iface;
+		struct mroute4 mroute;
+		char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
+
+		mroute.group.s_addr  = igmpctl->im_dst.s_addr;
+		mroute.sender.s_addr = igmpctl->im_src.s_addr;
+		mroute.inbound       = igmpctl->im_vif;
+
+		inet_ntop(AF_INET, &mroute.group,  group,  INET_ADDRSTRLEN);
+		inet_ntop(AF_INET, &mroute.sender, origin, INET_ADDRSTRLEN);
+		smclog(LOG_DEBUG, "New multicast data from %s to group %s on VIF %d", origin, group, mroute.inbound);
+
+		iface = iface_find_by_vif(mroute.inbound);
+		if (!iface) {
+			/* TODO: Add support for dynamically re-enumerating VIFs at runtime! */
+			smclog(LOG_WARNING, "No matching interface for VIF %d, cannot add mroute.", mroute.inbound);
+			return;
+		}
+
+		/* Find any matching route for this group on that iif. */
+		result = mroute4_dyn_add(&mroute);
+		if (result) {
+			/* This is a common error, the router receives streams it is not
+			 * set up to route -- we ignore these by default, but if the user
+			 * sets a more permissive log level we help out by showing what
+			 * is going on. */
+			if (ENOENT == errno)
+				smclog(LOG_INFO, "Multicast from %s, group %s, VIF %d does not match any (*,G) rule",
+				       origin, group, mroute.inbound);
+			return;
+		}
+
+		if (script_exec) {
+			int status;
+			struct mroute mrt;
+
+			mrt.version = 4;
+			mrt.u.mroute4 = mroute;
+			status = run_script(&mrt);
+			if (status) {
+				if (status < 0)
+					smclog(LOG_WARNING, "Failed starting external script %s: %s", script_exec, strerror(errno));
+				else
+					smclog(LOG_WARNING, "External script %s returned error code: %d", script_exec, status);
+			}
+		}
+	}
+}
+
 /**
  * mroute4_enable - Initialise IPv4 multicast routing
  *
@@ -103,7 +175,7 @@ int mroute4_enable(int do_vifs)
 	unsigned int i;
 	struct iface *iface;
 
-	mroute4_socket = create_socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
+	mroute4_socket = socket_create(AF_INET, SOCK_RAW, IPPROTO_IGMP, read_mroute4_socket, NULL);
 	if (mroute4_socket < 0) {
 		if (ENOPROTOOPT == errno)
 			smclog(LOG_WARNING, "Kernel does not support IPv4 multicast routing, skipping ...");
@@ -501,6 +573,23 @@ static int proc_set_val(char *file, int val)
 #endif /* Linux only */
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
+/*
+ * Receive and drop ICMPv6 stuff. This is either MLD packets or upcall
+ * messages sent up from the kernel.
+ *
+ * XXX: Currently MRT6MSG_NOCACHE messages for IPv6 (*,G) is unsupported.
+ */
+static void read_mroute6_socket(int sd, void *arg)
+{
+	int result;
+	char tmp[128];
+
+	(void)arg;
+	result = read(sd, tmp, sizeof(tmp));
+	if (result < 0)
+		smclog(LOG_INFO, "Failed clearing MLD message from kernel: %s", strerror(errno));
+}
+
 /**
  * mroute6_enable - Initialise IPv6 multicast routing
  *
@@ -520,7 +609,8 @@ int mroute6_enable(int do_vifs)
 	unsigned int i;
 	struct iface *iface;
 
-	if ((mroute6_socket = create_socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6)) < 0) {
+	mroute6_socket = socket_create(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6, read_mroute6_socket, NULL);
+	if (mroute6_socket < 0) {
 		if (ENOPROTOOPT == errno)
 			smclog(LOG_WARNING, "Kernel does not support IPv6 multicast routing, skipping ...");
 
