@@ -24,14 +24,6 @@
 #include <string.h>
 #include "config.h"
 
-/* From The Practice of Programming, by Kernighan and Pike */
-#ifndef NELEMS
-#define NELEMS(array) (sizeof(array) / sizeof(array[0]))
-#endif
-
-#ifndef IN6_IS_ADDR_MULTICAST
-#define IN6_IS_ADDR_MULTICAST(a) (((__const uint8_t *) (a))[0] == 0xff)
-#endif
 
 int nfds(void);
 int create_socket(int domain, int type, int proto);

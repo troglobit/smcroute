@@ -42,6 +42,9 @@
 
 #include "queue.h"
 
+#ifndef IN6_IS_ADDR_MULTICAST
+#define IN6_IS_ADDR_MULTICAST(a) (((__const uint8_t *) (a))[0] == 0xff)
+#endif
 
 /*
  * IPv4 multicast route

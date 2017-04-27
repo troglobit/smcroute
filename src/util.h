@@ -12,9 +12,11 @@
 #define MAX(a, b) ((a) < (b) ? (b) : (a))
 #endif
 
-extern char *script_exec;
+/* From The Practice of Programming, by Kernighan and Pike */
+#ifndef NELEMS
+#define NELEMS(array) (sizeof(array) / sizeof(array[0]))
+#endif
 
-int run_script(struct mroute *mroute);
 int pidfile(const char *basename, uid_t uid, gid_t gid);
 int utimensat(int dirfd, const char *pathname, const struct timespec ts[2], int flags);
 

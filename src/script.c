@@ -20,8 +20,7 @@
 #include <arpa/inet.h>
 #include <sys/wait.h>
 #include <netinet/in.h>
-
-#include "mroute.h"
+#include "script.h"
 
 char *script_exec = NULL;
 

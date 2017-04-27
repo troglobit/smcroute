@@ -25,7 +25,7 @@
 #include "log.h"
 #include "conf.h"
 #include "ifvc.h"
-#include "util.h"
+#include "script.h"
 #include "mcgroup.h"
 
 #define MAX_LINE_LEN 512

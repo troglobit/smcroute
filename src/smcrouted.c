@@ -49,6 +49,7 @@
 #include "conf.h"
 #include "ifvc.h"
 #include "util.h"
+#include "script.h"
 #include "socket.h"
 #include "mroute.h"
 #include "mcgroup.h"
