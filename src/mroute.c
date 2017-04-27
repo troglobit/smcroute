@@ -152,9 +152,9 @@ static void read_mroute4_socket(int sd, void *arg)
 			status = run_script(&mrt);
 			if (status) {
 				if (status < 0)
-					smclog(LOG_WARNING, "Failed starting external script %s: %s", script_exec, strerror(errno));
+					smclog(LOG_WARNING, "Cannot start script %s: %s", script_exec, strerror(errno));
 				else
-					smclog(LOG_WARNING, "External script %s returned error code: %d", script_exec, status);
+					smclog(LOG_WARNING, "Script %s returned error: %d", script_exec, status);
 			}
 		}
 	}
@@ -329,7 +329,6 @@ static int mroute4_del_vif(struct iface *iface)
 /* Actually set in kernel - called by mroute4_add() and mroute4_check_add() */
 static int __mroute4_add(struct mroute4 *route)
 {
-	int result = 0;
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	struct mfcctl mc;
 
@@ -346,40 +345,40 @@ static int __mroute4_add(struct mroute4 *route)
 	}
 
 	memcpy(mc.mfcc_ttls, route->ttl, NELEMS(mc.mfcc_ttls) * sizeof(mc.mfcc_ttls[0]));
+	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_MFC, &mc, sizeof(mc))) {
+		smclog(LOG_WARNING, "failed adding IPv4 multicast route: %s", strerror(errno));
+		return 1;
+	}
 
 	smclog(LOG_DEBUG, "Add %s -> %s from VIF %d",
 	       inet_ntop(AF_INET, &mc.mfcc_origin,   origin, INET_ADDRSTRLEN),
 	       inet_ntop(AF_INET, &mc.mfcc_mcastgrp, group,  INET_ADDRSTRLEN), mc.mfcc_parent);
 
-	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_MFC, (void *)&mc, sizeof(mc))) {
-		result = errno;
-		smclog(LOG_WARNING, "Failed adding IPv4 multicast route: %s", strerror(errno));
-	}
-
-	return result;
+	return 0;
 }
 
 /* Actually remove from kernel - called by mroute4_del() */
 static int __mroute4_del(struct mroute4 *route)
 {
-	int result = 0;
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	struct mfcctl mc;
 
 	memset(&mc, 0, sizeof(mc));
 	mc.mfcc_origin = route->sender;
 	mc.mfcc_mcastgrp = route->group;
+	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_DEL_MFC, &mc, sizeof(mc))) {
+		if (ENOENT == errno)
+			smclog(LOG_DEBUG, "failed removing multicast route, does not exist.");
+		else
+			smclog(LOG_DEBUG, "failed removing IPv4 multicast route: %s", strerror(errno));
+		return 1;
+	}
 
 	smclog(LOG_DEBUG, "Del %s -> %s",
 	       inet_ntop(AF_INET, &mc.mfcc_origin,  origin, INET_ADDRSTRLEN),
 	       inet_ntop(AF_INET, &mc.mfcc_mcastgrp, group, INET_ADDRSTRLEN));
 
-	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_DEL_MFC, (void *)&mc, sizeof(mc))) {
-		result = errno;
-		smclog(LOG_WARNING, "Failed removing IPv4 multicast route: %s", strerror(errno));
-	}
-
-	return result;
+	return 0;
 }
 
 /*
@@ -477,11 +476,12 @@ int mroute4_add(struct mroute4 *route)
 	 * the kernel sends IGMPMSG_NOCACHE.
 	 */
 	if (route->sender.s_addr == htonl(INADDR_ANY)) {
-		struct mroute4 *entry = malloc(sizeof(struct mroute4));
+		struct mroute4 *entry;
 
+		entry = malloc(sizeof(struct mroute4));
 		if (!entry) {
-			smclog(LOG_WARNING, "Failed adding (*,G) multicast route: %s", strerror(errno));
-			return errno;
+			smclog(LOG_WARNING, "Cannot add (*,G) route: %s", strerror(errno));
+			return 1;
 		}
 
 		memcpy(entry, route, sizeof(struct mroute4));
@@ -761,7 +761,6 @@ static int mroute6_del_mif(struct iface *iface)
  */
 int mroute6_add(struct mroute6 *route)
 {
-	int result = 0;
 	size_t i;
 	char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
 	struct mf6cctl mc;
@@ -776,18 +775,17 @@ int mroute6_add(struct mroute6 *route)
 		if (route->ttl[i] > 0)
 			IF_SET(i, &mc.mf6cc_ifset);
 	}
+	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MFC, (void *)&mc, sizeof(mc))) {
+		smclog(LOG_DEBUG, "failed adding IPv6 multicast route: %s", strerror(errno));
+		return 1;
+	}
 
 	smclog(LOG_DEBUG, "Add %s -> %s from MIF %d",
 	       inet_ntop(AF_INET6, &mc.mf6cc_origin.sin6_addr, origin, INET6_ADDRSTRLEN),
 	       inet_ntop(AF_INET6, &mc.mf6cc_mcastgrp.sin6_addr, group, INET6_ADDRSTRLEN),
 	       mc.mf6cc_parent);
 
-	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MFC, (void *)&mc, sizeof(mc))) {
-		result = errno;
-		smclog(LOG_WARNING, "Failed adding IPv6 multicast route: %s", strerror(errno));
-	}
-
-	return result;
+	return 0;
 }
 
 /**
@@ -802,24 +800,25 @@ int mroute6_add(struct mroute6 *route)
  */
 int mroute6_del(struct mroute6 *route)
 {
-	int result = 0;
 	char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
 	struct mf6cctl mc;
 
 	memset(&mc, 0, sizeof(mc));
 	mc.mf6cc_origin = route->sender;
 	mc.mf6cc_mcastgrp = route->group;
+	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_DEL_MFC, (void *)&mc, sizeof(mc))) {
+		if (ENOENT == errno)
+			smclog(LOG_DEBUG, "failed removing multicast route, does not exist.");
+		else
+			smclog(LOG_DEBUG, "failed removing IPv6 multicast route: %s", strerror(errno));
+		return 1;
+	}
 
 	smclog(LOG_DEBUG, "Del %s -> %s",
 	       inet_ntop(AF_INET6, &mc.mf6cc_origin.sin6_addr, origin, INET6_ADDRSTRLEN),
 	       inet_ntop(AF_INET6, &mc.mf6cc_mcastgrp.sin6_addr, group, INET6_ADDRSTRLEN));
 
-	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_DEL_MFC, (void *)&mc, sizeof(mc))) {
-		result = errno;
-		smclog(LOG_WARNING, "Failed removing IPv6 multicast route: %s", strerror(errno));
-	}
-
-	return result;
+	return 0;
 }
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
