@@ -158,7 +158,7 @@ static int do_mroute4(struct ipc_msg *msg)
 	 */
 	if (msg->cmd == 'a') {
 		if (pos >= msg->count) {
-			smclog(LOG_DEBUG, 0, "Missing outbound interface");
+			smclog(LOG_DEBUG, "Missing outbound interface");
 			return 1;
 		}
 
@@ -173,7 +173,7 @@ static int do_mroute4(struct ipc_msg *msg)
 			}
 
 			if (vif == mroute.inbound)
-				smclog(LOG_WARNING, 0, "Same outbound interface as inbound %s?", ifname);
+				smclog(LOG_WARNING, "Same outbound interface as inbound %s?", ifname);
 
 			mroute.ttl[vif] = 1;	/* Use a TTL threshold */
 		}
@@ -218,7 +218,7 @@ static int do_mroute6(struct ipc_msg *msg)
 	 */
 	if (msg->cmd == 'a') {
 		if (pos >= msg->count) {
-			smclog(LOG_DEBUG, 0, "Missing outbound interface");
+			smclog(LOG_DEBUG, "Missing outbound interface");
 			return 1;
 		}
 
@@ -233,9 +233,9 @@ static int do_mroute6(struct ipc_msg *msg)
 			}
 
 			if (mif == mroute.inbound)
-				smclog(LOG_DEBUG, 0, "Same outbound interface as inbound %s?", ifname);
+				smclog(LOG_DEBUG, "Same outbound interface as inbound %s?", ifname);
 
-			mroute.ttl[mif] = 1;	/* Use a TTL threashold */
+			mroute.ttl[mif] = 1;	/* Use a TTL threshold */
 		}
 
 		return mroute6_add(&mroute);

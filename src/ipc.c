@@ -39,7 +39,7 @@ extern int running;
 extern void reload(int signo);
 
 /* Receive command from the smcroutectl */
-static void read_ipc_command(int sd)
+static void read_command(int sd)
 {
 	int result = 0;
 	struct ipc_msg *msg;
@@ -95,7 +95,7 @@ static void ipc_accept(int sd, void *arg)
 	if (client < 0)
 		return;
 
-	read_ipc_command(client);
+	read_command(client);
 	close(client);
 }
 
