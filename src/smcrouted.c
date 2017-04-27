@@ -373,9 +373,16 @@ static int server_loop(int sd)
 		if (cache_tmo) {
 			gettimeofday(&now, NULL);
 			if (last_cache_flush.tv_sec != 0)
-				timeout.tv_sec -=  now.tv_sec - last_cache_flush.tv_sec;
-			if (timeout.tv_sec <= 0)
+				timeout.tv_sec = cache_tmo + last_cache_flush.tv_sec - now.tv_sec;
+			if (timeout.tv_sec <= 0) {
+				/* Flush only after first timeout */
+				if (last_cache_flush.tv_sec != 0) {
+					smclog(LOG_NOTICE, "Cache timeout, flushing unused (*,G) routes!");
+					mroute4_dyn_expire(cache_tmo);
+				}
+				last_cache_flush = now;
 				timeout.tv_sec = cache_tmo;
+			}
 			timeout.tv_usec = 0;
 			tmo = &timeout;
 		}
@@ -387,12 +394,6 @@ static int server_loop(int sd)
 			if (EINTR != errno)
 				smclog(LOG_WARNING, "Failed select() in %s(): %s", strerror(errno), __func__);
 			continue;
-		}
-
-		if (cache_tmo && (last_cache_flush.tv_sec + cache_tmo < now.tv_sec)) {
-			last_cache_flush = now;
-			smclog(LOG_NOTICE, "Cache timeout, flushing unused (*,G) routes!");
-			mroute4_dyn_expire(cache_tmo);
 		}
 
 		if (FD_ISSET(mroute4_socket, &fds))
