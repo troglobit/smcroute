@@ -192,7 +192,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 	}
 
 	if (!source) {
-		mroute.sender.s_addr = INADDR_ANY;
+		mroute.sender.s_addr = htonl(INADDR_ANY);
 	} else if (inet_pton(AF_INET, source, &mroute.sender) <= 0) {
 		WARN("Invalid source IPv4 address: %s", source);
 		return 1;
@@ -200,7 +200,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 
 	ptr = strchr(group, '/');
 	if (ptr) {
-		if (mroute.sender.s_addr != INADDR_ANY) {
+		if (mroute.sender.s_addr != htonl(INADDR_ANY)) {
 			WARN("GROUP/LEN not yet supported for source specific multicast.");
 			return 1;
 		}

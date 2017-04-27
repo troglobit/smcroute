@@ -288,7 +288,7 @@ static int mroute4_add_vif(struct iface *iface)
 #else
 	vc.vifc_lcl_addr.s_addr = iface->inaddr.s_addr;
 #endif
-	vc.vifc_rmt_addr.s_addr = INADDR_ANY;
+	vc.vifc_rmt_addr.s_addr = htonl(INADDR_ANY);
 
 	smclog(LOG_DEBUG, "Map iface %-16s => VIF %-2d ifindex %2d flags 0x%04x TTL threshold %u",
 	       iface->name, vc.vifc_vifi, iface->ifindex, vc.vifc_flags, iface->threshold);
@@ -472,9 +472,11 @@ void mroute4_dyn_flush(void)
  */
 int mroute4_add(struct mroute4 *route)
 {
-	/* For (*,G) we save to a linked list to be added on-demand
-	 * when the kernel sends IGMPMSG_NOCACHE. */
-	if (route->sender.s_addr == INADDR_ANY) {
+	/*
+	 * For (*,G) we save to a linked list to be added on-demand when
+	 * the kernel sends IGMPMSG_NOCACHE.
+	 */
+	if (route->sender.s_addr == htonl(INADDR_ANY)) {
 		struct mroute4 *entry = malloc(sizeof(struct mroute4));
 
 		if (!entry) {
@@ -506,11 +508,12 @@ int mroute4_del(struct mroute4 *route)
 {
 	struct mroute4 *entry, *set;
 
-	/* For (*,G) we have saved all dynamically added kernel routes
-	 * to a linked list which we need to traverse again and remove
-	 * all matches. From kernel dyn list before we remove the conf
-	 * entry. */
-	if (route->sender.s_addr != INADDR_ANY)
+	/*
+	 * For (*,G) we have stored dynamically added kernel routes to a
+	 * linked list.  This list we now traverse to remove all matches
+	 * from the kernel dyn list before we remove the conf entry.
+	 */
+	if (route->sender.s_addr != htonl(INADDR_ANY))
 		return __mroute4_del(route);
 
 	if (LIST_EMPTY(&mroute4_conf_list))
