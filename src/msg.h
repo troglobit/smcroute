@@ -1,16 +1,44 @@
 /* SMCRoute IPC API
  *
- * XXX: Add example packet layouts
+ * Multicast routes:
+ *
+ * add eth0 [1.1.1.1] 239.1.1.1 eth1 eth2
+ *
+ *  +----+-----+---+--------------------------------------------+
+ *  | 42 | 'a' | 5 | "eth0\01.1.1.1\0239.1.1.1\0eth1\0eth2\0\0" |
+ *  +----+-----+---+--------------------------------------------+
+ *  ^              ^        |-----|
+ *  |              |               `---> Second argument is optional => (*,G)
+ *  +-----cmd------+
+ *
+ * del [1.1.1.1] 239.1.1.1
+ *
+ *  +----+-----+---+--------------------------+
+ *  | 27 | 'r' | 2 | "1.1.1.1\0239.1.1.1\0\0" |
+ *  +----+-----+---+--------------------------+
+ *  ^              ^
+ *  |              |
+ *  +-----cmd------+
+ *
+ * Multicast groups:
+ *
+ * join/leave eth0 [1.1.1.1] 239.1.1.1
+ *
+ *  +----+-----+---+--------------------------------------------+
+ *  | 32 | 'j' | 3 | "eth0\01.1.1.1\0239.1.1.1\0\0"             |
+ *  +----+-----+---+--------------------------------------------+
+ *                          |-----|
+ *                                 `-----> For SSM group join/leave
  */
 #ifndef SMCROUTE_MSG_H_
 #define SMCROUTE_MSG_H_
 
 #include <paths.h>
 #include <stdint.h>
-#include "mroute.h"
 
 /* XXX: Move to config.h, should be configurable */
 #define SOCKET_PATH _PATH_VARRUN "smcroute.sock"
+#define MX_CMDPKT_SZ 1024	/* command size including appended strings */
 
 struct ipc_msg {
 	size_t   len;		/* total size of packet including cmd header */
@@ -19,14 +47,7 @@ struct ipc_msg {
 	char    *argv[0]; 	/* 'count' * '\0' terminated strings + '\0' */
 };
 
-#define MX_CMDPKT_SZ 1024	/* command size including appended strings */
-
-char *msg_to_mgroup4(struct ipc_msg *msg, struct in_addr *src, struct in_addr *grp);
-char *msg_to_mgroup6(struct ipc_msg *msg, struct in6_addr *src, struct in6_addr *grp);
-
-const char *msg_to_mroute  (struct mroute  *mroute, const struct ipc_msg *msg);
-const char *msg_to_mroute4 (struct mroute4 *mroute, const struct ipc_msg *msg);
-const char *msg_to_mroute6 (struct mroute6 *mroute, const struct ipc_msg *msg);
+int msg_do(struct ipc_msg *msg);
 
 #endif /* SMCROUTE_MSG_H_ */
 

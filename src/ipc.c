@@ -23,6 +23,7 @@
 
 #include <errno.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <netinet/in.h>
 #include <sys/types.h>
@@ -32,7 +33,6 @@
 #include "ipc.h"
 #include "log.h"
 #include "msg.h"
-#include "mcgroup.h"
 #include "socket.h"
 
 extern int running;
@@ -41,9 +41,8 @@ extern void reload(int signo);
 /* Receive command from the smcroutectl */
 static void read_ipc_command(int sd)
 {
-	const char *str;
+	int result = 0;
 	struct ipc_msg *msg;
-	struct mroute mroute;
 	char buf[MX_CMDPKT_SZ];
 
 	memset(buf, 0, sizeof(buf));
@@ -58,91 +57,31 @@ static void read_ipc_command(int sd)
 	switch (msg->cmd) {
 	case 'a':
 	case 'r':
-		if ((str = msg_to_mroute(&mroute, msg))) {
-			smclog(LOG_WARNING, "%s", str);
-			ipc_send(sd, log_message, strlen(log_message) + 1);
-			goto error;
-		}
-
-		if (mroute.version == 4) {
-			if ((msg->cmd == 'a' && mroute4_add(&mroute.u.mroute4))
-			    || (msg->cmd == 'r' && mroute4_del(&mroute.u.mroute4))) {
-				ipc_send(sd, log_message, strlen(log_message) + 1);
-				goto error;
-			}
-		} else {
-#ifndef HAVE_IPV6_MULTICAST_ROUTING
-			smclog(LOG_WARNING, "IPv6 multicast routing support disabled.");
-#else
-			if ((msg->cmd == 'a' && mroute6_add(&mroute.u.mroute6))
-			    || (msg->cmd == 'r' && mroute6_del(&mroute.u.mroute6))) {
-				ipc_send(sd, log_message, strlen(log_message) + 1);
-				goto error;
-			}
-#endif /* HAVE_IPV6_MULTICAST_ROUTING */
-		}
-		break;
-
 	case 'j':
 	case 'l':
-	{
-		int result = -1;
-
-		str = msg->cmd == 'j' ? "join" : "leave";
-		if (strchr(msg->argv[1], ':')) {
-#ifndef HAVE_IPV6_MULTICAST_HOST
-			smclog(LOG_WARNING, "IPv6 multicast support disabled.");
-#else
-			char *ifname;
-			struct in6_addr source, group;
-
-			ifname = msg_to_mgroup6(msg, &source, &group);
-			if (!ifname || !IN6_IS_ADDR_MULTICAST(&group)) {
-				smclog(LOG_WARNING, "%s: Invalid IPv6 source our group address.", str);
-			} else {
-				if (msg->cmd == 'j')
-					result = mcgroup6_join(ifname, group);
-				else
-					result = mcgroup6_leave(ifname, group);
-			}
-#endif /* HAVE_IPV6_MULTICAST_HOST */
-		} else {
-			char *ifname;
-			struct in_addr source, group;
-
-			ifname = msg_to_mgroup4(msg, &source, &group);
-			if (!ifname || !IN_MULTICAST(ntohl(group.s_addr))) {
-				smclog(LOG_WARNING, "%s: Invalid IPv4 source our group address.", str);
-			} else {
-				if (msg->cmd == 'j')
-					result = mcgroup4_join(ifname, source, group);
-				else
-					result = mcgroup4_leave(ifname, source, group);
-			}
-		}
-
-		if (result) {
-			ipc_send(sd, log_message, strlen(log_message) + 1);
-			goto error;
-		}
+	case 'F':
+		result = msg_do(msg);
 		break;
-	}
 
 	case 'H':		/* HUP */
 		reload(0);
 		break;
 
-	case 'F':
-		mroute4_dyn_flush();
-		break;
-
 	case 'k':
 		running = 0;
 		break;
+
+	default:
+		smclog(LOG_WARNING, "Unkown IPC message '%c' from client.", msg->cmd);
+		result = 1;
+		break;
 	}
 
-	ipc_send(sd, "", 1);
-error:
+	if (result)
+		ipc_send(sd, log_message, strlen(log_message) + 1);
+	else
+		ipc_send(sd, "", 1);
+
 	free(msg);
 }
 
