@@ -286,7 +286,7 @@ int msg_do(struct ipc_msg *msg)
 		break;
 
 	case 'F':
-		mroute4_dyn_flush();
+		mroute4_dyn_expire(0);
 		break;
 
 	default:

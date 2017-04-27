@@ -149,18 +149,6 @@ static void signal_init(void)
 	sigaction(SIGINT, &sa, NULL);
 }
 
-static void check_flush_timeout(void)
-{
-	if (!cache_tmo)
-		return;
-
-	if (last_cache_flush.tv_sec + cache_tmo < now.tv_sec) {
-		last_cache_flush = now;
-		smclog(LOG_NOTICE, "Cache timeout, flushing all (*,G) routes!");
-		mroute4_dyn_flush();
-	}
-}
-
 /* Return timeout for next timer, or NULL if no active timers */
 static struct timeval *timeout(void)
 {
@@ -172,9 +160,17 @@ static struct timeval *timeout(void)
 	gettimeofday(&now, NULL);
 
 	if (last_cache_flush.tv_sec != 0)
-		tmo.tv_sec -=  now.tv_sec - last_cache_flush.tv_sec;
-	if (tmo.tv_sec <= 0)
+		tmo.tv_sec = cache_tmo + last_cache_flush.tv_sec - now.tv_sec;
+
+	if (tmo.tv_sec <= 0) {
+		/* Flush only after first timeout */
+		if (last_cache_flush.tv_sec != 0) {
+			smclog(LOG_NOTICE, "Cache timeout, flushing unused (*,G) routes!");
+			mroute4_dyn_expire(cache_tmo);
+		}
+		last_cache_flush = now;
 		tmo.tv_sec = cache_tmo;
+	}
 	tmo.tv_usec = 0;
 
 	return &tmo;
@@ -182,12 +178,8 @@ static struct timeval *timeout(void)
 
 static int server_loop(void)
 {
-	while (running) {
+	while (running)
 		socket_poll(timeout());
-
-		/* Check (*,G) flush timer */
-		check_flush_timeout();
-	}
 
 	return 0;
 }
