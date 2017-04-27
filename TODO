@@ -1,5 +1,11 @@
 #                                                              -*-org-*-
 
+* BEFORE RELEASE
+- Audit socket close and ipc_exit() ordering
+- Refactor script.c waitpid() to use SIGCHLD instead
+- Add smcroutectl show <-- list both (*,G) and active kernel routes + mgroups
+- Add compat.c --> old smcroute interface, --enable-old-smcroute
+
 * Add IPv6 support for (*, G), i.e., on-demand, routing rules
 In SMCRoute 1.99.0 IPv4 support for source-less multicast routes was
 added. Adding support for IPv6 should be fairly straight forward, but
