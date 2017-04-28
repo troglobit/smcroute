@@ -2,6 +2,7 @@
 
 * BEFORE RELEASE
 - Audit socket close and ipc_exit() ordering
+- Replace gettimeofday() with clock_gettime(CLOCK_MONOTONIC), incl. configure checks
 - Refactor script.c waitpid() to use SIGCHLD instead
 - Add smcroutectl show <-- list both (*,G) and active kernel routes + mgroups
 - Add compat.c --> old smcroute interface, --enable-old-smcroute
