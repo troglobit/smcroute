@@ -24,8 +24,9 @@
 #include <string.h>
 #include "config.h"
 
-int socket_create (int domain, int type, int proto, void (*cb)(int, void *), void *arg);
-int socket_close  (int sd);
-int socket_poll   (struct timeval *timeout);
+int socket_register(int sd, void (*cb)(int, void *), void *arg);
+int socket_create  (int domain, int type, int proto, void (*cb)(int, void *), void *arg);
+int socket_close   (int sd);
+int socket_poll    (struct timeval *timeout);
 
 #endif /* SMCROUTE_SOCKET_H_ */

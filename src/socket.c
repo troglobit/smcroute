@@ -1,4 +1,4 @@
-/* Helper functions
+/* Socket helper functions
  *
  * Copyright (C) 2017  Joachim Nilsson <troglobit@gmail.com>
  *
@@ -51,25 +51,15 @@ int nfds(void)
 }
 
 /*
- * create socket, with optional callback for reading inbound data
+ * register socket/fd/pipe created elsewhere, optional callback
  */
-int socket_create(int domain, int type, int proto, void (*cb)(int, void *), void *arg)
+int socket_register(int sd, void (*cb)(int, void *), void *arg)
 {
-	int sd;
 	struct sock *entry;
 
 	entry = malloc(sizeof(*entry));
 	if (!entry)
 		return -1;
-
-#ifdef HAVE_SOCK_CLOEXEC
-	type |= SOCK_CLOEXEC;
-#endif
-	sd = socket(domain, type, proto);
-	if (sd < 0) {
-		free(entry);
-		return -1;
-	}
 
 	entry->sd  = sd;
 	entry->cb  = cb;
@@ -83,6 +73,28 @@ int socket_create(int domain, int type, int proto, void (*cb)(int, void *), void
 	/* Keep track for select() */
 	if (sd > max_fdnum)
 		max_fdnum = sd;
+
+	return sd;
+}
+
+/*
+ * create socket, with optional callback for reading inbound data
+ */
+int socket_create(int domain, int type, int proto, void (*cb)(int, void *), void *arg)
+{
+	int sd;
+
+#ifdef HAVE_SOCK_CLOEXEC
+	type |= SOCK_CLOEXEC;
+#endif
+	sd = socket(domain, type, proto);
+	if (sd < 0)
+		return -1;
+
+	if (socket_register(sd, cb, arg) < 0) {
+		close(sd);
+		return -1;
+	}
 
 	return sd;
 }
