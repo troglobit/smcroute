@@ -48,6 +48,7 @@
 #include "conf.h"
 #include "ifvc.h"
 #include "util.h"
+#include "timer.h"
 #include "script.h"
 #include "socket.h"
 #include "mroute.h"
@@ -326,6 +327,8 @@ static int start_server(void)
 
 	atexit(clean);
 	signal_init();
+	timer_init();
+
 	read_conf_file(conf_file, do_vifs);
 
 	/* Everything setup, notify any clients by creating the pidfile */
