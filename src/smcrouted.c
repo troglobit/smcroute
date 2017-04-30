@@ -72,9 +72,6 @@ static const char *username;
 
 static const char version_info[] = PACKAGE_NAME " v" PACKAGE_VERSION;
 
-static struct timeval now = { 0 };
-static struct timeval last_cache_flush = { 0 };
-
 
 /* Cleans up, i.e. releases allocated resources. Called via atexit() */
 static void clean(void)
@@ -150,37 +147,21 @@ static void signal_init(void)
 	sigaction(SIGINT, &sa, NULL);
 }
 
-/* Return timeout for next timer, or NULL if no active timers */
-static struct timeval *timeout(void)
+static void cache_flush(void *arg)
 {
-	static struct timeval tmo = { 0 };
+	(void)arg;
 
-	if (!cache_tmo)
-		return NULL;
-
-	gettimeofday(&now, NULL);
-
-	if (last_cache_flush.tv_sec != 0)
-		tmo.tv_sec = cache_tmo + last_cache_flush.tv_sec - now.tv_sec;
-
-	if (tmo.tv_sec <= 0) {
-		/* Flush only after first timeout */
-		if (last_cache_flush.tv_sec != 0) {
-			smclog(LOG_NOTICE, "Cache timeout, flushing unused (*,G) routes!");
-			mroute4_dyn_expire(cache_tmo);
-		}
-		last_cache_flush = now;
-		tmo.tv_sec = cache_tmo;
-	}
-	tmo.tv_usec = 0;
-
-	return &tmo;
+	smclog(LOG_NOTICE, "Cache timeout, flushing unused (*,G) routes!");
+	mroute4_dyn_expire(cache_tmo);
 }
 
 static int server_loop(void)
 {
+	if (cache_tmo)
+		timer_add(cache_tmo, cache_flush, NULL);
+
 	while (running)
-		socket_poll(timeout());
+		socket_poll(NULL);
 
 	return 0;
 }
