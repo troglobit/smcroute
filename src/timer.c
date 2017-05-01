@@ -119,7 +119,7 @@ static void run(int sd, void *arg)
 }
 
 /* write to pipe to create an event for select() on SIGALRM */
-static void sigalarm_handler(int signo)
+static void handler(int signo)
 {
 	(void)signo;
 	if (write(timerfd[1], "!", 1) < 0)
@@ -141,7 +141,7 @@ int timer_init(void)
 	if (socket_register(timerfd[1], NULL, NULL) < 0)
 		return -1;
 
-	sa.sa_handler = sigalarm_handler;
+	sa.sa_handler = handler;
 	sa.sa_flags = 0;
 	sigemptyset(&sa.sa_mask);
 	sigaction(SIGALRM, &sa, NULL);
