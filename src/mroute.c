@@ -37,6 +37,7 @@
 #include "ifvc.h"
 #include "script.h"
 #include "socket.h"
+#include "mrdisc.h"
 #include "mroute.h"
 #include "util.h"
 
@@ -291,7 +292,7 @@ static int mroute4_add_vif(struct iface *iface)
 	iface->vif = vif;
 	vif_list[vif].iface = iface;
 
-	return 0;
+	return mrdisc_register(iface->name, vif);
 }
 
 static int mroute4_del_vif(struct iface *iface)
@@ -315,11 +316,11 @@ static int mroute4_del_vif(struct iface *iface)
 	else
 		iface->vif = -1;
 
-	return 0;
+	return mrdisc_deregister(vif);
 }
 
 /* Actually set in kernel - called by mroute4_add() and mroute4_check_add() */
-static int __mroute4_add(struct mroute4 *route)
+static int __mroute4_add(struct mroute4 *route, int active)
 {
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	struct mfcctl mc;
@@ -342,15 +343,20 @@ static int __mroute4_add(struct mroute4 *route)
 		return 1;
 	}
 
-	smclog(LOG_DEBUG, "Add %s -> %s from VIF %d",
-	       inet_ntop(AF_INET, &mc.mfcc_origin,   origin, INET_ADDRSTRLEN),
-	       inet_ntop(AF_INET, &mc.mfcc_mcastgrp, group,  INET_ADDRSTRLEN), mc.mfcc_parent);
+	if (active) {
+		smclog(LOG_DEBUG, "Add %s -> %s from VIF %d",
+		       inet_ntop(AF_INET, &mc.mfcc_origin,   origin, INET_ADDRSTRLEN),
+		       inet_ntop(AF_INET, &mc.mfcc_mcastgrp, group,  INET_ADDRSTRLEN), mc.mfcc_parent);
+
+		/* Only enable mrdisc for active routes, i.e. with outbound */
+		mrdisc_enable(route->inbound);
+	}
 
 	return 0;
 }
 
 /* Actually remove from kernel - called by mroute4_del() */
-static int __mroute4_del(struct mroute4 *route)
+static int __mroute4_del(struct mroute4 *route, int active)
 {
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	struct mfcctl mc;
@@ -366,9 +372,14 @@ static int __mroute4_del(struct mroute4 *route)
 		return 1;
 	}
 
-	smclog(LOG_DEBUG, "Del %s -> %s",
-	       inet_ntop(AF_INET, &mc.mfcc_origin,  origin, INET_ADDRSTRLEN),
-	       inet_ntop(AF_INET, &mc.mfcc_mcastgrp, group, INET_ADDRSTRLEN));
+	if (active) {
+		smclog(LOG_DEBUG, "Del %s -> %s",
+		       inet_ntop(AF_INET, &mc.mfcc_origin,  origin, INET_ADDRSTRLEN),
+		       inet_ntop(AF_INET, &mc.mfcc_mcastgrp, group, INET_ADDRSTRLEN));
+
+		/* Only disable mrdisc for active routes. */
+		mrdisc_disable(route->inbound);
+	}
 
 	return 0;
 }
@@ -434,7 +445,7 @@ int mroute4_dyn_add(struct mroute4 *route)
 		LIST_INSERT_HEAD(&mroute4_dyn_list, new_entry, link);
 	}
 
-	ret = __mroute4_add(route);
+	ret = __mroute4_add(route, entry ? 1 : 0);
 	if (!entry) {
 		errno = ENOENT;
 		ret = -1;
@@ -462,6 +473,18 @@ static int mroute4_get_stats(struct mroute4 *route, unsigned long *pktcnt, unsig
 	}
 
 	return result;
+}
+
+static int is_active4(struct mroute4 *route)
+{
+	size_t i;
+
+	for (i = 0; i < NELEMS(route->ttl); i++) {
+		if (route->ttl[i])
+			return 1;
+	}
+
+	return 0;
 }
 
 /* Get valid packet usage statistics (i.e. number of actually forwarded
@@ -508,7 +531,7 @@ void mroute4_dyn_expire(int max_idle)
 				entry->valid_pkt = valid_pkt;
 			} else {
 				/* Not used, expire */
-				__mroute4_del(entry);
+				__mroute4_del(entry, is_active4(entry));
 				LIST_REMOVE(entry, link);
 				free(entry);
 			}
@@ -549,7 +572,7 @@ int mroute4_add(struct mroute4 *route)
 		return 0;
 	}
 
-	return __mroute4_add(route);
+	return __mroute4_add(route, 1);
 }
 
 /**
@@ -573,7 +596,7 @@ int mroute4_del(struct mroute4 *route)
 	 * from the kernel dyn list before we remove the conf entry.
 	 */
 	if (route->sender.s_addr != htonl(INADDR_ANY))
-		return __mroute4_del(route);
+		return __mroute4_del(route, 1);
 
 	if (LIST_EMPTY(&mroute4_conf_list))
 		return 0;
@@ -588,7 +611,7 @@ int mroute4_del(struct mroute4 *route)
 			set = LIST_FIRST(&mroute4_dyn_list);
 			while (set) {
 				if (__mroute4_match(entry, set) && entry->len == route->len) {
-					__mroute4_del(set);
+					__mroute4_del(set, is_active4(set));
 					LIST_REMOVE(set, link);
 					free(set);
 

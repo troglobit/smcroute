@@ -42,6 +42,7 @@
 #include "timer.h"
 #include "script.h"
 #include "socket.h"
+#include "mrdisc.h"
 #include "mroute.h"
 #include "mcgroup.h"
 
@@ -50,6 +51,7 @@ int background = 1;
 int do_vifs    = 1;
 int do_syslog  = 1;
 int cache_tmo  = 0;
+int interval   = MRDISC_INTERVAL_DEFAULT;
 int startup_delay = 0;
 
 char *script   = NULL;
@@ -144,6 +146,7 @@ static void cache_flush(void *arg)
 static int server_loop(void)
 {
 	script_init(script);
+	mrdisc_init(interval);
 
 	if (cache_tmo)
 		timer_add(cache_tmo, cache_flush, NULL);
@@ -230,7 +233,11 @@ static int usage(int code)
 #ifdef ENABLE_DOTCONF
 	       "[-f FILE] "
 #endif
-	       "[-e CMD] [-L LVL] [-t SEC]\n"
+	       "[-e CMD] [-l LVL] "
+#ifdef ENABLE_MRDISC
+	       "[-m SEC] "
+#endif
+	       "[-t SEC]\n"
 	       "\n"
 	       "  -c SEC          Flush dynamic (*,G) multicast routes every SEC seconds\n"
 	       "  -e CMD          Script or command to call on startup/reload when all routes\n"
@@ -241,6 +248,9 @@ static int usage(int code)
 #endif
 	       "  -h              This help text\n"
 	       "  -l LVL          Set log level: none, err, info, notice*, debug\n"
+#ifdef ENABLE_MRDISC
+	       "  -m SEC          Multicast router discovery, 4-180, default: 20 sec"
+#endif
 	       "  -n              Run daemon in foreground, useful when run from finit\n"
 	       "  -N              No VIFs/MIFs created by default, use `phyint IFNAME enable`\n"
 #ifdef HAVE_LIBCAP
@@ -286,7 +296,7 @@ int main(int argc, char *argv[])
 	int log_opts = LOG_CONS | LOG_PID;
 
 	prognm = progname(argv[0]);
-	while ((c = getopt(argc, argv, "c:de:f:hl:nNp:st:v")) != EOF) {
+	while ((c = getopt(argc, argv, "c:de:f:hl:m:nNp:st:v")) != EOF) {
 		switch (c) {
 		case 'c':	/* cache timeout */
 			cache_tmo = atoi(optarg);
@@ -312,6 +322,16 @@ int main(int argc, char *argv[])
 
 		case 'l':
 			log_level = loglvl(optarg);
+			break;
+
+		case 'm':
+#ifndef ENABLE_MRDISC
+			warnx("Built without mrdisc support.");
+#else
+			interval = atoi(optarg);
+			if (interval < 4 || interval > 180)
+				errx(1, "Invalid mrdisc announcement interval, 4-180.");
+#endif
 			break;
 
 		case 'n':	/* run daemon in foreground, i.e., do not fork */

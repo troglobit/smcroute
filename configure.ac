@@ -26,6 +26,8 @@ PKG_PROG_PKG_CONFIG
 AC_GNU_SOURCE
 
 # Check user options
+AC_ARG_ENABLE([mrdisc],
+	AS_HELP_STRING([--enable-mrdisc], [enable IPv4 multicast router discovery, default: disabled]))
 AC_ARG_ENABLE([ipv6],
 	AS_HELP_STRING([--disable-ipv6], [disable IPv6 support, default: enabled]))
 AC_ARG_WITH([client],
@@ -48,6 +50,11 @@ AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h		\
 	# include <sys/socket.h>
 	#endif
 ])
+
+# Build w/ mrdisc support?
+AS_IF([test "x$enable_mrdisc" = "xyes"],
+    AC_DEFINE([ENABLE_MRDISC], 1, [Enable IPv4 multicast router discovery protocol]))
+AM_CONDITIONAL([USE_MRDISC], [test "x$enable_mrdisc" = "xyes"])
 
 # Build w/o smcroutectl and IPC API?
 AS_IF([test "x$with_client" != "xno"],

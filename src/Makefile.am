@@ -11,6 +11,10 @@ smcrouted_SOURCES      += cap.c cap.h
 smcrouted_LDADD	       += -lcap
 endif
 
+if USE_MRDISC
+smcrouted_SOURCES      += mrdisc.c mrdisc.h inet.c inet.h cksum.c
+endif
+
 if HAVE_CLIENT
 sbin_PROGRAMS	       += smcroutectl
 smcrouted_SOURCES      += msg.c msg.h ipc.c ipc.h
