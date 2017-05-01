@@ -1,6 +1,9 @@
 #                                                              -*-org-*-
 
 * BEFORE RELEASE
+- Verify that VIFs are created in --without-conf
+- Adding a (*,G) mroute after an inactive/dummy rule has been set causes
+  no multicast to be forwarded :-/
 - Audit socket close and ipc_exit() ordering
 - Add smcroutectl show <-- list both (*,G) and active kernel routes + mgroups
 - Add compat.c --> old smcroute interface, --enable-old-smcroute
