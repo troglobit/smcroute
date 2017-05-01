@@ -267,7 +267,7 @@ static int drop_root(const char *user)
  * error code in the parent and the initscript will fail */
 static int start_server(void)
 {
-	int sd = 0, api = 2, busy = 0;
+	int api = 2, busy = 0;
 
 	/* Hello world! */
 	smclog(LOG_NOTICE, "%s", version_info);
@@ -304,9 +304,8 @@ static int start_server(void)
 	}
 
 #ifdef ENABLE_CLIENT
-	sd = ipc_init();
-	if (sd < 0)
-		smclog(LOG_WARNING, "Failed setting up IPC socket, client communication disabled: %s", strerror(errno));
+	if (ipc_init() < 0)
+		smclog(LOG_WARNING, "Failed creating client IPC socket, client disabled: %s", strerror(errno));
 #endif
 
 	atexit(clean);
