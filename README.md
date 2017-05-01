@@ -59,7 +59,7 @@ By default SMCRoute looks for its configuration in `/etc/smcroute.conf`,
 which can look something like this:
 
     mgroup from eth0 group 225.1.2.3
-    ssmgroup from eth0 group 225.1.2.3 source 192.168.1.42
+    mgroup from eth0 group 225.1.2.3 source 192.168.1.42
     mroute from eth0 group 225.1.2.3 source 192.168.1.42 to eth1 eth2
 
 The first line means "Join multicast group 225.1.2.3 on interface eth0",
@@ -72,9 +72,8 @@ this way, for more groups you should investigate the root cause for not
 receiving multicast at the multicast router, or use a dynamic multicast
 routing protocol.
 
-The second command `ssmgroup` do the same as `mgroup` one, but by
-joining source specific group the host specifies that it wants packets
-from source 192.168.1.42 and not any other source.
+The second `mgroup` is for source specific group join, i.e. the host
+specifies that it wants packets from 192.168.1.42 and no other source.
 
 The third `mroute` line is the actual layer-3 routing entry.  Here we
 say that multicast data originating from 192.168.1.42 on `eth0` to the
@@ -100,8 +99,8 @@ with the daemon.  To achieve the above two config file lines you have to:
 
 To allow the daemon to startup properly (above) before interacting with it.
 
-    # smcroutectl -j eth0 225.1.2.3
-    # smcroutectl -a eth0 192.168.1.42 225.1.2.3 eth1 eth2
+    # smcroutectl join eth0 225.1.2.3
+    # smcroutectl add  eth0 192.168.1.42 225.1.2.3 eth1 eth2
 
 
 Experimental
@@ -121,8 +120,8 @@ Example smcroute.conf:
 
 or, from the command line:
 
-    # smcroutectl -j eth0 225.1.2.3
-    # smcroutectl -a eth0 0.0.0.0 225.1.2.3 eth1 eth2
+    # smcroutectl join eth0 225.1.2.3
+    # smcroutectl add  eth0 225.1.2.3 eth1 eth2
 
 
 Build & Install
