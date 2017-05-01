@@ -256,7 +256,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
  *    ssmgroup from IFNAME source ADDRESS group MCGROUP
  *    mroute   from IFNAME source ADDRESS group MCGROUP to IFNAME [IFNAME ...]
  */
-static int parse_conf_file(const char *file, int do_vifs)
+static int conf_parse(const char *file, int do_vifs)
 {
 	int lineno = 1;
 	char *linebuf, *line;
@@ -353,7 +353,7 @@ static int parse_conf_file(const char *file, int do_vifs)
 }
 
 /* Parse .conf file and setup routes */
-void read_conf_file(const char *file, int do_vifs)
+void conf_read(const char *file, int do_vifs)
 {
 	if (access(file, R_OK)) {
 		if (errno == ENOENT)
@@ -365,7 +365,7 @@ void read_conf_file(const char *file, int do_vifs)
 		return;
 	}
 
-	if (parse_conf_file(file, do_vifs))
+	if (conf_parse(file, do_vifs))
 		smclog(LOG_WARNING, "Failed parsing %s: %s", file, strerror(errno));
 	else
 		script_exec(NULL);

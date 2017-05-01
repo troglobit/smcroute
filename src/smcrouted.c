@@ -112,7 +112,7 @@ void reload(int signo)
 	       signo ? "SIGHUP" : "client restart command");
 #endif
 	restart();
-	read_conf_file(conf_file, do_vifs);
+	conf_read(conf_file, do_vifs);
 
 	/* Acknowledge client SIGHUP/reload by touching the pidfile */
 	pidfile(NULL, uid, gid);
@@ -313,7 +313,7 @@ static int start_server(void)
 	signal_init();
 	timer_init();
 
-	read_conf_file(conf_file, do_vifs);
+	conf_read(conf_file, do_vifs);
 
 	/* Everything setup, notify any clients by creating the pidfile */
 	if (pidfile(NULL, uid, gid))
