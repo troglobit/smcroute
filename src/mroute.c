@@ -119,6 +119,7 @@ static void read_mroute4_socket(int sd, void *arg)
 		struct mroute4 mroute;
 		char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 
+		memset(&mroute, 0, sizeof(mroute));
 		mroute.group.s_addr  = igmpctl->im_dst.s_addr;
 		mroute.sender.s_addr = igmpctl->im_src.s_addr;
 		mroute.inbound       = igmpctl->im_vif;
@@ -286,8 +287,11 @@ static int mroute4_add_vif(struct iface *iface)
 	smclog(LOG_DEBUG, "Map iface %-16s => VIF %-2d ifindex %2d flags 0x%04x TTL threshold %u",
 	       iface->name, vc.vifc_vifi, iface->ifindex, vc.vifc_flags, iface->threshold);
 
-	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_VIF, (void *)&vc, sizeof(vc)))
+	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_VIF, (void *)&vc, sizeof(vc))) {
 		smclog(LOG_ERR, "Failed adding VIF for iface %s: %s", iface->name, strerror(errno));
+		iface->vif = -1;
+		return 1;
+	}
 
 	iface->vif = vif;
 	vif_list[vif].iface = iface;
@@ -495,6 +499,7 @@ static unsigned long mroute4_get_stats_valid_pkt(struct mroute4 *route)
 
 	if (mroute4_get_stats(route, &pktcnt, NULL, &wrong_if) < 0)
 		return 0;
+
 	return pktcnt - wrong_if;
 }
 
@@ -524,7 +529,9 @@ void mroute4_dyn_expire(int max_idle)
 			entry->valid_pkt = mroute4_get_stats_valid_pkt(entry);
 		}
 		if (entry->last_use + max_idle <= now.tv_sec) {
-			unsigned long valid_pkt = mroute4_get_stats_valid_pkt(entry);
+			unsigned long valid_pkt;
+
+			valid_pkt = mroute4_get_stats_valid_pkt(entry);
 			if (valid_pkt != entry->valid_pkt) {
 				/* Used since last check, update */
 				entry->last_use = now.tv_sec;
@@ -807,10 +814,11 @@ static int mroute6_add_mif(struct iface *iface)
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MIF, (void *)&mc, sizeof(mc))) {
 		smclog(LOG_ERR, "Failed adding MIF for iface %s: %s", iface->name, strerror(errno));
 		iface->mif = -1;
-	} else {
-		iface->mif = mif;
-		mif_list[mif].iface = iface;
+		return 1;
 	}
+
+	iface->mif = mif;
+	mif_list[mif].iface = iface;
 
 	return 0;
 }
