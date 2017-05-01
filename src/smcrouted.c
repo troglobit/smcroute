@@ -68,9 +68,7 @@ static void clean(void)
 	mroute6_disable();
 	mcgroup4_disable();
 	mcgroup6_disable();
-#ifdef ENABLE_CLIENT
 	ipc_exit();
-#endif
 	iface_exit();
 	smclog(LOG_NOTICE, "Exiting.");
 }
@@ -162,6 +160,18 @@ static int start_server(void)
 {
 	int api = 2, busy = 0;
 
+	if (geteuid() != 0) {
+		smclog(LOG_ERR, "Need root privileges to start %s", prognm);
+		return 1;
+	}
+
+	if (background) {
+		if (daemon(0, 0) < 0) {
+			smclog(LOG_ERR, "Failed daemonizing: %s", strerror(errno));
+			return 1;
+		}
+	}
+
 	/* Hello world! */
 	smclog(LOG_NOTICE, "%s", version_info);
 
@@ -196,14 +206,10 @@ static int start_server(void)
 		exit(1);
 	}
 
-#ifdef ENABLE_CLIENT
-	if (ipc_init() < 0)
-		smclog(LOG_WARNING, "Failed creating client IPC socket, client disabled: %s", strerror(errno));
-#endif
-
 	atexit(clean);
 	signal_init();
 	timer_init();
+	ipc_init();
 
 	conf_read(conf_file, do_vifs);
 
@@ -294,10 +300,10 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'f':
-#ifdef ENABLE_DOTCONF
-			conf_file = optarg;
-#else
+#ifndef ENABLE_DOTCONF
 			warnx("Built without .conf file support.");
+#else
+			conf_file = optarg;
 #endif
 			break;
 
@@ -343,18 +349,6 @@ int main(int argc, char *argv[])
 
 	openlog(prognm, log_opts, LOG_DAEMON);
 	setlogmask(LOG_UPTO(log_level));
-
-	if (geteuid() != 0) {
-		smclog(LOG_ERR, "Need root privileges to start %s", prognm);
-		return 1;
-	}
-
-	if (background) {
-		if (daemon(0, 0) < 0) {
-			smclog(LOG_ERR, "Failed daemonizing: %s", strerror(errno));
-			return 1;
-		}
-	}
 
 	return start_server();
 }

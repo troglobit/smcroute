@@ -113,7 +113,7 @@ int ipc_init(void)
 
 	sd = socket_create(AF_UNIX, SOCK_STREAM, 0, ipc_accept, NULL);
 	if (sd < 0)
-		return -1;
+		goto error;
 
 #ifdef HAVE_SOCKADDR_UN_SUN_LEN
 	sa.sun_len = 0;	/* <- correct length is set by the OS */
@@ -125,13 +125,14 @@ int ipc_init(void)
 
 	len = offsetof(struct sockaddr_un, sun_path) + strlen(SOCKET_PATH);
 	if (bind(sd, (struct sockaddr *)&sa, len) < 0 || listen(sd, 1)) {
-		int err = errno;
-
 		close(sd);
-		errno = err;
+		goto error;
 	}
 
 	return sd;
+error:
+	smclog(LOG_WARNING, "Failed creating client IPC socket, client disabled: %s", strerror(errno));
+	return -1;
 }
 
 /**
