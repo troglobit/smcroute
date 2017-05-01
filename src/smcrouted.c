@@ -240,7 +240,7 @@ static int usage(int code)
 	       "  -f FILE         File to use instead of default " SMCROUTE_SYSTEM_CONF "\n"
 #endif
 	       "  -h              This help text\n"
-	       "  -L LVL          Set log level: none, err, info, notice*, debug\n"
+	       "  -l LVL          Set log level: none, err, info, notice*, debug\n"
 	       "  -n              Run daemon in foreground, useful when run from finit\n"
 	       "  -N              No VIFs/MIFs created by default, use `phyint IFNAME enable`\n"
 #ifdef HAVE_LIBCAP
@@ -286,7 +286,7 @@ int main(int argc, char *argv[])
 	int log_opts = LOG_CONS | LOG_PID;
 
 	prognm = progname(argv[0]);
-	while ((c = getopt(argc, argv, "c:de:f:hL:nNp:st:v")) != EOF) {
+	while ((c = getopt(argc, argv, "c:de:f:hl:nNp:st:v")) != EOF) {
 		switch (c) {
 		case 'c':	/* cache timeout */
 			cache_tmo = atoi(optarg);
@@ -310,7 +310,7 @@ int main(int argc, char *argv[])
 		case 'h':	/* help */
 			return usage(0);
 
-		case 'L':
+		case 'l':
 			log_level = loglvl(optarg);
 			break;
 
