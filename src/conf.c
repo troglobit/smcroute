@@ -245,26 +245,24 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 	return mroute4_add(&mroute);
 }
 
-/**
- * parse_conf_file - Parse smcroute.conf
- * @file: File name to parse
- *
- * This function parses the given @file according to the below format rules.
- * Joins multicast groups and creates multicast routes accordingly in the
- * kernel.
+/*
+ * This function parses the given configuration file according to the
+ * below format rules.  Joins multicast groups and creates multicast
+ * routes accordingly in the kernel.  Whitespace is ignored.
  *
  * Format:
  *    phyint IFNAME <enable|disable> [threshold <1-255>]
- *    mgroup from IFNAME group MCGROUP
- *    ssmgroup from IFNAME group MCGROUP source SOURCE
- *    mroute from IFNAME source ADDRESS group MCGROUP to IFNAME [IFNAME ...]
+ *    mgroup   from IFNAME                group MCGROUP
+ *    ssmgroup from IFNAME source ADDRESS group MCGROUP
+ *    mroute   from IFNAME source ADDRESS group MCGROUP to IFNAME [IFNAME ...]
  */
-int parse_conf_file(const char *file, int enable)
+static int parse_conf_file(const char *file, int enable)
 {
 	int lineno = 1;
 	char *linebuf, *line;
-	FILE *fp = fopen(file, "r");
+	FILE *fp;
 
+	fp = fopen(file, "r");
 	if (!fp)
 		return 1;
 
