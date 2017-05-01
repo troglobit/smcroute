@@ -351,9 +351,6 @@ int parse_conf_file(const char *file, int enable)
 	free(linebuf);
 	fclose(fp);
 
-	if (run_script(NULL))
-		smclog(LOG_WARNING, 0, "Failed calling %s after (re)load of configuraion file.", script_exec);
-
 	return 0;
 }
 
@@ -372,6 +369,8 @@ void read_conf_file(const char *file, int enable)
 
 	if (parse_conf_file(file, enable))
 		smclog(LOG_WARNING, "Failed parsing %s: %s", file, strerror(errno));
+	else
+		script_exec(NULL);
 }
 
 /**

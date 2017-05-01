@@ -114,6 +114,7 @@ static void read_mroute4_socket(int sd, void *arg)
 	/* Check for IGMPMSG_NOCACHE to do (*,G) based routing. */
 	if (ip->ip_p == 0 && igmpctl->im_msgtype == IGMPMSG_NOCACHE) {
 		struct iface *iface;
+		struct mroute mrt;
 		struct mroute4 mroute;
 		char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 
@@ -145,20 +146,9 @@ static void read_mroute4_socket(int sd, void *arg)
 			return;
 		}
 
-		if (script_exec) {
-			int status;
-			struct mroute mrt;
-
-			mrt.version = 4;
-			mrt.u.mroute4 = mroute;
-			status = run_script(&mrt);
-			if (status) {
-				if (status < 0)
-					smclog(LOG_WARNING, "Cannot start script %s: %s", script_exec, strerror(errno));
-				else
-					smclog(LOG_WARNING, "Script %s returned error: %d", script_exec, status);
-			}
-		}
+		mrt.version = 4;
+		mrt.u.mroute4 = mroute;
+		script_exec(&mrt);
 	}
 }
 

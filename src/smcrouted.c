@@ -64,6 +64,7 @@ int startup_delay = 0;
 uid_t uid      = 0;
 gid_t gid      = 0;
 
+char *script   = NULL;
 char *prognm   = PACKAGE_NAME;
 
 #ifdef HAVE_LIBCAP
@@ -157,6 +158,8 @@ static void cache_flush(void *arg)
 
 static int server_loop(void)
 {
+	script_init(script);
+
 	if (cache_tmo)
 		timer_add(cache_tmo, cache_flush, NULL);
 
@@ -405,8 +408,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'e':
-
-			script_exec = optarg;
+			script = optarg;
 			break;
 
 		case 'f':
@@ -474,11 +476,6 @@ int main(int argc, char *argv[])
 
 	if (geteuid() != 0) {
 		smclog(LOG_ERR, "Need root privileges to start %s", prognm);
-		return 1;
-	}
-
-	if (script_exec && access(script_exec, X_OK)) {
-		smclog(LOG_ERR, "%s is not an executable, exiting.", script_exec);
 		return 1;
 	}
 

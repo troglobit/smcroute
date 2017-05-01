@@ -4,8 +4,7 @@
 
 #include "mroute.h"
 
-extern char *script_exec;
-
-int run_script(struct mroute *mroute);
+int script_init (char *script);
+int script_exec (struct mroute *mroute);
 
 #endif /* SMCROUTE_SCRIPT_H_ */

@@ -15,27 +15,73 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <errno.h>
+#include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/wait.h>
 #include <netinet/in.h>
+
+#include "log.h"
 #include "script.h"
 
-char *script_exec = NULL;
+static char *exec   = NULL;
+static pid_t script = 0;
 
-int run_script(struct mroute *mroute)
+static void handler(int signo)
 {
 	int status;
+	pid_t pid = 1;
+
+	(void)signo;
+
+	while (pid > 0) {
+		pid = waitpid(-1, &status, WNOHANG);
+		if (pid == script) {
+			script = 0;
+
+			/* Script exit OK. */
+			if (WIFEXITED(status))
+				continue;
+
+			/* Script exit status ... */
+			status = WEXITSTATUS(status);
+			if (status)
+				smclog(LOG_WARNING, "Script %s returned error: %d", exec, status);
+		}
+	}
+}
+
+int script_init(char *script)
+{
+	struct sigaction sa;
+
+	if (script && access(script, X_OK)) {
+		smclog(LOG_ERR, "%s is not executable.", script);
+		return -1;
+	}
+	exec = script;
+
+	sa.sa_handler = handler;
+	sa.sa_flags = 0;
+	sigemptyset(&sa.sa_mask);
+	sigaction(SIGCHLD, &sa, NULL);
+
+	return 0;
+}
+
+int script_exec(struct mroute *mroute)
+{
 	pid_t pid;
 
 	char *argv[] = {
-		script_exec,
+		exec,
 		"reload",
 		NULL,
 	};
 
-	if (!script_exec)
+	if (!exec)
 		return 0;
 
 	if (mroute) {
@@ -58,16 +104,15 @@ int run_script(struct mroute *mroute)
 	}
 
 	pid = fork();
-	if (-1 == pid)
-		return -1;
-	if (0 == pid)
+	if (!pid)
 		_exit(execv(argv[0], argv));
-	waitpid(pid, &status, 0);
+	if (pid < 0) {
+		smclog(LOG_WARNING, "Cannot start script %s: %s", exec, strerror(errno));
+		return -1;
+	}
 
-	if (WIFEXITED(status))
-		return 0;
-
-	return WEXITSTATUS(status);
+	script = pid;
+	return 0;
 }
 
 /**
