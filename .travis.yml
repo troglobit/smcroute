@@ -34,7 +34,7 @@ addons:
 # so we must customize the default build script to run ./autogen.sh
 script:
   - ./autogen.sh
-  - ./configure --disable-silent-rules --prefix=
+  - ./configure --disable-silent-rules --enable-mrdisc --prefix=
   - make clean
   - make -j5
   - make
