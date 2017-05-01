@@ -113,7 +113,8 @@ int socket_close(int sd)
 		}
 	}
 
-	return 1;
+	errno = ENOENT;
+	return -1;
 }
 
 int socket_poll(struct timeval *timeout)
