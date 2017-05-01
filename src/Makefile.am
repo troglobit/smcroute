@@ -7,6 +7,7 @@ smcrouted_CPPFLAGS	= -Wno-deprecated-declarations
 smcrouted_LDADD		= -lrt
 
 if USE_LIBCAP
+smcrouted_SOURCES      += cap.c cap.h
 smcrouted_LDADD	       += -lcap
 endif
 

@@ -27,21 +27,12 @@
 #include <errno.h>
 #include <getopt.h>
 #include <stdio.h>
-#include <string.h>
 #include <signal.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/time.h>		/* gettimeofday() */
 
-#ifdef HAVE_LIBCAP
-# ifdef HAVE_SYS_PRCTL_H
-#  include <sys/prctl.h>
-# endif
-# include <sys/capability.h>
-# include <pwd.h>
-# include <grp.h>
-#endif
-
+#include "cap.h"
 #include "ipc.h"
 #include "log.h"
 #include "msg.h"
@@ -61,15 +52,11 @@ int do_syslog  = 1;
 int cache_tmo  = 0;
 int startup_delay = 0;
 
-uid_t uid      = 0;
-gid_t gid      = 0;
-
 char *script   = NULL;
 char *prognm   = PACKAGE_NAME;
 
-#ifdef HAVE_LIBCAP
-static const char *username;
-#endif
+static uid_t uid = 0;
+static gid_t gid = 0;
 
 static const char version_info[] = PACKAGE_NAME " v" PACKAGE_VERSION;
 
@@ -169,100 +156,6 @@ static int server_loop(void)
 	return 0;
 }
 
-#ifdef HAVE_LIBCAP
-static int whoami(const char *user, const char *group)
-{
-	struct passwd *pw;
-	struct group  *gr;
-
-	if (!user)
-		return -1;
-
-	/* Get target UID and target GID */
-	pw = getpwnam(user);
-	if (!pw) {
-		smclog(LOG_INIT, "User '%s' not found!", user);
-		return -1;
-	}
-
-	uid = pw->pw_uid;
-	gid = pw->pw_gid;
-	if (group) {
-		gr = getgrnam(group);
-		if (!gr) {
-			smclog(LOG_INIT, "Group '%s' not found!", group);
-			return -1;
-		}
-		gid = gr->gr_gid;
-	}
-
-	/* Valid user */
-	username = user;
-
-	return 0;
-}
-
-static int setcaps(cap_value_t cv)
-{
-	int result;
-	cap_t caps = cap_get_proc();
-	cap_value_t cap_list = cv;
-
-	cap_clear(caps);
-
-	cap_set_flag(caps, CAP_PERMITTED, 1, &cap_list, CAP_SET);
-	cap_set_flag(caps, CAP_EFFECTIVE, 1, &cap_list, CAP_SET);
-	result = cap_set_proc(caps);
-
-	cap_free(caps);
-
-	return result;
-}
-
-/*
- * Drop root privileges except capability CAP_NET_ADMIN. This capability
- * enables the thread (among other networking related things) to add and
- * remove multicast routes
- */
-static int drop_root(const char *user)
-{
-#ifdef HAVE_SYS_PRCTL_H
-	/* Allow this process to preserve permitted capabilities */
-	if (prctl(PR_SET_KEEPCAPS, 1) == -1) {
-		smclog(LOG_ERR, "Cannot preserve capabilities: %s", strerror(errno));
-		return -1;
-	}
-#endif
-	/* Set supplementary groups, GID and UID */
-	if (initgroups(user, gid) == -1) {
-		smclog(LOG_ERR, "Failed setting supplementary groups: %s", strerror(errno));
-		return -1;
-	}
-
-	if (setgid(gid) == -1) {
-		smclog(LOG_ERR, "Failed setting group ID %d: %s", gid, strerror(errno));
-		return -1;
-	}
-
-	if (setuid(uid) == -1) {
-		smclog(LOG_ERR, "Failed setting user ID %d: %s", uid, strerror(errno));
-		return -1;
-	}
-
-	/* Clear all capabilities except CAP_NET_ADMIN */
-	if (setcaps(CAP_NET_ADMIN)) {
-		smclog(LOG_ERR, "Failed setting `CAP_NET_ADMIN`: %s", strerror(errno));
-		return -1;
-	}
-
-	/* Try to regain root UID, should not work at this point. */
-	if (setuid(0) == 0)
-		return -1;
-
-	return 0;
-}
-#endif /* HAVE_LIBCAP */
-
 /* Init everything before forking, so we can fail and return an
  * error code in the parent and the initscript will fail */
 static int start_server(void)
@@ -318,15 +211,8 @@ static int start_server(void)
 	if (pidfile(NULL, uid, gid))
 		smclog(LOG_WARNING, "Failed create/chown pidfile: %s", strerror(errno));
 
-#ifdef HAVE_LIBCAP
 	/* Drop root privileges before entering the server loop */
-	if (username) {
-		if (drop_root(username) == -1)
-			smclog(LOG_INIT, "Could not drop root privileges, continuing as root.");
-		else
-			smclog(LOG_INIT, "Root privileges dropped: Current UID %u, GID %u.", getuid(), getgid());
-	}
-#endif
+	cap_drop_root(uid, gid);
 
 	return server_loop();
 }
@@ -392,9 +278,6 @@ int main(int argc, char *argv[])
 {
 	int c;
 	int log_opts = LOG_CONS | LOG_PID;
-#ifdef HAVE_LIBCAP
-	char *ptr;
-#endif
 
 	prognm = progname(argv[0]);
 	while ((c = getopt(argc, argv, "c:de:f:hL:nNp:st:v")) != EOF) {
@@ -435,20 +318,8 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'p':
-#ifndef HAVE_LIBCAP
-			warnx("Drop privs support not available.");
+			cap_set_user(optarg, &uid, &gid);
 			break;
-#else
-			ptr = strdup(optarg);
-			if (!ptr)
-				err(1, "Failed parsing user:group argument");
-
-			if (whoami(strtok(ptr, ":"), strtok(NULL, ":")))
-				err(1, "Invalid user:group argument");
-
-			free(ptr);
-			break;
-#endif
 
 		case 's':	/* Force syslog even though in foreground */
 			do_syslog++;
