@@ -252,7 +252,8 @@ static int usage(int code)
 	       "  -m SEC          Multicast router discovery, 4-180, default: 20 sec"
 #endif
 	       "  -n              Run daemon in foreground, useful when run from finit\n"
-	       "  -N              No VIFs/MIFs created by default, use `phyint IFNAME enable`\n"
+	       "  -N              No multicast VIFs/MIFs created by default.  Use with\n"
+	       "                  smcroute.conf `phyint enable` directive\n"
 #ifdef HAVE_LIBCAP
 	       "  -p USER[:GROUP] After initialization set UID and GID to USER and GROUP\n"
 #endif
@@ -261,7 +262,7 @@ static int usage(int code)
 	       "  -v              Show program version\n"
 	       "\n"
 	       "Bug report address: %s\n"
-	       "Project homepage: %s\n\n", prognm, PACKAGE_BUGREPORT, PACKAGE_URL);
+	       "Project homepage: %s\n", prognm, PACKAGE_BUGREPORT, PACKAGE_URL);
 
 	return code;
 }
