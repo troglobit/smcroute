@@ -56,8 +56,10 @@ static void set(struct timer *t, struct timespec *now)
 
 static int expired(struct timer *t, struct timespec *now)
 {
-	if (t->timeout.tv_sec  <= now->tv_sec &&
-	    t->timeout.tv_nsec <= now->tv_nsec)
+	if (t->timeout.tv_sec < now->tv_sec)
+		return 1;
+
+	if (t->timeout.tv_sec == now->tv_sec && t->timeout.tv_nsec <= now->tv_nsec)
 		return 1;
 
 	return 0;
