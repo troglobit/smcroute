@@ -30,7 +30,7 @@
 #include <net/if.h>
 #include <netinet/ip.h>
 #include <unistd.h>
-#include <sys/time.h>
+#include <time.h>
 #include <sys/ioctl.h>
 
 #include "log.h"
@@ -516,9 +516,9 @@ static unsigned long mroute4_get_stats_valid_pkt(struct mroute4 *route)
 void mroute4_dyn_expire(int max_idle)
 {
 	struct mroute4 *entry, *next;
-	struct timeval now = { 0 };
-	
-	gettimeofday(&now, NULL);
+	struct timespec now;
+
+	clock_gettime(CLOCK_MONOTONIC, &now);
 
 	entry = LIST_FIRST(&mroute4_dyn_list);
 	while (entry) {
