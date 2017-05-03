@@ -97,7 +97,7 @@ AC_TYPE_UINT32_T
 
 # Checks for library functions.
 AC_FUNC_FORK
-AC_CHECK_FUNCS([atexit dup2 memset select socket strchr strerror strrchr asprintf utimensat])
+AC_CHECK_FUNCS([atexit dup2 memset select socket strchr strerror strrchr asprintf utimensat clock_gettime])
 
 # Check for sun_len in struct sockaddr_un
 AC_CHECK_SUN_LEN()
