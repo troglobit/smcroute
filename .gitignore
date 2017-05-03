@@ -3,6 +3,7 @@
 *.o
 *.log
 *.status
+ID
 GPATH
 GRTAGS
 GSYMS
