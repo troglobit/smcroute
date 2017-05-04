@@ -148,7 +148,7 @@ static int do_mroute4(struct ipc_msg *msg)
 	mroute.group   = grp;
 
 	if (len && mroute.sender.s_addr != htonl(INADDR_ANY)) {
-		smclog(LOG_DEBUG, "GROUP/LEN not yet supported for source specific multicast.");
+		smclog(LOG_DEBUG, "GROUP/LEN not yet supported for source specific multicast routes.");
 		return 1;
 	}
 
