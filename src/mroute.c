@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <string.h>
+#include <stdio.h>		/* snprintf() */
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <netinet/ip.h>
@@ -35,6 +36,7 @@
 
 #include "log.h"
 #include "ifvc.h"
+#include "ipc.h"
 #include "script.h"
 #include "socket.h"
 #include "mrdisc.h"
@@ -67,6 +69,11 @@ LIST_HEAD(, mroute4) mroute4_conf_list = LIST_HEAD_INITIALIZER();
 /* For dynamically/on-demand set (S,G) routes that we must track
  * if the user removes the configured (*,G) route. */
 LIST_HEAD(, mroute4) mroute4_dyn_list = LIST_HEAD_INITIALIZER();
+
+/*
+ * For tracking regular static routes, mostly for 'smcroutectl show'
+ */
+LIST_HEAD(, mroute4) mroute4_static_list = LIST_HEAD_INITIALIZER();
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 /*
@@ -206,6 +213,7 @@ int mroute4_enable(int do_vifs)
 
 	LIST_INIT(&mroute4_conf_list);
 	LIST_INIT(&mroute4_dyn_list);
+	LIST_INIT(&mroute4_static_list);
 
 	return 0;
 }
@@ -560,26 +568,38 @@ void mroute4_dyn_expire(int max_idle)
  */
 int mroute4_add(struct mroute4 *route)
 {
+	struct mroute4 *entry;
+
+	entry = malloc(sizeof(struct mroute4));
+	if (!entry) {
+		smclog(LOG_WARNING, "Cannot add multicast route: %s", strerror(errno));
+		return 1;
+	}
+
+	memcpy(entry, route, sizeof(struct mroute4));
+
 	/*
 	 * For (*,G) we save to a linked list to be added on-demand when
 	 * the kernel sends IGMPMSG_NOCACHE.
 	 */
 	if (route->sender.s_addr == htonl(INADDR_ANY)) {
-		struct mroute4 *entry;
-
-		entry = malloc(sizeof(struct mroute4));
-		if (!entry) {
-			smclog(LOG_WARNING, "Cannot add (*,G) route: %s", strerror(errno));
-			return 1;
-		}
-
-		memcpy(entry, route, sizeof(struct mroute4));
 		LIST_INSERT_HEAD(&mroute4_conf_list, entry, link);
-
 		return 0;
 	}
 
+	LIST_INSERT_HEAD(&mroute4_static_list, entry, link);
 	return __mroute4_add(route, 1);
+}
+
+static int is_match4(struct mroute4 *a, struct mroute4 *b)
+{
+	if (a->sender.s_addr == b->sender.s_addr &&
+	    a->group.s_addr  == b->group.s_addr  &&
+	    a->len           == b->len &&
+	    a->inbound       == b->inbound)
+		return 1;
+
+	return 0;
 }
 
 /**
@@ -602,8 +622,16 @@ int mroute4_del(struct mroute4 *route)
 	 * linked list.  This list we now traverse to remove all matches
 	 * from the kernel dyn list before we remove the conf entry.
 	 */
-	if (route->sender.s_addr != htonl(INADDR_ANY))
+	if (route->sender.s_addr != htonl(INADDR_ANY)) {
+		LIST_FOREACH_SAFE(entry, &mroute4_static_list, link, set) {
+			if (is_match4(entry, route)) {
+				LIST_REMOVE(entry, link);
+				free(entry);
+				break;
+			}
+		}
 		return __mroute4_del(route, 1);
+	}
 
 	if (LIST_EMPTY(&mroute4_conf_list))
 		return 0;
@@ -949,6 +977,71 @@ int mroute_del_vif(char *ifname)
 #endif
 
 	return ret;
+}
+
+static int show_mroute(int sd, struct mroute4 *r)
+{
+	int vif, first = 1;
+	char src[INET_ADDRSTRLEN] = "*";
+	char grp[INET_ADDRSTRLEN];
+	char sg[INET_ADDRSTRLEN * 2 + 5];
+	char buf[MAX_MC_VIFS * 17 + 10];
+	struct iface *i;
+
+	if (r->sender.s_addr != htonl(INADDR_ANY))
+		inet_ntop(AF_INET, &r->sender, src, sizeof(src));
+	inet_ntop(AF_INET, &r->group, grp, sizeof(grp));
+
+	i = iface_find_by_vif(r->inbound);
+	snprintf(sg, sizeof(sg), "(%s, %s)", src, grp);
+	snprintf(buf, sizeof(buf), "%-34s Iif: %-16s ", sg, i->name);
+
+	for (vif = 0; vif < MAX_MC_VIFS; vif++) {
+		char tmp[22];
+
+		if (r->ttl[vif] == 0)
+			continue;
+
+		i = iface_find_by_vif(vif);
+		if (first) {
+			snprintf(tmp, sizeof(tmp), "Oifs: %s", i->name);
+			first = 0;
+		} else {
+			snprintf(tmp, sizeof(tmp), " %s", i->name);
+		}
+		strcat(buf, tmp);
+	}
+	strcat(buf, "\n");
+
+	if (ipc_send(sd, buf, strlen(buf)) < 0) {
+		smclog(LOG_ERR, "Failed sending reply to client: %s", strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
+/* Write all (*,G) routes to client socket */
+int mroute_show(int sd)
+{
+	struct mroute4 *r;
+
+	LIST_FOREACH(r, &mroute4_conf_list, link) {
+		if (show_mroute(sd, r) < 0)
+			return 1;
+	}
+
+	LIST_FOREACH(r, &mroute4_dyn_list, link) {
+		if (show_mroute(sd, r) < 0)
+			return 1;
+	}
+
+	LIST_FOREACH(r, &mroute4_static_list, link) {
+		if (show_mroute(sd, r) < 0)
+			return 1;
+	}
+
+	return 0;
 }
 
 /**

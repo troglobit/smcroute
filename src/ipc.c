@@ -71,6 +71,10 @@ static void read_command(int sd)
 		running = 0;
 		break;
 
+	case 's':
+		result = mroute_show(sd);
+		break;
+
 	default:
 		smclog(LOG_WARNING, "Unkown IPC message '%c' from client.", msg->cmd);
 		result = 1;

@@ -49,6 +49,7 @@ struct arg {
 	{ "flush" ,  0, 'F', "Flush all dynamically set (*,G) multicast routes", NULL },
 	{ "kill",    0, 'k', "Kill running daemon", NULL },
 	{ "restart", 0, 'H', "Tell daemon to restart and reload its .conf file, like SIGHUP", NULL },
+	{ "show",    0, 's', "Show passive (*,G) and active kernel routes", NULL },
 	{ "add",     3, 'a', "Add a multicast route",    "eth0 192.168.2.42 225.1.2.3 eth1 eth2" },
 	{ "del",     3, 'r', "Remove a multicast route", "eth0 192.168.2.42 225.1.2.3" },
 	{ "remove",  3, 'r', NULL, NULL }, /* Alias for 'del' */
@@ -183,10 +184,20 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 	}
 
 	if (len != 1 || *buf != '\0') {
-		buf[MX_CMDPKT_SZ] = 0;
-		warnx("%s", buf);
-		result = 1;
-		goto error;
+		switch (cmd) {
+		case 's':
+			do {
+				fputs(buf, stdout);
+				len = read(sd, buf, sizeof(buf) - 1);
+				buf[len] = 0;
+			} while (len > 0);
+			break;
+
+		default:
+			warnx("%s", buf);
+			result = 1;
+			break;
+		}
 	}
 
 error:
