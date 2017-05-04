@@ -175,12 +175,14 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 		goto comms_err;
 
 	/* Wait here for reply */
-	len = read(sd, buf, MX_CMDPKT_SZ);
+	len = read(sd, buf, sizeof(buf) - 1);
 	if (len < 0) {
 	comms_err:
 		warn("Communication with daemon failed");
 		result = 1;
 		goto error;
+	} else {
+		buf[len] = 0;
 	}
 
 	if (len != 1 || *buf != '\0') {
