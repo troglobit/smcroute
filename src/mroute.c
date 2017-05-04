@@ -479,9 +479,12 @@ static int mroute4_get_stats(struct mroute4 *route, unsigned long *pktcnt, unsig
 		result = errno;
 		smclog(LOG_WARNING, "Failed getting MFC stats: %m");
 	} else {
-		if (pktcnt) *pktcnt = sg_req.pktcnt;
-		if (bytecnt) *bytecnt = sg_req.bytecnt;
-		if (wrong_if) *wrong_if = sg_req.wrong_if;
+		if (pktcnt)
+			*pktcnt = sg_req.pktcnt;
+		if (bytecnt)
+			*bytecnt = sg_req.bytecnt;
+		if (wrong_if)
+			*wrong_if = sg_req.wrong_if;
 	}
 
 	return result;
