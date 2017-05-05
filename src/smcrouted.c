@@ -252,8 +252,10 @@ static int usage(int code)
 	       "  -m SEC          Multicast router discovery, 4-180, default: 20 sec"
 #endif
 	       "  -n              Run daemon in foreground, useful when run from finit\n"
+#ifdef ENABLE_DOTCONF
 	       "  -N              No multicast VIFs/MIFs created by default.  Use with\n"
 	       "                  smcroute.conf `phyint enable` directive\n"
+#endif
 #ifdef HAVE_LIBCAP
 	       "  -p USER[:GROUP] After initialization set UID and GID to USER and GROUP\n"
 #endif
@@ -341,7 +343,11 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'N':
+#ifndef ENABLE_DOTCONF
+			errx(1, "Built without .conf file, no way to enable individual interfaces.");
+#else
 			do_vifs = 0;
+#endif
 			break;
 
 		case 'p':
