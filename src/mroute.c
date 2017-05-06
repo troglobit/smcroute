@@ -61,17 +61,20 @@
  */
 int mroute4_socket = -1;
 
-/* All user added/configured (*,G) routes that are matched on-demand
- * at runtime. See the mroute4_dyn_list for the actual (S,G) routes
- * set from this "template". */
+/*
+ * User added/configured (*,G) matched on-demand at runtime.  See
+ * mroute4_dyn_list for the (S,G) routes set from this "template".
+ */
 LIST_HEAD(, mroute4) mroute4_conf_list = LIST_HEAD_INITIALIZER();
 
-/* For dynamically/on-demand set (S,G) routes that we must track
- * if the user removes the configured (*,G) route. */
+/*
+ * Dynamically, on-demand, set (S,G) routes.  Tracks if the user
+ * removes a configured (*,G) route.
+ */
 LIST_HEAD(, mroute4) mroute4_dyn_list = LIST_HEAD_INITIALIZER();
 
 /*
- * For tracking regular static routes, mostly for 'smcroutectl show'
+ * Tracks regular static routes, mostly for 'smcroutectl show'
  */
 LIST_HEAD(, mroute4) mroute4_static_list = LIST_HEAD_INITIALIZER();
 
@@ -246,6 +249,11 @@ void mroute4_disable(void)
 	}
 	while (!LIST_EMPTY(&mroute4_dyn_list)) {
 		entry = LIST_FIRST(&mroute4_dyn_list);
+		LIST_REMOVE(entry, link);
+		free(entry);
+	}
+	while (!LIST_EMPTY(&mroute4_static_list)) {
+		entry = LIST_FIRST(&mroute4_static_list);
 		LIST_REMOVE(entry, link);
 		free(entry);
 	}
