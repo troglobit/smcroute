@@ -586,7 +586,20 @@ int mroute4_add(struct mroute4 *route)
 	 * the kernel sends IGMPMSG_NOCACHE.
 	 */
 	if (route->sender.s_addr == htonl(INADDR_ANY)) {
+		struct mroute4 *dyn, *tmp;
+
 		LIST_INSERT_HEAD(&mroute4_conf_list, entry, link);
+
+		/* Also, immediately expire any currently blocked traffic */
+		LIST_FOREACH_SAFE(dyn, &mroute4_dyn_list, link, tmp) {
+			if (!is_active4(dyn) && __mroute4_match(entry, dyn)) {
+				__mroute4_del(dyn, 0);
+				LIST_REMOVE(dyn, link);
+				free(dyn);
+				break;
+			}
+		}
+
 		return 0;
 	}
 
