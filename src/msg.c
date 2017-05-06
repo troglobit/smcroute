@@ -144,11 +144,11 @@ static int do_mroute4(struct ipc_msg *msg)
 		src.s_addr = htonl(INADDR_ANY);
 	}
 
-	mroute.sender  = src;
+	mroute.source  = src;
 	mroute.len     = len;
 	mroute.group   = grp;
 
-	if (len && mroute.sender.s_addr != htonl(INADDR_ANY)) {
+	if (len && mroute.source.s_addr != htonl(INADDR_ANY)) {
 		smclog(LOG_DEBUG, "GROUP/LEN not yet supported for source specific multicast routes.");
 		return 1;
 	}
@@ -202,7 +202,7 @@ static int do_mroute6(struct ipc_msg *msg)
 		return 1;
 	}
 
-	if (inet_pton(AF_INET6, msg->argv[pos++], &mroute.sender.sin6_addr) <= 0) {
+	if (inet_pton(AF_INET6, msg->argv[pos++], &mroute.source.sin6_addr) <= 0) {
 		smclog(LOG_DEBUG, "Invalid IPv6 source address");
 		return 1;
 	}

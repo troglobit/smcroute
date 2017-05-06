@@ -147,7 +147,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 			WARN("Invalid inbound IPv6 interface: %s", ifname);
 			return 1;
 		}
-		if (!source || inet_pton(AF_INET6, source, &mroute.sender.sin6_addr) <= 0) {
+		if (!source || inet_pton(AF_INET6, source, &mroute.source.sin6_addr) <= 0) {
 			WARN("Invalid source IPv6 address: %s", source ?: "NONE");
 			return 1;
 		}
@@ -192,15 +192,15 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 	}
 
 	if (!source) {
-		mroute.sender.s_addr = htonl(INADDR_ANY);
-	} else if (inet_pton(AF_INET, source, &mroute.sender) <= 0) {
+		mroute.source.s_addr = htonl(INADDR_ANY);
+	} else if (inet_pton(AF_INET, source, &mroute.source) <= 0) {
 		WARN("Invalid source IPv4 address: %s", source);
 		return 1;
 	}
 
 	ptr = strchr(group, '/');
 	if (ptr) {
-		if (mroute.sender.s_addr != htonl(INADDR_ANY)) {
+		if (mroute.source.s_addr != htonl(INADDR_ANY)) {
 			WARN("GROUP/LEN not yet supported for source specific multicast.");
 			return 1;
 		}

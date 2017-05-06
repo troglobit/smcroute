@@ -88,10 +88,10 @@ int script_exec(struct mroute *mroute)
 		char source[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
 
 		if (mroute->version == 4) {
-			inet_ntop(AF_INET, &mroute->u.mroute4.sender.s_addr, source, INET_ADDRSTRLEN);
+			inet_ntop(AF_INET, &mroute->u.mroute4.source.s_addr, source, INET_ADDRSTRLEN);
 			inet_ntop(AF_INET, &mroute->u.mroute4.group.s_addr, group, INET_ADDRSTRLEN);
 		} else {
-			inet_ntop(AF_INET6, &mroute->u.mroute6.sender.sin6_addr, source, INET_ADDRSTRLEN);
+			inet_ntop(AF_INET6, &mroute->u.mroute6.source.sin6_addr, source, INET_ADDRSTRLEN);
 			inet_ntop(AF_INET6, &mroute->u.mroute6.group.sin6_addr, group, INET_ADDRSTRLEN);
 		}
 

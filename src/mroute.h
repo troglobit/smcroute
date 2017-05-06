@@ -58,7 +58,7 @@
 struct mroute4 {
 	LIST_ENTRY(mroute4) link;
 
-	struct in_addr sender;
+	struct in_addr source;
 	struct in_addr group;           /* multicast group */
 	short          len;		/* prefix len, or 0:disabled */
 
@@ -82,7 +82,7 @@ struct mroute4 {
 #endif
 
 struct mroute6 {
-	struct sockaddr_in6 sender;
+	struct sockaddr_in6 source;
 	struct sockaddr_in6 group;      /* multicast group */
 	short   inbound;                /* incoming VIF    */
 	uint8_t ttl[MAX_MC_MIFS];       /* outgoing VIFs   */

@@ -131,11 +131,11 @@ static void handle_nocache4(int sd, void *arg)
 
 		memset(&mroute, 0, sizeof(mroute));
 		mroute.group.s_addr  = igmpctl->im_dst.s_addr;
-		mroute.sender.s_addr = igmpctl->im_src.s_addr;
+		mroute.source.s_addr = igmpctl->im_src.s_addr;
 		mroute.inbound       = igmpctl->im_vif;
 
 		inet_ntop(AF_INET, &mroute.group,  group,  INET_ADDRSTRLEN);
-		inet_ntop(AF_INET, &mroute.sender, origin, INET_ADDRSTRLEN);
+		inet_ntop(AF_INET, &mroute.source, origin, INET_ADDRSTRLEN);
 		smclog(LOG_DEBUG, "New multicast data from %s to group %s on VIF %d", origin, group, mroute.inbound);
 
 		iface = iface_find_by_vif(mroute.inbound);
@@ -345,7 +345,7 @@ static int kern_add4(struct mroute4 *route, int active)
 
 	memset(&mc, 0, sizeof(mc));
 
-	mc.mfcc_origin = route->sender;
+	mc.mfcc_origin = route->source;
 	mc.mfcc_mcastgrp = route->group;
 	mc.mfcc_parent = route->inbound;
 
@@ -380,7 +380,7 @@ static int kern_del4(struct mroute4 *route, int active)
 	struct mfcctl mc;
 
 	memset(&mc, 0, sizeof(mc));
-	mc.mfcc_origin = route->sender;
+	mc.mfcc_origin = route->source;
 	mc.mfcc_mcastgrp = route->group;
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_DEL_MFC, &mc, sizeof(mc))) {
 		if (ENOENT == errno)
@@ -483,7 +483,7 @@ static int get_stats4(struct mroute4 *route, unsigned long *pktcnt, unsigned lon
 	struct sioc_sg_req sg_req;
 
 	memset(&sg_req, 0, sizeof(sg_req));
-	sg_req.src = route->sender;
+	sg_req.src = route->source;
 	sg_req.grp = route->group;
 
 	if (ioctl(mroute4_socket, SIOCGETSGCNT, &sg_req) < 0) {
@@ -597,7 +597,7 @@ int mroute4_add(struct mroute4 *route)
 	 * For (*,G) we save to a linked list to be added on-demand when
 	 * the kernel sends IGMPMSG_NOCACHE.
 	 */
-	if (route->sender.s_addr == htonl(INADDR_ANY)) {
+	if (route->source.s_addr == htonl(INADDR_ANY)) {
 		struct mroute4 *dyn, *tmp;
 
 		LIST_INSERT_HEAD(&mroute4_conf_list, entry, link);
@@ -624,7 +624,7 @@ int mroute4_add(struct mroute4 *route)
  */
 static int is_exact_match4(struct mroute4 *a, struct mroute4 *b)
 {
-	if (a->sender.s_addr == b->sender.s_addr &&
+	if (a->source.s_addr == b->source.s_addr &&
 	    a->group.s_addr  == b->group.s_addr  &&
 	    a->len           == b->len &&
 	    a->inbound       == b->inbound)
@@ -648,7 +648,7 @@ int mroute4_del(struct mroute4 *route)
 {
 	struct mroute4 *entry, *set, *tmp;
 
-	if (route->sender.s_addr != htonl(INADDR_ANY)) {
+	if (route->source.s_addr != htonl(INADDR_ANY)) {
 		LIST_FOREACH_SAFE(entry, &mroute4_static_list, link, tmp) {
 			if (!is_exact_match4(entry, route))
 				continue;
@@ -895,7 +895,7 @@ int mroute6_add(struct mroute6 *route)
 	struct mf6cctl mc;
 
 	memset(&mc, 0, sizeof(mc));
-	mc.mf6cc_origin   = route->sender;
+	mc.mf6cc_origin   = route->source;
 	mc.mf6cc_mcastgrp = route->group;
 	mc.mf6cc_parent   = route->inbound;
 
@@ -933,7 +933,7 @@ int mroute6_del(struct mroute6 *route)
 	struct mf6cctl mc;
 
 	memset(&mc, 0, sizeof(mc));
-	mc.mf6cc_origin = route->sender;
+	mc.mf6cc_origin = route->source;
 	mc.mf6cc_mcastgrp = route->group;
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_DEL_MFC, (void *)&mc, sizeof(mc))) {
 		if (ENOENT == errno)
@@ -999,8 +999,8 @@ static int show_mroute(int sd, struct mroute4 *r, int detail)
 	char buf[MAX_MC_VIFS * 17 + 80];
 	struct iface *i;
 
-	if (r->sender.s_addr != htonl(INADDR_ANY))
-		inet_ntop(AF_INET, &r->sender, src, sizeof(src));
+	if (r->source.s_addr != htonl(INADDR_ANY))
+		inet_ntop(AF_INET, &r->source, src, sizeof(src));
 	inet_ntop(AF_INET, &r->group, grp, sizeof(grp));
 
 	i = iface_find_by_vif(r->inbound);
