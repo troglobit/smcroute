@@ -479,8 +479,8 @@ static int get_stats4(struct mroute4 *route, unsigned long *pktcnt, unsigned lon
 	sg_req.grp = route->group;
 
 	if (ioctl(mroute4_socket, SIOCGETSGCNT, &sg_req) < 0) {
+		smclog(LOG_WARNING, "Failed getting MFC stats: %s", strerror(errno));
 		result = errno;
-		smclog(LOG_WARNING, "Failed getting MFC stats: %m");
 	} else {
 		if (pktcnt)
 			*pktcnt = sg_req.pktcnt;

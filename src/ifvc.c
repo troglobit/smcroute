@@ -67,9 +67,6 @@ void iface_init(void)
 		/* Check if already added? */
 		if ((iface = iface_find_by_name(ifa->ifa_name))) {
 			if (!iface->inaddr.s_addr && ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET)
-				/* If we know the interface but don't know an address
-				 * yet, remember this one.
-				 */
 				iface->inaddr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
 			continue;
 		}
@@ -79,7 +76,7 @@ void iface_init(void)
 			num_ifaces_alloc *= 2;
 			iface_list = realloc(iface_list, num_ifaces_alloc * sizeof(struct iface));
 			if (!iface_list) {
-				smclog(LOG_ERR, "Failed allocating space for interfaces: %m");
+				smclog(LOG_ERR, "Failed allocating space for interfaces: %s", strerror(errno));
 				exit(255);
 			}
 			/* Initialize 2nd half of interface list */
