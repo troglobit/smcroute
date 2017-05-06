@@ -315,10 +315,13 @@ int main(int argc, char *argv[])
 		if (len <= 0)
 			continue;
 
-		if (!nm && arg[0] != c)
-			continue;
-		else if (strncmp(arg, nm, len))
-			continue;
+		if (nm) {
+			if (strncmp(arg, nm, len))
+				continue;
+		} else {
+			if (arg[0] != c)
+				continue;
+		}
 
 		switch (c) {
 		case 'd':	/* detail */
