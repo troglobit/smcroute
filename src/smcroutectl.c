@@ -51,8 +51,7 @@ struct arg {
 	{ "restart", 0, 'H', "Tell daemon to restart and reload its .conf file, like SIGHUP", NULL },
 	{ "show",    0, 's', "Show passive (*,G) and active kernel routes", NULL },
 	{ "add",     3, 'a', "Add a multicast route",    "eth0 192.168.2.42 225.1.2.3 eth1 eth2" },
-	{ "del",     3, 'r', "Remove a multicast route", "eth0 192.168.2.42 225.1.2.3" },
-	{ "remove",  3, 'r', NULL, NULL }, /* Alias for 'del' */
+	{ "remove",  3, 'r', "Remove a multicast route", "eth0 192.168.2.42 225.1.2.3" },
 	{ "join",    2, 'j', "Join multicast group on an interface", "eth0 225.1.2.3" },
 	{ "leave",   2, 'l', "Leave joined multicast group",         "eth0 225.1.2.3" },
 	{ NULL, 0, 0, NULL, NULL }
@@ -225,7 +224,7 @@ static int usage(int code)
 	printf("\nArguments:\n"
 	       "         <----------- INBOUND ------------>  <--- OUTBOUND ---->\n"
 	       "  add    IFNAME [SOURCE-IP] MULTICAST-GROUP  IFNAME [IFNAME ...]\n"
-	       "  del    IFNAME [SOURCE-IP] MULTICAST-GROUP\n"
+	       "  remove IFNAME [SOURCE-IP] MULTICAST-GROUP\n"
 	       "\n"
 	       "  join   IFNAME [SOURCE-IP] MULTICAST-GROUP\n"
 	       "  leave  IFNAME [SOURCE-IP] MULTICAST-GROUP\n"

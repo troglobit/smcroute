@@ -16,12 +16,12 @@
 .Nm smcroutectl
 .Op Fl Fkhv
 .Op Ar COMMAND
-.Oo Ao add | del Ac Ao ROUTE Ac Oc Oo Ao join | leave Ac Ao GROUP Ac Oc
+.Oo Ao add | rem Ac Ao ROUTE Ac Oc Oo Ao join | leave Ac Ao GROUP Ac Oc
 .Pp
 .Nm smcroutectl
 .Op help | flush | kill | restart | version
 .Nm smcroutectl
-.Oo \ add | \ \ del Oc Ao IFNAME Ac Oo SOURCE Oc Ar GROUP[/LEN] IFNAME Op IFNAME ...
+.Oo \ add | \ \ rem Oc Ao IFNAME Ac Oo SOURCE Oc Ar GROUP[/LEN] IFNAME Op IFNAME ...
 .Nm smcroutectl
 .Oo join | leave Oc Ao IFNAME Ac Oo SOURCE Oc Ar GROUP
 .Sh DESCRIPTION
@@ -181,7 +181,7 @@ and if you want to specify a range, set
 .Ar GROUP/LEN ,
 e.g.
 .Ar 225.0.0.0/24 .
-.It Nm del Ar IFNAME [SOURCE] GROUP
+.It Nm remove Ar IFNAME [SOURCE] GROUP
 Remove a kernel multicast route.
 .It Nm flush
 Flush dynamic (*,G) multicast routes now.  Similar to how
@@ -222,7 +222,7 @@ The sender's address and the multicast group must both be either IPv4
 or IPv6 addresses.
 .Pp
 The output interfaces are not needed when removing routes using the
-.Nm del
+.Nm remove
 command.  The first three parameters are sufficient to identify the
 source of the multicast route.
 .Pp
