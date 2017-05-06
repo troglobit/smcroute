@@ -43,18 +43,20 @@ struct arg {
 	int   val;
 	char *help;
 	char *example;		/* optional */
+	int   has_detail;
 } args[] = {
-	{ "help",    0, 'h', "Show help text", NULL },
-	{ "version", 0, 'v', "Show program version", NULL },
-	{ "flush" ,  0, 'F', "Flush all dynamically set (*,G) multicast routes", NULL },
-	{ "kill",    0, 'k', "Kill running daemon", NULL },
-	{ "restart", 0, 'H', "Tell daemon to restart and reload its .conf file, like SIGHUP", NULL },
-	{ "show",    0, 's', "Show passive (*,G) and active kernel routes", NULL },
-	{ "add",     3, 'a', "Add a multicast route",    "eth0 192.168.2.42 225.1.2.3 eth1 eth2" },
-	{ "remove",  3, 'r', "Remove a multicast route", "eth0 192.168.2.42 225.1.2.3" },
-	{ "join",    2, 'j', "Join multicast group on an interface", "eth0 225.1.2.3" },
-	{ "leave",   2, 'l', "Leave joined multicast group",         "eth0 225.1.2.3" },
-	{ NULL, 0, 0, NULL, NULL }
+	{ NULL,      0, 'd', "Detailed output, some commands", NULL, 0 },
+	{ "help",    0, 'h', "Show help text", NULL, 0 },
+	{ "version", 0, 'v', "Show program version", NULL, 0 },
+	{ "flush" ,  0, 'F', "Flush all dynamically set (*,G) multicast routes", NULL, 0 },
+	{ "kill",    0, 'k', "Kill running daemon", NULL, 0 },
+	{ "restart", 0, 'H', "Tell daemon to restart and reload its .conf file, like SIGHUP", NULL, 0 },
+	{ "show",    0, 's', "Show passive (*,G) and active kernel routes", NULL, 1 },
+	{ "add",     3, 'a', "Add a multicast route",    "eth0 192.168.2.42 225.1.2.3 eth1 eth2", 0 },
+	{ "remove",  3, 'r', "Remove a multicast route", "eth0 192.168.2.42 225.1.2.3", 0 },
+	{ "join",    2, 'j', "Join multicast group on an interface", "eth0 225.1.2.3", 0 },
+	{ "leave",   2, 'l', "Leave joined multicast group",         "eth0 225.1.2.3", 0 },
+	{ NULL, 0, 0, NULL, NULL, 0 }
 };
 
 static char *prognm = PACKAGE_NAME;
@@ -187,6 +189,7 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 	if (len != 1 || *buf != '\0') {
 		switch (cmd) {
 		case 's':
+		case 'S':
 			do {
 				fputs(buf, stdout);
 				len = read(sd, buf, sizeof(buf) - 1);
@@ -208,19 +211,55 @@ error:
 	return result;
 }
 
+static int verify_cmd(int cmd, int detail)
+{
+	int i;
+
+	if (!detail)
+		return cmd;
+
+	for (i = 0; args[i].val; i++) {
+		if (args[i].val != cmd)
+			continue;
+
+		if (!args[i].has_detail)
+			return 0;
+
+		return cmd - 0x20;
+	}
+
+	return 0;
+}
+
 static int usage(int code)
 {
 	int i;
 
 	printf("Usage:\n  %s CMD [ARGS]\n\n", prognm);
-	printf("Commands:\n");
-	for (i = 0; args[i].name; i++) {
+
+	printf("Options:\n");
+	for (i = 0; args[i].val; i++) {
 		if (!args[i].help)
+			continue;
+
+		if (args[i].name)
+			continue;
+
+		printf("  -%c            %s\n", args[i].val, args[i].help);
+	}
+
+	printf("\nCommands:\n");
+	for (i = 0; args[i].val; i++) {
+		if (!args[i].help)
+			continue;
+
+		if (!args[i].name)
 			continue;
 
 		printf("  %-7s %s  %s\n", args[i].name,
 		       args[i].min_args ? "ARGS" : "    ", args[i].help);
 	}
+
 	printf("\nArguments:\n"
 	       "         <----------- INBOUND ------------>  <--- OUTBOUND ---->\n"
 	       "  add    IFNAME [SOURCE-IP] MULTICAST-GROUP  IFNAME [IFNAME ...]\n"
@@ -250,7 +289,8 @@ static char *progname(const char *arg0)
 
 int main(int argc, char *argv[])
 {
-	int i, help = 0, pos = 1;
+	int help = 0, detail = 0;
+	int i, pos = 1;
 	uint16_t cmd = 0;
 
 	prognm = progname(argv[0]);
@@ -263,10 +303,14 @@ int main(int argc, char *argv[])
 		char   *arg = argv[pos];
 		size_t  len;
 
-		if (!nm)
+		if (!c)
 			break;
 
-		len = MIN(MIN(strlen(nm), strlen(arg)), 2);
+		if (nm)
+			len = MIN(MIN(strlen(nm), strlen(arg)), 2);
+		else
+			len = strlen(arg);
+
 		while (*arg == '-') {
 			arg++;
 			len--;
@@ -275,10 +319,17 @@ int main(int argc, char *argv[])
 		if (len <= 0)
 			continue;
 
-		if (strncmp(arg, nm, len))
+		if (!nm && arg[0] != c)
+			continue;
+		else if (strncmp(arg, nm, len))
 			continue;
 
 		switch (c) {
+		case 'd':	/* detail */
+			detail++;
+			pos++;
+			break;
+
 		case 'h':	/* help */
 			help++;
 			break;
@@ -313,6 +364,7 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
+	cmd = verify_cmd(cmd, detail);
 	if (!cmd)
 		return usage(1);
 

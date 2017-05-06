@@ -281,7 +281,7 @@ static int do_mgroup(struct ipc_msg *msg)
  */
 int msg_do(int sd, struct ipc_msg *msg)
 {
-	int result = 0;
+	int result = 0, detail = 0;
 
 	switch (msg->cmd) {
 	case 'a':
@@ -306,8 +306,10 @@ int msg_do(int sd, struct ipc_msg *msg)
 		running = 0;
 		break;
 
+	case 'S':
+		detail = 1;
 	case 's':
-		result = mroute_show(sd);
+		result = mroute_show(sd, detail);
 		break;
 
 	default:

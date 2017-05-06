@@ -1003,13 +1003,13 @@ int mroute_del_vif(char *ifname)
 	return ret;
 }
 
-static int show_mroute(int sd, struct mroute4 *r)
+static int show_mroute(int sd, struct mroute4 *r, int detail)
 {
 	int vif, first = 1;
 	char src[INET_ADDRSTRLEN] = "*";
 	char grp[INET_ADDRSTRLEN];
 	char sg[INET_ADDRSTRLEN * 2 + 5];
-	char buf[MAX_MC_VIFS * 17 + 10];
+	char buf[MAX_MC_VIFS * 17 + 80];
 	struct iface *i;
 
 	if (r->sender.s_addr != htonl(INADDR_ANY))
@@ -1018,7 +1018,16 @@ static int show_mroute(int sd, struct mroute4 *r)
 
 	i = iface_find_by_vif(r->inbound);
 	snprintf(sg, sizeof(sg), "(%s, %s)", src, grp);
-	snprintf(buf, sizeof(buf), "%-34s Iif: %-16s ", sg, i->name);
+	snprintf(buf, sizeof(buf), "%-34s %s%-16s", sg, detail ? "" : "Iif: ", i->name);
+
+	if (detail) {
+		char stats[20];
+		unsigned long p = 0, b = 0;
+
+		get_stats4(r, &p, &b, NULL);
+		snprintf(stats, sizeof(stats), " %7ld %8ld ", p, b);
+		strcat(buf, stats);
+	}
 
 	for (vif = 0; vif < MAX_MC_VIFS; vif++) {
 		char tmp[22];
@@ -1027,8 +1036,8 @@ static int show_mroute(int sd, struct mroute4 *r)
 			continue;
 
 		i = iface_find_by_vif(vif);
-		if (first) {
-			snprintf(tmp, sizeof(tmp), "Oifs: %s", i->name);
+		if (first && !detail) {
+			snprintf(tmp, sizeof(tmp), " Oifs: %s", i->name);
 			first = 0;
 		} else {
 			snprintf(tmp, sizeof(tmp), " %s", i->name);
@@ -1046,22 +1055,32 @@ static int show_mroute(int sd, struct mroute4 *r)
 }
 
 /* Write all (*,G) routes to client socket */
-int mroute_show(int sd)
+int mroute_show(int sd, int detail)
 {
+	char buf[256];
 	struct mroute4 *r;
 
+	if (detail) {
+		const char *r = "ROUTE (S,G)", *i = "Inbound", *p = "Packets", *b = "Bytes";
+
+		/*       Packets    Bytes */
+		snprintf(buf, sizeof(buf), "\e[7m%-34s %-16s %7s %8s  %s\e[0m\n",
+			 r, i, p, b, "Outbound                        ");
+		ipc_send(sd, buf, strlen(buf));
+	}
+
 	LIST_FOREACH(r, &mroute4_conf_list, link) {
-		if (show_mroute(sd, r) < 0)
+		if (show_mroute(sd, r, detail) < 0)
 			return 1;
 	}
 
 	LIST_FOREACH(r, &mroute4_dyn_list, link) {
-		if (show_mroute(sd, r) < 0)
+		if (show_mroute(sd, r, detail) < 0)
 			return 1;
 	}
 
 	LIST_FOREACH(r, &mroute4_static_list, link) {
-		if (show_mroute(sd, r) < 0)
+		if (show_mroute(sd, r, detail) < 0)
 			return 1;
 	}
 
