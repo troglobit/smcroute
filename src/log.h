@@ -1,4 +1,4 @@
-/* Log functions */
+/* System logging API */
 #ifndef SMCROUTE_LOG_H_
 #define SMCROUTE_LOG_H_
 
