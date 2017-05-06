@@ -1,4 +1,4 @@
-.Dd $Mdocdate: April 16 2017 $
+.Dd $Mdocdate: May 6 2017 $
 .Dt SMCROUTE 8 SMM
 .Os
 .Sh NAME
@@ -52,22 +52,29 @@ modifies the kernel routing table it needs to run with full
 Which also means that the same applies to client operations, to be
 able to communicate with the daemon.
 .Ss WARNING
-By using multiple output interfaces (traffic multiplication), using the
-input interface also as output interface (direct loop) or constructing
-some other forms of indirect loops you can easily flood your networks!
+Be careful when creating multicast routes.  You can easily flood your
+networks by inadvertently creating routing loops.  Either direct loop
+listing an inbound interface also as an oubound, or indirect loops.
 .Sh OPTIONS
+The following
+.Nm smcrouted
+commands are availble:
 .Bl -tag -width Ds
 .It Fl n
 Run daemon in foreground, do not detach from controlling terminal
 .It Fl N
 By default
-.Nm
-enables virtual interfaces (VIF) on all multicast capable interfaces in
-the system.  This option inverts that behavior, all VIFs are disabled by
-default.  On systems with many interfaces, where multicast routing only
-makes use of a few, this can be very useful.  The config file setting
+.Nm smcrouted
+enables multicast routing on all available, and multicast capable,
+interfaces in the system.  These interfaces are enumerated as VIFs,
+virtual interfaces, of which most UNIX systems have a very limited
+amount, usually 32.  This daemon option inverts the behavior so no
+interfaces are enabled by default.  Useful on systems with many
+interfaces, where multicast routing only makes use of a few.
+.Pp
+The config file setting
 .Ar phyint IFNAME enable
-enables only the interfaces needed.
+is required to enable the required interfaces.
 .It Fl f Ar FILE
 Alternate configuration file, default
 .Pa /etc/smcroute.conf
@@ -90,17 +97,17 @@ Defaults to 60s, set to 0 to disable.  See also the
 command for another way of handling topology changes.
 .It Fl e Ar CMD
 Specify external script or command to be called when
-.Nm
+.Nm smcrouted
 has loaded/reloaded all static multicast routes from the configuration
 file, or when a source-less (ANY) rule has been installed.
 .It Fl l Ar LEVEL
-Set log level: none, err, info, notice, debug.  Default is notice.
+Set log level: none, err, notice, info, debug.  Default is notice.
 .It Fl p Ar USER Op :GROUP
 Drop root privileges to USER:GROUP after start and retain CAP_NET_ADMIN
 capabilities only.  The :GROUP is optional.  This option is only
 available when
-.Nm
-was built with libcap support.
+.Nm smcrouted
+is built with libcap support.
 .It Fl s
 Let daemon log to syslog, default unless running in foreground.
 .It Fl t Ar SEC
@@ -118,7 +125,7 @@ starting a service.
 The
 .Fl e Ar CMD
 option is useful if you want to trigger other processes to start when
-.Nm
+.Nm smcrouted
 has completed installing dynamic multicast routes from (*,G) rules in
 .Pa /etc/smcroute.conf ,
 or when a source-less (ANY) route, a.k.a (*,G) multicast rule, from
@@ -135,15 +142,15 @@ or
 .Ar install
 to let the script know if it is called on SIGHUP/startup, or when a
 (*,G) rule is matched and installed.  In the latter case
-.Nm
+.Nm smcrouted
 also sets two environment variables:
 .Nm source ,
 and
 .Nm group .
 Beware that these environment variables are unconditionally overwritten by
-.Nm
+.Nm smcrouted
 and can thus not be used to pass information to the script from outside of
-.Nm .
+.Nm smcrouted .
 .Sh COMMANDS
 The following
 .Nm smcroutectl
@@ -222,11 +229,11 @@ source of the multicast route.
 The intended purpose of
 .Nm
 is to aid in situations where dynamic multicast routing does not work
-properly.  However, dynamic multicast routing is in nearly all cases the
-preferred solution.  The reason for this is their ability to translate
-Layer-3 signalling to Layer-2 and vice versa (IGMP or MLD).
+properly.  However, a dynamic multicast routing protocol is in nearly
+all cases the preferred solution.  The reason for this is their ability
+to translate Layer-3 signalling to Layer-2 and vice versa (IGMP or MLD).
 .Pp
-.Nm
+.Nm smcrouted
 is capable of simple group join and leave by sending commands to the kernel.
 The kernel then handles sending Layer-2 IGMP/MLD join and leave frames as needed.
 This can be used for testing but is also useful sometimes to open up
@@ -234,14 +241,15 @@ multicast from the sender if located on a LAN with switches equipped
 with IGMP/MLD Snooping.  Such devices will prevent forwarding of
 multicast unless an IGMP/MLD capable router or multicast client is
 located on the same physical port as you run
-.Nm
+.Nm smcrouted
 on.  However, this feature of
-.Nm
-is only intended as a temporary workaround, and only 20 groups can be
-joined this way (kernel limit).  For bigger installations it is strongly
-recommended that the user instead fix the root cause to why the
-designated multicast router does to receive all the required multicast
-groups on its input interface(s).
+.Nm smcrouted
+is only intended as a workaround, and only 20 groups can be joined this
+way (kernel limit).  For bigger installations it is strongly recommended
+to instead adress the root cause, e.g. enable multcast router ports on
+intermediate switches, or try the embedded multicast router discovery
+feature of
+.Nm smcrouted .
 .Pp
 To emulate a multicast client using
 .Nm
@@ -363,7 +371,7 @@ Max. 20, see caveat above
 .El
 .Pp
 .Sh SIGNALS
-.Nm
+.Nm smcrouted
 responds to the following signals:
 .Pp
 .Bl -tag -width TERM -compact
@@ -434,11 +442,12 @@ Holds active MLD joins.
 .Sh BUGS
 The English wording of this man page.
 .Sh AUTHORS
-Originally written by Carsten Schill <carsten@cschill.de>.
+SMCRoute was created by Carsten Schill <carsten@cschill.de>.
 Support for IPv6 was added by Todd Hayton <todd.hayton@gmail.com>.
 Support for FreeBSD was added by Micha Lenk <micha@debian.org>.
 .Pp
-SMCRoute is maintained by Joachim Nilsson <troglobit@gmail.com>, Todd Hayton
+.Nm smcrouted
+is maintained by Joachim Nilsson <troglobit@gmail.com>, Todd Hayton
 <todd.hayton@gmail.com>, Micha Lenk <micha@debian.org> and Julien BLACHE
 <jblache@debian.org> at
 .Ar https://github.com/troglobit/smcroute
