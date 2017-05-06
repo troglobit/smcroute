@@ -247,7 +247,7 @@ static int usage(int code)
 	       "  -f FILE         File to use instead of default " SMCROUTE_SYSTEM_CONF "\n"
 #endif
 	       "  -h              This help text\n"
-	       "  -l LVL          Set log level: none, err, info, notice*, debug\n"
+	       "  -l LVL          Set log level: none, err, notice*, info, debug\n"
 #ifdef ENABLE_MRDISC
 	       "  -m SEC          Multicast router discovery, 4-180, default: 20 sec"
 #endif
