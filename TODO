@@ -10,8 +10,8 @@ In SMCRoute 1.99.0 IPv4 support for source-less multicast routes was
 added. Adding support for IPv6 should be fairly straight forward, but
 needs figuring out the kernel interface and extensive testing.
 
-* Support for detecting link up/down on interfaces
-Also requires updating VIF/MIFs and mroutes accordingly.
+* Add support for dynamically re-enumerating VIFs at runtime
+May also require updating VIF/MIFs and mroutes accordingly.
 
 Optimal, and almost required, behavior would be to handle such
 transitions  without losing any traffic over established/active

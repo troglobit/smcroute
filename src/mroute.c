@@ -137,7 +137,6 @@ static void read_mroute4_socket(int sd, void *arg)
 
 		iface = iface_find_by_vif(mroute.inbound);
 		if (!iface) {
-			/* TODO: Add support for dynamically re-enumerating VIFs at runtime! */
 			smclog(LOG_WARNING, "No matching interface for VIF %d, cannot add mroute.", mroute.inbound);
 			return;
 		}
