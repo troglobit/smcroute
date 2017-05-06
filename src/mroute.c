@@ -229,7 +229,7 @@ int mroute4_enable(int do_vifs)
  */
 void mroute4_disable(void)
 {
-	struct mroute4 *entry;
+	struct mroute4 *entry, *tmp;
 
 	if (mroute4_socket < 0)
 		return;
@@ -242,18 +242,15 @@ void mroute4_disable(void)
 	mroute4_socket = -1;
 
 	/* Free list of (*,G) routes on SIGHUP */
-	while (!LIST_EMPTY(&mroute4_conf_list)) {
-		entry = LIST_FIRST(&mroute4_conf_list);
+	LIST_FOREACH_SAFE(entry, &mroute4_conf_list, link, tmp) {
 		LIST_REMOVE(entry, link);
 		free(entry);
 	}
-	while (!LIST_EMPTY(&mroute4_dyn_list)) {
-		entry = LIST_FIRST(&mroute4_dyn_list);
+	LIST_FOREACH_SAFE(entry, &mroute4_dyn_list, link, tmp) {
 		LIST_REMOVE(entry, link);
 		free(entry);
 	}
-	while (!LIST_EMPTY(&mroute4_static_list)) {
-		entry = LIST_FIRST(&mroute4_static_list);
+	LIST_FOREACH_SAFE(entry, &mroute4_static_list, link, tmp) {
 		LIST_REMOVE(entry, link);
 		free(entry);
 	}
@@ -442,17 +439,21 @@ int mroute4_dyn_add(struct mroute4 *route)
 
 	LIST_FOREACH(entry, &mroute4_conf_list, link) {
 		/* Find matching (*,G) ... and interface. */
-		if (is_match4(entry, route)) {
-			/* Use configured template (*,G) outbound interfaces. */
-			memcpy(route->ttl, entry->ttl, NELEMS(route->ttl) * sizeof(route->ttl[0]));
-			break;
-		}
+		if (!is_match4(entry, route))
+			continue;
+
+		/* Use configured template (*,G) outbound interfaces. */
+		memcpy(route->ttl, entry->ttl, NELEMS(route->ttl) * sizeof(route->ttl[0]));
+		break;
 	}
+
 	if (!entry) {
-		/* No match, add entry without outbound interfaces
-		 * nevertheless to avoid continuous cache misses from the
-		 * kernel. Note that this still gets reported as an error
-		 * (ENOENT) below. */
+		/*
+		 * No match, add entry without outbound interfaces
+		 * nevertheless to avoid continuous cache misses from
+		 * the kernel. Note that this still gets reported as an
+		 * error (ENOENT) below.
+		 */
 		memset(route->ttl, 0, NELEMS(route->ttl) * sizeof(route->ttl[0]));
 	}
 
@@ -479,7 +480,6 @@ int mroute4_dyn_add(struct mroute4 *route)
  */
 static int get_stats4(struct mroute4 *route, unsigned long *pktcnt, unsigned long *bytecnt, unsigned long *wrong_if)
 {
-	int result = 0;
 	struct sioc_sg_req sg_req;
 
 	memset(&sg_req, 0, sizeof(sg_req));
@@ -488,17 +488,17 @@ static int get_stats4(struct mroute4 *route, unsigned long *pktcnt, unsigned lon
 
 	if (ioctl(mroute4_socket, SIOCGETSGCNT, &sg_req) < 0) {
 		smclog(LOG_WARNING, "Failed getting MFC stats: %s", strerror(errno));
-		result = errno;
-	} else {
-		if (pktcnt)
-			*pktcnt = sg_req.pktcnt;
-		if (bytecnt)
-			*bytecnt = sg_req.bytecnt;
-		if (wrong_if)
-			*wrong_if = sg_req.wrong_if;
+		return errno;
 	}
 
-	return result;
+	if (pktcnt)
+		*pktcnt = sg_req.pktcnt;
+	if (bytecnt)
+		*bytecnt = sg_req.bytecnt;
+	if (wrong_if)
+		*wrong_if = sg_req.wrong_if;
+
+	return 0;
 }
 
 static int is_active4(struct mroute4 *route)
@@ -539,19 +539,18 @@ static unsigned long get_valid_pkt4(struct mroute4 *route)
  */
 void mroute4_dyn_expire(int max_idle)
 {
-	struct mroute4 *entry, *next;
+	struct mroute4 *entry, *tmp;
 	struct timespec now;
 
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
-	entry = LIST_FIRST(&mroute4_dyn_list);
-	while (entry) {
-		next = LIST_NEXT(entry, link);
+	LIST_FOREACH_SAFE(entry, &mroute4_dyn_list, link, tmp) {
 		if (!entry->last_use) {
 			/* New entry */
 			entry->last_use = now.tv_sec;
 			entry->valid_pkt = get_valid_pkt4(entry);
 		}
+
 		if (entry->last_use + max_idle <= now.tv_sec) {
 			unsigned long valid_pkt;
 
@@ -560,14 +559,14 @@ void mroute4_dyn_expire(int max_idle)
 				/* Used since last check, update */
 				entry->last_use = now.tv_sec;
 				entry->valid_pkt = valid_pkt;
-			} else {
-				/* Not used, expire */
-				kern_del4(entry, is_active4(entry));
-				LIST_REMOVE(entry, link);
-				free(entry);
+				continue;
 			}
+
+			/* Not used, expire */
+			kern_del4(entry, is_active4(entry));
+			LIST_REMOVE(entry, link);
+			free(entry);
 		}
-		entry = next;
 	}
 }
 
@@ -647,57 +646,37 @@ static int is_exact_match4(struct mroute4 *a, struct mroute4 *b)
  */
 int mroute4_del(struct mroute4 *route)
 {
-	struct mroute4 *entry, *set;
+	struct mroute4 *entry, *set, *tmp;
 
-	/*
-	 * For (*,G) we have stored dynamically added kernel routes to a
-	 * linked list.  This list we now traverse to remove all matches
-	 * from the kernel dyn list before we remove the conf entry.
-	 */
 	if (route->sender.s_addr != htonl(INADDR_ANY)) {
-		LIST_FOREACH_SAFE(entry, &mroute4_static_list, link, set) {
-			if (is_exact_match4(entry, route)) {
-				LIST_REMOVE(entry, link);
-				free(entry);
-				break;
-			}
+		LIST_FOREACH_SAFE(entry, &mroute4_static_list, link, tmp) {
+			if (!is_exact_match4(entry, route))
+				continue;
+
+			LIST_REMOVE(entry, link);
+			free(entry);
+			break;
 		}
+
 		return kern_del4(route, 1);
 	}
 
-	if (LIST_EMPTY(&mroute4_conf_list))
-		return 0;
-
-	entry = LIST_FIRST(&mroute4_conf_list);
-	while (entry) {
-		/* Find matching (*,G) ... and interface .. and prefix length. */
-		if (is_match4(entry, route) && entry->len == route->len) {
-			if (LIST_EMPTY(&mroute4_dyn_list))
-				goto empty;
-
-			set = LIST_FIRST(&mroute4_dyn_list);
-			while (set) {
-				if (is_match4(entry, set) && entry->len == route->len) {
-					kern_del4(set, is_active4(set));
-					LIST_REMOVE(set, link);
-					free(set);
-
-					set = LIST_FIRST(&mroute4_dyn_list);
-					continue;
-				}
-
-				set = LIST_NEXT(set, link);
-			}
-
-		empty:
-			LIST_REMOVE(entry, link);
-			free(entry);
-
-			entry = LIST_FIRST(&mroute4_conf_list);
+	/* Find matching (*,G) ... and interface .. and prefix length. */
+	LIST_FOREACH_SAFE(entry, &mroute4_conf_list, link, tmp) {
+		if (!is_match4(entry, route) || entry->len != route->len)
 			continue;
+
+		LIST_FOREACH_SAFE(set, &mroute4_dyn_list, link, tmp) {
+			if (!is_match4(entry, set) || entry->len != route->len)
+				continue;
+
+			kern_del4(set, is_active4(set));
+			LIST_REMOVE(set, link);
+			free(set);
 		}
 
-		entry = LIST_NEXT(entry, link);
+		LIST_REMOVE(entry, link);
+		free(entry);
 	}
 
 	return 0;
