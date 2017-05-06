@@ -47,7 +47,7 @@ struct ipc_msg {
 	char    *argv[0]; 	/* 'count' * '\0' terminated strings + '\0' */
 };
 
-int msg_do(struct ipc_msg *msg);
+int msg_do(int sd, struct ipc_msg *msg);
 
 #endif /* SMCROUTE_MSG_H_ */
 

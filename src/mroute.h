@@ -126,4 +126,6 @@ int  mroute6_del       (struct mroute6 *mroute);
 int  mroute_add_vif    (char *ifname, uint8_t threshold);
 int  mroute_del_vif    (char *ifname);
 
+int  mroute_show       (int sd);
+
 #endif /* SMCROUTE_MROUTE_H_ */

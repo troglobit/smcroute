@@ -23,6 +23,7 @@
 
 #include "config.h"
 
+#include <errno.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -33,6 +34,10 @@
 #include "ifvc.h"
 #include "mroute.h"
 #include "mcgroup.h"
+
+extern int running;
+extern void reload(int signo);
+
 
 static int do_mgroup4(struct ipc_msg *msg)
 {
@@ -247,8 +252,10 @@ static int do_mroute6(struct ipc_msg *msg)
 
 static int do_mroute(struct ipc_msg *msg)
 {
-	if (msg->count < 2)
-		return 1;
+	if (msg->count < 2) {
+		errno = EINVAL;
+		return -1;
+	}
 
 	if (strchr(msg->argv[1], ':'))
 		return do_mroute6(msg);
@@ -258,8 +265,10 @@ static int do_mroute(struct ipc_msg *msg)
 
 static int do_mgroup(struct ipc_msg *msg)
 {
-	if (msg->count < 2)
-		return 1;
+	if (msg->count < 2) {
+		errno = EINVAL;
+		return -1;
+	}
 
 	if (strchr(msg->argv[1], ':'))
 		return do_mgroup6(msg);
@@ -270,7 +279,7 @@ static int do_mgroup(struct ipc_msg *msg)
 /*
  * Convert IPC command from client to a mulicast route or group join/leave
  */
-int msg_do(struct ipc_msg *msg)
+int msg_do(int sd, struct ipc_msg *msg)
 {
 	int result = 0;
 
@@ -289,8 +298,21 @@ int msg_do(struct ipc_msg *msg)
 		mroute4_dyn_expire(0);
 		break;
 
-	default:
+	case 'H':		/* HUP */
+		reload(0);
 		break;
+
+	case 'k':
+		running = 0;
+		break;
+
+	case 's':
+		result = mroute_show(sd);
+		break;
+
+	default:
+		errno = EINVAL;
+		result = -1;
 	}
 
 	return result;

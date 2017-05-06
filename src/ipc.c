@@ -35,15 +35,11 @@
 #include "msg.h"
 #include "socket.h"
 
-extern int running;
-extern void reload(int signo);
-
 /* Receive command from the smcroutectl */
-static void read_command(int sd)
+static void ipc_read(int sd)
 {
-	int result = 0;
-	struct ipc_msg *msg;
 	char buf[MX_CMDPKT_SZ];
+	struct ipc_msg *msg;
 
 	memset(buf, 0, sizeof(buf));
 	msg = (struct ipc_msg *)ipc_receive(sd, buf, sizeof(buf));
@@ -54,37 +50,14 @@ static void read_command(int sd)
 		return;
 	}
 
-	switch (msg->cmd) {
-	case 'a':
-	case 'r':
-	case 'j':
-	case 'l':
-	case 'F':
-		result = msg_do(msg);
-		break;
-
-	case 'H':		/* HUP */
-		reload(0);
-		break;
-
-	case 'k':
-		running = 0;
-		break;
-
-	case 's':
-		result = mroute_show(sd);
-		break;
-
-	default:
-		smclog(LOG_WARNING, "Unkown IPC message '%c' from client.", msg->cmd);
-		result = 1;
-		break;
-	}
-
-	if (result)
+	if (msg_do(sd, msg)) {
+		if (EINVAL == errno)
+			smclog(LOG_WARNING, "Unkown or malformed IPC message '%c' from client.", msg->cmd);
+		errno = 0;
 		ipc_send(sd, log_message, strlen(log_message) + 1);
-	else
+	} else {
 		ipc_send(sd, "", 1);
+	}
 
 	free(msg);
 }
@@ -99,7 +72,7 @@ static void ipc_accept(int sd, void *arg)
 	if (client < 0)
 		return;
 
-	read_command(client);
+	ipc_read(client);
 	close(client);
 }
 
@@ -116,8 +89,10 @@ int ipc_init(void)
 	struct sockaddr_un sa;
 
 	sd = socket_create(AF_UNIX, SOCK_STREAM, 0, ipc_accept, NULL);
-	if (sd < 0)
-		goto error;
+	if (sd < 0) {
+		smclog(LOG_WARNING, "Failed creating IPC socket, client disabled: %s", strerror(errno));
+		return -1;
+	}
 
 #ifdef HAVE_SOCKADDR_UN_SUN_LEN
 	sa.sun_len = 0;	/* <- correct length is set by the OS */
@@ -129,14 +104,12 @@ int ipc_init(void)
 
 	len = offsetof(struct sockaddr_un, sun_path) + strlen(SOCKET_PATH);
 	if (bind(sd, (struct sockaddr *)&sa, len) < 0 || listen(sd, 1)) {
+		smclog(LOG_WARNING, "Failed binding IPC socket, client disabled: %s", strerror(errno));
 		close(sd);
-		goto error;
+		return -1;
 	}
 
 	return sd;
-error:
-	smclog(LOG_WARNING, "Failed creating client IPC socket, client disabled: %s", strerror(errno));
-	return -1;
 }
 
 /**
