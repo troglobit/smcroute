@@ -100,7 +100,7 @@ static int mroute6_add_mif(struct iface *iface);
 #endif
 
 /* Check for kernel IGMPMSG_NOCACHE for (*,G) hits. I.e., source-less routes. */
-static void read_mroute4_socket(int sd, void *arg)
+static void handle_nocache4(int sd, void *arg)
 {
 	int result;
 	char tmp[128];
@@ -177,7 +177,7 @@ int mroute4_enable(int do_vifs)
 	unsigned int i;
 	struct iface *iface;
 
-	mroute4_socket = socket_create(AF_INET, SOCK_RAW, IPPROTO_IGMP, read_mroute4_socket, NULL);
+	mroute4_socket = socket_create(AF_INET, SOCK_RAW, IPPROTO_IGMP, handle_nocache4, NULL);
 	if (mroute4_socket < 0) {
 		if (ENOPROTOOPT == errno)
 			smclog(LOG_WARNING, "Kernel does not support IPv4 multicast routing, skipping ...");
@@ -333,7 +333,7 @@ static int mroute4_del_vif(struct iface *iface)
 }
 
 /* Actually set in kernel - called by mroute4_add() and mroute4_check_add() */
-static int __mroute4_add(struct mroute4 *route, int active)
+static int kern_add4(struct mroute4 *route, int active)
 {
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	struct mfcctl mc;
@@ -369,7 +369,7 @@ static int __mroute4_add(struct mroute4 *route, int active)
 }
 
 /* Actually remove from kernel - called by mroute4_del() */
-static int __mroute4_del(struct mroute4 *route, int active)
+static int kern_del4(struct mroute4 *route, int active)
 {
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	struct mfcctl mc;
@@ -405,7 +405,7 @@ static int __mroute4_del(struct mroute4 *route, int active)
  * does 225.1.2.3 fall inside 225.0.0.0/15? => Yes
  * does 225.1.2.3 fall inside 225.0.0.0/16? => No
  */
-static int __mroute4_match(struct mroute4 *rule, struct mroute4 *cand)
+static int is_match4(struct mroute4 *rule, struct mroute4 *cand)
 {
 	uint32_t g1, g2, mask;
 
@@ -434,7 +434,7 @@ int mroute4_dyn_add(struct mroute4 *route)
 
 	LIST_FOREACH(entry, &mroute4_conf_list, link) {
 		/* Find matching (*,G) ... and interface. */
-		if (__mroute4_match(entry, route)) {
+		if (is_match4(entry, route)) {
 			/* Use configured template (*,G) outbound interfaces. */
 			memcpy(route->ttl, entry->ttl, NELEMS(route->ttl) * sizeof(route->ttl[0]));
 			break;
@@ -458,7 +458,7 @@ int mroute4_dyn_add(struct mroute4 *route)
 		LIST_INSERT_HEAD(&mroute4_dyn_list, new_entry, link);
 	}
 
-	ret = __mroute4_add(route, entry ? 1 : 0);
+	ret = kern_add4(route, entry ? 1 : 0);
 	if (!entry) {
 		errno = ENOENT;
 		ret = -1;
@@ -466,8 +466,10 @@ int mroute4_dyn_add(struct mroute4 *route)
 	return ret;
 }
 
-/* Get usage statistics from the kernel for an installed MFC entry */
-static int mroute4_get_stats(struct mroute4 *route, unsigned long *pktcnt, unsigned long *bytecnt, unsigned long *wrong_if)
+/* 
+ * Query kernel for install MFC entry usage statistics
+ */
+static int get_stats4(struct mroute4 *route, unsigned long *pktcnt, unsigned long *bytecnt, unsigned long *wrong_if)
 {
 	int result = 0;
 	struct sioc_sg_req sg_req;
@@ -503,13 +505,15 @@ static int is_active4(struct mroute4 *route)
 	return 0;
 }
 
-/* Get valid packet usage statistics (i.e. number of actually forwarded
- * packets) from the kernel for an installed MFC entry */
-static unsigned long mroute4_get_stats_valid_pkt(struct mroute4 *route)
+/*
+ * Get valid packet usage statistics (i.e. number of actually forwarded
+ * packets) from the kernel for an installed MFC entry
+ */
+static unsigned long get_valid_pkt4(struct mroute4 *route)
 {
 	unsigned long pktcnt = 0, wrong_if = 0;
 
-	if (mroute4_get_stats(route, &pktcnt, NULL, &wrong_if) < 0)
+	if (get_stats4(route, &pktcnt, NULL, &wrong_if) < 0)
 		return 0;
 
 	return pktcnt - wrong_if;
@@ -538,19 +542,19 @@ void mroute4_dyn_expire(int max_idle)
 		if (!entry->last_use) {
 			/* New entry */
 			entry->last_use = now.tv_sec;
-			entry->valid_pkt = mroute4_get_stats_valid_pkt(entry);
+			entry->valid_pkt = get_valid_pkt4(entry);
 		}
 		if (entry->last_use + max_idle <= now.tv_sec) {
 			unsigned long valid_pkt;
 
-			valid_pkt = mroute4_get_stats_valid_pkt(entry);
+			valid_pkt = get_valid_pkt4(entry);
 			if (valid_pkt != entry->valid_pkt) {
 				/* Used since last check, update */
 				entry->last_use = now.tv_sec;
 				entry->valid_pkt = valid_pkt;
 			} else {
 				/* Not used, expire */
-				__mroute4_del(entry, is_active4(entry));
+				kern_del4(entry, is_active4(entry));
 				LIST_REMOVE(entry, link);
 				free(entry);
 			}
@@ -593,8 +597,8 @@ int mroute4_add(struct mroute4 *route)
 
 		/* Also, immediately expire any currently blocked traffic */
 		LIST_FOREACH_SAFE(dyn, &mroute4_dyn_list, link, tmp) {
-			if (!is_active4(dyn) && __mroute4_match(entry, dyn)) {
-				__mroute4_del(dyn, 0);
+			if (!is_active4(dyn) && is_match4(entry, dyn)) {
+				kern_del4(dyn, 0);
 				LIST_REMOVE(dyn, link);
 				free(dyn);
 				break;
@@ -605,10 +609,13 @@ int mroute4_add(struct mroute4 *route)
 	}
 
 	LIST_INSERT_HEAD(&mroute4_static_list, entry, link);
-	return __mroute4_add(route, 1);
+	return kern_add4(route, 1);
 }
 
-static int is_match4(struct mroute4 *a, struct mroute4 *b)
+/*
+ * Used for exact (S,G) matching
+ */
+static int is_exact_match4(struct mroute4 *a, struct mroute4 *b)
 {
 	if (a->sender.s_addr == b->sender.s_addr &&
 	    a->group.s_addr  == b->group.s_addr  &&
@@ -641,13 +648,13 @@ int mroute4_del(struct mroute4 *route)
 	 */
 	if (route->sender.s_addr != htonl(INADDR_ANY)) {
 		LIST_FOREACH_SAFE(entry, &mroute4_static_list, link, set) {
-			if (is_match4(entry, route)) {
+			if (is_exact_match4(entry, route)) {
 				LIST_REMOVE(entry, link);
 				free(entry);
 				break;
 			}
 		}
-		return __mroute4_del(route, 1);
+		return kern_del4(route, 1);
 	}
 
 	if (LIST_EMPTY(&mroute4_conf_list))
@@ -656,14 +663,14 @@ int mroute4_del(struct mroute4 *route)
 	entry = LIST_FIRST(&mroute4_conf_list);
 	while (entry) {
 		/* Find matching (*,G) ... and interface .. and prefix length. */
-		if (__mroute4_match(entry, route) && entry->len == route->len) {
+		if (is_match4(entry, route) && entry->len == route->len) {
 			if (LIST_EMPTY(&mroute4_dyn_list))
 				goto empty;
 
 			set = LIST_FIRST(&mroute4_dyn_list);
 			while (set) {
-				if (__mroute4_match(entry, set) && entry->len == route->len) {
-					__mroute4_del(set, is_active4(set));
+				if (is_match4(entry, set) && entry->len == route->len) {
+					kern_del4(set, is_active4(set));
 					LIST_REMOVE(set, link);
 					free(set);
 
@@ -716,7 +723,7 @@ static int proc_set_val(char *file, int val)
  *
  * XXX: Currently MRT6MSG_NOCACHE messages for IPv6 (*,G) is unsupported.
  */
-static void read_mroute6_socket(int sd, void *arg)
+static void handle_nocache6(int sd, void *arg)
 {
 	int result;
 	char tmp[128];
@@ -746,7 +753,7 @@ int mroute6_enable(int do_vifs)
 	unsigned int i;
 	struct iface *iface;
 
-	mroute6_socket = socket_create(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6, read_mroute6_socket, NULL);
+	mroute6_socket = socket_create(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6, handle_nocache6, NULL);
 	if (mroute6_socket < 0) {
 		if (ENOPROTOOPT == errno)
 			smclog(LOG_WARNING, "Kernel does not support IPv6 multicast routing, skipping ...");
