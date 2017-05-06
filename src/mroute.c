@@ -145,13 +145,15 @@ static void read_mroute4_socket(int sd, void *arg)
 		/* Find any matching route for this group on that iif. */
 		result = mroute4_dyn_add(&mroute);
 		if (result) {
-			/* This is a common error, the router receives streams it is not
+			/*
+			 * This is a common error, the router receives streams it is not
 			 * set up to route -- we ignore these by default, but if the user
 			 * sets a more permissive log level we help out by showing what
-			 * is going on. */
+			 * is going on.
+			 */
 			if (ENOENT == errno)
-				smclog(LOG_INFO, "Multicast from %s, group %s, VIF %d does not match any (*,G) rule",
-				       origin, group, mroute.inbound);
+				smclog(LOG_INFO, "Multicast from %s, group %s, on %s does not match any (*,G) rule",
+				       origin, group, iface->name);
 			return;
 		}
 
