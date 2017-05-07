@@ -6,6 +6,8 @@ language: c
 sudo: false
 
 # Test build with both GCC and Clang (LLVM)
+# XXX: REMEMBER TO DISABLE ONE WHEN RUNNING CONVERITY SCAN
+# XXX: Otherwise two scans per build will be run :-/
 compiler:
   - gcc
   - clang
