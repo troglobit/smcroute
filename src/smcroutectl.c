@@ -200,7 +200,8 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 			do {
 				fputs(buf, stdout);
 				len = read(sd, buf, sizeof(buf) - 1);
-				buf[len] = 0;
+				if (len >= 0)
+					buf[len] = 0;
 			} while (len > 0);
 			break;
 
