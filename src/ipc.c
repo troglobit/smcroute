@@ -187,6 +187,12 @@ void *ipc_receive(int sd, char *buf, size_t len)
 
 			ptr = buf + offsetof(struct ipc_msg, argv);
 			for (i = 0; i < msg->count; i++) {
+				/* Don't trust msg->count, ever. */
+				if (ptr >= (buf + len)) {
+					errno = EBADMSG;
+					return NULL;
+				}
+
 				msg->argv[i] = ptr;
 				ptr += strlen(ptr) + 1;
 			}
