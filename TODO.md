@@ -1,4 +1,3 @@
-
 BEFORE RELEASE
 --------------
 
@@ -25,12 +24,12 @@ Support for filtering based on source ADDRESS/LEN
     mroute from eth0 except 192.168.1.0/24 group 225.1.2.0/24 to eth1 eth2
 
 
-IPv6 support for (*, G), on-demand, routing rules
--------------------------------------------------
+IPv6 support for (*,G) on-demand routing rules
+----------------------------------------------
 
-In SMCRoute 1.99.0 IPv4 support for source-less multicast routes was
-added. Adding support for IPv6 should be fairly straight forward, but
-needs figuring out the kernel interface and extensive testing.
+As of SMCRoute v1.99.0 IPv4 support for (*,G) routes was added.  Adding
+support for IPv6 should be fairly straight forward but needs figuring
+out the kernel interface and some basic testing.
 
 
 Add unit tests
