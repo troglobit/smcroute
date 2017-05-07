@@ -1,21 +1,12 @@
-BEFORE RELEASE
---------------
+Support for (re-)enumerating VIFs at runtime
+--------------------------------------------
 
-- Add `compat.c` for an optional old smcroute interface, `--enable-old-smcroute`
+Currently the `-t SEC` startup delay option has to be used if not all
+interfaces are available when `smcrouted` starts.  Commonly a problem at
+boot, but also if adding a pluggable interface (PCMCIA/USB) at runtime.
 
-
-Support for re-enumerating VIFs at runtime
-------------------------------------------
-
-The main requirement is to be able to add/remove interface VIF/MIF
-mappings at runtime, e.g. if an interface has not yet been created when
-smcrouted has started.  Currently the -t startup delay option has to be
-used for this.
-
-Optimal behavior would be to handle such transitions without losing any
-traffic for already established/active routing rules.
-
-May also require updating VIF/MIFs and mroutes accordingly.
+Hence, it would be a great addition to SMCRoute if new interface VIF/MIF
+mappings could be at least added at runtime.
 
 
 Support for filtering based on source ADDRESS/LEN
