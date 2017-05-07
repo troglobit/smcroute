@@ -145,9 +145,8 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 	while ((sd = ipc_connect()) < 0) {
 		switch (errno) {
 		case EACCES:
-			warn("Need root privileges to connect to daemon");
-			result = 1;
-			goto error;
+			warnx("Need root privileges to connect to daemon");
+			break;
 
 		case ENOENT:
 		case ECONNREFUSED:
@@ -156,36 +155,40 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 				continue;
 			}
 
-			warn("Daemon not running");
-			result = 1;
-			goto error;
+			warnx("Daemon not running");
+			break;
 
 		default:
 			warn("Failed connecting to daemon");
-			result = 1;
-			goto error;
+			break;
 		}
+
+		free(msg);
+		return 1;
 	}
 
 	/* Send command */
-	if (write(sd, msg, msg->len) != (ssize_t)msg->len)
-		goto comms_err;
+	if (write(sd, msg, msg->len) != (ssize_t)msg->len) {
+	error:
+		warn("Communication with daemon failed");
+		close(sd);
+		free(msg);
+
+		return 1;
+	}
 
 	/* Wait here for reply */
 	len = read(sd, buf, sizeof(buf) - 1);
-	if (len < 0) {
-	comms_err:
-		warn("Communication with daemon failed");
-		result = 1;
+	if (len < 0)
 		goto error;
-	} else {
-		buf[len] = 0;
-	}
 
 	if (len != 1 || *buf != '\0') {
 		int detail = 0;
 		const char *g = "GROUP (S,G)", *i = "INBOUND", *pad = "";
 		const char *r = "ROUTE (S,G)", *o = "OUTBOUND", *p = "PACKETS", *b = "BYTES";
+
+		/* Make sure buffer is NULL terminated */
+		buf[len] = 0;
 
 		switch (cmd) {
 		case 'S':
@@ -212,7 +215,6 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 		}
 	}
 
-error:
 	close(sd);
 	free(msg);
 
