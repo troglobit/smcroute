@@ -992,7 +992,7 @@ int mroute_del_vif(char *ifname)
 
 static int show_mroute(int sd, struct mroute4 *r, int detail)
 {
-	int vif, first = 1;
+	int vif;
 	char src[INET_ADDRSTRLEN] = "*";
 	char grp[INET_ADDRSTRLEN];
 	char sg[INET_ADDRSTRLEN * 2 + 5];
@@ -1005,7 +1005,7 @@ static int show_mroute(int sd, struct mroute4 *r, int detail)
 
 	i = iface_find_by_vif(r->inbound);
 	snprintf(sg, sizeof(sg), "(%s, %s)", src, grp);
-	snprintf(buf, sizeof(buf), "%-34s %s%-16s", sg, detail ? "" : "Iif: ", i->name);
+	snprintf(buf, sizeof(buf), "%-34s %-16s", sg, i->name);
 
 	if (detail) {
 		char stats[20];
@@ -1023,12 +1023,10 @@ static int show_mroute(int sd, struct mroute4 *r, int detail)
 			continue;
 
 		i = iface_find_by_vif(vif);
-		if (first && !detail) {
-			snprintf(tmp, sizeof(tmp), " Oifs: %s", i->name);
-			first = 0;
-		} else {
-			snprintf(tmp, sizeof(tmp), " %s", i->name);
-		}
+		if (!i)
+			continue;
+
+		snprintf(tmp, sizeof(tmp), " %s", i->name);
 		strcat(buf, tmp);
 	}
 	strcat(buf, "\n");
@@ -1044,17 +1042,7 @@ static int show_mroute(int sd, struct mroute4 *r, int detail)
 /* Write all (*,G) routes to client socket */
 int mroute_show(int sd, int detail)
 {
-	char buf[256];
 	struct mroute4 *r;
-
-	if (detail) {
-		const char *r = "ROUTE (S,G)", *i = "Inbound", *p = "Packets", *b = "Bytes";
-
-		/*       Packets    Bytes */
-		snprintf(buf, sizeof(buf), "\e[7m%-34s %-16s %7s %8s  %s\e[0m\n",
-			 r, i, p, b, "Outbound                        ");
-		ipc_send(sd, buf, strlen(buf));
-	}
 
 	LIST_FOREACH(r, &mroute4_conf_list, link) {
 		if (show_mroute(sd, r, detail) < 0)

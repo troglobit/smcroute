@@ -272,12 +272,24 @@ static int do_mgroup(struct ipc_msg *msg)
 	return do_mgroup4(msg);
 }
 
+static int do_show(struct ipc_msg *msg, int sd, int detail)
+{
+	if (msg->count == 0)
+		return mroute_show(sd, detail);
+
+	if (msg->argv[0][0] == 'g')
+		return mcgroup_show(sd, detail);
+
+	return mroute_show(sd, detail);
+}
+
+
 /*
  * Convert IPC command from client to a mulicast route or group join/leave
  */
 int msg_do(int sd, struct ipc_msg *msg)
 {
-	int result = 0, detail = 0;
+	int result = 0;
 
 	switch (msg->cmd) {
 	case 'a':
@@ -303,9 +315,11 @@ int msg_do(int sd, struct ipc_msg *msg)
 		break;
 
 	case 'S':
-		detail = 1;
+		result = do_show(msg, sd, 1);
+		break;
+
 	case 's':
-		result = mroute_show(sd, detail);
+		result = do_show(msg, sd, 0);
 		break;
 
 	default:

@@ -47,7 +47,7 @@ struct arg {
 	{ "flush" ,  0, 'F', "Flush all dynamically set (*,G) multicast routes", NULL, 0 },
 	{ "kill",    0, 'k', "Kill running daemon", NULL, 0 },
 	{ "restart", 0, 'H', "Tell daemon to restart and reload its .conf file, like SIGHUP", NULL, 0 },
-	{ "show",    0, 's', "Show passive (*,G) and active kernel routes", NULL, 1 },
+	{ "show",    0, 's', "Show passive (*,G) and active routes, as well as joined groups", NULL, 1 },
 	{ "add",     3, 'a', "Add a multicast route",    "eth0 192.168.2.42 225.1.2.3 eth1 eth2", 0 },
 	{ "remove",  3, 'r', "Remove a multicast route", "eth0 192.168.2.42 225.1.2.3", 0 },
 	{ "join",    2, 'j', "Join multicast group on an interface", "eth0 225.1.2.3", 0 },
@@ -183,9 +183,20 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 	}
 
 	if (len != 1 || *buf != '\0') {
+		int detail = 0;
+		const char *g = "GROUP (S,G)", *i = "INBOUND", *pad = "";
+		const char *r = "ROUTE (S,G)", *o = "OUTBOUND", *p = "PACKETS", *b = "BYTES";
+
 		switch (cmd) {
-		case 's':
 		case 'S':
+			detail = 1;
+		case 's':
+			if (count && argv[0][0] == 'g')
+				printf("\e[7m%-34s %-16s %27s\e[0m\n", g, i, pad);
+			else if (detail)
+				printf("\e[7m%-34s %-16s %7s %8s  %-9s\e[0m\n", r, i, p, b, o);
+			else
+				printf("\e[7m%-34s %-16s %-27s\e[0m\n", r, i, o);
 			do {
 				fputs(buf, stdout);
 				len = read(sd, buf, sizeof(buf) - 1);
@@ -263,6 +274,8 @@ static int usage(int code)
 	       "\n"
 	       "  join   IFNAME [SOURCE-IP] MULTICAST-GROUP\n"
 	       "  leave  IFNAME [SOURCE-IP] MULTICAST-GROUP\n"
+	       "\n"
+	       "  show   [groups|routes]\n"
 	       "\n"
 	       "Bug report address: %s\n"
 	       "Project homepage:   %s\n\n", PACKAGE_BUGREPORT, PACKAGE_URL);

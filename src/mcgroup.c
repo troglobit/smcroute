@@ -34,8 +34,23 @@
 #endif
 
 #include "log.h"
+#include "ipc.h"
 #include "ifvc.h"
+#include "queue.h"
 #include "socket.h"
+
+struct mgroup {
+	LIST_ENTRY(mgroup) link;
+
+	short          inbound;
+	struct in_addr source;
+	struct in_addr group;
+};
+
+/*
+ * Track IGMP join, any-source and source specific
+ */
+LIST_HEAD(, mgroup) mgroup_static_list = LIST_HEAD_INITIALIZER();
 
 static int mcgroup4_socket = -1;
 
@@ -64,6 +79,49 @@ static struct iface *find_valid_iface(const char *ifname)
 
 	return iface;
 }
+
+static void list_add(const char *ifname, struct in_addr source, struct in_addr group)
+{
+	struct iface *iface;
+	struct mgroup *entry;
+
+	iface = find_valid_iface(ifname);
+	if (!iface)
+		return;
+
+	entry = malloc(sizeof(*entry));
+	if (!entry) {
+		smclog(LOG_ERR, "Failed adding mgroup to list: %s", strerror(errno));
+		return;
+	}
+
+	memset(entry, 0, sizeof(*entry));
+	entry->inbound = iface->vif;
+	entry->source  = source;
+	entry->group   = group;
+	LIST_INSERT_HEAD(&mgroup_static_list, entry, link);
+}
+
+static void list_rem(const char *ifname, struct in_addr source, struct in_addr group)
+{
+	struct iface *iface;
+	struct mgroup *entry, *tmp;
+
+	iface = find_valid_iface(ifname);
+	if (!iface)
+		return;
+
+	LIST_FOREACH_SAFE(entry, &mgroup_static_list, link, tmp) {
+		if (entry->inbound       != iface->vif    ||
+		    entry->source.s_addr != source.s_addr ||
+		    entry->group.s_addr  != group.s_addr)
+			continue;
+
+		LIST_REMOVE(entry, link);
+		free(entry);
+	}
+}
+
 
 static void mcgroup4_init(void)
 {
@@ -145,6 +203,7 @@ int mcgroup4_join(const char *ifname, struct in_addr source, struct in_addr grou
 {
 	mcgroup4_init();
 
+	list_add(ifname, source, group);
 	if (!source.s_addr)
 		return mcgroup_join_leave_ipv4(mcgroup4_socket, 'j', ifname, group);
 
@@ -161,6 +220,7 @@ int mcgroup4_leave(const char *ifname, struct in_addr source, struct in_addr gro
 {
 	mcgroup4_init();
 
+	list_rem(ifname, source, group);
 	if (!source.s_addr)
 		return mcgroup_join_leave_ipv4(mcgroup4_socket, 'l', ifname, group);
 
@@ -172,10 +232,18 @@ int mcgroup4_leave(const char *ifname, struct in_addr source, struct in_addr gro
  */
 void mcgroup4_disable(void)
 {
+	struct mgroup *entry, *tmp;
+
 	if (mcgroup4_socket != -1) {
 		socket_close(mcgroup4_socket);
 		mcgroup4_socket = -1;
 	}
+
+	LIST_FOREACH_SAFE(entry, &mgroup_static_list, link, tmp) {
+		LIST_REMOVE(entry, link);
+		free(entry);
+	}
+
 }
 
 #ifdef HAVE_IPV6_MULTICAST_HOST
@@ -265,6 +333,37 @@ void mcgroup6_disable(void)
 		mcgroup6_socket = -1;
 	}
 #endif /* HAVE_IPV6_MULTICAST_HOST */
+}
+
+/* Write all joined IGMP/MLD groups to client socket */
+int mcgroup_show(int sd, int detail)
+{
+	char buf[256];
+	char sg[INET_ADDRSTRLEN * 2 + 5];
+	struct mgroup *g;
+
+	(void)detail;
+	LIST_FOREACH(g, &mgroup_static_list, link) {
+		char src[INET_ADDRSTRLEN] = "*";
+		char grp[INET_ADDRSTRLEN];
+		struct iface *i;
+
+		i = iface_find_by_vif(g->inbound);
+
+		if (g->source.s_addr != htonl(INADDR_ANY))
+			inet_ntop(AF_INET, &g->source, src, sizeof(src));
+		inet_ntop(AF_INET, &g->group, grp, sizeof(grp));
+
+		snprintf(sg, sizeof(sg), "(%s, %s)", src, grp);
+		snprintf(buf, sizeof(buf), "%-34s %s\n", sg, i->name);
+
+		if (ipc_send(sd, buf, strlen(buf)) < 0) {
+			smclog(LOG_ERR, "Failed sending reply to client: %s", strerror(errno));
+			return -1;
+		}
+	}
+
+	return 0;
 }
 
 /**

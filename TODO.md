@@ -2,7 +2,6 @@
 BEFORE RELEASE
 --------------
 
-- Add `smcroutectl show` command to list both (*,G) and active kernel routes + mgroups
 - Add `compat.c` for an optional old smcroute interface, `--enable-old-smcroute`
 
 

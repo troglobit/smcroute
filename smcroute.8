@@ -19,7 +19,7 @@
 .Oo Ao add | rem Ac Ao ROUTE Ac Oc Oo Ao join | leave Ac Ao GROUP Ac Oc
 .Pp
 .Nm smcroutectl
-.Op help | flush | kill | restart | version
+.Op help | flush | kill | restart | version | show [groups|routes]
 .Nm smcroutectl
 .Oo \ add | \ \ rem Oc Ao IFNAME Ac Oo SOURCE Oc Ar GROUP[/LEN] IFNAME Op IFNAME ...
 .Nm smcroutectl
@@ -205,6 +205,11 @@ Stop (kill) running daemon.
 .It Nm restart
 Tell daemon to restart and reload its configuration file.  Same as
 .Ar SIGHUP .
+.It Nm show [groups|routes]
+Show joined multicast groups or multicast routes, defaults to show
+routes.  Can be combined with the
+.Fl d
+option to get details for each multicast route.
 .It Nm version
 Display
 .Nm

@@ -10,6 +10,8 @@ int  mcgroup6_join      (const char *ifname, struct in6_addr group);
 int  mcgroup6_leave     (const char *ifname, struct in6_addr group);
 void mcgroup6_disable   (void);
 
+int  mcgroup_show       (int sd, int detail);
+
 #endif /* SMCROUTE_MCGROUP_H_ */
 
 /**
