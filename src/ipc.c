@@ -165,6 +165,9 @@ void *ipc_receive(int sd, char *buf, size_t len)
 	if (sz >= sizeof(struct ipc_msg)) {
 		struct ipc_msg *msg = (struct ipc_msg *)buf;
 
+		/* Make sure to always have at least one NUL, for strlen() */
+		buf[sz] = 0;
+
 		if (sz == msg->len) {
 			char *ptr;
 			size_t i;
