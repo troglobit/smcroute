@@ -173,8 +173,8 @@ void *ipc_receive(int sd, char *buf, size_t len)
 			char *ptr;
 			size_t i;
 
-			/* Check bounds of number of arguments */
-			if (msg->count > (MAXVIFS + 3) || msg->count < 0) {
+			/* Upper bound: smcroutectl add in1 source group out1 out2 .. out32 */
+			if (msg->count > (MAXVIFS + 3)) {
 				errno = EINVAL;
 				return NULL;
 			}
