@@ -34,6 +34,7 @@
 #include "log.h"
 #include "msg.h"
 #include "socket.h"
+#include "mroute.h"
 
 /* Receive command from the smcroutectl */
 static void ipc_read(int sd)
@@ -171,6 +172,12 @@ void *ipc_receive(int sd, char *buf, size_t len)
 		if (sz == msg->len) {
 			char *ptr;
 			size_t i;
+
+			/* Check upper bound for number of arguments */
+			if (msg->count > (MAXVIFS + 3)) {
+				errno = EINVAL;
+				return NULL;
+			}
 
 			msg = malloc(sizeof(struct ipc_msg) + msg->count * sizeof(char *));
 			if (!msg)
