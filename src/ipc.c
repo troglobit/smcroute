@@ -173,8 +173,8 @@ void *ipc_receive(int sd, char *buf, size_t len)
 			char *ptr;
 			size_t i;
 
-			/* Check upper bound for number of arguments */
-			if (msg->count > (MAXVIFS + 3)) {
+			/* Check bounds of number of arguments */
+			if (msg->count > (MAXVIFS + 3) || msg->count < 0) {
 				errno = EINVAL;
 				return NULL;
 			}
