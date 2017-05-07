@@ -101,9 +101,9 @@ int socket_create(int domain, int type, int proto, void (*cb)(int, void *), void
 
 int socket_close(int sd)
 {
-	struct sock *entry;
+	struct sock *entry, *tmp;
 
-	LIST_FOREACH(entry, &sl, link) {
+	LIST_FOREACH_SAFE(entry, &sl, link, tmp) {
 		if (entry->sd == sd) {
 			LIST_REMOVE(entry, link);
 			close(entry->sd);

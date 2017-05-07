@@ -238,7 +238,7 @@ void mroute4_disable(void)
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_DONE, NULL, 0))
 		smclog(LOG_WARNING, "Failed shutting down IPv4 multicast routing socket: %s", strerror(errno));
 
-	close(mroute4_socket);
+	socket_close(mroute4_socket);
 	mroute4_socket = -1;
 
 	/* Free list of (*,G) routes on SIGHUP */
@@ -802,7 +802,7 @@ void mroute6_disable(void)
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_DONE, NULL, 0))
 		smclog(LOG_WARNING, "Failed shutting down IPv6 multicast routing socket: %s", strerror(errno));
 
-	close(mroute6_socket);
+	socket_close(mroute6_socket);
 	mroute6_socket = -1;
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
 }

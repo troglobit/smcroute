@@ -2,8 +2,7 @@
 BEFORE RELEASE
 --------------
 
-- Audit socket close and `ipc_exit()` ordering, during `SIGHUP`
-- Add `smcroutectl show` commadn to list both (*,G) and active kernel routes + mgroups
+- Add `smcroutectl show` command to list both (*,G) and active kernel routes + mgroups
 - Add `compat.c` for an optional old smcroute interface, `--enable-old-smcroute`
 
 
