@@ -1,5 +1,3 @@
-Project TODO
-============
 
 BEFORE RELEASE
 --------------
