@@ -155,6 +155,10 @@ the multicast routes.  Use `--without-libcap` to disable this feature.
     $ make -j5
 	$ sudo make install-strip
 
+The `configure` script and the `Makefile.in` files are generated and not
+stored in GIT.  So if you checkout the sources from GitHub you first
+need to generated these files using `./autogen.sh`.
+
 
 Origin & References
 -------------------
