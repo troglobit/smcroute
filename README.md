@@ -9,10 +9,10 @@ SMCRoute can be used as an alternative to dynamic multicast routers
 like [mrouted][] or [pimd][] in setups where static multicast routes
 should be maintained and/or no proper IGMP or MLD signaling exists.
 
-Multicast routes exist in the UNIX kernel only as long as a multicast
-routing daemon is running.  Only one multicast routing daemon can be
-active at a time, so it is not possible to run `smcrouted` and, e.g.
-`mrouted` at the same time.
+Multicast routes exist in the UNIX kernel as long as a multicast routing
+daemon is running.  Only one multicast routing daemon can be active at a
+time, so it is not possible to run `smcrouted` and, e.g.  `mrouted` at
+the same time.
 
 
 Features
