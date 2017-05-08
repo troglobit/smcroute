@@ -4,6 +4,19 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
+[v2.3.0][UNRELEASED]
+--------------------
+
+### Changes
+- Support for GROUP/LEN for IPv4 (*,G) routes
+- Separation of daemon and client into `smcrouted` and `smcroutectl`
+- List multicast routes and joined groups in client, including stats
+- Support for `-t SEC` startup delay in `smcrouted`
+
+### Fixes
+- Allow use on loopback interface for multicast routes
+
+
 [v2.2.2][] - 2017-02-02
 -----------------------
 
