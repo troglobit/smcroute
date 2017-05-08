@@ -6,11 +6,11 @@ language: c
 sudo: false
 
 # Test build with both GCC and Clang (LLVM)
-# XXX: REMEMBER TO DISABLE ONE WHEN RUNNING CONVERITY SCAN
-# XXX: Otherwise two scans per build will be run :-/
+# XXX: REMEMBER TO DISABLE CLANG WHEN RUNNING CONVERITY SCAN
+# XXX: https://github.com/travis-ci/travis-ci/issues/1975
+#  - clang
 compiler:
   - gcc
-  - clang
 
 env:
   global:
