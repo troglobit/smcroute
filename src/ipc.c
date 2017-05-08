@@ -189,6 +189,7 @@ void *ipc_receive(int sd, char *buf, size_t len)
 			for (i = 0; i < msg->count; i++) {
 				/* Don't trust msg->count, ever. */
 				if (ptr >= (buf + len)) {
+					free(msg);
 					errno = EBADMSG;
 					return NULL;
 				}
