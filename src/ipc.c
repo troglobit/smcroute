@@ -198,6 +198,7 @@ void *ipc_receive(int sd, char *buf, size_t len)
 				msg->argv[i] = ptr;
 				ptr += strlen(ptr) + 1;
 			}
+			msg->count = count;
 
 			return msg;
 		}
