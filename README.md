@@ -19,9 +19,10 @@ Features
 --------
 
 - Configuration file support, `/etc/smcroute.conf`
-- Support for restarting and re-reading `.conf` on `SIGHUP`
+- Support for restarting and reloading the `.conf` on `SIGHUP`
 - Source-less on-demand routing, a.k.a. (*,G) based static routing
 - Optional built-in [mrdisc][] support, [RFC4286][]
+- Client with built-in support to show routes and joined groups
 
 
 Usage
