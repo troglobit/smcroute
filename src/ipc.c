@@ -171,10 +171,11 @@ void *ipc_receive(int sd, char *buf, size_t len)
 
 		if (sz == msg->len) {
 			char *ptr;
-			size_t i;
+			size_t i, count;
 
 			/* Upper bound: smcroutectl add in1 source group out1 out2 .. out32 */
-			if (msg->count > (MAXVIFS + 3)) {
+			count = msg->count;
+			if (count > (MAXVIFS + 3)) {
 				errno = EINVAL;
 				return NULL;
 			}
@@ -186,8 +187,8 @@ void *ipc_receive(int sd, char *buf, size_t len)
 			memcpy(msg, buf, sizeof(struct ipc_msg));
 
 			ptr = buf + offsetof(struct ipc_msg, argv);
-			for (i = 0; i < msg->count; i++) {
-				/* Don't trust msg->count, ever. */
+			for (i = 0; i < count; i++) {
+				/* Verify ptr, attacker may set too large msg->count */
 				if (ptr >= (buf + len)) {
 					free(msg);
 					errno = EBADMSG;
