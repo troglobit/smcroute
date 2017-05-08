@@ -2,18 +2,17 @@ SMCRoute - A static multicast routing daemon
 ============================================
 [![License Badge][]][License] [![Travis Status][]][Travis] [![Coverity Status][]][Coverity Scan]
 
-SMCRoute is a command line tool to manipulate the multicast routes in
-the UNIX kernel.  It supports both IPv4 and IPv6 multicast routing.
+SMCRoute is a UNIX/Linux tool to manage and monitor multicast routes.
+It supports both IPv4 and IPv6 multicast routing.
 
-SMCRoute can be used as an alternative to dynamic multicast routers like
-`mrouted` or `pimd` in setups where static multicast routes should be
-maintained and/or no proper IGMP or MLD signaling exists.
+SMCRoute can be used as an alternative to dynamic multicast routers
+like [mrouted][] or [pimd][] in setups where static multicast routes
+should be maintained and/or no proper IGMP or MLD signaling exists.
 
 Multicast routes exist in the UNIX kernel only as long as a multicast
 routing daemon is running.  Only one multicast routing daemon can be
-active at a time, so it's impossible to run SMCRoute and, e.g.,
-`mrouted` at the same time.  Linux does however support multiple routing
-tables, which SMCRoute not yet supports.
+active at a time, so it is not possible to run `smcrouted` and, e.g.
+`mrouted` at the same time.
 
 
 Features
@@ -22,6 +21,7 @@ Features
 - Configuration file support, `/etc/smcroute.conf`
 - Support for restarting and re-reading `.conf` on `SIGHUP`
 - Source-less on-demand routing, a.k.a. (*,G) based static routing
+- Optional built-in [mrdisc][] support, [RFC4286][]
 
 
 Usage
@@ -62,15 +62,12 @@ which can look something like this:
     mgroup from eth0 group 225.1.2.3 source 192.168.1.42
     mroute from eth0 group 225.1.2.3 source 192.168.1.42 to eth1 eth2
 
-The first line means "Join multicast group 225.1.2.3 on interface eth0",
-and is for layer-2 devices (switches) with IGMP snooping implemented to
-open up multicast for that group to be flooded to us.  You *should not*
-need the `mgroup` line, it will cause routing performance loss and is
-only intended to be used when you have problems with switches that do
-not forward multicast to us by default.  Only 20 groups can be "joined"
-this way, for more groups you should investigate the root cause for not
-receiving multicast at the multicast router, or use a dynamic multicast
-routing protocol.
+The first line means "Join multicast group 225.1.2.3 on interface eth0".
+Useful if `eth0` is not directly connected to the source, but to a LAN
+with switches with IGMP snooping.  Joining the group opens up multicast
+for that group towards `eth0`.  Only 20 groups can be joined, for large
+setups investigate enabling multicast router ports in the switches, or
+possibly use a dynamic multicast routing protocol.
 
 The second `mgroup` is for source specific group join, i.e. the host
 specifies that it wants packets from 192.168.1.42 and no other source.
@@ -86,18 +83,13 @@ multicast group 225.1.2.3 should be forwarded to interfaces `eth1` and
    
     $ ping -I eth0 -t 2 225.1.2.3
 
-The TTL is what usually bites people trying out multicast the first time.
-There is a good reason for applications, e.g., ping to default to a TTL=1
-for multicast.  That is to reduce the risk of flooding your network with
-data, remember multicast is like broadcast in nature.  Only IGMP snooping
-aware switches can help mitigate its broadcast effect.
+The TTL is what usually bites people trying out multicast routing.  Most
+TCP/IP stacks default to a TTL of 1 for multicast sockets, e.g. ping
+requires `-t 2`, or greater, for multicast.  This limitation reduces the
+risk of accidentally flooding multicast.  Remember, multicast behaves
+like broadcast unless limited.
 
-Traditionally, however, SMCRoute only had the client interface to interact
-with the daemon.  To achieve the above two config file lines you have to:
-
-    # sleep 1
-
-To allow the daemon to startup properly (above) before interacting with it.
+SMCRoute also has a client interface to interact with the daemon:
 
     # smcroutectl join eth0 225.1.2.3
     # smcroutectl add  eth0 192.168.1.42 225.1.2.3 eth1 eth2
@@ -106,12 +98,9 @@ To allow the daemon to startup properly (above) before interacting with it.
 Experimental
 ------------
 
-Many people sometimes do not know where the multicast will originate
-from, or it will originate from several different sources but never at
-the same time.  Up until 1.98.3 a user had to setup a unique routing
-rule for each possible source and group to be routed.  However, as of
-1.99.0 it is possible to use the wildcard address 0.0.0.0 (INADDR_ANY)
-for IPv4 multicast routes.
+Often multicast can originate from several different sources but never
+at the same time.  For a more generic setup, and to reduce the number of
+rules required, it is possible to set (*,G) IPv4 multicast routes.
 
 Example smcroute.conf:
 
@@ -122,6 +111,13 @@ or, from the command line:
 
     # smcroutectl join eth0 225.1.2.3
     # smcroutectl add  eth0 225.1.2.3 eth1 eth2
+
+Another experimental feature is multicast router discovery, [mrdisc][],
+described in [RFC4286][].  This feature is disabled by default, enable
+with `configure --enable-mrdisc`.  When enabled it periodically sends
+out an IGMP message on all inbound interfaces (above `eth0`) to alert
+switches to open up multicast in that direction.  Not many managed
+switches have support for this yet.
 
 
 Build & Install
@@ -169,6 +165,10 @@ by [Carsten Schill][], the original author.
 
 
 [Finit]:           https://github.com/troglobit/finit
+[mrouted]:         https://github.com/troglobit/mrouted
+[pimd]:            https://github.com/troglobit/pimd
+[mrdisc]:          https://github.com/troglobit/mrdisc
+[RFC4286]:         https://tools.ietf.org/html/rfc4286
 [GitHub]:          https://github.com/troglobit/smcroute
 [Alioth]:          https://alioth.debian.org/projects/smcroute
 [Carsten Schill]:  http://www.cschill.de/smcroute/
