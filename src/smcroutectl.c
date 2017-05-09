@@ -41,7 +41,8 @@ struct arg {
 	char *example;		/* optional */
 	int   has_detail;
 } args[] = {
-	{ NULL,      0, 'd', "Detailed output, some commands", NULL, 0 },
+	{ NULL,      0, 'd', "Detailed output in show command", NULL, 0 },
+	{ NULL,      0, 't', "Skip table heading in show command", NULL, 0 },
 	{ "help",    0, 'h', "Show help text", NULL, 0 },
 	{ "version", 0, 'v', "Show program version", NULL, 0 },
 	{ "flush" ,  0, 'F', "Flush all dynamically set (*,G) multicast routes", NULL, 0 },
@@ -55,6 +56,7 @@ struct arg {
 	{ NULL, 0, 0, NULL, NULL, 0 }
 };
 
+static int heading = 1;
 static char *prognm = PACKAGE_NAME;
 
 
@@ -93,6 +95,22 @@ static struct ipc_msg *msg_create(uint16_t cmd, char *argv[], size_t count)
 	*ptr = '\0';	/* '\0' behind last string */
 
 	return msg;
+}
+
+static void table_heading(char *argv[], size_t count, int detail)
+{
+	const char *g = "GROUP (S,G)", *i = "INBOUND", *pad = "";
+	const char *r = "ROUTE (S,G)", *o = "OUTBOUND", *p = "PACKETS", *b = "BYTES";
+
+	if (!heading)
+		return;
+
+	if (count && argv[0][0] == 'g')
+		printf("\e[7m%-34s %-16s %27s\e[0m\n", g, i, pad);
+	else if (detail)
+		printf("\e[7m%-34s %-16s %7s %8s  %-9s\e[0m\n", r, i, p, b, o);
+	else
+		printf("\e[7m%-34s %-16s %-27s\e[0m\n", r, i, o);
 }
 
 /*
@@ -184,8 +202,6 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 
 	if (len != 1 || *buf != '\0') {
 		int detail = 0;
-		const char *g = "GROUP (S,G)", *i = "INBOUND", *pad = "";
-		const char *r = "ROUTE (S,G)", *o = "OUTBOUND", *p = "PACKETS", *b = "BYTES";
 
 		/* Make sure buffer is NULL terminated */
 		buf[len] = 0;
@@ -194,12 +210,7 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 		case 'S':
 			detail = 1;
 		case 's':
-			if (count && argv[0][0] == 'g')
-				printf("\e[7m%-34s %-16s %27s\e[0m\n", g, i, pad);
-			else if (detail)
-				printf("\e[7m%-34s %-16s %7s %8s  %-9s\e[0m\n", r, i, p, b, o);
-			else
-				printf("\e[7m%-34s %-16s %-27s\e[0m\n", r, i, o);
+			table_heading(argv, count, detail);
 			do {
 				fputs(buf, stdout);
 				len = read(sd, buf, sizeof(buf) - 1);
@@ -309,57 +320,63 @@ int main(int argc, char *argv[])
 	if (argc < 2)
 		return usage(1);
 
-	for (i = 0; !cmd && pos < argc; i++) {
-		int       c = args[i].val;
-		char    *nm = args[i].name;
-		char   *arg = argv[pos];
-		size_t  len;
+	while (pos < argc && !cmd) {
+		char *arg = argv[pos];
 
-		if (!c)
-			break;
+		for (i = 0; args[i].val; i++) {
+			int       c = args[i].val;
+			char    *nm = args[i].name;
+			size_t  len;
 
-		if (nm)
-			len = MIN(MIN(strlen(nm), strlen(arg)), 2);
-		else
-			len = strlen(arg);
+			if (nm)
+				len = MIN(MIN(strlen(nm), strlen(arg)), 2);
+			else
+				len = strlen(arg);
 
-		while (*arg == '-') {
-			arg++;
-			len--;
-		}
-
-		if (len <= 0)
-			continue;
-
-		if (nm) {
-			if (strncmp(arg, nm, len))
-				continue;
-		} else {
-			if (arg[0] != c)
-				continue;
-		}
-
-		switch (c) {
-		case 'd':	/* detail */
-			detail++;
-			pos++;
-			break;
-
-		case 'h':	/* help */
-			help++;
-			break;
-
-		case 'v':	/* version */
-			fprintf(stderr, "%s v%s\n", PACKAGE_NAME, PACKAGE_VERSION);
-			return 0;
-
-		default:
-			if (argc - ++pos < args[i].min_args) {
-				warnx("Not enough arguments to command %s", nm);
-				cmd = c;
-				goto help;
+			while (*arg == '-') {
+				arg++;
+				len--;
 			}
-			cmd = c;
+
+			if (len <= 0)
+				break;
+
+			if (nm) {
+				if (strncmp(arg, nm, len))
+					continue;
+			} else {
+				if (arg[0] != c)
+					continue;
+			}
+
+			switch (c) {
+			case 'd':	/* detail */
+				detail++;
+				pos++;
+				break;
+
+			case 'h':	/* help */
+				help++;
+				break;
+
+			case 't':	/* no table heading */
+				heading = 0;
+				pos++;
+				break;
+
+			case 'v':	/* version */
+				fprintf(stderr, "%s v%s\n", PACKAGE_NAME, PACKAGE_VERSION);
+				return 0;
+
+			default:
+				if (argc - ++pos < args[i].min_args) {
+					warnx("Not enough arguments to command %s", nm);
+					cmd = c;
+					goto help;
+				}
+				cmd = c;
+				break;
+			}
 			break;
 		}
 	}
