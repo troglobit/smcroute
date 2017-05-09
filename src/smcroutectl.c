@@ -357,6 +357,7 @@ int main(int argc, char *argv[])
 
 			case 'h':	/* help */
 				help++;
+				pos++;
 				break;
 
 			case 't':	/* no table heading */
