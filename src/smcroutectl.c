@@ -232,26 +232,6 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 	return result;
 }
 
-static int verify_cmd(int cmd, int detail)
-{
-	int i;
-
-	if (!detail)
-		return cmd;
-
-	for (i = 0; args[i].val; i++) {
-		if (args[i].val != cmd)
-			continue;
-
-		if (!args[i].has_detail)
-			return 0;
-
-		return cmd - 0x20;
-	}
-
-	return 0;
-}
-
 static int usage(int code)
 {
 	int i;
@@ -297,6 +277,12 @@ static int usage(int code)
 	return code;
 }
 
+static int version(void)
+{
+	puts(PACKAGE_VERSION);
+	return 0;
+}
+
 static char *progname(const char *arg0)
 {
 	char *nm;
@@ -313,72 +299,66 @@ static char *progname(const char *arg0)
 int main(int argc, char *argv[])
 {
 	int help = 0, detail = 0;
-	int i, pos = 1;
-	uint16_t cmd = 0;
+	int c, i, pos = 1, status = 0;
+	struct arg *cmd = NULL;
 
 	prognm = progname(argv[0]);
-	if (argc < 2)
-		return usage(1);
+	while ((c = getopt(argc, argv, "dhtv")) != EOF) {
+		switch (c) {
+		case 'd':
+			detail++;
+			break;
 
-	while (pos < argc && !cmd) {
-		char *arg = argv[pos];
+		case 'h':
+			help++;
+			break;
+
+		case 't':
+			heading = 0;
+			break;
+
+		case 'v':
+			return version();
+
+		default:
+			errx(0, "Unknown option -'%c'\n", c);
+		}
+	}
+
+	while (optind < argc && !cmd) {
+		char *arg = argv[optind++];
 
 		for (i = 0; args[i].val; i++) {
 			int       c = args[i].val;
 			char    *nm = args[i].name;
 			size_t  len;
 
-			if (nm)
-				len = MIN(MIN(strlen(nm), strlen(arg)), 2);
-			else
-				len = strlen(arg);
+			if (!nm)
+				continue;
 
-			while (*arg == '-') {
-				arg++;
-				len--;
-			}
-
-			if (len <= 0)
-				break;
-
-			if (nm) {
-				if (strncmp(arg, nm, len))
-					continue;
-			} else {
-				if (arg[0] != c)
-					continue;
-			}
+			len = MIN(strlen(nm), strlen(arg));
+			if (strncmp(arg, nm, len))
+				continue;
 
 			switch (c) {
-			case 'd':	/* detail */
-				detail++;
-				pos++;
-				break;
-
-			case 'h':	/* help */
+			case 'h':
 				help++;
-				pos++;
 				break;
 
-			case 't':	/* no table heading */
-				heading = 0;
-				pos++;
-				break;
-
-			case 'v':	/* version */
-				fprintf(stderr, "%s v%s\n", PACKAGE_NAME, PACKAGE_VERSION);
-				return 0;
+			case 'v':
+				return version();
 
 			default:
+				cmd = &args[i];
 				if (argc - ++pos < args[i].min_args) {
 					warnx("Not enough arguments to command %s", nm);
-					cmd = c;
+					status = 1;
 					goto help;
 				}
-				cmd = c;
 				break;
 			}
-			break;
+
+			break;	/* Next arg */
 		}
 	}
 
@@ -386,22 +366,21 @@ int main(int argc, char *argv[])
 		if (!cmd)
 			return usage(0);
 	help:
-		while (!args[i].help)
-			i--;
-
+		while (!cmd->help)
+			cmd--;
 		printf("Help:\n"
-		       "  %s\n"
+		       "  %s\n\n"
 		       "Example:\n"
-		       "  %s %s %s\n", args[i].help,
-		       prognm, args[i].name, args[i].example);
-		return 0;
+		       "  %s %s %s\n\n", cmd->help,
+		       prognm, cmd->name, cmd->example ? cmd->example : "");
+		return status;
 	}
 
-	cmd = verify_cmd(cmd, detail);
-	if (!cmd)
-		return usage(1);
+	c = cmd->val;
+	if (cmd->has_detail)
+		c -= 0x20;
 
-	return ipc_command(cmd, &argv[pos], argc - pos);
+	return ipc_command(c, &argv[pos], argc - pos);
 }
 
 /**
