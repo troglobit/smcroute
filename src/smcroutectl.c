@@ -51,6 +51,7 @@ struct arg {
 	{ "show",    0, 's', "Show passive (*,G) and active routes, as well as joined groups", NULL, 1 },
 	{ "add",     3, 'a', "Add a multicast route",    "eth0 192.168.2.42 225.1.2.3 eth1 eth2", 0 },
 	{ "remove",  3, 'r', "Remove a multicast route", "eth0 192.168.2.42 225.1.2.3", 0 },
+	{ "del",     3, 'r', NULL, NULL, 0 }, /* Alias */
 	{ "join",    2, 'j', "Join multicast group on an interface", "eth0 225.1.2.3", 0 },
 	{ "leave",   2, 'l', "Leave joined multicast group",         "eth0 225.1.2.3", 0 },
 	{ NULL, 0, 0, NULL, NULL, 0 }
