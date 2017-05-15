@@ -9,12 +9,24 @@ All notable changes to the project are documented in this file.
 
 ### Changes
 - Support for GROUP/LEN for IPv4 (*,G) routes
+- Support for [mrdisc][], [RFC4286][]
+- `ssmgroup` code folded into general code, now with optional source
 - Separation of daemon and client into `smcrouted` and `smcroutectl`
+- Complete new user interface to `smcroutectl`
 - List multicast routes and joined groups in client, including stats
 - Support for `-t SEC` startup delay in `smcrouted`
+- Unknown (*,G) multicast now blocked by default
+- Flush timer, `-c SEC`, for (*,G) routes now enabled by default, 60 sec
+- Build ID removed from `configure` script
+- Possible to build `smcrouted` without both `.conf` file support and
+  `smcroutectl`, but not at the same time
+- Massive code cleanup, refactor and separation into stand-alone modules
 
 ### Fixes
-- Allow use on loopback interface for multicast routes
+- Allow use of loopback interface for multicast routes
+- Fix IPv4-only build, by Martin Buck
+- Fix IPv4 network interface address identification, by Martin Buck
+- Support unlimited number of network interfaces, by Martin Buck
 
 
 [v2.2.2][] - 2017-02-02
@@ -355,6 +367,8 @@ v0.8 - August 2001
 Initial public release by Carsten Schill.
 
 
+[mrdisc]:     https://github.com/troglobit/mrdisc
+[RFC4286]:    https://tools.ietf.org/html/rfc4286
 [UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.2.2...HEAD
 [v2.3.0]:     https://github.com/troglobit/smcroute/compare/2.2.2...2.3.0
 [v2.2.2]:     https://github.com/troglobit/smcroute/compare/2.2.1...2.2.2
