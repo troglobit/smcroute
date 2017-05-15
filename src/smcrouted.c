@@ -235,10 +235,10 @@ static int usage(int code)
 #endif
 	       "[-t SEC]\n"
 	       "\n"
-	       "  -c SEC          Flush dynamic (*,G) multicast routes every SEC seconds\n"
+	       "  -c SEC          Flush dynamic (*,G) multicast routes every SEC seconds,\n"
+	       "                  default 60 sec.  Useful when source/interface changes\n"
 	       "  -e CMD          Script or command to call on startup/reload when all routes\n"
-	       "                  have been installed. Or when a source-less (ANY) route has\n"
-	       "                  been installed.\n"
+	       "                  have been installed, or when a (*,G) is installed\n"
 #ifdef ENABLE_DOTCONF
 	       "  -f FILE         File to use instead of default " SMCROUTE_SYSTEM_CONF "\n"
 #endif
