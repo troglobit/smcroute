@@ -28,36 +28,12 @@ Features
 Usage
 -----
 
-SMCRoute is both a daemon and a client.  You must start the daemon first
-to be able to set up multicast routes.  Use `smcroute -n` to start the
-daemon in foreground, for systemd or [Finit][].
+SMCRoute is both a daemon and a client.  To set multicast routes and
+join groups you must start the daemon.  Use `smcrouted -n` to run the
+daemon in the foreground, as required by systemd and [Finit][].
 
-    # smcrouted
-
-or
-
-    # smcrouted -N
-
-or
-
-    # smcrouted -e /path/to/script
-
-The latter syntax calls your own script whenever `smcroute` receives a
-`SIGHUP` or installs a multicast route to the kernel.  This is useful if
-you, for instance, also run a NAT firewall and need to flush connection
-tracking after installing a multicast route.
-
-With the `-N` command line option SMCRoute does *not* prepare all system
-interfaces for multicast routing.  Very useful if your system has a lot
-of interfaces but only a select few are required for multicast routing.
-Use the following configuration file syntax to enable interfaces:
-
-    phyint eth0 enable
-    phyint eth1 enable
-    phyint eth2 enable
-
-By default SMCRoute looks for its configuration in `/etc/smcroute.conf`,
-which can look something like this:
+By default `smcrouted` reads `/etc/smcroute.conf`, which can look
+something like this:
 
     mgroup from eth0 group 225.1.2.3
     mgroup from eth0 group 225.1.2.3 source 192.168.1.42
@@ -85,23 +61,55 @@ multicast group 225.1.2.3 should be forwarded to interfaces `eth1` and
     $ ping -I eth0 -t 2 225.1.2.3
 
 The TTL is what usually bites people trying out multicast routing.  Most
-TCP/IP stacks default to a TTL of 1 for multicast sockets, e.g. ping
+TCP/IP stacks default to a TTL of 1 for multicast frames, e.g. ping
 requires `-t 2`, or greater, for multicast.  This limitation reduces the
 risk of accidentally flooding multicast.  Remember, multicast behaves
 like broadcast unless limited.
+
+### Action Scripts
+
+    # smcrouted -e /path/to/script
+
+With `-e CMD` a user script or command can be called when `smcrouted`
+receives a `SIGHUP` or installs a multicast route to the kernel.  This
+is useful if you, for instance, also run a NAT firewall and need to
+flush connection tracking after installing a multicast route.
+
+### Many Interfaces
+
+    # smcrouted -N
+
+With the `-N` command line option SMCRoute does *not* prepare all system
+interfaces for multicast routing.  Very useful if your system has a lot
+of interfaces but only a select few are required for multicast routing.
+Use the following in `/etc/smcroute.conf` to enable interfaces:
+
+    phyint eth0 enable
+    phyint eth1 enable
+    phyint eth2 enable
+
+It is possible to use any interface that supports the `MULTICAST` flag.
+
+### Client
 
 SMCRoute also has a client interface to interact with the daemon:
 
     # smcroutectl join eth0 225.1.2.3
     # smcroutectl add  eth0 192.168.1.42 225.1.2.3 eth1 eth2
 
+There are more commands.  See the man page or the online help for
+details:
+
+    # smcroutectl help
+
 
 Experimental
 ------------
 
-Often multicast can originate from several different sources but never
-at the same time.  For a more generic setup, and to reduce the number of
-rules required, it is possible to set (*,G) IPv4 multicast routes.
+Multicast can often originate from several different sources but usually
+never at the same time.  For a more generic setup, and to reduce the
+number of rules required, it is possible to set (*,G) IPv4 multicast
+routes.
 
 Example smcroute.conf:
 
@@ -119,6 +127,10 @@ with `configure --enable-mrdisc`.  When enabled it periodically sends
 out an IGMP message on all inbound interfaces (above `eth0`) to alert
 switches to open up multicast in that direction.  Not many managed
 switches have support for this yet.
+
+Also, see the `smcrouted -c SEC` option for periodic flushing of learned
+(*,G) rules, including the automatic blocking of unknown multicast, and
+the `smcroutectl flush` command.
 
 
 Build & Install
