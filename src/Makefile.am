@@ -12,7 +12,7 @@ smcrouted_LDADD	       += -lcap
 endif
 
 if USE_MRDISC
-smcrouted_SOURCES      += mrdisc.c mrdisc.h inet.c inet.h cksum.c
+smcrouted_SOURCES      += mrdisc.c mrdisc.h inet.c inet.h
 endif
 
 if HAVE_CLIENT
