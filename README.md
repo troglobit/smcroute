@@ -106,12 +106,11 @@ details:
 Experimental
 ------------
 
-Multicast can often originate from several different sources but usually
-never at the same time.  For a more generic setup, and to reduce the
-number of rules required, it is possible to set (*,G) IPv4 multicast
-routes.
+Multicast often originates from different sources but usually never at
+the same time.  For a more generic setup, and to reduce the number of
+rules required, it is possible to set (*,G) IPv4 multicast routes.
 
-Example smcroute.conf:
+Example `smcroute.conf`:
 
     mgroup from eth0 group 225.1.2.3
     mroute from eth0 group 225.1.2.3 to eth1 eth2
