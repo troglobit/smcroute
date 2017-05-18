@@ -162,12 +162,13 @@ the multicast routes.  Use `--without-libcap` to disable this feature.
 
     $ ./configure
     $ make -j5
-	$ sudo make install-strip
+    $ sudo make install-strip
 
 The `configure` script and the `Makefile.in` files are generated and not
 stored in GIT.  So if you checkout the sources from GitHub you first
 need to generated these files using `./autogen.sh`.
 
+**Note:** When buuilding for RHEL 6/CentOS 6 you must use --without-libcap
 
 Origin & References
 -------------------
