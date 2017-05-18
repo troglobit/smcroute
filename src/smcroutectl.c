@@ -272,8 +272,10 @@ static int usage(int code)
 	       "\n"
 	       "  show   [groups|routes]\n"
 	       "\n"
-	       "Bug report address: %s\n"
-	       "Project homepage:   %s\n\n", PACKAGE_BUGREPORT, PACKAGE_URL);
+	       "Bug report address: %s\n", PACKAGE_BUGREPORT);
+#ifdef PACKAGE_URL
+	printf("Project homepage:   %s\n", PACKAGE_URL);
+#endif
 
 	return code;
 }

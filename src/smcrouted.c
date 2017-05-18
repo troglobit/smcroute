@@ -259,8 +259,10 @@ static int usage(int code)
 	       "  -t SEC          Startup delay, useful for delaying interface probe at boot\n"
 	       "  -v              Show program version\n"
 	       "\n"
-	       "Bug report address: %s\n"
-	       "Project homepage: %s\n", prognm, PACKAGE_BUGREPORT, PACKAGE_URL);
+	       "Bug report address: %s\n", prognm, PACKAGE_BUGREPORT);
+#ifdef PACKAGE_URL
+	printf("Project homepage:   %s\n", PACKAGE_URL);
+#endif
 
 	return code;
 }
