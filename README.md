@@ -168,7 +168,8 @@ The `configure` script and the `Makefile.in` files are generated and not
 stored in GIT.  So if you checkout the sources from GitHub you first
 need to generated these files using `./autogen.sh`.
 
-**Note:** When buuilding for RHEL 6/CentOS 6 you must use --without-libcap
+**Note:** On RHEL/CentOS 6 you must `configure --without-libcap`
+
 
 Origin & References
 -------------------
