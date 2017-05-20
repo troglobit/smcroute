@@ -24,7 +24,9 @@
 #include "config.h"
 
 #include <errno.h>
+#ifdef HAVE_FCNTL_H
 #include <fcntl.h>
+#endif
 #include <string.h>
 #include <stdio.h>		/* snprintf() */
 #include <arpa/inet.h>
