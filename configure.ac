@@ -73,8 +73,10 @@ AS_IF([test "x$with_client" = "xno" -a "x$with_config" = "xno"],
 # Separate check for libcap
 AS_IF([test "x$with_libcap" != "xno"], [
 	AC_CHECK_HEADER([sys/capability.h], [], [
-		AC_MSG_NOTICE([As a safety measure, SMCRoute v2.2 and later requrie libcap to drop root privileges after startup.])
-		AC_MSG_NOTICE([Install libcap and missing headers from libcap-dev, or similar, to build.])
+		AC_MSG_NOTICE([As a safety measure, SMCRoute v2.2 and later use libcap to drop root])
+		AC_MSG_NOTICE([privileges after startup.  Install libcap and missing headers from])
+		AC_MSG_NOTICE([libcap-dev, or similar, to build.])
+		AC_MSG_NOTICE([On CentOS/RHEL 6 this is broken, users are recommended to disable it.])
 		AC_MSG_ERROR([cannot continue, try --without-libcap to disable this feature.])
 	])])
 
