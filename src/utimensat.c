@@ -17,10 +17,13 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#include <sys/time.h>		/* lutimes(), utimes(), utimensat() */
 #include "config.h"
 
 #ifndef HAVE_UTIMENSAT
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/time.h>		/* lutimes(), utimes(), utimensat() */
+
 int utimensat(int dirfd, const char *pathname, const struct timespec ts[2], int flags)
 {
 	int ret = -1;
