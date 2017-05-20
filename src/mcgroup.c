@@ -165,6 +165,10 @@ static int mcgroup_join_leave_ipv4(int sd, int cmd, const char *ifname, struct i
 
 static int mcgroup_join_leave_ssm_ipv4(int sd, int cmd, const char *ifname, struct in_addr source, struct in_addr group)
 {
+#ifndef IP_ADD_SOURCE_MEMBERSHIP
+	smclog(LOG_WARNING, "Source specific join/leave not supported, ignoring source %s", inet_ntoa(source));
+	return mcgroup_join_leave_ipv4(sd, cmd, ifname, group);
+#else
 	int opt = cmd == 'j' ? IP_ADD_SOURCE_MEMBERSHIP : IP_DROP_SOURCE_MEMBERSHIP;
 	struct iface *iface;
 	struct ip_mreq_source mreqsrc;
@@ -189,6 +193,7 @@ static int mcgroup_join_leave_ssm_ipv4(int sd, int cmd, const char *ifname, stru
 	}
 
 	return 0;
+#endif
 }
 
 /*
