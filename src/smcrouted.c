@@ -49,6 +49,7 @@ int do_syslog  = 1;
 int cache_tmo  = 60;
 int interval   = MRDISC_INTERVAL_DEFAULT;
 int startup_delay = 0;
+int table_id   = 0;
 
 char *script   = NULL;
 char *prognm   = PACKAGE_NAME;
@@ -81,8 +82,8 @@ static void restart(void)
 
 	/* Update list of interfaces and create new virtual interface mappings in kernel. */
 	iface_init();
-	mroute4_enable(do_vifs);
-	mroute6_enable(do_vifs);
+	mroute4_enable(do_vifs, table_id);
+	mroute6_enable(do_vifs, table_id);
 }
 
 void reload(int signo)
@@ -183,13 +184,13 @@ static int start_server(void)
 	 * are currently assigned an IP address. */
 	iface_init();
 
-	if (mroute4_enable(do_vifs)) {
+	if (mroute4_enable(do_vifs, table_id)) {
 		if (errno == EADDRINUSE)
 			busy++;
 		api--;
 	}
 
-	if (mroute6_enable(do_vifs)) {
+	if (mroute6_enable(do_vifs, table_id)) {
 		if (errno == EADDRINUSE)
 			busy++;
 		api--;
@@ -233,6 +234,7 @@ static int usage(int code)
 #ifdef ENABLE_MRDISC
 	       "[-m SEC] "
 #endif
+	       "[-t ID] "
 	       "\n"
 	       "  -c SEC          Flush dynamic (*,G) multicast routes every SEC seconds,\n"
 	       "                  default 60 sec.  Useful when source/interface changes\n"
@@ -256,6 +258,7 @@ static int usage(int code)
 	       "  -p USER[:GROUP] After initialization set UID and GID to USER and GROUP\n"
 #endif
 	       "  -s              Use syslog, default unless running in foreground, -n\n"
+	       "  -t ID           Set multicast routing table ID, default: 0\n"
 	       "  -v              Show program version\n"
 	       "\n"
 	       "Bug report address: %s\n", prognm, PACKAGE_BUGREPORT);
@@ -296,7 +299,7 @@ int main(int argc, char *argv[])
 	int log_opts = LOG_CONS | LOG_PID;
 
 	prognm = progname(argv[0]);
-	while ((c = getopt(argc, argv, "c:d:e:f:hl:m:nNp:sv")) != EOF) {
+	while ((c = getopt(argc, argv, "c:d:e:f:hl:m:nNp:st:v")) != EOF) {
 		switch (c) {
 		case 'c':	/* cache timeout */
 			cache_tmo = atoi(optarg);
@@ -354,6 +357,16 @@ int main(int argc, char *argv[])
 
 		case 's':	/* Force syslog even though in foreground */
 			do_syslog++;
+			break;
+
+		case 't':
+#ifndef __linux__
+			errx(1, "Different multicast routing tables only available on Linux.");
+#else
+			table_id = atoi(optarg);
+			if (table_id < 0)
+				return usage(1);
+#endif
 			break;
 
 		case 'v':	/* version */

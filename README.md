@@ -10,9 +10,9 @@ like [mrouted][] or [pimd][] in setups where static multicast routes
 should be maintained and/or no proper IGMP or MLD signaling exists.
 
 Multicast routes exist in the UNIX kernel as long as a multicast routing
-daemon is running.  Only one multicast routing daemon can be active at a
-time, so it is not possible to run `smcrouted` and, e.g.  `mrouted` at
-the same time.
+daemon runs.  On Linux, multiple multicast routers run simltaneously on
+different multicast routing tables.  To run `smcrouted` and `mrouted`,
+set the former to use a routing table other than the default.
 
 
 Features
@@ -22,6 +22,7 @@ Features
 - Support for restarting and reloading the `.conf` on `SIGHUP`
 - Source-less on-demand routing, a.k.a. (*,G) based static routing
 - Optional built-in [mrdisc][] support, [RFC4286][]
+- Support for multiple routing tables on Linux
 - Client with built-in support to show routes and joined groups
 
 

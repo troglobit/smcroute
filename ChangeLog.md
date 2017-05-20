@@ -10,6 +10,7 @@ All notable changes to the project are documented in this file.
 ### Changes
 - Support for GROUP/LEN for IPv4 (*,G) routes
 - Support for [mrdisc][], [RFC4286][]
+- Support for multiple routing tables on Linux, `-t ID`
 - `ssmgroup` code folded into general code, now with optional source
 - Separation of daemon and client into `smcrouted` and `smcroutectl`
 - Complete new user interface to `smcroutectl`

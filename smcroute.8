@@ -13,6 +13,7 @@
 .Op Fl f Ar FILE
 .Op Fl l Ar LVL
 .Op Fl p Ar USER:GROUP
+.Op Fl t Ar ID
 .Nm smcroutectl
 .Op Fl Fkhv
 .Op Ar COMMAND
@@ -37,20 +38,22 @@ or
 in situations where static multicast routes should be maintained and/or
 no proper IGMP or MLD signaling exists.
 .Pp
-Multicast routes exist in the kernel only as long as the multicast
-routing daemon is running.  Only one multicast routing daemon can be
-active at a time, so it's impossible to run
+Multicast routes exist in the UNIX kernel as long as a multicast routing
+daemon is running.  On Linux, multiple multicast routers can be used
+simltaneously with different multicast routing tables.  To run
 .Nm smcrouted
-and, e.g.
+and,
 .Nm mrouted
-at the same time.
+at the same time, set the former to use a routing table other than the
+default (0).
 .Pp
-Because
-.Nm
-modifies the kernel routing table it needs to run with full
-.Ar superuser rights .
-Which also means that the same applies to client operations, to be
-able to communicate with the daemon.
+.Nm smcrouted
+modifies the kernel routing table and needs either full
+.Ar superuser rights ,
+or
+.Cm CAP_NET_ADMIN
+on Linux.  This also applies to
+.Nm smcroutectl .
 .Ss WARNING
 Be careful when creating multicast routes.  You can easily flood your
 networks by inadvertently creating routing loops.  Either direct loop
@@ -123,6 +126,16 @@ available when
 is built with libcap support.
 .It Fl s
 Let daemon log to syslog, default unless running in foreground.
+.It Fl t Ar ID
+Set multicast routing table ID.  Remember to also create routing rules
+directing packets to the table.  This example uses routing table ID 123:
+.Bd -unfilled -offset left
+ip mrule add iif eth0 lookup 123
+ip mrule add oif eth0 lookup 123
+.Ed
+.Pp
+.Nm Note:
+Only available on Linux.
 .It Fl v
 Show program version.
 .El
@@ -282,6 +295,14 @@ interface.  This signaling may be received by routers/switches connected
 on that network supporting IGMP/MLD multicast signaling and, in turn,
 start forwarding the requested multicast stream eventually reach your
 desired interface.
+.Pp
+.Nm Note:
+when running multiple
+.Nm smcrouted
+instances, one per routing table, on Linux, it is currently not possible
+to communicate with all intances using
+.Nm smcroutectl .
+Only the configuration file interface is available.
 .Sh CONFIGURATION FILE
 .Nm smcrouted
 supports reading and setting up multicast routes from a config file.

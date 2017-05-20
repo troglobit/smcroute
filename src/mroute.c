@@ -174,7 +174,7 @@ static void handle_nocache4(int sd, void *arg)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute4_enable(int do_vifs)
+int mroute4_enable(int do_vifs, int table_id)
 {
 	int arg = 1;
 	unsigned int i;
@@ -187,6 +187,19 @@ int mroute4_enable(int do_vifs)
 
 		return -1;
 	}
+
+#ifdef MRT_TABLE /* Currently only available on Linux  */
+	if (table_id != 0) {
+		smclog(LOG_INFO, "Setting IPv4 multicast routing table id %d", table_id);
+		if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_TABLE, &table_id, sizeof(table_id)) < 0) {
+			smclog(LOG_ERR, "Cannot set IPv4 multicast routing table id: %s", strerror(errno));
+			smclog(LOG_ERR, "Make sure your kernel has CONFIG_IP_MROUTE_MULTIPLE_TABLES=y");
+			return -1;
+		}
+	}
+#else
+	(void)table_id;
+#endif
 
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_INIT, (void *)&arg, sizeof(arg))) {
 		switch (errno) {
@@ -730,7 +743,7 @@ static void handle_nocache6(int sd, void *arg)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute6_enable(int do_vifs)
+int mroute6_enable(int do_vifs, int table_id)
 {
 #ifndef HAVE_IPV6_MULTICAST_ROUTING
 	(void)do_vifs;
@@ -747,6 +760,20 @@ int mroute6_enable(int do_vifs)
 
 		return -1;
 	}
+
+#ifdef MRT6_TABLE /* Currently only available on Linux  */
+	if (table_id != 0) {
+		smclog(LOG_INFO, "Setting IPv6 multicast routing table id %d", table_id);
+		if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_TABLE, &table_id, sizeof(table_id)) < 0) {
+			smclog(LOG_ERR, "Cannot set IPv6 multicast routing table id: %s", strerror(errno));
+			smclog(LOG_ERR, "Make sure your kernel has CONFIG_IPV6_MROUTE_MULTIPLE_TABLES=y");
+			return -1;
+		}
+	}
+#else
+	(void)table_id;
+#endif
+
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_INIT, (void *)&arg, sizeof(arg))) {
 		switch (errno) {
 		case EADDRINUSE:
