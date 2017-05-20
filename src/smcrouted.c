@@ -225,18 +225,18 @@ static int start_server(void)
 
 static int usage(int code)
 {
-	printf("Usage: %s [hnNsv] [-c SEC] "
+	printf("Usage: %s [hnNsv] [-c SEC] [-d SEC] [-e CMD] "
 #ifdef ENABLE_DOTCONF
 	       "[-f FILE] "
 #endif
-	       "[-e CMD] [-l LVL] "
+	       "[-l LVL] "
 #ifdef ENABLE_MRDISC
 	       "[-m SEC] "
 #endif
-	       "[-t SEC]\n"
 	       "\n"
 	       "  -c SEC          Flush dynamic (*,G) multicast routes every SEC seconds,\n"
 	       "                  default 60 sec.  Useful when source/interface changes\n"
+	       "  -d SEC          Startup delay, useful for delaying interface probe at boot\n"
 	       "  -e CMD          Script or command to call on startup/reload when all routes\n"
 	       "                  have been installed, or when a (*,G) is installed\n"
 #ifdef ENABLE_DOTCONF
@@ -256,7 +256,6 @@ static int usage(int code)
 	       "  -p USER[:GROUP] After initialization set UID and GID to USER and GROUP\n"
 #endif
 	       "  -s              Use syslog, default unless running in foreground, -n\n"
-	       "  -t SEC          Startup delay, useful for delaying interface probe at boot\n"
 	       "  -v              Show program version\n"
 	       "\n"
 	       "Bug report address: %s\n", prognm, PACKAGE_BUGREPORT);
@@ -297,13 +296,14 @@ int main(int argc, char *argv[])
 	int log_opts = LOG_CONS | LOG_PID;
 
 	prognm = progname(argv[0]);
-	while ((c = getopt(argc, argv, "c:de:f:hl:m:nNp:st:v")) != EOF) {
+	while ((c = getopt(argc, argv, "c:d:e:f:hl:m:nNp:sv")) != EOF) {
 		switch (c) {
 		case 'c':	/* cache timeout */
 			cache_tmo = atoi(optarg);
 			break;
 
-		case 'd':	/* compat, ignore */
+		case 'd':
+			startup_delay = atoi(optarg);
 			break;
 
 		case 'e':
@@ -354,10 +354,6 @@ int main(int argc, char *argv[])
 
 		case 's':	/* Force syslog even though in foreground */
 			do_syslog++;
-			break;
-
-		case 't':
-			startup_delay = atoi(optarg);
 			break;
 
 		case 'v':	/* version */

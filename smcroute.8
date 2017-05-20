@@ -8,11 +8,11 @@
 .Nm smcrouted
 .Op Fl nNhsv
 .Op Fl c Ar SEC
+.Op Fl d Ar SEC
 .Op Fl e Ar CMD
 .Op Fl f Ar FILE
 .Op Fl l Ar LVL
 .Op Fl p Ar USER:GROUP
-.Op Fl t Ar SEC
 .Nm smcroutectl
 .Op Fl Fkhv
 .Op Ar COMMAND
@@ -97,6 +97,17 @@ selected inbound interface is retained until traffic on it ceases.
 Default is 60 sec, set to 0 to disable.  See also the
 .Nm smcroutectl Ar flush
 command, which can be called manually on topology changes.
+.It Fl d Ar SEC
+Daemon startup delay.  Delays the probe of interfaces and parsing of the
+configuration file.  Note, the PID file is also not created, since the
+daemon is not ready yet.
+.Pp
+This command line option, although useful in some use-cases, is fragile.
+It is almost always better to rely on an init or process supervisor that
+handles dependencys properly, like
+.Xr finit 8 ,
+which can wait for interfaces to come up and files to be created before
+starting a service.
 .It Fl e Ar CMD
 Specify external script or command to be called when
 .Nm smcrouted
@@ -112,16 +123,6 @@ available when
 is built with libcap support.
 .It Fl s
 Let daemon log to syslog, default unless running in foreground.
-.It Fl t Ar SEC
-Daemon startup delay.  Useful for delaying probe of interfaces at system
-bootstrap.  The daemon is started, but the configuration file is not read
-and intefaces are not probed until the delay has passed.
-.Pp
-This command line option is fragile.  It is always better to use an
-init, or process supervisor, that can handle dependencys properly, like
-.Xr finit 8
-which can wait for interfaces to come up and files to be created before
-starting a service.
 .El
 .Pp
 The

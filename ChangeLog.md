@@ -14,7 +14,7 @@ All notable changes to the project are documented in this file.
 - Separation of daemon and client into `smcrouted` and `smcroutectl`
 - Complete new user interface to `smcroutectl`
 - List multicast routes and joined groups in client, including stats
-- Support for `-t SEC` startup delay in `smcrouted`
+- Support for `-d SEC` startup delay in `smcrouted`
 - Unknown (*,G) multicast now blocked by default
 - Flush timer, `-c SEC`, for (*,G) routes now enabled by default, 60 sec
 - Build ID removed from `configure` script
