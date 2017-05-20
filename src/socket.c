@@ -20,14 +20,16 @@
 #include "config.h"
 
 #include <errno.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
 #endif
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <time.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 
 #include "log.h"
 #include "queue.h"

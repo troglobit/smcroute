@@ -4,6 +4,7 @@
 
 #include <net/if.h>
 #include <netinet/in.h>
+#include <sys/types.h>
 
 #define DEFAULT_THRESHOLD 1	/* Packet TTL must be at least 1 to pass */
 
