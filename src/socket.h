@@ -22,7 +22,7 @@
 
 #include <stdarg.h>
 #include <string.h>
-#include <time.h>
+#include <sys/time.h>
 
 int socket_register(int sd, void (*cb)(int, void *), void *arg);
 int socket_create  (int domain, int type, int proto, void (*cb)(int, void *), void *arg);
