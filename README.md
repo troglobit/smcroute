@@ -10,9 +10,8 @@ like [mrouted][] or [pimd][] in setups where static multicast routes
 should be maintained and/or no proper IGMP or MLD signaling exists.
 
 Multicast routes exist in the UNIX kernel as long as a multicast routing
-daemon runs.  On Linux, multiple multicast routers run simltaneously on
-different multicast routing tables.  To run `smcrouted` and `mrouted`,
-set the former to use a routing table other than the default.
+daemon runs.  On Linux, multiple multicast routers can run simltaneously
+using different multicast routing tables.
 
 
 Features
