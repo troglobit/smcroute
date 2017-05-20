@@ -6,6 +6,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <netinet/in.h>
+#include <sys/types.h>
+
+#include "queue.h"		/* Needed by netinet/ip_mroute.h on FreeBSD */
+
 
 #ifdef HAVE_LINUX_MROUTE_H
 #define _LINUX_IN_H             /* For Linux <= 2.6.25 */
@@ -20,8 +24,6 @@
 #ifdef HAVE_LINUX_FILTER_H
 #include <linux/filter.h>
 #endif
-
-#include "queue.h"		/* Needed by netinet/ip_mroute.h on FreeBSD */
 
 #ifdef HAVE_NET_ROUTE_H
 #include <net/route.h>
