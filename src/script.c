@@ -16,14 +16,14 @@
  */
 
 #include <errno.h>
-#include <signal.h>
+#include <signal.h>		/* sigemptyset(), sigaction() */
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/wait.h>
-#include <sys/signal.h>
+#include <sys/socket.h>		/* AF_INET, AF_INET6 */
 
 #include "log.h"
 #include "script.h"
