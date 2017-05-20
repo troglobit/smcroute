@@ -21,6 +21,8 @@
 #include <linux/filter.h>
 #endif
 
+#include "queue.h"		/* Needed by netinet/ip_mroute.h on FreeBSD */
+
 #ifdef HAVE_NET_ROUTE_H
 #include <net/route.h>
 #endif
@@ -41,8 +43,6 @@
 #endif
 #include <netinet6/ip6_mroute.h>
 #endif
-
-#include "queue.h"
 
 #ifndef IN6_IS_ADDR_MULTICAST
 #define IN6_IS_ADDR_MULTICAST(a) (((__const uint8_t *) (a))[0] == 0xff)
