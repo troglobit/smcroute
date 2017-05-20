@@ -379,6 +379,9 @@ int main(int argc, char *argv[])
 		return status;
 	}
 
+	if (!cmd)
+		return usage(1);
+
 	c = cmd->val;
 	if (cmd->has_detail)
 		c -= 0x20;
