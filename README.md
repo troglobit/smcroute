@@ -164,6 +164,8 @@ separation using POSIX capabilities.  At startup this library is used to
 drop full root privileges, retaining only `CAP_NET_ADMIN` for managing
 the multicast routes.  Use `--without-libcap` to disable this feature.
 
+**Note:** On RHEL/CentOS 6 you must `configure --without-libcap`
+
     $ ./configure
     $ make -j5
     $ sudo make install-strip
@@ -172,15 +174,15 @@ The `configure` script and the `Makefile.in` files are generated and not
 stored in GIT.  So if you checkout the sources from GitHub you first
 need to generated these files using `./autogen.sh`.
 
-**Note:** On RHEL/CentOS 6 you must `configure --without-libcap`
-
 
 Origin & References
 -------------------
 
-SMCRoute is maintained collaboratively at [GitHub][].  Previously the
-code was hosted and maintained by Debian at [Alioth][] and before that
-by [Carsten Schill][], the original author.
+SMCRoute is maintained collaboratively at [GitHub][].  Bug reports,
+feature requests, patches/pull requests, and documentation fixes are
+most welcome.  The project was previously hosted and maintained by
+Debian at [Alioth][] and before that by [Carsten Schill][], the original
+author.
 
 
 [Finit]:           https://github.com/troglobit/finit
