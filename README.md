@@ -28,9 +28,12 @@ Features
 Usage
 -----
 
-SMCRoute is both a daemon and a client.  To set multicast routes and
-join groups you must start the daemon.  Use `smcrouted -n` to run the
-daemon in the foreground, as required by systemd and [Finit][].
+    smcrouted [-nNhsv] [-c SEC] [-d SEC] [-e CMD] [-f CONF] [-l LVL] [-p USER:GROUP] [-t ID]
+    smcroutectl [-Fkhv] [COMMAND] [⟨add | rem⟩ ⟨ROUTE⟩] [⟨join | leave⟩ ⟨GROUP⟩]
+
+To set multicast routes and join groups you must first start the daemon.
+Use `smcrouted -n` to run the daemon in the foreground, as required by
+modern init daemons like systemd and [Finit][].
 
 By default `smcrouted` reads `/etc/smcroute.conf`, which can look
 something like this:
