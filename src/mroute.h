@@ -26,7 +26,9 @@
 #endif
 
 #ifdef HAVE_NETINET_IP_MROUTE_H
+#define _KERNEL
 #include <netinet/ip_mroute.h>
+#undef _KERNEL
 #else
 # ifdef __APPLE__
 #  include "ip_mroute.h"
