@@ -46,12 +46,12 @@ static char *pop_token(char **line)
 		return NULL;
 
 	/* Find start of token, skip whitespace. */
-	while (*token && isspace(*token))
+	while (*token && isspace((int)*token))
 		token++;
 
 	/* Find end of token. */
 	end = token;
-	while (*end && !isspace(*end))
+	while (*end && !isspace((int)*end))
 		end++;
 	if (*end == 0 || end == token) {
 		*line = NULL;
