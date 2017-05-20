@@ -10,7 +10,6 @@ sudo: false
 # XXX: https://github.com/travis-ci/travis-ci/issues/1975
 compiler:
   - gcc
-  - clang
 
 env:
   global:
