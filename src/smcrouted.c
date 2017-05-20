@@ -247,7 +247,7 @@ static int usage(int code)
 	       "  -h              This help text\n"
 	       "  -l LVL          Set log level: none, err, notice*, info, debug\n"
 #ifdef ENABLE_MRDISC
-	       "  -m SEC          Multicast router discovery, 4-180, default: 20 sec"
+	       "  -m SEC          Multicast router discovery, 4-180, default: 20 sec\n"
 #endif
 	       "  -n              Run daemon in foreground, useful when run from finit\n"
 #ifdef ENABLE_DOTCONF
