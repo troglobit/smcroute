@@ -249,7 +249,7 @@ static int usage(int code)
 #ifdef ENABLE_MRDISC
 	       "  -m SEC          Multicast router discovery, 4-180, default: 20 sec\n"
 #endif
-	       "  -n              Run daemon in foreground, useful when run from finit\n"
+	       "  -n              Run daemon in foreground, when started by systemd or finit\n"
 #ifdef ENABLE_DOTCONF
 	       "  -N              No multicast VIFs/MIFs created by default.  Use with\n"
 	       "                  smcroute.conf `phyint enable` directive\n"
