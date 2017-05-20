@@ -142,11 +142,13 @@ SMCRoute should in theory work on any UNIX like operating system which
 supports the BSD MROUTING API.  Both Linux and FreeBSD are tested on a
 regular basis.
 
-On Linux the following kernel config is needed:
+On Linux the following kernel config is required:
 
     CONFIG_IP_MROUTE=y
     CONFIG_IP_PIMSM_V1=y
     CONFIG_IP_PIMSM_V2=y
+    CONFIG_IP_MROUTE_MULTIPLE_TABLES=y       # For multiple routing tables
+    CONFIG_IPV6_MROUTE_MULTIPLE_TABLES=y     # For multiple routing tables
 
 Check the list of multicast capable interfaces:
 
