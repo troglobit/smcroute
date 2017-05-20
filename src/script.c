@@ -16,12 +16,14 @@
  */
 
 #include <errno.h>
+#include <signal.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include <sys/wait.h>
 #include <netinet/in.h>
+#include <sys/wait.h>
+#include <sys/signal.h>
 
 #include "log.h"
 #include "script.h"
