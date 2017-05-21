@@ -405,9 +405,8 @@ responds to the following signals:
 .Pp
 .Bl -tag -width TERM -compact
 .It HUP
-Restarts
-.Nm smcrouted .
-Tell daemon to restart and reload its configuration file.
+Restart and reload the configuration file.  All existing multicast
+routes and groups are dropped.
 .It INT
 Terminates execution gracefully.
 .It TERM
@@ -467,13 +466,12 @@ Holds active MLD joins.
 .Xr pimd 8 ,
 .Xr omping 8 ,
 .Xr ping 8 ,
+.Xr mcjoin 1 ,
 .Xr iperf 1
-.Sh BUGS
-The English wording of this man page.
 .Sh AUTHORS
-SMCRoute was created by Carsten Schill <carsten@cschill.de>.
-Support for IPv6 was added by Todd Hayton <todd.hayton@gmail.com>.
-Support for FreeBSD was added by Micha Lenk <micha@debian.org>.
+SMCRoute was created by Carsten Schill <carsten@cschill.de>.  Support
+for IPv6 was added by Todd Hayton <todd.hayton@gmail.com>.  FreeBSD
+adaptations added by Micha Lenk <micha@debian.org>.
 .Pp
 .Nm smcrouted
 is maintained by Joachim Nilsson <troglobit@gmail.com>, Todd Hayton
@@ -483,4 +481,6 @@ is maintained by Joachim Nilsson <troglobit@gmail.com>, Todd Hayton
 .
 .Sh TIPS
 A lot of extra information is sent under the daemon facility and the
-debug priority to the syslog daemon.
+debug priority to the syslog daemon.  Use
+.Cm smcrouted -s -l debug
+to enable.
