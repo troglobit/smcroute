@@ -434,12 +434,12 @@ Max. 20, see caveat above
 responds to the following signals:
 .Pp
 .Bl -tag -width TERM -compact
-.It HUP
+.It Cm HUP
 Restart and reload the configuration file.  All existing multicast
 routes and groups are dropped.
-.It INT
+.It Cm INT
 Terminates execution gracefully.
-.It TERM
+.It Cm TERM
 The same as INT.
 .El
 .Pp
@@ -467,13 +467,27 @@ tool can be used.
 .Sh FILES
 .Bl -tag -width /proc/net/ip6_mr_cache -compact
 .It Pa /etc/smcroute.conf
-Routes to be added/restored when starting, or restarting
+Routes to be set when starting, or restarting
 .Nm smcrouted
-on SIGHUP.
+on
+.Ar SIGHUP .
+Like the PID file, the name of the configuration file may be different
+depending on command line options given to the daemon.
 .It Pa /var/run/smcroute.pid
-Pidfile (re)created by
+Default PID file (re)created by
 .Nm smcrouted
-when it has started up and is ready to receive commands.
+when it has started up and is ready to receive commands.  See also the
+.Fl I Ar NAME
+or
+.Fl P Ar FILE
+options which can change the default name.
+.It Pa /var/run/smcroute.sock
+IPC socket created by
+.Nm smcrouted
+for use by
+.Nm smcroutectl .
+Same caveats apply to this file as the previous two, command line
+options to the daemon can change the file names.
 .It Pa /proc/net/ip_mr_cache
 Holds active IPv4 multicast routes.
 .It Pa /proc/net/ip_mr_vif
@@ -482,9 +496,6 @@ Holds the IPv4 virtual interfaces used by the active multicast routing daemon.
 Holds active IPv6 multicast routes.
 .It Pa /proc/net/ip6_mr_vif
 Holds the IPv6 virtual interfaces used by the active multicast routing daemon.
-.It Pa /var/run/smcroute
-IPC socket created by
-.Nm smcrouted .
 .It Pa /proc/net/igmp
 Holds active IGMP joins.
 .It Pa /proc/net/igmp6
@@ -499,9 +510,9 @@ Holds active MLD joins.
 .Xr mcjoin 1 ,
 .Xr iperf 1
 .Sh AUTHORS
-SMCRoute was created by Carsten Schill <carsten@cschill.de>.  Support
-for IPv6 was added by Todd Hayton <todd.hayton@gmail.com>.  FreeBSD
-adaptations added by Micha Lenk <micha@debian.org>.
+SMCRoute was created by Carsten Schill <carsten@cschill.de>.  IPv6
+support by Todd Hayton <todd.hayton@gmail.com>.  FreeBSD support by
+Micha Lenk <micha@debian.org>.
 .Pp
 .Nm smcrouted
 is maintained by Joachim Nilsson <troglobit@gmail.com>, Todd Hayton
