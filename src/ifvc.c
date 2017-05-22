@@ -25,6 +25,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ifaddrs.h>
+#include <limits.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -148,6 +149,57 @@ struct iface *iface_find_by_name(const char *ifname)
 }
 
 /**
+ * iface_match_init - Initialize interface matching iterator
+ * @state: Iterator state to be initialized
+ */
+void iface_match_init(struct ifmatch *state)
+{
+	state->iter = 0;
+	state->match_count = 0;
+}
+
+/**
+ * iface_match_by_name - Find matching interfaces by name pattern
+ * @ifname: Interface name pattern
+ * @state: Iterator state
+ *
+ * Returns:
+ * Pointer to a @struct iface of the next matching interface, or %NULL if no
+ * (more) interfaces exist (or are up). Interface name patterns use iptables-
+ * syntax, i.e. perform prefix match with a trailing '+' matching anything.
+ */
+struct iface *iface_match_by_name(const char *ifname, struct ifmatch *state)
+{
+	struct iface *iface;
+	unsigned int match_len = UINT_MAX;
+
+	if (!ifname)
+		return NULL;
+	if (ifname_is_wildcard(ifname))
+		match_len = strlen(ifname) - 1;
+
+	for (; state->iter < num_ifaces; state->iter++) {
+		iface = &iface_list[state->iter];
+		if (!strncmp(ifname, iface->name, match_len)) {
+			state->iter++;
+			state->match_count++;
+			return iface;
+		}
+	}
+
+	return NULL;
+}
+
+/**
+ * ifname_is_wildcard - Check whether interface name is a wildcard
+ * Returns: 1 if wildcard, 0 if normal interface name
+ */
+int ifname_is_wildcard(const char *ifname)
+{
+	return (ifname && ifname[0] && ifname[strlen(ifname) - 1] == '+');
+}
+
+/**
  * iface_find_by_vif - Find by virtual interface index
  * @vif: Virtual multicast interface index
  *
@@ -223,51 +275,55 @@ int iface_get_mif(struct iface *iface __attribute__ ((unused)))
 }
 
 /**
- * iface_get_vif_by_name - Get virtual interface index by interface name (IPv4)
- * @ifname: Interface name
+ * iface_match_vif_by_name - Get matching virtual interface index by interface name pattern (IPv4)
+ * @ifname: Interface name pattern
+ * @state: Iterator state
  *
  * Returns:
- * The virtual interface index if the interface is known and registered
- * with the kernel, or -1 if no virtual interface by that name is found.
+ * The virtual interface index if the interface matches and is registered
+ * with the kernel, or -1 if no (more) matching virtual interfaces are found.
  */
-int iface_get_vif_by_name(const char *ifname)
+int iface_match_vif_by_name(const char *ifname, struct ifmatch *state, struct iface **found)
 {
 	int vif;
 	struct iface *iface;
 
-	iface = iface_find_by_name(ifname);
-	if (!iface)
-		return -1;
-
-	vif = iface_get_vif(iface);
-	if (vif < 0)
-		return -1;
-
-	return vif;
+	while ((iface = iface_match_by_name(ifname, state))) {
+		vif = iface_get_vif(iface);
+		if (vif >= 0) {
+			if (found)
+				*found = iface;
+			return vif;
+		}
+		state->match_count--;
+	}
+	return -1;
 }
 
 /**
- * iface_get_mif_by_name - Get virtual interface index by interface name (IPv6)
- * @ifname: Interface name
+ * iface_match_mif_by_name - Get matching virtual interface index by interface name pattern (IPv6)
+ * @ifname: Interface name pattern
+ * @state: Iterator state
  *
  * Returns:
- * The virtual interface index if the interface is known and registered
- * with the kernel, or -1 if no virtual interface by that name is found.
+ * The virtual interface index if the interface matches and is registered
+ * with the kernel, or -1 if no (more) matching virtual interfaces are found.
  */
-int iface_get_mif_by_name(const char *ifname)
+int iface_match_mif_by_name(const char *ifname, struct ifmatch *state, struct iface **found)
 {
-	int vif;
+	int mif;
 	struct iface *iface;
 
-	iface = iface_find_by_name(ifname);
-	if (!iface)
-		return -1;
-
-	vif = iface_get_mif(iface);
-	if (vif < 0)
-		return -1;
-
-	return vif;
+	while ((iface = iface_match_by_name(ifname, state))) {
+		mif = iface_get_mif(iface);
+		if (mif >= 0) {
+			if (found)
+				*found = iface;
+			return mif;
+		}
+		state->match_count--;
+	}
+	return -1;
 }
 
 /**
