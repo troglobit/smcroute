@@ -32,8 +32,6 @@
 #define WARN(fmt, args...)			\
 	smclog(LOG_WARNING, 0, "%02d: " fmt, lineno, ##args)
 
-const char *conf_file = SMCROUTE_SYSTEM_CONF;
-
 static char *pop_token(char **line)
 {
 	char *end, *token;
@@ -353,7 +351,7 @@ static int conf_parse(const char *file, int do_vifs)
 }
 
 /* Parse .conf file and setup routes */
-void conf_read(const char *file, int do_vifs)
+void conf_read(char *file, int do_vifs)
 {
 	if (access(file, R_OK)) {
 		if (errno == ENOENT)

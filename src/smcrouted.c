@@ -51,10 +51,11 @@ int interval   = MRDISC_INTERVAL_DEFAULT;
 int startup_delay = 0;
 int table_id   = 0;
 
-char *script   = NULL;
-char *ident    = NULL;
-char *prognm   = NULL;
-char *pid_file = NULL;
+char *script    = NULL;
+char *ident     = PACKAGE;
+char *prognm    = NULL;
+char *pid_file  = NULL;
+char *conf_file = NULL;
 
 static uid_t uid = 0;
 static gid_t gid = 0;
@@ -216,7 +217,7 @@ static int start_server(void)
 	conf_read(conf_file, do_vifs);
 
 	/* Everything setup, notify any clients by creating the pidfile */
-	if (pidfile(NULL, uid, gid))
+	if (pidfile(pid_file, uid, gid))
 		smclog(LOG_WARNING, "Failed create/chown pidfile: %s", strerror(errno));
 
 	/* Drop root privileges before entering the server loop */
@@ -227,9 +228,22 @@ static int start_server(void)
 
 static int compose_paths(void)
 {
+	/* Default .conf file path: "/etc" + '/' + "smcroute" + ".conf" */
+	if (!conf_file) {
+		size_t len = strlen(SYSCONFDIR) + strlen(ident) + 7;
+
+		conf_file = malloc(len);
+		if (!conf_file) {
+			smclog(LOG_ERR, "Failed allocating memory, exiting: %s", strerror(errno));
+			exit(1);
+		}
+
+		snprintf(conf_file, len, "%s/%s.conf", SYSCONFDIR, ident);
+	}
+
 	/* Default is to let pidfile() API construct PID file from ident */
 	if (!pid_file)
-		pid_file = strdup(ident);
+		pid_file = ident;
 
 	return 0;
 }
@@ -261,9 +275,10 @@ static int usage(int code)
 	       "  -e CMD          Script or command to call on startup/reload when all routes\n"
 	       "                  have been installed, or when a (*,G) is installed\n"
 #ifdef ENABLE_DOTCONF
-	       "  -f FILE         File to use instead of default " SMCROUTE_SYSTEM_CONF "\n"
+	       "  -f FILE         Set configuration file, default uses ident NAME: %s\n"
 #endif
 	       "  -h              This help text\n"
+	       "  -I NAME         Identity for config, PID file, and syslog, default: %s\n"
 	       "  -l LVL          Set log level: none, err, notice*, info, debug\n"
 #ifdef ENABLE_MRDISC
 	       "  -m SEC          Multicast router discovery, 4-180, default: 20 sec\n"
@@ -276,13 +291,13 @@ static int usage(int code)
 #ifdef HAVE_LIBCAP
 	       "  -p USER[:GROUP] After initialization set UID and GID to USER and GROUP\n"
 #endif
-	       "  -P FILE         Set PID file name, with optional path,\n"
-	       "                  Default: %s\n"
+	       "  -P FILE         Set daemon PID file name, with optional path.\n"
+	       "                  Default uses ident NAME: %s\n"
 	       "  -s              Use syslog, default unless running in foreground, -n\n"
 	       "  -t ID           Set multicast routing table ID, default: 0\n"
 	       "  -v              Show program version\n"
 	       "\n"
-	       "Bug report address: %s\n", prognm, pidfn, PACKAGE_BUGREPORT);
+	       "Bug report address: %s\n", prognm, conf_file, ident, pidfn, PACKAGE_BUGREPORT);
 #ifdef PACKAGE_URL
 	printf("Project homepage:   %s\n", PACKAGE_URL);
 #endif
@@ -319,8 +334,8 @@ int main(int argc, char *argv[])
 	int c;
 	int log_opts = LOG_CONS | LOG_PID;
 
-	prognm = ident = progname(argv[0]);
-	while ((c = getopt(argc, argv, "c:d:e:f:hl:m:nNp:P:st:v")) != EOF) {
+	prognm = progname(argv[0]);
+	while ((c = getopt(argc, argv, "c:d:e:f:hI:l:m:nNp:P:st:v")) != EOF) {
 		switch (c) {
 		case 'c':	/* cache timeout */
 			cache_tmo = atoi(optarg);
@@ -344,6 +359,10 @@ int main(int argc, char *argv[])
 
 		case 'h':	/* help */
 			return usage(0);
+
+		case 'I':
+			ident = optarg;
+			break;
 
 		case 'l':
 			log_level = loglvl(optarg);
@@ -403,10 +422,12 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	compose_paths();
+
 	if (!background && do_syslog < 1)
 		log_opts |= LOG_PERROR;
 
-	openlog(prognm, log_opts, LOG_DAEMON);
+	openlog(ident, log_opts, LOG_DAEMON);
 	setlogmask(LOG_UPTO(log_level));
 
 	return start_server();
