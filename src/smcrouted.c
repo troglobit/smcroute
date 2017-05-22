@@ -52,7 +52,9 @@ int startup_delay = 0;
 int table_id   = 0;
 
 char *script   = NULL;
-char *prognm   = PACKAGE_NAME;
+char *ident    = NULL;
+char *prognm   = NULL;
+char *pid_file = NULL;
 
 static uid_t uid = 0;
 static gid_t gid = 0;
@@ -223,9 +225,25 @@ static int start_server(void)
 	return server_loop();
 }
 
+static int compose_paths(void)
+{
+	/* Default is to let pidfile() API construct PID file from ident */
+	if (!pid_file)
+		pid_file = strdup(ident);
+
+	return 0;
+}
 
 static int usage(int code)
 {
+        char pidfn[80];
+
+	compose_paths();
+	if (pid_file[0] != '/')
+		snprintf(pidfn, sizeof(pidfn), "%s/run/%s.pid", LOCALSTATEDIR, pid_file);
+	else
+		snprintf(pidfn, sizeof(pidfn), "%s", pid_file);
+
 	printf("Usage: %s [hnNsv] [-c SEC] [-d SEC] [-e CMD] "
 #ifdef ENABLE_DOTCONF
 	       "[-f FILE] "
@@ -234,6 +252,7 @@ static int usage(int code)
 #ifdef ENABLE_MRDISC
 	       "[-m SEC] "
 #endif
+	       "[-P FILE] "
 	       "[-t ID] "
 	       "\n\n"
 	       "  -c SEC          Flush dynamic (*,G) multicast routes every SEC seconds,\n"
@@ -257,11 +276,13 @@ static int usage(int code)
 #ifdef HAVE_LIBCAP
 	       "  -p USER[:GROUP] After initialization set UID and GID to USER and GROUP\n"
 #endif
+	       "  -P FILE         Set PID file name, with optional path,\n"
+	       "                  Default: %s\n"
 	       "  -s              Use syslog, default unless running in foreground, -n\n"
 	       "  -t ID           Set multicast routing table ID, default: 0\n"
 	       "  -v              Show program version\n"
 	       "\n"
-	       "Bug report address: %s\n", prognm, PACKAGE_BUGREPORT);
+	       "Bug report address: %s\n", prognm, pidfn, PACKAGE_BUGREPORT);
 #ifdef PACKAGE_URL
 	printf("Project homepage:   %s\n", PACKAGE_URL);
 #endif
@@ -298,8 +319,8 @@ int main(int argc, char *argv[])
 	int c;
 	int log_opts = LOG_CONS | LOG_PID;
 
-	prognm = progname(argv[0]);
-	while ((c = getopt(argc, argv, "c:d:e:f:hl:m:nNp:st:v")) != EOF) {
+	prognm = ident = progname(argv[0]);
+	while ((c = getopt(argc, argv, "c:d:e:f:hl:m:nNp:P:st:v")) != EOF) {
 		switch (c) {
 		case 'c':	/* cache timeout */
 			cache_tmo = atoi(optarg);
@@ -353,6 +374,10 @@ int main(int argc, char *argv[])
 
 		case 'p':
 			cap_set_user(optarg, &uid, &gid);
+			break;
+
+		case 'P':
+			pid_file = optarg;
 			break;
 
 		case 's':	/* Force syslog even though in foreground */
