@@ -110,7 +110,7 @@ int ipc_init(void)
 	len = offsetof(struct sockaddr_un, sun_path) + strlen(sock_path);
 	if (bind(sd, (struct sockaddr *)&sa, len) < 0 || listen(sd, 1)) {
 		smclog(LOG_WARNING, "Failed binding IPC socket, client disabled: %s", strerror(errno));
-		close(sd);
+		socket_close(sd);
 		return -1;
 	}
 

@@ -214,7 +214,7 @@ int mroute4_enable(int do_vifs, int table_id)
 			break;
 		}
 
-		close(mroute4_socket);
+		socket_close(mroute4_socket);
 		mroute4_socket = -1;
 
 		return -1;
@@ -787,7 +787,7 @@ int mroute6_enable(int do_vifs, int table_id)
 			break;
 		}
 
-		close(mroute6_socket);
+		socket_close(mroute6_socket);
 		mroute6_socket = -1;
 
 		return -1;
