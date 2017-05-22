@@ -14,6 +14,7 @@
 .Op Fl I Ar NAME
 .Op Fl l Ar LVL
 .Op Fl p Ar USER:GROUP
+.Op Fl P Ar FILE
 .Op Fl t Ar ID
 .Nm smcroutectl
 .Op Fl Fkhv
@@ -145,6 +146,12 @@ capabilities only.  The :GROUP is optional.  This option is only
 available when
 .Nm smcrouted
 is built with libcap support.
+.It Fl P Ar FILE
+Set PID file name, and optionally full path, in case you need to
+override the default identity, or the identity set with
+.Fl I Ar NAME .
+Regardless, setting this option overrides all others, but it is
+recommended to use the ident option instead.
 .It Fl s
 Let daemon log to syslog, default unless running in foreground.
 .It Fl t Ar ID
