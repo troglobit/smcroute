@@ -21,6 +21,7 @@ sbin_PROGRAMS	       += smcroutectl
 smcrouted_SOURCES      += msg.c msg.h ipc.c ipc.h
 smcroutectl_SOURCES	= smcroutectl.c msg.h util.h
 smcroutectl_CFLAGS      = -W -Wall -Wextra
+smcroutectl_CPPFLAGS    = -DLOCALSTATEDIR=\"@localstatedir@\"
 endif
 
 if USE_DOTCONF
