@@ -4,6 +4,7 @@ smcrouted_SOURCES	= smcrouted.c mroute.c mroute.h ifvc.c ifvc.g mcgroup.c mcgrou
 			  timer.c timer.h utimensat.c queue.h
 smcrouted_CFLAGS        = -W -Wall -Wextra -Wno-deprecated-declarations
 smcrouted_CPPFLAGS	= -D_ATFILE_SOURCE -D_INCOMPLETE_XOPEN_C063
+smcrouted_CPPFLAGS     += -DLOCALSTATEDIR=\"@localstatedir@\"
 smcrouted_LDADD		= -lrt
 
 if USE_LIBCAP

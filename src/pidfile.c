@@ -36,18 +36,16 @@
 #include <sys/time.h>		/* utimensat() on *BSD */
 #include <sys/types.h>
 #include <errno.h>
-#include <paths.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
-#ifndef pidfile
 static char *pidfile_path = NULL;
-static pid_t pidfile_pid;
+static pid_t pidfile_pid  = 0;
 
 static void pidfile_cleanup(void);
 
-const  char *__pidfile_path = _PATH_VARRUN; /* Note: includes trailing slash '/' */
+const  char *__pidfile_path = LOCALSTATEDIR "/run";
 const  char *__pidfile_name = NULL;
 extern char *prognm;
 
@@ -66,7 +64,7 @@ pidfile(const char *basename, uid_t uid, gid_t gid)
 	atexit_already = 0;
 
 	if (pidfile_path != NULL) {
-		if (pid == pidfile_pid) {
+		if (!access(pidfile_path, R_OK) && pid == pidfile_pid) {
 			utimensat(0, pidfile_path, NULL, 0);
 			return (0);
 		}
@@ -76,8 +74,13 @@ pidfile(const char *basename, uid_t uid, gid_t gid)
 		atexit_already = 1;
 	}
 
-	if (asprintf(&pidfile_path, "%s%s.pid", __pidfile_path, basename) == -1)
-		return (-1);
+	if (basename[0] != '/') {
+		if (asprintf(&pidfile_path, "%s/%s.pid", __pidfile_path, basename) == -1)
+			return (-1);
+	} else {
+		if (asprintf(&pidfile_path, "%s", basename) == -1)
+			return (-1);
+	}
 
 	if ((f = fopen(pidfile_path, "w")) == NULL) {
 		save_errno = errno;
@@ -96,7 +99,8 @@ pidfile(const char *basename, uid_t uid, gid_t gid)
 		errno = save_errno;
 		return (-1);
 	}
-	fclose(f);
+	(void) fclose(f);
+	__pidfile_name = pidfile_path;
 
 	if (chown(pidfile_path, uid, gid))
 		return (-1);
@@ -118,7 +122,6 @@ pidfile(const char *basename, uid_t uid, gid_t gid)
 		errno = save_errno;
 		return (-1);
 	}
-	__pidfile_name = pidfile_path;
 
 	return (0);
 }
@@ -132,4 +135,3 @@ pidfile_cleanup(void)
 		pidfile_path = NULL;
 	}
 }
-#endif
