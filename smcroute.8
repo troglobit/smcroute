@@ -17,7 +17,8 @@
 .Op Fl P Ar FILE
 .Op Fl t Ar ID
 .Nm smcroutectl
-.Op Fl Fkhv
+.Op Fl dtv
+.Op Fl I Ar NAME
 .Op Ar COMMAND
 .Oo Ao add | rem Ac Ao ROUTE Ac Oc Oo Ao join | leave Ac Ao GROUP Ac Oc
 .Pp
@@ -58,8 +59,9 @@ on Linux.  This also applies to
 .Nm smcroutectl .
 .Ss WARNING
 Be careful when creating multicast routes.  You can easily flood your
-networks by inadvertently creating routing loops.  Either direct loop
-listing an inbound interface also as an oubound, or indirect loops.
+networks by inadvertently creating routing loops.  Either direct loops
+listing an inbound interface also as an oubound, or indirect loops by
+going throgh other routers.
 .Sh OPTIONS
 The following
 .Nm smcrouted
