@@ -36,6 +36,9 @@
 #include "socket.h"
 #include "mroute.h"
 
+extern char *sock_path;
+
+
 /* Receive command from the smcroutectl */
 static void ipc_read(int sd)
 {
@@ -99,11 +102,11 @@ int ipc_init(void)
 	sa.sun_len = 0;	/* <- correct length is set by the OS */
 #endif
 	sa.sun_family = AF_UNIX;
-	strcpy(sa.sun_path, SOCKET_PATH);
+	strcpy(sa.sun_path, sock_path);
 
-	unlink(SOCKET_PATH);
+	unlink(sock_path);
 
-	len = offsetof(struct sockaddr_un, sun_path) + strlen(SOCKET_PATH);
+	len = offsetof(struct sockaddr_un, sun_path) + strlen(sock_path);
 	if (bind(sd, (struct sockaddr *)&sa, len) < 0 || listen(sd, 1)) {
 		smclog(LOG_WARNING, "Failed binding IPC socket, client disabled: %s", strerror(errno));
 		close(sd);
@@ -118,7 +121,7 @@ int ipc_init(void)
  */
 void ipc_exit(void)
 {
-	unlink(SOCKET_PATH);
+	unlink(sock_path);
 }
 
 /**

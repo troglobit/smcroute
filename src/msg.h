@@ -36,8 +36,6 @@
 #include <paths.h>
 #include <stdint.h>
 
-/* XXX: Move to config.h, should be configurable */
-#define SOCKET_PATH _PATH_VARRUN "smcroute.sock"
 #define MX_CMDPKT_SZ 1024	/* command size including appended strings */
 
 struct ipc_msg {
