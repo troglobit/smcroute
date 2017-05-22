@@ -32,6 +32,7 @@
  */
 
 #include "config.h"
+
 #include <sys/stat.h>		/* utimensat() */
 #include <sys/time.h>		/* utimensat() on *BSD */
 #include <sys/types.h>
@@ -39,6 +40,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "log.h"
 
 static char *pidfile_path = NULL;
 static pid_t pidfile_pid  = 0;
@@ -82,6 +84,7 @@ pidfile(const char *basename, uid_t uid, gid_t gid)
 			return (-1);
 	}
 
+	smclog(LOG_DEBUG, "Creating PID file %s", pidfile_path);
 	if ((f = fopen(pidfile_path, "w")) == NULL) {
 		save_errno = errno;
 		free(pidfile_path);

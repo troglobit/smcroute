@@ -105,6 +105,7 @@ int ipc_init(void)
 	strcpy(sa.sun_path, sock_path);
 
 	unlink(sock_path);
+	smclog(LOG_DEBUG, "Binding IPC socket to %s", sock_path);
 
 	len = offsetof(struct sockaddr_un, sun_path) + strlen(sock_path);
 	if (bind(sd, (struct sockaddr *)&sa, len) < 0 || listen(sd, 1)) {
