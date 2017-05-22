@@ -243,7 +243,7 @@ static int compose_paths(void)
 	}
 
 	if (!sock_path) {
-		size_t len = strlen(LOCALSTATEDIR) + strlen(ident) + 7;
+		size_t len = strlen(LOCALSTATEDIR) + strlen(ident) + 11;
 
 		sock_path = malloc(len);
 		if (!sock_path) {
