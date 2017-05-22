@@ -235,7 +235,7 @@ static int usage(int code)
 	       "[-m SEC] "
 #endif
 	       "[-t ID] "
-	       "\n"
+	       "\n\n"
 	       "  -c SEC          Flush dynamic (*,G) multicast routes every SEC seconds,\n"
 	       "                  default 60 sec.  Useful when source/interface changes\n"
 	       "  -d SEC          Startup delay, useful for delaying interface probe at boot\n"
