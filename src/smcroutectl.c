@@ -143,6 +143,9 @@ static int ipc_connect(void)
 	if (connect(sd, (struct sockaddr *)&sa, len) < 0) {
 		int err = errno;
 
+		if (ENOENT == errno)
+			warnx("Cannot find IPC socket %s", path);
+
 		close(sd);
 		errno = err;
 
@@ -174,6 +177,9 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 			break;
 
 		case ENOENT:
+			warnx("Daemon may be running with another -I NAME");
+			break;
+
 		case ECONNREFUSED:
 			if (--retry_count) {
 				usleep(100000);
