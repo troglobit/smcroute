@@ -22,6 +22,8 @@ All notable changes to the project are documented in this file.
 - Possible to build `smcrouted` without both `.conf` file support and
   `smcroutectl`, but not at the same time
 - Massive code cleanup, refactor and separation into stand-alone modules
+- Default system paths are no longer taken from `/usr/include/paths.h`,
+  instead the settings from `configure --prefix` are used.
 
 ### Fixes
 - Allow use of loopback interface for multicast routes
