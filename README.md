@@ -154,12 +154,12 @@ Check the list of multicast capable interfaces:
 
     cat /proc/net/dev_mcast
 
-or look for the `MULTICAST` flag in:
+or look for interfaces with the `MULTICAST` flag in the output from:
 
     ifconfig
 
-Some interfaces come with `MULTICAST` disabled, like `lo` and `greN`,
-but can be enabled and used as well.
+Some interfaces have the `MULTICAST` flag disabled by default, like `lo`
+and `greN`.  Usually this flag can be enabled administratively.
 
 On *BSD:
 
