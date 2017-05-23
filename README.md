@@ -154,6 +154,13 @@ Check the list of multicast capable interfaces:
 
     cat /proc/net/dev_mcast
 
+or look for the `MULTICAST` flag in:
+
+    ifconfig
+
+Some interfaces come with `MULTICAST` disabled, like `lo` and `greN`,
+but can be enabled and used as well.
+
 On *BSD:
 
     options    MROUTING    # Multicast routing
@@ -166,7 +173,7 @@ the multicast routes.  Use `--without-libcap` to disable this feature.
 
 **Note:** On RHEL/CentOS 6 you must `configure --without-libcap`
 
-    $ ./configure
+    $ ./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var
     $ make -j5
     $ sudo make install-strip
 
