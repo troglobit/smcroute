@@ -749,7 +749,7 @@ int mroute6_enable(int do_vifs, int table_id)
 {
 #ifndef HAVE_IPV6_MULTICAST_ROUTING
 	(void)do_vifs;
-	return -1;
+	(void)table_id;
 #else
 	int arg = 1;
 	unsigned int i;
@@ -769,7 +769,7 @@ int mroute6_enable(int do_vifs, int table_id)
 		if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_TABLE, &table_id, sizeof(table_id)) < 0) {
 			smclog(LOG_ERR, "Cannot set IPv6 multicast routing table id: %s", strerror(errno));
 			smclog(LOG_ERR, "Make sure your kernel has CONFIG_IPV6_MROUTE_MULTIPLE_TABLES=y");
-			return -1;
+			goto error;
 		}
 	}
 #else
@@ -787,10 +787,7 @@ int mroute6_enable(int do_vifs, int table_id)
 			break;
 		}
 
-		socket_close(mroute6_socket);
-		mroute6_socket = -1;
-
-		return -1;
+		goto error;
 	}
 
 	/* Initialize virtual interface table */
@@ -802,7 +799,7 @@ int mroute6_enable(int do_vifs, int table_id)
 	if (proc_set_val(IPV6_ALL_MC_FORWARD, 1)) {
 		if (errno != EACCES) {
 			smclog(LOG_ERR, "Failed enabling IPv6 multicast forwarding: %s", strerror(errno));
-			exit(255);
+			goto error;
 		}
 	}
 #endif
@@ -814,7 +811,12 @@ int mroute6_enable(int do_vifs, int table_id)
 	}
 
 	return 0;
+error:
+	socket_close(mroute6_socket);
+	mroute6_socket = -1;
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
+
+	return -1;
 }
 
 /**
@@ -843,6 +845,9 @@ static int mroute6_add_mif(struct iface *iface)
 	struct mif6ctl mc;
 	int mif = -1;
 	size_t i;
+
+	if (mroute6_socket == -1)
+		return 0;
 
 	if ((iface->flags & IFF_MULTICAST) != IFF_MULTICAST) {
 		smclog(LOG_INFO, "Interface %s is not multicast capable, skipping MIF.", iface->name);
@@ -895,6 +900,9 @@ static int mroute6_del_mif(struct iface *iface)
 {
 	int16_t mif = iface->mif;
 
+	if (mroute6_socket == -1)
+		return 0;
+
 	if (-1 == mif)
 		return 0;	/* No MIF setup for iface, skip */
 
@@ -922,6 +930,9 @@ int mroute6_add(struct mroute6 *route)
 	size_t i;
 	char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
 	struct mf6cctl mc;
+
+	if (mroute6_socket == -1)
+		return 0;
 
 	memset(&mc, 0, sizeof(mc));
 	mc.mf6cc_origin   = route->source;
@@ -960,6 +971,9 @@ int mroute6_del(struct mroute6 *route)
 {
 	char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
 	struct mf6cctl mc;
+
+	if (mroute6_socket == -1)
+		return 0;
 
 	memset(&mc, 0, sizeof(mc));
 	mc.mf6cc_origin = route->source;
