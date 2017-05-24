@@ -58,10 +58,10 @@
 #endif
 
 /*
- * Need a raw IGMP socket as interface for the IPv4 mrouted API
- * Receives IGMP packets and kernel upcall messages.
+ * Raw IGMP socket used as interface for the IPv4 mrouted API.
+ * Receives IGMP packets and upcall messages from the kernel.
  */
-int mroute4_socket = -1;
+static int mroute4_socket = -1;
 
 /*
  * User added/configured (*,G) matched on-demand at runtime.  See
@@ -82,10 +82,10 @@ LIST_HEAD(, mroute4) mroute4_static_list = LIST_HEAD_INITIALIZER();
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 /*
- * Need a raw ICMPv6 socket as interface for the IPv6 mrouted API
- * Receives MLD packets and kernel upcall messages.
+ * Raw ICMPv6 socket used as interface for the IPv6 mrouted API.
+ * Receives MLD packets and upcall messages from the kenrel.
  */
-int mroute6_socket = -1;
+static int mroute6_socket = -1;
 #endif
 
 /* IPv4 internal virtual interfaces (VIF) descriptor vector */
