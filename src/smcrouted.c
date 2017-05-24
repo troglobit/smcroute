@@ -86,7 +86,7 @@ static void restart(void)
 
 	/* Update list of interfaces and create new virtual interface mappings in kernel. */
 	iface_init();
-	mroute4_enable(do_vifs, table_id);
+	mroute4_enable(do_vifs, table_id, cache_tmo);
 	mroute6_enable(do_vifs, table_id);
 }
 
@@ -136,21 +136,10 @@ static void signal_init(void)
 	sigaction(SIGINT, &sa, NULL);
 }
 
-static void cache_flush(void *arg)
-{
-	(void)arg;
-
-	smclog(LOG_INFO, "Cache timeout, flushing unused (*,G) routes!");
-	mroute4_dyn_expire(cache_tmo);
-}
-
 static int server_loop(void)
 {
 	script_init(script);
 	mrdisc_init(interval);
-
-	if (cache_tmo)
-		timer_add(cache_tmo, cache_flush, NULL);
 
 	while (running)
 		socket_poll(NULL);
@@ -184,11 +173,17 @@ static int start_server(void)
 		sleep(startup_delay);
 	}
 
-	/* Build list of multicast-capable physical interfaces that
-	 * are currently assigned an IP address. */
+	/*
+	 * Build list of multicast-capable physical interfaces
+	 */
 	iface_init();
 
-	if (mroute4_enable(do_vifs, table_id)) {
+	/*
+	 * Timer API needs to be initilized before mroute4_enable()
+	 */
+	timer_init();
+
+	if (mroute4_enable(do_vifs, table_id, cache_tmo)) {
 		if (errno == EADDRINUSE)
 			busy++;
 		api--;
@@ -212,7 +207,6 @@ static int start_server(void)
 
 	atexit(clean);
 	signal_init();
-	timer_init();
 	ipc_init();
 
 	conf_read(conf_file, do_vifs);

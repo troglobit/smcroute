@@ -103,7 +103,7 @@ struct mroute {
 	} u;
 };
 
-int  mroute4_enable    (int do_vifs, int table_id);
+int  mroute4_enable    (int do_vifs, int table_id, int timeout);
 void mroute4_disable   (void);
 int  mroute4_dyn_add   (struct mroute4 *mroute);
 void mroute4_dyn_expire(int max_idle);

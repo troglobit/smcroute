@@ -43,6 +43,7 @@
 #include "socket.h"
 #include "mrdisc.h"
 #include "mroute.h"
+#include "timer.h"
 #include "util.h"
 
 /* MAX_MC_VIFS from mroute.h must have same value as MAXVIFS from mroute.h */
@@ -56,6 +57,11 @@
 #error "IPv6 constants do not match, 'mroute.h' needs to be fixed!"
 #endif
 #endif
+
+/*
+ * Cache flush timeout, used only for IPv4 (*,G) atm.
+ */
+static int cache_timeout = 0;
 
 /*
  * Raw IGMP socket used as interface for the IPv4 mrouted API.
@@ -167,6 +173,14 @@ static void handle_nocache4(int sd, void *arg)
 	}
 }
 
+static void cache_flush(void *arg)
+{
+	(void)arg;
+
+	smclog(LOG_INFO, "Cache timeout, flushing unused (*,G) routes!");
+	mroute4_dyn_expire(cache_timeout);
+}
+
 /**
  * mroute4_enable - Initialise IPv4 multicast routing
  *
@@ -176,11 +190,12 @@ static void handle_nocache4(int sd, void *arg)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute4_enable(int do_vifs, int table_id)
+int mroute4_enable(int do_vifs, int table_id, int timeout)
 {
 	int arg = 1;
 	unsigned int i;
 	struct iface *iface;
+	static int running = 0;
 
 	mroute4_socket = socket_create(AF_INET, SOCK_RAW, IPPROTO_IGMP, handle_nocache4, NULL);
 	if (mroute4_socket < 0) {
@@ -230,6 +245,12 @@ int mroute4_enable(int do_vifs, int table_id)
 	LIST_INIT(&mroute4_conf_list);
 	LIST_INIT(&mroute4_dyn_list);
 	LIST_INIT(&mroute4_static_list);
+
+	if (timeout && !running) {
+		running++;
+		cache_timeout = timeout;
+		timer_add(timeout, cache_flush, NULL);
+	}
 
 	return 0;
 error:
