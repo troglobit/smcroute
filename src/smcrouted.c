@@ -140,7 +140,7 @@ static void cache_flush(void *arg)
 {
 	(void)arg;
 
-	smclog(LOG_NOTICE, "Cache timeout, flushing unused (*,G) routes!");
+	smclog(LOG_INFO, "Cache timeout, flushing unused (*,G) routes!");
 	mroute4_dyn_expire(cache_tmo);
 }
 
