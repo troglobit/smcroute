@@ -196,7 +196,7 @@ int mroute4_enable(int do_vifs, int table_id)
 		if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_TABLE, &table_id, sizeof(table_id)) < 0) {
 			smclog(LOG_ERR, "Cannot set IPv4 multicast routing table id: %s", strerror(errno));
 			smclog(LOG_ERR, "Make sure your kernel has CONFIG_IP_MROUTE_MULTIPLE_TABLES=y");
-			return -1;
+			goto error;
 		}
 	}
 #else
@@ -214,10 +214,7 @@ int mroute4_enable(int do_vifs, int table_id)
 			break;
 		}
 
-		socket_close(mroute4_socket);
-		mroute4_socket = -1;
-
-		return -1;
+		goto error;
 	}
 
 	/* Initialize virtual interface table */
@@ -235,6 +232,11 @@ int mroute4_enable(int do_vifs, int table_id)
 	LIST_INIT(&mroute4_static_list);
 
 	return 0;
+error:
+	socket_close(mroute4_socket);
+	mroute4_socket = -1;
+
+	return -1;
 }
 
 /**
@@ -278,6 +280,9 @@ static int mroute4_add_vif(struct iface *iface)
 	struct vifctl vc;
 	int vif = -1;
 	size_t i;
+
+	if (mroute4_socket < 0)
+		return -1;
 
 	if ((iface->flags & IFF_MULTICAST) != IFF_MULTICAST) {
 		smclog(LOG_INFO, "Interface %s is not multicast capable, skipping VIF.", iface->name);
@@ -333,6 +338,9 @@ static int mroute4_del_vif(struct iface *iface)
 	int ret;
 	int16_t vif = iface->vif;
 
+	if (mroute4_socket < 0)
+		return -1;
+
 	if (-1 == vif)
 		return 0;	/* No VIF setup for iface, skip */
 
@@ -357,6 +365,9 @@ static int kern_add4(struct mroute4 *route, int active)
 {
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	struct mfcctl mc;
+
+	if (mroute4_socket < 0)
+		return -1;
 
 	memset(&mc, 0, sizeof(mc));
 
@@ -393,6 +404,9 @@ static int kern_del4(struct mroute4 *route, int active)
 {
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	struct mfcctl mc;
+
+	if (mroute4_socket < 0)
+		return -1;
 
 	memset(&mc, 0, sizeof(mc));
 	mc.mfcc_origin = route->source;
@@ -496,6 +510,9 @@ int mroute4_dyn_add(struct mroute4 *route)
 static int get_stats4(struct mroute4 *route, unsigned long *pktcnt, unsigned long *bytecnt, unsigned long *wrong_if)
 {
 	struct sioc_sg_req sg_req;
+
+	if (mroute4_socket < 0)
+		return -1;
 
 	memset(&sg_req, 0, sizeof(sg_req));
 	sg_req.src = route->source;
