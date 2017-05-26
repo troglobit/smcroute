@@ -1,6 +1,7 @@
 [Unit]
 Description=Static multicast routing daemon
 Documentation=man:smcroute
+Documentation=file:@DOCDIR@/README.md
 Documentation=https://github.com/troglobit/smcroute
 # ConditionPathExists=/etc/smcroute.conf
 After=network-online.target
