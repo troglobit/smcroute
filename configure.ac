@@ -99,7 +99,23 @@ AC_TYPE_UINT32_T
 
 # Checks for library functions.
 AC_FUNC_FORK
-AC_CHECK_FUNCS([atexit dup2 memset select socket strchr strerror strrchr asprintf utimensat clock_gettime])
+AC_CHECK_FUNCS([atexit dup2 memset select socket strchr strerror strrchr asprintf utimensat])
+
+# Check if we need -lpthread (building statically) and -lrt (older GLIBC)
+# Unset cached values when retrying with -lpthread and reset LIBS for each API
+need_librt=no
+need_pthread=no
+old_LIBS=$LIBS
+AC_SEARCH_LIBS([clock_gettime], [rt], need_librt=yes)
+LIBS=$old_LIBS
+AC_SEARCH_LIBS([timer_create],  [rt], need_librt=yes, [
+	unset ac_cv_search_timer_create
+	AC_SEARCH_LIBS([timer_create],  [rt], need_pthread=yes,,[-lpthread])])
+LIBS=$old_LIBS
+AC_SEARCH_LIBS([timer_settime], [rt], need_librt=yes, [
+	unset ac_cv_search_timer_settime
+	AC_SEARCH_LIBS([timer_settime], [rt], need_pthread=yes,,[-lpthread])])
+LIBS=$old_LIBS
 
 # Check for sun_len in struct sockaddr_un
 AC_CHECK_SUN_LEN()
@@ -129,6 +145,12 @@ int main()
 
 AS_IF([test "$ac_cv_sock_cloexec" = "yes" ],
    AC_DEFINE([HAVE_SOCK_CLOEXEC], 1, [Define if the SOCK_CLOEXEC flag is supported]))
+
+AS_IF([test "$need_librt" != "no"],   LIB_RT=-lrt)
+AC_SUBST([LIB_RT])
+
+AS_IF([test "$need_pthread" != "no"], LIB_PTHREAD=-lpthread)
+AC_SUBST([LIB_PTHREAD])
 
 # Expand $sbindir early, into $SBINDIR, for systemd unit file
 # NOTE: This does *not* take prefix/exec_prefix override at "make

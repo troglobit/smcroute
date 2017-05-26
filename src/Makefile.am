@@ -5,7 +5,7 @@ smcrouted_SOURCES	= smcrouted.c mroute.c mroute.h ifvc.c ifvc.g mcgroup.c mcgrou
 smcrouted_CFLAGS        = -W -Wall -Wextra -Wno-deprecated-declarations
 smcrouted_CPPFLAGS	= -D_ATFILE_SOURCE -D_INCOMPLETE_XOPEN_C063
 smcrouted_CPPFLAGS     += -DSYSCONFDIR=\"@sysconfdir@\" -DLOCALSTATEDIR=\"@localstatedir@\"
-smcrouted_LDADD		= -lrt
+smcrouted_LDADD		= $(LIBS) @LIB_RT@ @LIB_PTHREAD@
 
 if USE_LIBCAP
 smcrouted_SOURCES      += cap.c cap.h
