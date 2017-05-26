@@ -200,7 +200,7 @@ int mroute4_enable(int do_vifs, int table_id, int timeout)
 	mroute4_socket = socket_create(AF_INET, SOCK_RAW, IPPROTO_IGMP, handle_nocache4, NULL);
 	if (mroute4_socket < 0) {
 		if (ENOPROTOOPT == errno)
-			smclog(LOG_WARNING, "Kernel does not support IPv4 multicast routing, skipping ...");
+			smclog(LOG_WARNING, "Kernel does not even support IGMP, skipping ...");
 
 		return -1;
 	}
@@ -222,6 +222,10 @@ int mroute4_enable(int do_vifs, int table_id, int timeout)
 		switch (errno) {
 		case EADDRINUSE:
 			smclog(LOG_INIT, "IPv4 multicast routing API already in use: %s", strerror(errno));
+			break;
+
+		case EOPNOTSUPP:
+			smclog(LOG_WARNING, "Kernel does not support IPv4 multicast routing, skipping ...");
 			break;
 
 		default:
@@ -796,7 +800,7 @@ int mroute6_enable(int do_vifs, int table_id)
 	mroute6_socket = socket_create(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6, handle_nocache6, NULL);
 	if (mroute6_socket < 0) {
 		if (ENOPROTOOPT == errno)
-			smclog(LOG_WARNING, "Kernel does not support IPv6 multicast routing, skipping ...");
+			smclog(LOG_WARNING, "Kernel does not even support IPv6 ICMP, skipping ...");
 
 		return -1;
 	}
@@ -818,6 +822,10 @@ int mroute6_enable(int do_vifs, int table_id)
 		switch (errno) {
 		case EADDRINUSE:
 			smclog(LOG_INIT, "IPv6 multicast routing API already in use: %s", strerror(errno));
+			break;
+
+		case EOPNOTSUPP:
+			smclog(LOG_WARNING, "Kernel does not support IPv6 multicast routing, skipping ...");
 			break;
 
 		default:
