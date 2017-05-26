@@ -19,9 +19,6 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_PROG_CC
 AC_PROG_INSTALL
 
-# Required to check for libsystemd-dev
-PKG_PROG_PKG_CONFIG
-
 # The pidfile() code needs asprintf(), which relies on -D_GNU_SOURCE
 AC_GNU_SOURCE
 
@@ -79,6 +76,9 @@ AS_IF([test "x$with_libcap" != "xno"], [
 		AC_MSG_NOTICE([On CentOS/RHEL 6 this is broken, users are recommended to disable it.])
 		AC_MSG_ERROR([cannot continue, try --without-libcap to disable this feature.])
 	])])
+
+# Required to check for libsystemd-dev
+PKG_PROG_PKG_CONFIG
 
 # Check where to install the systemd .service file
 AS_IF([test "x$PKG_CONFIG" = "x"], [
