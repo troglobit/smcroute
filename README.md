@@ -181,6 +181,9 @@ The `configure` script and the `Makefile.in` files are generated and not
 stored in GIT.  So if you checkout the sources from GitHub you first
 need to generated these files using `./autogen.sh`.
 
+For systemd integration you need to install `pkg-config`, which helps
+the SMCRoute build system figure out the systemd paths.
+
 
 Origin & References
 -------------------

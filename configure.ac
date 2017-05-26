@@ -81,6 +81,9 @@ AS_IF([test "x$with_libcap" != "xno"], [
 	])])
 
 # Check where to install the systemd .service file
+AS_IF([test "x$PKG_CONFIG" = "x"], [
+	with_systemd=no
+	AC_MSG_WARN([Cannot find pkg-config tool, disabling systemd check.])])
 AS_IF([test "x$with_systemd" = "xyes" -o "x$with_systemd" = "xauto"], [
      def_systemd=$($PKG_CONFIG --variable=systemdsystemunitdir systemd)
      AS_IF([test "x$def_systemd" = "x"],
