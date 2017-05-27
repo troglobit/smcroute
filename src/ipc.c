@@ -105,6 +105,7 @@ int ipc_init(void)
 
 	/* MAX sock_path length is sizeof(sun.sun_path), so this is plaing safe */
 	strncpy(sun.sun_path, sock_path, sizeof(sun.sun_path));
+	sun.sun_path[sizeof(sun.sun_path) - 1] = 0;
 
 	unlink(sock_path);
 	smclog(LOG_DEBUG, "Binding IPC socket to %s", sock_path);
