@@ -34,8 +34,8 @@ AC_ARG_WITH([config],
 AC_ARG_WITH([libcap],
 	AS_HELP_STRING([--without-libcap], [disable libcap, -p USER:GROUP drop-privs support]))
 AC_ARG_WITH([systemd],
-     [AS_HELP_STRING([--with-systemd=DIR], [Directory for systemd service files])],,
-     [with_systemd=auto])
+	[AS_HELP_STRING([--with-systemd=DIR], [Directory for systemd service files])],,
+	[with_systemd=auto])
 
 # Checks for header files.
 AC_HEADER_STDC
