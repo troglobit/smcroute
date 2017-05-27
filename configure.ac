@@ -103,6 +103,7 @@ AM_CONDITIONAL([HAVE_SYSTEMD], [test "x$with_systemd" != "xno"])
 
 # Check if we need -lpthread (building statically) and -lrt (older GLIBC)
 # Unset cached values when retrying with -lpthread and reset LIBS for each API
+need_libcap=no
 need_librt=no
 need_pthread=no
 old_LIBS=$LIBS
@@ -115,7 +116,11 @@ LIBS=$old_LIBS
 AC_SEARCH_LIBS([timer_settime], [rt], need_librt=yes, [
 	unset ac_cv_search_timer_settime
 	AC_SEARCH_LIBS([timer_settime], [rt], need_pthread=yes,,[-lpthread])])
+# Check for libcap to not trigger false positives on FreeBSD et al
 LIBS=$old_LIBS
+AC_SEARCH_LIBS([cap_set_flags], [cap], need_libcap=yes, unset ac_cv_header_sys_capability_h)
+LIBS=$old_LIBS
+
 
 # Check for IPv4 support
 AC_CHECK_MROUTE()
