@@ -32,7 +32,8 @@ AC_ARG_WITH([client],
 AC_ARG_WITH([config],
 	AS_HELP_STRING([--without-config], [disable /etc/smcroute.conf support]))
 AC_ARG_WITH([libcap],
-	AS_HELP_STRING([--without-libcap], [disable libcap, -p USER:GROUP drop-privs support]))
+	AS_HELP_STRING([--without-libcap], [disable libcap, -p USER:GROUP drop-privs support]),,
+	[with_libcap=auto])
 AC_ARG_WITH([systemd],
 	[AS_HELP_STRING([--with-systemd=DIR], [Directory for systemd service files])],,
 	[with_systemd=auto])
@@ -42,14 +43,11 @@ AC_HEADER_STDC
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h		\
                   sys/ioctl.h sys/prctl.h sys/socket.h sys/types.h syslog.h	\
                   unistd.h net/route.h sys/param.h sys/stat.h sys/time.h	\
-		  ifaddrs.h linux/sockios.h], [], [],[
+		  sys/capability.h ifaddrs.h linux/sockios.h], [], [],[
 	#ifdef HAVE_SYS_SOCKET_H
 	# include <sys/socket.h>
 	#endif
 ])
-
-# Separate check for libcap, warnings printed last
-AC_CHECK_HEADER([sys/capability.h], [caps=yes], [caps=no])
 
 # Build w/ mrdisc support?
 AS_IF([test "x$enable_mrdisc" = "xyes"],
@@ -123,10 +121,10 @@ AC_CHECK_MROUTE()
 AS_IF([test "x$enable_ipv6" != "xno"],
         AC_CHECK_MROUTE6())
 
-# Support for dropping root privileges is enabled by default
-AS_IF([test "x$with_libcap" != "xno"],
+# Only enable support for dropping root privileges if auto/yes && header exists
+AS_IF([test "x$with_libcap" != "xno" -a "x$ac_cv_header_sys_capability_h" = "xyes"],
 	AC_DEFINE([HAVE_LIBCAP], [], [Define to enable support for libcap.]))
-AM_CONDITIONAL(USE_LIBCAP, [test "x$with_libcap" != "xno"])
+AM_CONDITIONAL(USE_LIBCAP, [test "x$with_libcap" != "xno" -a "x$ac_cv_header_sys_capability_h" = "xyes"])
 
 # Mac OS does not (yet) support SOCK_CLOEXEC
 AC_CACHE_CHECK([for SOCK_CLOEXEC support], [ac_cv_sock_cloexec],
@@ -157,17 +155,16 @@ SBINDIR=`eval echo $sbindir`
 SBINDIR=`eval echo $SBINDIR`
 AC_SUBST(SBINDIR)
 
-AS_IF([test "x$caps" = "xno"], [
+AS_IF([test "x$ac_cv_header_sys_capability_h" = "xno"], [
 	AS_IF([test "x$with_libcap" = "xauto"], [
-		AC_MSG_NOTICE([As a safety measure, SMCRoute v2.2 and later use libcap to drop root])
-		AC_MSG_NOTICE([privileges after startup.  Install libcap and missing headers from])
-		AC_MSG_NOTICE([libcap-dev, or similar, to enable this feature.])
+		AC_MSG_WARN([As a safety measure, SMCRoute v2.2 and later use libcap to drop root])
+		AC_MSG_WARN([privileges after startup.  Install libcap and missing headers from])
+		AC_MSG_WARN([libcap-dev, or similar, to enable this feature.])
 		AC_MSG_NOTICE([Use  --without-libcap to disable this message.])
 	])
 	AS_IF([test "x$with_libcap" = "xyes"], [
 		AC_MSG_WARN([Cannot find libcap or its headers, install libcap-dev, or similar. first.])
 		AC_MSG_NOTICE([On CentOS/RHEL 6 libcap is broken, users are recommended to disable it.])
-		AC_MSG_ERROR([Use  --without-libcap to disable this feature.])
 	])])
 
 AC_OUTPUT
