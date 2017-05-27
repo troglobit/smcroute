@@ -22,6 +22,18 @@ AC_PROG_INSTALL
 # The pidfile() code needs asprintf(), which relies on -D_GNU_SOURCE
 AC_GNU_SOURCE
 
+# Checks for typedefs, structures, and compiler characteristics.
+AC_C_CONST
+AC_C_INLINE
+AC_TYPE_UINT32_T
+
+# Checks for library functions.
+AC_FUNC_FORK
+AC_CHECK_FUNCS([atexit dup2 memset select socket strchr strerror strrchr asprintf utimensat])
+
+# Check for sun_len in struct sockaddr_un
+AC_CHECK_SUN_LEN()
+
 # Check user options
 AC_ARG_ENABLE([mrdisc],
 	AS_HELP_STRING([--enable-mrdisc], [enable IPv4 multicast router discovery]))
@@ -89,15 +101,6 @@ AS_IF([test "x$with_systemd" != "xno"],
      [AC_SUBST([systemddir], [$with_systemd])])
 AM_CONDITIONAL([HAVE_SYSTEMD], [test "x$with_systemd" != "xno"])
 
-# Checks for typedefs, structures, and compiler characteristics.
-AC_C_CONST
-AC_C_INLINE
-AC_TYPE_UINT32_T
-
-# Checks for library functions.
-AC_FUNC_FORK
-AC_CHECK_FUNCS([atexit dup2 memset select socket strchr strerror strrchr asprintf utimensat])
-
 # Check if we need -lpthread (building statically) and -lrt (older GLIBC)
 # Unset cached values when retrying with -lpthread and reset LIBS for each API
 need_librt=no
@@ -113,9 +116,6 @@ AC_SEARCH_LIBS([timer_settime], [rt], need_librt=yes, [
 	unset ac_cv_search_timer_settime
 	AC_SEARCH_LIBS([timer_settime], [rt], need_pthread=yes,,[-lpthread])])
 LIBS=$old_LIBS
-
-# Check for sun_len in struct sockaddr_un
-AC_CHECK_SUN_LEN()
 
 # Check for IPv4 support
 AC_CHECK_MROUTE()
