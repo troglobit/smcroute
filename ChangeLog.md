@@ -4,26 +4,27 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
-[v2.3.0][UNRELEASED]
---------------------
+[v2.3.0][] - 2017-05-28
+-----------------------
 
 ### Changes
 - Support for GROUP/LEN for IPv4 (*,G) routes
-- Support for [mrdisc][], [RFC4286][]
+- Support for IPv4 [mrdisc][], [RFC4286][]
 - Support for multiple routing tables on Linux, `-t ID`
 - `ssmgroup` code folded into general code, now with optional source
 - Separation of daemon and client into `smcrouted` and `smcroutectl`
-- Complete new user interface to `smcroutectl`
+  - Complete new client user interface, `smcroutectl`
+  - Support for disabling IPC and client, `--disable-client`
+  - Support for disabling `.conf` file support, `--disable-config`
 - List multicast routes and joined groups in client, including stats
 - Support for `-d SEC` startup delay in `smcrouted`
 - Unknown (*,G) multicast now blocked by default
 - Flush timer, `-c SEC`, for (*,G) routes now enabled by default, 60 sec
 - Build ID removed from `configure` script
-- Possible to build `smcrouted` without both `.conf` file support and
-  `smcroutectl`, but not at the same time
 - Massive code cleanup, refactor and separation into stand-alone modules
 - Default system paths are no longer taken from `/usr/include/paths.h`,
   instead the settings from `configure --prefix` are used.
+- Use of `libcap` for privilige separation is now auto-detected
 
 ### Fixes
 - Allow use of loopback interface for multicast routes
@@ -372,7 +373,7 @@ Initial public release by Carsten Schill.
 
 [mrdisc]:     https://github.com/troglobit/mrdisc
 [RFC4286]:    https://tools.ietf.org/html/rfc4286
-[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.2.2...HEAD
+[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.3.0...HEAD
 [v2.3.0]:     https://github.com/troglobit/smcroute/compare/2.2.2...2.3.0
 [v2.2.2]:     https://github.com/troglobit/smcroute/compare/2.2.1...2.2.2
 [v2.2.1]:     https://github.com/troglobit/smcroute/compare/2.2.0...2.2.1
