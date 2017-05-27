@@ -250,8 +250,8 @@ static int compose_paths(void)
 		snprintf(sock_path, len, "%s/run/%s.sock", LOCALSTATEDIR, ident);
 
 		if (len >= sizeof(sun.sun_path)) {
-			free(sock_path);
 			smclog(LOG_ERR, "Too long socket path: %s, max %zd chars", sock_path, sizeof(sun.sun_path));
+			free(sock_path);
 			exit(1);
 		}
 
