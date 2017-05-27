@@ -124,27 +124,24 @@ static int ipc_connect(void)
 {
 	struct sockaddr_un sa;
 	socklen_t len;
-	char path[sizeof(sa.sun_path)];
 	int sd;
 
 	sd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sd < 0)
 		return -1;
 
-	snprintf(path, sizeof(path), "%s/run/%s.sock", LOCALSTATEDIR, ident);
-
 #ifdef HAVE_SOCKADDR_UN_SUN_LEN
 	sa.sun_len = 0;	/* <- correct length is set by the OS */
 #endif
 	sa.sun_family = AF_UNIX;
-	strcpy(sa.sun_path, path);
+	snprintf(sa.sun_path, sizeof(sa.sun_path), "%s/run/%s.sock", LOCALSTATEDIR, ident);
 
-	len = offsetof(struct sockaddr_un, sun_path) + strlen(path);
+	len = offsetof(struct sockaddr_un, sun_path) + strlen(sa.sun_path);
 	if (connect(sd, (struct sockaddr *)&sa, len) < 0) {
 		int err = errno;
 
 		if (ENOENT == errno)
-			warnx("Cannot find IPC socket %s", path);
+			warnx("Cannot find IPC socket %s", sa.sun_path);
 
 		close(sd);
 		errno = err;
