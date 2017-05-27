@@ -166,7 +166,7 @@ On *BSD:
     options    MROUTING    # Multicast routing
     options    PIM         # Enable for pimd
 
-As of SMCRoute v2.2, the `libcap` library is required for full privilege
+As of SMCRoute v2.2, the `libcap` library is used to gain full privilege
 separation using POSIX capabilities.  At startup this library is used to
 drop full root privileges, retaining only `CAP_NET_ADMIN` for managing
 the multicast routes.  Use `--without-libcap` to disable this feature.
