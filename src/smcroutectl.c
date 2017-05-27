@@ -122,10 +122,10 @@ static void table_heading(char *argv[], size_t count, int detail)
  */
 static int ipc_connect(void)
 {
-	int sd;
-	char path[256];
 	struct sockaddr_un sa;
 	socklen_t len;
+	char path[sizeof(sa.sun_path)];
+	int sd;
 
 	sd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sd < 0)
