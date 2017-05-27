@@ -4,7 +4,7 @@
 
 #include "config.h"
 
-#ifdef HAVE_LIBCAP
+#ifdef ENABLE_LIBCAP
 void cap_drop_root (uid_t uid, gid_t gid);
 void cap_set_user  (char *arg, uid_t *uid, gid_t *gid);
 #else

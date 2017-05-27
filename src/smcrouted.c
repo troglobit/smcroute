@@ -295,7 +295,7 @@ static int usage(int code)
 	       "  -N              No multicast VIFs/MIFs created by default.  Use with\n"
 	       "                  smcroute.conf `phyint enable` directive\n"
 #endif
-#ifdef HAVE_LIBCAP
+#ifdef ENABLE_LIBCAP
 	       "  -p USER[:GROUP] After initialization set UID and GID to USER and GROUP\n"
 #endif
 	       "  -P FILE         Set daemon PID file name, with optional path.\n"
