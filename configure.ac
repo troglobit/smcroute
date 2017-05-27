@@ -117,7 +117,7 @@ AC_SEARCH_LIBS([timer_settime], [rt], need_librt=yes, [
 	AC_SEARCH_LIBS([timer_settime], [rt], need_pthread=yes,,[-lpthread])])
 # Check for libcap to not trigger false positives on FreeBSD et al
 LIBS=$old_LIBS
-AC_SEARCH_LIBS([cap_set_flags], [cap],, unset ac_cv_header_sys_capability_h)
+AC_SEARCH_LIBS([cap_set_flag], [cap],, unset ac_cv_header_sys_capability_h)
 LIBS=$old_LIBS
 
 
