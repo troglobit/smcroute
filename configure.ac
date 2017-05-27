@@ -24,13 +24,13 @@ AC_GNU_SOURCE
 
 # Check user options
 AC_ARG_ENABLE([mrdisc],
-	AS_HELP_STRING([--enable-mrdisc], [enable IPv4 multicast router discovery, default: disabled]))
+	AS_HELP_STRING([--enable-mrdisc], [enable IPv4 multicast router discovery]))
 AC_ARG_ENABLE([ipv6],
-	AS_HELP_STRING([--disable-ipv6], [disable IPv6 support, default: enabled]))
-AC_ARG_WITH([client],
-	AS_HELP_STRING([--without-client], [disable smcroutectl and IPC API]))
-AC_ARG_WITH([config],
-	AS_HELP_STRING([--without-config], [disable /etc/smcroute.conf support]))
+	AS_HELP_STRING([--disable-ipv6], [disable IPv6 support]))
+AC_ARG_ENABLE([client],
+	AS_HELP_STRING([--disable-client], [disable smcroutectl and IPC API]))
+AC_ARG_ENABLE([config],
+	AS_HELP_STRING([--disable-config], [disable /etc/smcroute.conf support]))
 AC_ARG_WITH([libcap],
 	AS_HELP_STRING([--without-libcap], [disable libcap, -p USER:GROUP drop-privs support]),,
 	[with_libcap=auto])
@@ -55,14 +55,14 @@ AS_IF([test "x$enable_mrdisc" = "xyes"],
 AM_CONDITIONAL([USE_MRDISC], [test "x$enable_mrdisc" = "xyes"])
 
 # Build w/o smcroutectl and IPC API?
-AS_IF([test "x$with_client" != "xno"],
+AS_IF([test "x$enable_client" != "xno"],
     AC_DEFINE([ENABLE_CLIENT], 1, [Enable smcroutectl and the daemon IPC API]))
-AM_CONDITIONAL([HAVE_CLIENT], [test "x$with_client" != "xno"])
+AM_CONDITIONAL([HAVE_CLIENT], [test "x$enable_client" != "xno"])
 
 # Build w/o smcroute.conf support?
-AS_IF([test "x$with_config" != "xno"],
+AS_IF([test "x$enable_config" != "xno"],
     AC_DEFINE([ENABLE_DOTCONF], 1, [Enable /etc/smcroute.conf support]))
-AM_CONDITIONAL([USE_DOTCONF], [test "x$with_config" != "xno"])
+AM_CONDITIONAL([USE_DOTCONF], [test "x$enable_config" != "xno"])
 
 # Sanity check ...
 AS_IF([test "x$with_client" = "xno" -a "x$with_config" = "xno"],
