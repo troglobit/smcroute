@@ -90,7 +90,7 @@ int ipc_init(void)
 {
 	int sd;
 	socklen_t len;
-	struct sockaddr_un sa;
+	struct sockaddr_un sun;
 
 	sd = socket_create(AF_UNIX, SOCK_STREAM, 0, ipc_accept, NULL);
 	if (sd < 0) {
@@ -99,16 +99,16 @@ int ipc_init(void)
 	}
 
 #ifdef HAVE_SOCKADDR_UN_SUN_LEN
-	sa.sun_len = 0;	/* <- correct length is set by the OS */
+	sun.sun_len = 0;	/* <- correct length is set by the OS */
 #endif
-	sa.sun_family = AF_UNIX;
-	strcpy(sa.sun_path, sock_path);
+	sun.sun_family = AF_UNIX;
+	strcpy(sun.sun_path, sock_path);
 
 	unlink(sock_path);
 	smclog(LOG_DEBUG, "Binding IPC socket to %s", sock_path);
 
 	len = offsetof(struct sockaddr_un, sun_path) + strlen(sock_path);
-	if (bind(sd, (struct sockaddr *)&sa, len) < 0 || listen(sd, 1)) {
+	if (bind(sd, (struct sockaddr *)&sun, len) < 0 || listen(sd, 1)) {
 		smclog(LOG_WARNING, "Failed binding IPC socket, client disabled: %s", strerror(errno));
 		socket_close(sd);
 		return -1;
