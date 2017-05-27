@@ -1079,6 +1079,7 @@ int mroute_del_vif(char *ifname)
 	return ret;
 }
 
+#ifdef ENABLE_CLIENT
 static int show_mroute(int sd, struct mroute4 *r, int detail)
 {
 	int vif;
@@ -1150,6 +1151,7 @@ int mroute_show(int sd, int detail)
 
 	return 0;
 }
+#endif
 
 /**
  * Local Variables:
