@@ -131,7 +131,8 @@ AS_IF([test "x$enable_ipv6" != "xno"],
 # Only enable support for dropping root privileges if auto/yes && header exists
 AS_IF([test "x$with_libcap" != "xno" -a "x$ac_cv_header_sys_capability_h" = "xyes"], [
 	with_libcap=yes
-	AC_DEFINE([ENABLE_LIBCAP], [], [Define to enable support for libcap.])])
+	AC_DEFINE([ENABLE_LIBCAP], [], [Define to enable support for libcap.])], [
+	with_libcap=no])
 AM_CONDITIONAL(USE_LIBCAP, [test "x$with_libcap" != "xno" -a "x$ac_cv_header_sys_capability_h" = "xyes"])
 
 # Mac OS does not (yet) support SOCK_CLOEXEC
@@ -174,7 +175,7 @@ AS_IF([test "x$ac_cv_header_sys_capability_h" = "xno"], [
 		AC_MSG_WARN([Cannot find libcap or its headers, install libcap-dev, or similar. first.])
 		AC_MSG_NOTICE([On CentOS/RHEL 6 libcap is broken, users are recommended to disable it.])
 	])
-	AS_IF([test "x$with_libcap" = "xyes"], [
+	AS_IF([test "x$with_libcap" = "xno"], [
 		with_libcap=no
 	])])
 
