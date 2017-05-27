@@ -759,7 +759,6 @@ static int proc_set_val(char *file, int val)
 	return result;
 }
 #endif /* Linux only */
-#endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
 /*
  * Receive and drop ICMPv6 stuff. This is either MLD packets or upcall
@@ -777,6 +776,7 @@ static void handle_nocache6(int sd, void *arg)
 	if (result < 0)
 		smclog(LOG_INFO, "Failed clearing MLD message from kernel: %s", strerror(errno));
 }
+#endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
 /**
  * mroute6_enable - Initialise IPv6 multicast routing
