@@ -304,7 +304,11 @@ static int usage(int code)
 	       "  -t ID           Set multicast routing table ID, default: 0\n"
 	       "  -v              Show program version\n"
 	       "\n"
-	       "Bug report address: %s\n", prognm, conf_file, ident, pidfn, PACKAGE_BUGREPORT);
+	       "Bug report address: %s\n", prognm, conf_file,
+#ifdef ENABLE_DOTCONF
+	       ident,
+#endif
+	       pidfn, PACKAGE_BUGREPORT);
 #ifdef PACKAGE_URL
 	printf("Project homepage:   %s\n", PACKAGE_URL);
 #endif
