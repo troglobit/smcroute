@@ -102,7 +102,9 @@ int ipc_init(void)
 	sun.sun_len = 0;	/* <- correct length is set by the OS */
 #endif
 	sun.sun_family = AF_UNIX;
-	strcpy(sun.sun_path, sock_path);
+
+	/* MAX sock_path length is sizeof(sun.sun_path), so this is plaing safe */
+	strncpy(sun.sun_path, sock_path, sizeof(sun.sun_path));
 
 	unlink(sock_path);
 	smclog(LOG_DEBUG, "Binding IPC socket to %s", sock_path);
