@@ -23,6 +23,7 @@
 
 #include <errno.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <netinet/in.h>
@@ -36,7 +37,8 @@
 #include "socket.h"
 #include "mroute.h"
 
-extern char *sock_path;
+extern char *ident;
+static struct sockaddr_un sun;
 
 
 /* Receive command from the smcroutectl */
@@ -90,7 +92,11 @@ int ipc_init(void)
 {
 	int sd;
 	socklen_t len;
-	struct sockaddr_un sun;
+
+	if (strlen(LOCALSTATEDIR) + strlen(ident) + 11 >= sizeof(sun.sun_path)) {
+		smclog(LOG_ERR, "Too long socket path, max %zd chars", sizeof(sun.sun_path));
+		return -1;
+	}
 
 	sd = socket_create(AF_UNIX, SOCK_STREAM, 0, ipc_accept, NULL);
 	if (sd < 0) {
@@ -102,15 +108,12 @@ int ipc_init(void)
 	sun.sun_len = 0;	/* <- correct length is set by the OS */
 #endif
 	sun.sun_family = AF_UNIX;
+	snprintf(sun.sun_path, sizeof(sun.sun_path), "%s/run/%s.sock", LOCALSTATEDIR, ident);
 
-	/* MAX sock_path length is sizeof(sun.sun_path), so this is plaing safe */
-	strncpy(sun.sun_path, sock_path, sizeof(sun.sun_path));
-	sun.sun_path[sizeof(sun.sun_path) - 1] = 0;
+	unlink(sun.sun_path);
+	smclog(LOG_DEBUG, "Binding IPC socket to %s", sun.sun_path);
 
-	unlink(sock_path);
-	smclog(LOG_DEBUG, "Binding IPC socket to %s", sock_path);
-
-	len = offsetof(struct sockaddr_un, sun_path) + strlen(sock_path);
+	len = offsetof(struct sockaddr_un, sun_path) + strlen(sun.sun_path);
 	if (bind(sd, (struct sockaddr *)&sun, len) < 0 || listen(sd, 1)) {
 		smclog(LOG_WARNING, "Failed binding IPC socket, client disabled: %s", strerror(errno));
 		socket_close(sd);
@@ -125,7 +128,7 @@ int ipc_init(void)
  */
 void ipc_exit(void)
 {
-	unlink(sock_path);
+	unlink(sun.sun_path);
 }
 
 /**

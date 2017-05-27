@@ -57,7 +57,6 @@ char *ident     = PACKAGE;
 char *prognm    = NULL;
 char *pid_file  = NULL;
 char *conf_file = NULL;
-char *sock_path = NULL;
 
 static uid_t uid = 0;
 static gid_t gid = 0;
@@ -235,26 +234,6 @@ static int compose_paths(void)
 		}
 
 		snprintf(conf_file, len, "%s/%s.conf", SYSCONFDIR, ident);
-	}
-
-	if (!sock_path) {
-		size_t len = strlen(LOCALSTATEDIR) + strlen(ident) + 11;
-		struct sockaddr_un sun;
-
-		sock_path = malloc(len);
-		if (!sock_path) {
-			smclog(LOG_ERR, "Failed allocating memory, exiting: %s", strerror(errno));
-			exit(1);
-		}
-
-		snprintf(sock_path, len, "%s/run/%s.sock", LOCALSTATEDIR, ident);
-
-		if (len >= sizeof(sun.sun_path)) {
-			smclog(LOG_ERR, "Too long socket path: %s, max %zd chars", sock_path, sizeof(sun.sun_path));
-			free(sock_path);
-			exit(1);
-		}
-
 	}
 
 	/* Default is to let pidfile() API construct PID file from ident */
