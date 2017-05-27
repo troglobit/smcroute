@@ -125,8 +125,9 @@ AS_IF([test "x$enable_ipv6" != "xno"],
         AC_CHECK_MROUTE6())
 
 # Only enable support for dropping root privileges if auto/yes && header exists
-AS_IF([test "x$with_libcap" != "xno" -a "x$ac_cv_header_sys_capability_h" = "xyes"],
-	AC_DEFINE([ENABLE_LIBCAP], [], [Define to enable support for libcap.]), [
+AS_IF([test "x$with_libcap" != "xno" -a "x$ac_cv_header_sys_capability_h" = "xyes"], [
+	with_libcap=yes
+	AC_DEFINE([ENABLE_LIBCAP], [], [Define to enable support for libcap.])], [
 	with_libcap=no])
 AM_CONDITIONAL(USE_LIBCAP, [test "x$with_libcap" != "xno" -a "x$ac_cv_header_sys_capability_h" = "xyes"])
 
