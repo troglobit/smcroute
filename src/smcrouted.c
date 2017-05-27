@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/time.h>		/* gettimeofday() */
+#include <sys/un.h>
 
 #include "cap.h"
 #include "ipc.h"
@@ -238,6 +239,7 @@ static int compose_paths(void)
 
 	if (!sock_path) {
 		size_t len = strlen(LOCALSTATEDIR) + strlen(ident) + 11;
+		struct sockaddr_un sun;
 
 		sock_path = malloc(len);
 		if (!sock_path) {
@@ -246,6 +248,13 @@ static int compose_paths(void)
 		}
 
 		snprintf(sock_path, len, "%s/run/%s.sock", LOCALSTATEDIR, ident);
+
+		if (len >= sizeof(sun.sun_path)) {
+			free(sock_path);
+			smclog(LOG_ERR, "Too long socket path: %s, max %zd chars", sock_path, sizeof(sun.sun_path));
+			exit(1);
+		}
+
 	}
 
 	/* Default is to let pidfile() API construct PID file from ident */
