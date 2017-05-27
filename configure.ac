@@ -28,9 +28,11 @@ AC_ARG_ENABLE([mrdisc],
 AC_ARG_ENABLE([ipv6],
 	AS_HELP_STRING([--disable-ipv6], [disable IPv6 support]))
 AC_ARG_ENABLE([client],
-	AS_HELP_STRING([--disable-client], [disable smcroutectl and IPC API]))
+	AS_HELP_STRING([--disable-client], [disable smcroutectl and IPC API]),,
+	enable_client=yes)
 AC_ARG_ENABLE([config],
-	AS_HELP_STRING([--disable-config], [disable /etc/smcroute.conf support]))
+	AS_HELP_STRING([--disable-config], [disable /etc/smcroute.conf support]),,
+	enable_config=yes)
 AC_ARG_WITH([libcap],
 	AS_HELP_STRING([--without-libcap], [disable libcap, -p USER:GROUP drop-privs support]),,
 	[with_libcap=auto])
@@ -51,7 +53,8 @@ AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h		\
 
 # Build w/ mrdisc support?
 AS_IF([test "x$enable_mrdisc" = "xyes"],
-    AC_DEFINE([ENABLE_MRDISC], 1, [Enable IPv4 multicast router discovery protocol]))
+    AC_DEFINE([ENABLE_MRDISC], 1, [Enable IPv4 multicast router discovery protocol]),
+    enable_mrdisc=no)
 AM_CONDITIONAL([USE_MRDISC], [test "x$enable_mrdisc" = "xyes"])
 
 # Build w/o smcroutectl and IPC API?
@@ -123,7 +126,8 @@ AS_IF([test "x$enable_ipv6" != "xno"],
 
 # Only enable support for dropping root privileges if auto/yes && header exists
 AS_IF([test "x$with_libcap" != "xno" -a "x$ac_cv_header_sys_capability_h" = "xyes"],
-	AC_DEFINE([ENABLE_LIBCAP], [], [Define to enable support for libcap.]))
+	AC_DEFINE([ENABLE_LIBCAP], [], [Define to enable support for libcap.]), [
+	with_libcap=no])
 AM_CONDITIONAL(USE_LIBCAP, [test "x$with_libcap" != "xno" -a "x$ac_cv_header_sys_capability_h" = "xyes"])
 
 # Mac OS does not (yet) support SOCK_CLOEXEC
@@ -165,6 +169,35 @@ AS_IF([test "x$ac_cv_header_sys_capability_h" = "xno"], [
 	AS_IF([test "x$with_libcap" = "xyes"], [
 		AC_MSG_WARN([Cannot find libcap or its headers, install libcap-dev, or similar. first.])
 		AC_MSG_NOTICE([On CentOS/RHEL 6 libcap is broken, users are recommended to disable it.])
+	])
+	AS_IF([test "x$with_libcap" = "xyes"], [
+		with_libcap=no
 	])])
 
 AC_OUTPUT
+
+cat <<EOF
+
+------------------ Summary ------------------
+ $PACKAGE_NAME version $PACKAGE_VERSION
+  Prefix.........: $prefix
+  Sysconfdir.....: `eval echo $sysconfdir`
+  Localstatedir..: `eval echo $localstatedir`
+  C Compiler.....: $CC $CFLAGS $CPPFLAGS $LDFLAGS $LIBS
+
+ Optional features:
+  IPv6...........: $enable_ipv6
+  Client IPC.....: $enable_client
+  Config file....: $enable_config
+  MRDISC RFC4286.: $enable_mrdisc
+  libcap.........: $with_libcap
+  systemd........: $with_systemd
+
+------------- Compiler version --------------
+$($CC --version || true)
+---------------------------------------------
+
+Check the above options and compile with:
+ ${MAKE-make}
+
+EOF
