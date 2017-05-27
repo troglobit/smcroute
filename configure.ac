@@ -48,6 +48,9 @@ AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h		\
 	#endif
 ])
 
+# Separate check for libcap, warnings printed last
+AC_CHECK_HEADER([sys/capability.h], [caps=yes], [caps=no])
+
 # Build w/ mrdisc support?
 AS_IF([test "x$enable_mrdisc" = "xyes"],
     AC_DEFINE([ENABLE_MRDISC], 1, [Enable IPv4 multicast router discovery protocol]))
@@ -66,16 +69,6 @@ AM_CONDITIONAL([USE_DOTCONF], [test "x$with_config" != "xno"])
 # Sanity check ...
 AS_IF([test "x$with_client" = "xno" -a "x$with_config" = "xno"],
     AC_MSG_ERROR([Cannot disable both smcroutectl and /etc/smcroute.conf support.]))
-
-# Separate check for libcap
-AS_IF([test "x$with_libcap" != "xno"], [
-	AC_CHECK_HEADER([sys/capability.h], [], [
-		AC_MSG_NOTICE([As a safety measure, SMCRoute v2.2 and later use libcap to drop root])
-		AC_MSG_NOTICE([privileges after startup.  Install libcap and missing headers from])
-		AC_MSG_NOTICE([libcap-dev, or similar, to build.])
-		AC_MSG_NOTICE([On CentOS/RHEL 6 this is broken, users are recommended to disable it.])
-		AC_MSG_ERROR([cannot continue, try --without-libcap to disable this feature.])
-	])])
 
 # Required to check for libsystemd-dev
 PKG_PROG_PKG_CONFIG
@@ -163,5 +156,18 @@ test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
 SBINDIR=`eval echo $sbindir`
 SBINDIR=`eval echo $SBINDIR`
 AC_SUBST(SBINDIR)
+
+AS_IF([test "x$caps" = "xno"], [
+	AS_IF([test "x$with_libcap" = "xauto"], [
+		AC_MSG_NOTICE([As a safety measure, SMCRoute v2.2 and later use libcap to drop root])
+		AC_MSG_NOTICE([privileges after startup.  Install libcap and missing headers from])
+		AC_MSG_NOTICE([libcap-dev, or similar, to enable this feature.])
+		AC_MSG_NOTICE([Use  --without-libcap to disable this message.])
+	])
+	AS_IF([test "x$with_libcap" = "xyes"], [
+		AC_MSG_WARN([Cannot find libcap or its headers, install libcap-dev, or similar. first.])
+		AC_MSG_NOTICE([On CentOS/RHEL 6 libcap is broken, users are recommended to disable it.])
+		AC_MSG_ERROR([Use  --without-libcap to disable this feature.])
+	])])
 
 AC_OUTPUT
