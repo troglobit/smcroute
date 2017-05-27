@@ -28,11 +28,11 @@ AC_ARG_ENABLE([mrdisc],
 AC_ARG_ENABLE([ipv6],
 	AS_HELP_STRING([--disable-ipv6], [disable IPv6 support, default: enabled]))
 AC_ARG_WITH([client],
-	AS_HELP_STRING([--without-client], [do not build smcroutectl and IPC API]))
+	AS_HELP_STRING([--without-client], [disable smcroutectl and IPC API]))
 AC_ARG_WITH([config],
 	AS_HELP_STRING([--without-config], [disable /etc/smcroute.conf support]))
 AC_ARG_WITH([libcap],
-	AS_HELP_STRING([--without-libcap], [do not use libcap, disables -p USER:GROUP]))
+	AS_HELP_STRING([--without-libcap], [disable libcap, -p USER:GROUP drop-privs support]))
 AC_ARG_WITH([systemd],
      [AS_HELP_STRING([--with-systemd=DIR], [Directory for systemd service files])],,
      [with_systemd=auto])
