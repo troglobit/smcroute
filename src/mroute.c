@@ -457,6 +457,20 @@ static int kern_del4(struct mroute4 *route, int active)
 }
 
 /*
+ * Used for exact (S,G) matching
+ */
+static int is_exact_match4(struct mroute4 *a, struct mroute4 *b)
+{
+	if (a->source.s_addr == b->source.s_addr &&
+	    a->group.s_addr  == b->group.s_addr  &&
+	    a->len           == b->len &&
+	    a->inbound       == b->inbound)
+		return 1;
+
+	return 0;
+}
+
+/*
  * Used for (*,G) matches
  *
  * The incoming candidate is compared to the configured rule, e.g.
@@ -631,6 +645,26 @@ void mroute4_dyn_expire(int max_idle)
 	}
 }
 
+static int mroute4_exists(struct mroute4 *route)
+{
+	struct mroute4 *entry;
+
+	LIST_FOREACH(entry, &mroute4_conf_list, link) {
+		if (is_match4(entry, route)) {
+			smclog(LOG_INFO, "(*,G) route already exists");
+			return 1;
+		}
+	}
+	LIST_FOREACH(entry, &mroute4_static_list, link) {
+		if (is_exact_match4(entry, route)) {
+			smclog(LOG_INFO, "Static route already exists");
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
 /**
  * mroute4_add - Add route to kernel, or save a wildcard route for later use
  * @route: Pointer to struct mroute4 IPv4 multicast route to add
@@ -645,6 +679,11 @@ void mroute4_dyn_expire(int max_idle)
 int mroute4_add(struct mroute4 *route)
 {
 	struct mroute4 *entry;
+
+	if (mroute4_exists(route)){
+		errno = EEXIST;
+		return 1;
+	}
 
 	entry = malloc(sizeof(struct mroute4));
 	if (!entry) {
@@ -678,20 +717,6 @@ int mroute4_add(struct mroute4 *route)
 
 	LIST_INSERT_HEAD(&mroute4_static_list, entry, link);
 	return kern_add4(route, 1);
-}
-
-/*
- * Used for exact (S,G) matching
- */
-static int is_exact_match4(struct mroute4 *a, struct mroute4 *b)
-{
-	if (a->source.s_addr == b->source.s_addr &&
-	    a->group.s_addr  == b->group.s_addr  &&
-	    a->len           == b->len &&
-	    a->inbound       == b->inbound)
-		return 1;
-
-	return 0;
 }
 
 /**
