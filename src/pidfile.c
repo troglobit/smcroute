@@ -40,7 +40,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+
 #include "log.h"
+#include "util.h"
 
 static char *pidfile_path = NULL;
 static pid_t pidfile_pid  = 0;
