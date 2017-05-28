@@ -57,7 +57,7 @@ AC_HEADER_STDC
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h		\
                   sys/ioctl.h sys/prctl.h sys/socket.h sys/types.h syslog.h	\
                   unistd.h net/route.h sys/param.h sys/stat.h sys/time.h	\
-		  sys/capability.h ifaddrs.h linux/sockios.h], [], [],[
+		  sys/capability.h ifaddrs.h linux/sockios.h termios.h], [], [],[
 	#ifdef HAVE_SYS_SOCKET_H
 	# include <sys/socket.h>
 	#endif

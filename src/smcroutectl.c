@@ -21,9 +21,13 @@
 
 #include <err.h>
 #include <errno.h>
+#include <poll.h>
 #include <stdio.h>
 #include <stddef.h>
 #include <string.h>
+#ifdef HAVE_TERMIOS_H
+# include <termios.h>
+#endif
 #include <unistd.h>
 #include <netinet/in.h>
 #include <sys/types.h>
@@ -101,9 +105,41 @@ static struct ipc_msg *msg_create(uint16_t cmd, char *argv[], size_t count)
 	return msg;
 }
 
+#define ESC "\033"
+static int get_width(void)
+{
+	int ret = 74;
+#ifdef HAVE_TERMIOS_H
+	char buf[42];
+	struct termios tc, saved;
+	struct pollfd fd = { STDIN_FILENO, POLLIN, 0 };
+
+	memset(buf, 0, sizeof(buf));
+	tcgetattr(STDERR_FILENO, &tc);
+	saved = tc;
+	tc.c_cflag |= (CLOCAL | CREAD);
+	tc.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+	tcsetattr(STDERR_FILENO, TCSANOW, &tc);
+	fprintf(stderr, ESC "7" ESC "[r" ESC "[999;999H" ESC "[6n");
+
+	if (poll(&fd, 1, 300) > 0) {
+		int row, col;
+
+		if (scanf(ESC "[%d;%dR", &row, &col) == 2)
+			ret = col;
+	}
+
+	fprintf(stderr, ESC "8");
+	tcsetattr(STDERR_FILENO, TCSANOW, &saved);
+#endif
+	return ret;
+}
+
 static void table_heading(char *argv[], size_t count, int detail)
 {
-	const char *g = "GROUP (S,G)", *i = "INBOUND", *pad = "";
+	int len;
+	char line[85];
+	const char *g = "GROUP (S,G)", *i = "INBOUND";
 	const char *r = "ROUTE (S,G)", *o = "OUTBOUND", *p = "PACKETS", *b = "BYTES";
 
 	/* Skip heading also if user redirects output to a file */
@@ -111,11 +147,14 @@ static void table_heading(char *argv[], size_t count, int detail)
 		return;
 
 	if (count && argv[0][0] == 'g')
-		printf("\e[7m%-34s %-16s %27s\e[0m\n", g, i, pad);
+		snprintf(line, sizeof(line), "\e[7m%-34s %-16s", g, i);
 	else if (detail)
-		printf("\e[7m%-34s %-16s %7s %8s  %-9s\e[0m\n", r, i, p, b, o);
+		snprintf(line, sizeof(line), "\e[7m%-34s %-16s %7s %8s  %-8s", r, i, p, b, o);
 	else
-		printf("\e[7m%-34s %-16s %-27s\e[0m\n", r, i, o);
+		snprintf(line, sizeof(line), "\e[7m%-34s %-16s %-8s", r, i, o);
+
+	len = get_width() - (int)strlen(line) + 4;
+	fprintf(stderr, "%s%*s\n\e[0m", line, len < 0 ? 0 : len, "");
 }
 
 /*
