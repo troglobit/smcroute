@@ -165,9 +165,10 @@ AC_SUBST(SBINDIR)
 
 AS_IF([test "x$ac_cv_header_sys_capability_h" = "xno"], [
 	AS_IF([test "x$with_libcap" = "xyes"], [
-		AC_MSG_WARN([Cannot find libcap or its headers, install libcap-dev, or similar. first.])
-		AC_MSG_NOTICE([On CentOS/RHEL 6 libcap is broken, users are recommended to disable it.])
-		AC_MSG_ERROR([Use  --without-libcap to disable this feature.])
+		AC_MSG_ERROR(
+		  [Cannot find libcap or its headers, install libcap-dev, or similar. first.]
+		  [On CentOS/RHEL 6 libcap is broken, users are recommended to disable it.]
+		  [Use  --without-libcap to disable this feature.])
 	])
 	AS_IF([test "x$with_libcap" = "xauto"], [
 		AC_MSG_WARN([As a safety measure, SMCRoute v2.2 and later use libcap to drop root])
