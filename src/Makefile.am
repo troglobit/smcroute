@@ -1,6 +1,6 @@
 sbin_PROGRAMS		= smcrouted
-smcrouted_SOURCES	= smcrouted.c mroute.c mroute.h ifvc.c ifvc.h mcgroup.c mcgroup.h \
-			  script.c script.h util.h log.c pidfile.c socket.c socket.h      \
+smcrouted_SOURCES	= smcrouted.c mroute.c mroute.h ifvc.c ifvc.h mcgroup.c mcgroup.h  \
+			  script.c script.h util.h log.c log.h pidfile.c socket.c socket.h \
 			  timer.c timer.h utimensat.c queue.h
 smcrouted_CFLAGS        = -W -Wall -Wextra -Wno-deprecated-declarations
 smcrouted_CPPFLAGS	= -D_ATFILE_SOURCE -D_INCOMPLETE_XOPEN_C063
