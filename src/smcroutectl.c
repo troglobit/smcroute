@@ -106,7 +106,8 @@ static void table_heading(char *argv[], size_t count, int detail)
 	const char *g = "GROUP (S,G)", *i = "INBOUND", *pad = "";
 	const char *r = "ROUTE (S,G)", *o = "OUTBOUND", *p = "PACKETS", *b = "BYTES";
 
-	if (!heading)
+	/* Skip heading also if user redirects output to a file */
+	if (!heading || !isatty(STDOUT_FILENO))
 		return;
 
 	if (count && argv[0][0] == 'g')
