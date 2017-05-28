@@ -16,14 +16,15 @@ All notable changes to the project are documented in this file.
   - Complete new client user interface, `smcroutectl`
   - Support for disabling IPC and client, `--disable-client`
   - Support for disabling `.conf` file support, `--disable-config`
-- List multicast routes and joined groups in client, including stats
+- Show multicast routes and joined groups in client, including stats:
+  `smcroutectl show [groups|routes]`
 - Support for `-d SEC` startup delay in `smcrouted`
 - Unknown (*,G) multicast now blocked by default
 - Flush timer, `-c SEC`, for (*,G) routes now enabled by default, 60 sec
 - Build ID removed from `configure` script
 - Massive code cleanup, refactor and separation into stand-alone modules
 - Default system paths are no longer taken from `/usr/include/paths.h`,
-  instead the settings from `configure --prefix` are used.
+  instead the settings from `configure --prefix` are used
 - Use of `libcap` for privilige separation is now auto-detected
 
 ### Fixes
@@ -54,7 +55,7 @@ All notable changes to the project are documented in this file.
 
 ### Fixes
 - Portability, replace use of non-std `__progname` with small function
-- Issue #49: systemd .service file missing -d to start daemon
+- Issue #49: systemd unit file missing `-d` to start daemon
 
 
 [v2.2.0][] - 2016-12-03
