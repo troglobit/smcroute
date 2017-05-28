@@ -471,8 +471,11 @@ static int is_match4(struct mroute4 *rule, struct mroute4 *cand)
 	if (rule->inbound != cand->inbound)
 		return 0;
 
-	/* This handles len == 0 => 255.255.255.255 */
-	mask = htonl(0xFFFFFFFFu << (32 - rule->len));
+	if (rule->len > 0)
+		mask = 0xFFFFFFFFu << (32 - rule->len);
+	else
+		mask = 0xFFFFFFFFu;
+	mask = htonl(mask);
 	g1 = rule->group.s_addr & mask;
 	g2 = cand->group.s_addr & mask;
 
