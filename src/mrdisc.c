@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <net/if.h>
 
 #include "log.h"
 #include "inet.h"
@@ -35,7 +36,7 @@ struct ifsock {
 	size_t refcnt;
 
 	int    sd;
-	char  *ifname;
+	char  ifname[IFNAMSIZ + 1];
 };
 
 static uint8_t interval       = 20;
@@ -109,8 +110,9 @@ int mrdisc_register(char *ifname, short vif)
 
 	entry->refcnt = 0;
 	entry->vif    = vif;
-	entry->ifname = ifname;
 	entry->sd     = -1;
+	strncpy(entry->ifname, ifname, IFNAMSIZ);
+	entry->ifname[IFNAMSIZ] = 0;
 	LIST_INSERT_HEAD(&il, entry, link);
 
 	return 0;
