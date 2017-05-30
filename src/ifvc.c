@@ -32,6 +32,7 @@
 
 #include "log.h"
 #include "ifvc.h"
+#include "util.h"
 
 static unsigned int num_ifaces = 0, num_ifaces_alloc = 0;
 static struct iface *iface_list = NULL;
@@ -86,8 +87,7 @@ void iface_init(void)
 
 		/* Copy data from interface iterator 'ifa' */
 		iface = &iface_list[num_ifaces++];
-		strncpy(iface->name, ifa->ifa_name, IFNAMSIZ);
-		iface->name[IFNAMSIZ] = 0;
+		strlcpy(iface->name, ifa->ifa_name, sizeof(iface->name));
 
 		/*
 		 * Only copy interface address if inteface has one.  On

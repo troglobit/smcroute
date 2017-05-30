@@ -26,8 +26,9 @@
 #include "log.h"
 #include "inet.h"
 #include "mrdisc.h"
-#include "timer.h"
 #include "queue.h"
+#include "timer.h"
+#include "util.h"
 
 struct ifsock {
 	LIST_ENTRY(ifsock) link;
@@ -111,8 +112,7 @@ int mrdisc_register(char *ifname, short vif)
 	entry->refcnt = 0;
 	entry->vif    = vif;
 	entry->sd     = -1;
-	strncpy(entry->ifname, ifname, IFNAMSIZ);
-	entry->ifname[IFNAMSIZ] = 0;
+	strlcpy(entry->ifname, ifname, sizeof(entry->ifname));
 	LIST_INSERT_HEAD(&il, entry, link);
 
 	return 0;
