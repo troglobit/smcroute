@@ -19,7 +19,6 @@
 
 #include "config.h"
 
-#ifndef HAVE_UTIMENSAT
 #include <errno.h>
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
@@ -46,7 +45,6 @@ int utimensat(int dirfd, const char *pathname, const struct timespec ts[2], int 
 
 	return ret;
 }
-#endif /* HAVE_UTIMENSAT */
 
 /**
  * Local Variables:

@@ -103,19 +103,7 @@ struct mroute {
 	} u;
 };
 
-/*
- * Raw IGMP socket used as interface for the IPv4 mrouted API.
- * Receives IGMP packets and upcall messages from the kernel.
- */
-extern int mroute4_socket;
-
-/*
- * Raw ICMPv6 socket used as interface for the IPv6 mrouted API.
- * Receives MLD packets and upcall messages from the kenrel.
- */
-extern int mroute6_socket;
-
-int  mroute4_enable    (int do_vifs, int table_id);
+int  mroute4_enable    (int do_vifs, int table_id, int timeout);
 void mroute4_disable   (void);
 int  mroute4_dyn_add   (struct mroute4 *mroute);
 void mroute4_dyn_expire(int max_idle);

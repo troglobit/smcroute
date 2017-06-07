@@ -352,6 +352,7 @@ void mcgroup6_disable(void)
 #endif /* HAVE_IPV6_MULTICAST_HOST */
 }
 
+#ifdef ENABLE_CLIENT
 /* Write all joined IGMP/MLD groups to client socket */
 int mcgroup_show(int sd, int detail)
 {
@@ -382,6 +383,7 @@ int mcgroup_show(int sd, int detail)
 
 	return 0;
 }
+#endif
 
 /**
  * Local Variables:

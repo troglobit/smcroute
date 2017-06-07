@@ -30,9 +30,8 @@
 
 #define MAX_LINE_LEN 512
 #define WARN(fmt, args...)			\
-	smclog(LOG_WARNING, 0, "%02d: " fmt, lineno, ##args)
-
-const char *conf_file = SMCROUTE_SYSTEM_CONF;
+	smclog(LOG_WARNING, "%s:%02d: " fmt, conf, lineno, ##args)
+static char *conf = NULL;
 
 static char *pop_token(char **line)
 {
@@ -298,6 +297,7 @@ static int conf_parse(const char *file, int do_vifs)
 		return 1;
 	}
 
+	conf = file;
 	while ((line = fgets(linebuf, MAX_LINE_LEN, fp))) {
 		int   op = 0, num = 0, enable = do_vifs;
 		int   threshold = DEFAULT_THRESHOLD;
@@ -375,7 +375,7 @@ static int conf_parse(const char *file, int do_vifs)
 }
 
 /* Parse .conf file and setup routes */
-void conf_read(const char *file, int do_vifs)
+void conf_read(char *file, int do_vifs)
 {
 	if (access(file, R_OK)) {
 		if (errno == ENOENT)

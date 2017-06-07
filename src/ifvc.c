@@ -24,14 +24,16 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <ifaddrs.h>
 #include <limits.h>
 #include <unistd.h>
-#include <sys/types.h>
 #include <netinet/in.h>
 
 #include "log.h"
 #include "ifvc.h"
+#include "util.h"
 
 static unsigned int num_ifaces = 0, num_ifaces_alloc = 0;
 static struct iface *iface_list = NULL;
@@ -86,8 +88,7 @@ void iface_init(void)
 
 		/* Copy data from interface iterator 'ifa' */
 		iface = &iface_list[num_ifaces++];
-		strncpy(iface->name, ifa->ifa_name, IFNAMSIZ);
-		iface->name[IFNAMSIZ] = 0;
+		strlcpy(iface->name, ifa->ifa_name, sizeof(iface->name));
 
 		/*
 		 * Only copy interface address if inteface has one.  On
@@ -222,19 +223,23 @@ struct iface *iface_find_by_vif(int vif)
 }
 
 /**
- * iface_find_by_index - Find by kernel interface index
- * @ifindex: Kernel interface index
+ * iface_iterator - Interface iterator
+ * @first: Set to start from beginning
  *
  * Returns:
- * Pointer to a @struct iface of the requested interface, or %NULL if no
- * interface @ifindex exists.
+ * Pointer to a @struct iface, or %NULL when no more interfaces exist.
  */
-struct iface *iface_find_by_index(unsigned int ifindex)
+struct iface *iface_iterator(int first)
 {
-	if (ifindex >= num_ifaces)
+	static int i = 0;
+
+	if (first)
+		i = 0;
+
+	if (i >= num_ifaces)
 		return NULL;
 
-	return &iface_list[ifindex];
+	return &iface_list[i++];
 }
 
 

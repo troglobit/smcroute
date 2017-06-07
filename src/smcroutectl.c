@@ -21,9 +21,13 @@
 
 #include <err.h>
 #include <errno.h>
+#include <poll.h>
 #include <stdio.h>
 #include <stddef.h>
 #include <string.h>
+#ifdef HAVE_TERMIOS_H
+# include <termios.h>
+#endif
 #include <unistd.h>
 #include <netinet/in.h>
 #include <sys/types.h>
@@ -37,28 +41,31 @@ struct arg {
 	char *name;
 	int   min_args;		/* 0: command takes no arguments */
 	int   val;
+	char *arg;
 	char *help;
 	char *example;		/* optional */
 	int   has_detail;
 } args[] = {
-	{ NULL,      0, 'd', "Detailed output in show command", NULL, 0 },
-	{ NULL,      0, 't', "Skip table heading in show command", NULL, 0 },
-	{ "help",    0, 'h', "Show help text", NULL, 0 },
-	{ "version", 0, 'v', "Show program version", NULL, 0 },
-	{ "flush" ,  0, 'F', "Flush all dynamically set (*,G) multicast routes", NULL, 0 },
-	{ "kill",    0, 'k', "Kill running daemon", NULL, 0 },
-	{ "restart", 0, 'H', "Tell daemon to restart and reload its .conf file, like SIGHUP", NULL, 0 },
-	{ "show",    0, 's', "Show passive (*,G) and active routes, as well as joined groups", NULL, 1 },
-	{ "add",     3, 'a', "Add a multicast route",    "eth0 192.168.2.42 225.1.2.3 eth1 eth2", 0 },
-	{ "remove",  3, 'r', "Remove a multicast route", "eth0 192.168.2.42 225.1.2.3", 0 },
-	{ "del",     3, 'r', NULL, NULL, 0 }, /* Alias */
-	{ "join",    2, 'j', "Join multicast group on an interface", "eth0 225.1.2.3", 0 },
-	{ "leave",   2, 'l', "Leave joined multicast group",         "eth0 225.1.2.3", 0 },
-	{ NULL, 0, 0, NULL, NULL, 0 }
+	{ NULL,      0, 'd', NULL,   "Detailed output in show command", NULL, 0 },
+	{ NULL,      1, 'I', "NAME", "Identity of routing daemon instance, default: " PACKAGE, "foo", 0 },
+	{ NULL,      0, 't', NULL,   "Skip table heading in show command", NULL, 0 },
+	{ "help",    0, 'h', NULL,   "Show help text", NULL, 0 },
+	{ "version", 0, 'v', NULL,   "Show program version", NULL, 0 },
+	{ "flush" ,  0, 'F', NULL,   "Flush all dynamically set (*,G) multicast routes", NULL, 0 },
+	{ "kill",    0, 'k', NULL,   "Kill running daemon", NULL, 0 },
+	{ "restart", 0, 'H', NULL,   "Tell daemon to restart and reload its .conf file, like SIGHUP", NULL, 0 },
+	{ "show",    0, 's', NULL,   "Show passive (*,G) and active routes, as well as joined groups", NULL, 1 },
+	{ "add",     3, 'a', NULL,   "Add a multicast route",    "eth0 192.168.2.42 225.1.2.3 eth1 eth2", 0 },
+	{ "remove",  3, 'r', NULL,   "Remove a multicast route", "eth0 192.168.2.42 225.1.2.3", 0 },
+	{ "del",     3, 'r', NULL,   NULL, NULL, 0 }, /* Alias */
+	{ "join",    2, 'j', NULL,   "Join multicast group on an interface", "eth0 225.1.2.3", 0 },
+	{ "leave",   2, 'l', NULL,   "Leave joined multicast group",         "eth0 225.1.2.3", 0 },
+	{ NULL, 0, 0, NULL, NULL, NULL, 0 }
 };
 
 static int heading = 1;
-static char *prognm = PACKAGE_NAME;
+static char *ident = PACKAGE;
+static char *prognm = NULL;
 
 
 /*
@@ -98,20 +105,56 @@ static struct ipc_msg *msg_create(uint16_t cmd, char *argv[], size_t count)
 	return msg;
 }
 
+#define ESC "\033"
+static int get_width(void)
+{
+	int ret = 74;
+#ifdef HAVE_TERMIOS_H
+	char buf[42];
+	struct termios tc, saved;
+	struct pollfd fd = { STDIN_FILENO, POLLIN, 0 };
+
+	memset(buf, 0, sizeof(buf));
+	tcgetattr(STDERR_FILENO, &tc);
+	saved = tc;
+	tc.c_cflag |= (CLOCAL | CREAD);
+	tc.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+	tcsetattr(STDERR_FILENO, TCSANOW, &tc);
+	fprintf(stderr, ESC "7" ESC "[r" ESC "[999;999H" ESC "[6n");
+
+	if (poll(&fd, 1, 300) > 0) {
+		int row, col;
+
+		if (scanf(ESC "[%d;%dR", &row, &col) == 2)
+			ret = col;
+	}
+
+	fprintf(stderr, ESC "8");
+	tcsetattr(STDERR_FILENO, TCSANOW, &saved);
+#endif
+	return ret;
+}
+
 static void table_heading(char *argv[], size_t count, int detail)
 {
-	const char *g = "GROUP (S,G)", *i = "INBOUND", *pad = "";
+	int len;
+	char line[85];
+	const char *g = "GROUP (S,G)", *i = "INBOUND";
 	const char *r = "ROUTE (S,G)", *o = "OUTBOUND", *p = "PACKETS", *b = "BYTES";
 
-	if (!heading)
+	/* Skip heading also if user redirects output to a file */
+	if (!heading || !isatty(STDOUT_FILENO))
 		return;
 
 	if (count && argv[0][0] == 'g')
-		printf("\e[7m%-34s %-16s %27s\e[0m\n", g, i, pad);
+		snprintf(line, sizeof(line), "\e[7m%-34s %-16s", g, i);
 	else if (detail)
-		printf("\e[7m%-34s %-16s %7s %8s  %-9s\e[0m\n", r, i, p, b, o);
+		snprintf(line, sizeof(line), "\e[7m%-34s %-16s %7s %8s  %-8s", r, i, p, b, o);
 	else
-		printf("\e[7m%-34s %-16s %-27s\e[0m\n", r, i, o);
+		snprintf(line, sizeof(line), "\e[7m%-34s %-16s %-8s", r, i, o);
+
+	len = get_width() - (int)strlen(line) + 4;
+	fprintf(stderr, "%s%*s\n\e[0m", line, len < 0 ? 0 : len, "");
 }
 
 /*
@@ -119,9 +162,9 @@ static void table_heading(char *argv[], size_t count, int detail)
  */
 static int ipc_connect(void)
 {
-	int sd;
 	struct sockaddr_un sa;
 	socklen_t len;
+	int sd;
 
 	sd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sd < 0)
@@ -131,11 +174,14 @@ static int ipc_connect(void)
 	sa.sun_len = 0;	/* <- correct length is set by the OS */
 #endif
 	sa.sun_family = AF_UNIX;
-	strcpy(sa.sun_path, SOCKET_PATH);
+	snprintf(sa.sun_path, sizeof(sa.sun_path), "%s/run/%s.sock", LOCALSTATEDIR, ident);
 
-	len = offsetof(struct sockaddr_un, sun_path) + strlen(SOCKET_PATH);
+	len = offsetof(struct sockaddr_un, sun_path) + strlen(sa.sun_path);
 	if (connect(sd, (struct sockaddr *)&sa, len) < 0) {
 		int err = errno;
+
+		if (ENOENT == errno)
+			warnx("Cannot find IPC socket %s", sa.sun_path);
 
 		close(sd);
 		errno = err;
@@ -168,6 +214,9 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 			break;
 
 		case ENOENT:
+			warnx("Daemon may be running with another -I NAME");
+			break;
+
 		case ECONNREFUSED:
 			if (--retry_count) {
 				usleep(100000);
@@ -237,7 +286,7 @@ static int usage(int code)
 {
 	int i;
 
-	printf("Usage:\n  %s CMD [ARGS]\n\n", prognm);
+	printf("Usage:\n  %s [OPTIONS] CMD [ARGS]\n\n", prognm);
 
 	printf("Options:\n");
 	for (i = 0; args[i].val; i++) {
@@ -247,7 +296,7 @@ static int usage(int code)
 		if (args[i].name)
 			continue;
 
-		printf("  -%c            %s\n", args[i].val, args[i].help);
+		printf("  -%c %-10s %s\n", args[i].val, args[i].arg ? args[i].arg : "", args[i].help);
 	}
 
 	printf("\nCommands:\n");
@@ -306,7 +355,7 @@ int main(int argc, char *argv[])
 	struct arg *cmd = NULL;
 
 	prognm = progname(argv[0]);
-	while ((c = getopt(argc, argv, "dhtv")) != EOF) {
+	while ((c = getopt(argc, argv, "dhI:tv")) != EOF) {
 		switch (c) {
 		case 'd':
 			detail++;
@@ -314,6 +363,10 @@ int main(int argc, char *argv[])
 
 		case 'h':
 			help++;
+			break;
+
+		case 'I':
+			ident = optarg;
 			break;
 
 		case 't':

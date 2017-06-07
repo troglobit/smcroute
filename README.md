@@ -154,21 +154,37 @@ Check the list of multicast capable interfaces:
 
     cat /proc/net/dev_mcast
 
+or look for interfaces with the `MULTICAST` flag in the output from:
+
+    ifconfig
+
+Some interfaces have the `MULTICAST` flag disabled by default, like `lo`
+and `greN`.  Usually this flag can be enabled administratively.
+
 On *BSD:
 
     options    MROUTING    # Multicast routing
     options    PIM         # Enable for pimd
 
-As of SMCRoute v2.2, the `libcap` library is required for full privilege
+As of SMCRoute v2.2, the `libcap` library is used to gain full privilege
 separation using POSIX capabilities.  At startup this library is used to
 drop full root privileges, retaining only `CAP_NET_ADMIN` for managing
 the multicast routes.  Use `--without-libcap` to disable this feature.
 
 **Note:** On RHEL/CentOS 6 you must `configure --without-libcap`
 
-    $ ./configure
+    $ ./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var
     $ make -j5
     $ sudo make install-strip
+
+For systemd integration you need to install `pkg-config`, which helps
+the SMCRoute build system figure out the systemd paths.
+
+Some people want to build statically, to do this with autoconf add the
+following `LDFLAGS=` *after* the configure script.  You may also need to
+add `LIBS=...`, which will depend on your particular system:
+
+    $ ./configure LDFLAGS="-static" ...
 
 The `configure` script and the `Makefile.in` files are generated and not
 stored in GIT.  So if you checkout the sources from GitHub you first

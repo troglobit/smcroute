@@ -43,6 +43,7 @@
 #include "socket.h"
 #include "mrdisc.h"
 #include "mroute.h"
+#include "timer.h"
 #include "util.h"
 
 /* MAX_MC_VIFS from mroute.h must have same value as MAXVIFS from mroute.h */
@@ -58,10 +59,15 @@
 #endif
 
 /*
- * Need a raw IGMP socket as interface for the IPv4 mrouted API
- * Receives IGMP packets and kernel upcall messages.
+ * Cache flush timeout, used only for IPv4 (*,G) atm.
  */
-int mroute4_socket = -1;
+static int cache_timeout = 0;
+
+/*
+ * Raw IGMP socket used as interface for the IPv4 mrouted API.
+ * Receives IGMP packets and upcall messages from the kernel.
+ */
+static int mroute4_socket = -1;
 
 /*
  * User added/configured (*,G) matched on-demand at runtime.  See
@@ -82,10 +88,10 @@ LIST_HEAD(, mroute4) mroute4_static_list = LIST_HEAD_INITIALIZER();
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 /*
- * Need a raw ICMPv6 socket as interface for the IPv6 mrouted API
- * Receives MLD packets and kernel upcall messages.
+ * Raw ICMPv6 socket used as interface for the IPv6 mrouted API.
+ * Receives MLD packets and upcall messages from the kenrel.
  */
-int mroute6_socket = -1;
+static int mroute6_socket = -1;
 #endif
 
 /* IPv4 internal virtual interfaces (VIF) descriptor vector */
@@ -167,6 +173,14 @@ static void handle_nocache4(int sd, void *arg)
 	}
 }
 
+static void cache_flush(void *arg)
+{
+	(void)arg;
+
+	smclog(LOG_INFO, "Cache timeout, flushing unused (*,G) routes!");
+	mroute4_dyn_expire(cache_timeout);
+}
+
 /**
  * mroute4_enable - Initialise IPv4 multicast routing
  *
@@ -176,16 +190,16 @@ static void handle_nocache4(int sd, void *arg)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute4_enable(int do_vifs, int table_id)
+int mroute4_enable(int do_vifs, int table_id, int timeout)
 {
 	int arg = 1;
-	unsigned int i;
 	struct iface *iface;
+	static int running = 0;
 
 	mroute4_socket = socket_create(AF_INET, SOCK_RAW, IPPROTO_IGMP, handle_nocache4, NULL);
 	if (mroute4_socket < 0) {
 		if (ENOPROTOOPT == errno)
-			smclog(LOG_WARNING, "Kernel does not support IPv4 multicast routing, skipping ...");
+			smclog(LOG_WARNING, "Kernel does not even support IGMP, skipping ...");
 
 		return -1;
 	}
@@ -196,7 +210,7 @@ int mroute4_enable(int do_vifs, int table_id)
 		if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_TABLE, &table_id, sizeof(table_id)) < 0) {
 			smclog(LOG_ERR, "Cannot set IPv4 multicast routing table id: %s", strerror(errno));
 			smclog(LOG_ERR, "Make sure your kernel has CONFIG_IP_MROUTE_MULTIPLE_TABLES=y");
-			return -1;
+			goto error;
 		}
 	}
 #else
@@ -206,35 +220,46 @@ int mroute4_enable(int do_vifs, int table_id)
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_INIT, (void *)&arg, sizeof(arg))) {
 		switch (errno) {
 		case EADDRINUSE:
-			smclog(LOG_INIT, "IPv4 multicast routing API already in use: %s", strerror(errno));
+			smclog(LOG_ERR, "IPv4 multicast routing API already in use: %s", strerror(errno));
+			break;
+
+		case EOPNOTSUPP:
+			smclog(LOG_ERR, "Kernel does not support IPv4 multicast routing, skipping ...");
 			break;
 
 		default:
-			smclog(LOG_INIT, "Failed initializing IPv4 multicast routing API: %s", strerror(errno));
+			smclog(LOG_ERR, "Failed initializing IPv4 multicast routing API: %s", strerror(errno));
 			break;
 		}
 
-		close(mroute4_socket);
-		mroute4_socket = -1;
-
-		return -1;
+		goto error;
 	}
 
 	/* Initialize virtual interface table */
 	memset(&vif_list, 0, sizeof(vif_list));
 
 	/* Create virtual interfaces (VIFs) for all non-loopback interfaces supporting multicast */
-	for (i = 0; do_vifs && (iface = iface_find_by_index(i)); i++) {
-		/* No point in continuing the loop when out of VIF's */
-		if (mroute4_add_vif(iface))
-			break;
+	if (do_vifs) {
+		for (iface = iface_iterator(1); iface; iface = iface_iterator(0))
+			mroute4_add_vif(iface);
 	}
 
 	LIST_INIT(&mroute4_conf_list);
 	LIST_INIT(&mroute4_dyn_list);
 	LIST_INIT(&mroute4_static_list);
 
+	if (timeout && !running) {
+		running++;
+		cache_timeout = timeout;
+		timer_add(timeout, cache_flush, NULL);
+	}
+
 	return 0;
+error:
+	socket_close(mroute4_socket);
+	mroute4_socket = -1;
+
+	return -1;
 }
 
 /**
@@ -278,6 +303,9 @@ static int mroute4_add_vif(struct iface *iface)
 	struct vifctl vc;
 	int vif = -1;
 	size_t i;
+
+	if (mroute4_socket < 0)
+		return -1;
 
 	if ((iface->flags & IFF_MULTICAST) != IFF_MULTICAST) {
 		smclog(LOG_INFO, "Interface %s is not multicast capable, skipping VIF.", iface->name);
@@ -333,6 +361,9 @@ static int mroute4_del_vif(struct iface *iface)
 	int ret;
 	int16_t vif = iface->vif;
 
+	if (mroute4_socket < 0)
+		return -1;
+
 	if (-1 == vif)
 		return 0;	/* No VIF setup for iface, skip */
 
@@ -357,6 +388,9 @@ static int kern_add4(struct mroute4 *route, int active)
 {
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	struct mfcctl mc;
+
+	if (mroute4_socket < 0)
+		return -1;
 
 	memset(&mc, 0, sizeof(mc));
 
@@ -394,6 +428,9 @@ static int kern_del4(struct mroute4 *route, int active)
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	struct mfcctl mc;
 
+	if (mroute4_socket < 0)
+		return -1;
+
 	memset(&mc, 0, sizeof(mc));
 	mc.mfcc_origin = route->source;
 	mc.mfcc_mcastgrp = route->group;
@@ -418,6 +455,20 @@ static int kern_del4(struct mroute4 *route, int active)
 }
 
 /*
+ * Used for exact (S,G) matching
+ */
+static int is_exact_match4(struct mroute4 *a, struct mroute4 *b)
+{
+	if (a->source.s_addr == b->source.s_addr &&
+	    a->group.s_addr  == b->group.s_addr  &&
+	    a->len           == b->len &&
+	    a->inbound       == b->inbound)
+		return 1;
+
+	return 0;
+}
+
+/*
  * Used for (*,G) matches
  *
  * The incoming candidate is compared to the configured rule, e.g.
@@ -432,8 +483,11 @@ static int is_match4(struct mroute4 *rule, struct mroute4 *cand)
 	if (rule->inbound != cand->inbound)
 		return 0;
 
-	/* This handles len == 0 => 255.255.255.255 */
-	mask = htonl(0xFFFFFFFFu << (32 - rule->len));
+	if (rule->len > 0)
+		mask = 0xFFFFFFFFu << (32 - rule->len);
+	else
+		mask = 0xFFFFFFFFu;
+	mask = htonl(mask);
 	g1 = rule->group.s_addr & mask;
 	g2 = cand->group.s_addr & mask;
 
@@ -497,12 +551,16 @@ static int get_stats4(struct mroute4 *route, unsigned long *pktcnt, unsigned lon
 {
 	struct sioc_sg_req sg_req;
 
+	if (mroute4_socket < 0)
+		return -1;
+
 	memset(&sg_req, 0, sizeof(sg_req));
 	sg_req.src = route->source;
 	sg_req.grp = route->group;
 
 	if (ioctl(mroute4_socket, SIOCGETSGCNT, &sg_req) < 0) {
-		smclog(LOG_WARNING, "Failed getting MFC stats: %s", strerror(errno));
+		if (wrong_if)
+			smclog(LOG_WARNING, "Failed getting MFC stats: %s", strerror(errno));
 		return errno;
 	}
 
@@ -585,6 +643,26 @@ void mroute4_dyn_expire(int max_idle)
 	}
 }
 
+static int mroute4_exists(struct mroute4 *route)
+{
+	struct mroute4 *entry;
+
+	LIST_FOREACH(entry, &mroute4_conf_list, link) {
+		if (is_match4(entry, route)) {
+			smclog(LOG_INFO, "(*,G) route already exists");
+			return 1;
+		}
+	}
+	LIST_FOREACH(entry, &mroute4_static_list, link) {
+		if (is_exact_match4(entry, route)) {
+			smclog(LOG_INFO, "Static route already exists");
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
 /**
  * mroute4_add - Add route to kernel, or save a wildcard route for later use
  * @route: Pointer to struct mroute4 IPv4 multicast route to add
@@ -599,6 +677,11 @@ void mroute4_dyn_expire(int max_idle)
 int mroute4_add(struct mroute4 *route)
 {
 	struct mroute4 *entry;
+
+	if (mroute4_exists(route)){
+		errno = EEXIST;
+		return 1;
+	}
 
 	entry = malloc(sizeof(struct mroute4));
 	if (!entry) {
@@ -632,20 +715,6 @@ int mroute4_add(struct mroute4 *route)
 
 	LIST_INSERT_HEAD(&mroute4_static_list, entry, link);
 	return kern_add4(route, 1);
-}
-
-/*
- * Used for exact (S,G) matching
- */
-static int is_exact_match4(struct mroute4 *a, struct mroute4 *b)
-{
-	if (a->source.s_addr == b->source.s_addr &&
-	    a->group.s_addr  == b->group.s_addr  &&
-	    a->len           == b->len &&
-	    a->inbound       == b->inbound)
-		return 1;
-
-	return 0;
 }
 
 /**
@@ -717,7 +786,6 @@ static int proc_set_val(char *file, int val)
 	return result;
 }
 #endif /* Linux only */
-#endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
 /*
  * Receive and drop ICMPv6 stuff. This is either MLD packets or upcall
@@ -735,6 +803,7 @@ static void handle_nocache6(int sd, void *arg)
 	if (result < 0)
 		smclog(LOG_INFO, "Failed clearing MLD message from kernel: %s", strerror(errno));
 }
+#endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
 /**
  * mroute6_enable - Initialise IPv6 multicast routing
@@ -749,7 +818,7 @@ int mroute6_enable(int do_vifs, int table_id)
 {
 #ifndef HAVE_IPV6_MULTICAST_ROUTING
 	(void)do_vifs;
-	return -1;
+	(void)table_id;
 #else
 	int arg = 1;
 	unsigned int i;
@@ -758,7 +827,7 @@ int mroute6_enable(int do_vifs, int table_id)
 	mroute6_socket = socket_create(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6, handle_nocache6, NULL);
 	if (mroute6_socket < 0) {
 		if (ENOPROTOOPT == errno)
-			smclog(LOG_WARNING, "Kernel does not support IPv6 multicast routing, skipping ...");
+			smclog(LOG_WARNING, "Kernel does not even support IPv6 ICMP, skipping ...");
 
 		return -1;
 	}
@@ -769,7 +838,7 @@ int mroute6_enable(int do_vifs, int table_id)
 		if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_TABLE, &table_id, sizeof(table_id)) < 0) {
 			smclog(LOG_ERR, "Cannot set IPv6 multicast routing table id: %s", strerror(errno));
 			smclog(LOG_ERR, "Make sure your kernel has CONFIG_IPV6_MROUTE_MULTIPLE_TABLES=y");
-			return -1;
+			goto error;
 		}
 	}
 #else
@@ -779,18 +848,19 @@ int mroute6_enable(int do_vifs, int table_id)
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_INIT, (void *)&arg, sizeof(arg))) {
 		switch (errno) {
 		case EADDRINUSE:
-			smclog(LOG_INIT, "IPv6 multicast routing API already in use: %s", strerror(errno));
+			smclog(LOG_ERR, "IPv6 multicast routing API already in use: %s", strerror(errno));
+			break;
+
+		case EOPNOTSUPP:
+			smclog(LOG_ERR, "Kernel does not support IPv6 multicast routing, skipping ...");
 			break;
 
 		default:
-			smclog(LOG_INIT, "Failed initializing IPv6 multicast routing API: %s", strerror(errno));
+			smclog(LOG_ERR, "Failed initializing IPv6 multicast routing API: %s", strerror(errno));
 			break;
 		}
 
-		close(mroute6_socket);
-		mroute6_socket = -1;
-
-		return -1;
+		goto error;
 	}
 
 	/* Initialize virtual interface table */
@@ -802,19 +872,23 @@ int mroute6_enable(int do_vifs, int table_id)
 	if (proc_set_val(IPV6_ALL_MC_FORWARD, 1)) {
 		if (errno != EACCES) {
 			smclog(LOG_ERR, "Failed enabling IPv6 multicast forwarding: %s", strerror(errno));
-			exit(255);
+			goto error;
 		}
 	}
 #endif
 	/* Create virtual interfaces, IPv6 MIFs, for all non-loopback interfaces */
-	for (i = 0; do_vifs && (iface = iface_find_by_index(i)); i++) {
-		/* No point in continuing the loop when out of MIF's */
-		if (mroute6_add_mif(iface))
-			break;
+	if (do_vifs) {
+		for (iface = iface_iterator(1); iface; iface = iface_iterator(0))
+			mroute6_add_mif(iface);
 	}
 
 	return 0;
+error:
+	socket_close(mroute6_socket);
+	mroute6_socket = -1;
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
+
+	return -1;
 }
 
 /**
@@ -843,6 +917,9 @@ static int mroute6_add_mif(struct iface *iface)
 	struct mif6ctl mc;
 	int mif = -1;
 	size_t i;
+
+	if (mroute6_socket == -1)
+		return 0;
 
 	if ((iface->flags & IFF_MULTICAST) != IFF_MULTICAST) {
 		smclog(LOG_INFO, "Interface %s is not multicast capable, skipping MIF.", iface->name);
@@ -895,6 +972,9 @@ static int mroute6_del_mif(struct iface *iface)
 {
 	int16_t mif = iface->mif;
 
+	if (mroute6_socket == -1)
+		return 0;
+
 	if (-1 == mif)
 		return 0;	/* No MIF setup for iface, skip */
 
@@ -922,6 +1002,9 @@ int mroute6_add(struct mroute6 *route)
 	size_t i;
 	char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
 	struct mf6cctl mc;
+
+	if (mroute6_socket == -1)
+		return 0;
 
 	memset(&mc, 0, sizeof(mc));
 	mc.mf6cc_origin   = route->source;
@@ -960,6 +1043,9 @@ int mroute6_del(struct mroute6 *route)
 {
 	char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
 	struct mf6cctl mc;
+
+	if (mroute6_socket == -1)
+		return 0;
 
 	memset(&mc, 0, sizeof(mc));
 	mc.mf6cc_origin = route->source;
@@ -1025,6 +1111,7 @@ int mroute_del_vif(char *ifname)
 		return ret;
 }
 
+#ifdef ENABLE_CLIENT
 static int show_mroute(int sd, struct mroute4 *r, int detail)
 {
 	int vif;
@@ -1096,6 +1183,7 @@ int mroute_show(int sd, int detail)
 
 	return 0;
 }
+#endif
 
 /**
  * Local Variables:

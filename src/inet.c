@@ -56,12 +56,12 @@ int inet_open(char *ifname)
 	if (setsockopt(sd, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0) {
 		if (ENODEV == errno) {
 			smclog(LOG_WARNING, "Not a valid interface, %s, skipping ...", ifname);
-			close(sd);
+			socket_close(sd);
 			return -1;
 		}
 
 		smclog(LOG_ERR, "Cannot bind socket to interface %s: %s", ifname, strerror(errno));
-		close(sd);
+		socket_close(sd);
 		return -1;
 	}
 
@@ -77,7 +77,7 @@ int inet_open(char *ifname)
 	rc = setsockopt(sd, IPPROTO_IP, IP_MULTICAST_TTL, &val, sizeof(val));
 	if (rc < 0) {
 		smclog(LOG_ERR, "Cannot set TTL: %s", strerror(errno));
-		close(sd);
+		socket_close(sd);
 		return -1;
 	}
 
@@ -85,14 +85,14 @@ int inet_open(char *ifname)
 	rc = setsockopt(sd, IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
 	if (rc < 0) {
 		smclog(LOG_ERR, "Cannot disable MC loop: %s", strerror(errno));
-		close(sd);
+		socket_close(sd);
 		return -1;
 	}
 
 	rc = setsockopt(sd, IPPROTO_IP, IP_OPTIONS, &ra, sizeof(ra));
 	if (rc < 0) {
 		smclog(LOG_ERR, "Cannot set IP OPTIONS: %s", strerror(errno));
-		close(sd);
+		socket_close(sd);
 		return -1;
 	}
 

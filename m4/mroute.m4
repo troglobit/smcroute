@@ -93,8 +93,10 @@ AC_DEFUN([AC_CHECK_MROUTE6],[
 			int dummy = MRT6_INIT;
 		]])],[
 		AC_DEFINE(HAVE_IPV6_MULTICAST_ROUTING, 1, [Define if your OS supports IPv6 multicast routing])
-   		AC_MSG_RESULT(yes)],[
-		AC_MSG_RESULT(no)])
+   		AC_MSG_RESULT(yes)
+		enable_ipv6=yes],[
+		AC_MSG_RESULT(no)
+		enable_ipv6=no])
 
 	AC_MSG_CHECKING(for vifc_rate_limit member in struct mif6ctl)
 	AC_COMPILE_IFELSE([

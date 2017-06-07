@@ -11,11 +11,14 @@
 .Op Fl d Ar SEC
 .Op Fl e Ar CMD
 .Op Fl f Ar FILE
+.Op Fl I Ar NAME
 .Op Fl l Ar LVL
 .Op Fl p Ar USER:GROUP
+.Op Fl P Ar FILE
 .Op Fl t Ar ID
 .Nm smcroutectl
-.Op Fl Fkhv
+.Op Fl dtv
+.Op Fl I Ar NAME
 .Op Ar COMMAND
 .Oo Ao add | rem Ac Ao ROUTE Ac Oc Oo Ao join | leave Ac Ao GROUP Ac Oc
 .Pp
@@ -56,8 +59,9 @@ on Linux.  This also applies to
 .Nm smcroutectl .
 .Ss WARNING
 Be careful when creating multicast routes.  You can easily flood your
-networks by inadvertently creating routing loops.  Either direct loop
-listing an inbound interface also as an oubound, or indirect loops.
+networks by inadvertently creating routing loops.  Either direct loops
+listing an inbound interface also as an oubound, or indirect loops by
+going throgh other routers.
 .Sh OPTIONS
 The following
 .Nm smcrouted
@@ -116,6 +120,26 @@ Specify external script or command to be called when
 .Nm smcrouted
 has loaded/reloaded all static multicast routes from the configuration
 file, or when a source-less (ANY) rule has been installed.
+.It Fl I Ar NAME
+Set daemon identity.  Used to create unique PID, IPC socket, and
+configuration file names, as well as set the syslog identity.  E.g.,
+.Cm Fl I Ar foo
+would make
+.Nm smcrouted
+look for
+.Cm /etc/foo.conf ,
+write its PID to
+.Cm /var/run/foo.pid
+and create an IPC socket for
+.Cm smcroutectl
+in
+.Cm /var/run/foo.sock .
+.Pp
+For
+.Nm smcroutectl
+the same option can be used to select the proper
+.Nm smcrouted
+instance to send IPC to.
 .It Fl l Ar LEVEL
 Set log level: none, err, notice, info, debug.  Default is notice.
 .It Fl p Ar USER Op :GROUP
@@ -124,6 +148,12 @@ capabilities only.  The :GROUP is optional.  This option is only
 available when
 .Nm smcrouted
 is built with libcap support.
+.It Fl P Ar FILE
+Set PID file name, and optionally full path, in case you need to
+override the default identity, or the identity set with
+.Fl I Ar NAME .
+Regardless, setting this option overrides all others, but it is
+recommended to use the ident option instead.
 .It Fl s
 Let daemon log to syslog, default unless running in foreground.
 .It Fl t Ar ID
@@ -404,12 +434,12 @@ Max. 20, see caveat above
 responds to the following signals:
 .Pp
 .Bl -tag -width TERM -compact
-.It HUP
+.It Cm HUP
 Restart and reload the configuration file.  All existing multicast
 routes and groups are dropped.
-.It INT
+.It Cm INT
 Terminates execution gracefully.
-.It TERM
+.It Cm TERM
 The same as INT.
 .El
 .Pp
@@ -437,13 +467,27 @@ tool can be used.
 .Sh FILES
 .Bl -tag -width /proc/net/ip6_mr_cache -compact
 .It Pa /etc/smcroute.conf
-Routes to be added/restored when starting, or restarting
+Routes to be set when starting, or restarting
 .Nm smcrouted
-on SIGHUP.
+on
+.Ar SIGHUP .
+Like the PID file, the name of the configuration file may be different
+depending on command line options given to the daemon.
 .It Pa /var/run/smcroute.pid
-Pidfile (re)created by
+Default PID file (re)created by
 .Nm smcrouted
-when it has started up and is ready to receive commands.
+when it has started up and is ready to receive commands.  See also the
+.Fl I Ar NAME
+or
+.Fl P Ar FILE
+options which can change the default name.
+.It Pa /var/run/smcroute.sock
+IPC socket created by
+.Nm smcrouted
+for use by
+.Nm smcroutectl .
+Same caveats apply to this file as the previous two, command line
+options to the daemon can change the file names.
 .It Pa /proc/net/ip_mr_cache
 Holds active IPv4 multicast routes.
 .It Pa /proc/net/ip_mr_vif
@@ -452,9 +496,6 @@ Holds the IPv4 virtual interfaces used by the active multicast routing daemon.
 Holds active IPv6 multicast routes.
 .It Pa /proc/net/ip6_mr_vif
 Holds the IPv6 virtual interfaces used by the active multicast routing daemon.
-.It Pa /var/run/smcroute
-IPC socket created by
-.Nm smcrouted .
 .It Pa /proc/net/igmp
 Holds active IGMP joins.
 .It Pa /proc/net/igmp6
@@ -469,9 +510,9 @@ Holds active MLD joins.
 .Xr mcjoin 1 ,
 .Xr iperf 1
 .Sh AUTHORS
-SMCRoute was created by Carsten Schill <carsten@cschill.de>.  Support
-for IPv6 was added by Todd Hayton <todd.hayton@gmail.com>.  FreeBSD
-adaptations added by Micha Lenk <micha@debian.org>.
+SMCRoute was created by Carsten Schill <carsten@cschill.de>.  IPv6
+support by Todd Hayton <todd.hayton@gmail.com>.  FreeBSD support by
+Micha Lenk <micha@debian.org>.
 .Pp
 .Nm smcrouted
 is maintained by Joachim Nilsson <troglobit@gmail.com>, Todd Hayton

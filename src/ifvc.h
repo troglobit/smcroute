@@ -26,8 +26,9 @@ struct ifmatch {
 void          iface_init              (void);
 void          iface_exit              (void);
 
+struct iface *iface_iterator          (int first);
+
 struct iface *iface_find_by_name      (const char *ifname);
-struct iface *iface_find_by_index     (unsigned int ifindex);
 struct iface *iface_find_by_vif       (int vif);
 
 void          iface_match_init        (struct ifmatch *state);

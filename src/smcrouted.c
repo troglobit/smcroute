@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/time.h>		/* gettimeofday() */
+#include <sys/un.h>
 
 #include "cap.h"
 #include "ipc.h"
@@ -51,8 +52,11 @@ int interval   = MRDISC_INTERVAL_DEFAULT;
 int startup_delay = 0;
 int table_id   = 0;
 
-char *script   = NULL;
-char *prognm   = PACKAGE_NAME;
+char *script    = NULL;
+char *ident     = PACKAGE;
+char *prognm    = NULL;
+char *pid_file  = NULL;
+char *conf_file = NULL;
 
 static uid_t uid = 0;
 static gid_t gid = 0;
@@ -82,7 +86,7 @@ static void restart(void)
 
 	/* Update list of interfaces and create new virtual interface mappings in kernel. */
 	iface_init();
-	mroute4_enable(do_vifs, table_id);
+	mroute4_enable(do_vifs, table_id, cache_tmo);
 	mroute6_enable(do_vifs, table_id);
 }
 
@@ -132,21 +136,10 @@ static void signal_init(void)
 	sigaction(SIGINT, &sa, NULL);
 }
 
-static void cache_flush(void *arg)
-{
-	(void)arg;
-
-	smclog(LOG_NOTICE, "Cache timeout, flushing unused (*,G) routes!");
-	mroute4_dyn_expire(cache_tmo);
-}
-
 static int server_loop(void)
 {
 	script_init(script);
 	mrdisc_init(interval);
-
-	if (cache_tmo)
-		timer_add(cache_tmo, cache_flush, NULL);
 
 	while (running)
 		socket_poll(NULL);
@@ -180,11 +173,17 @@ static int start_server(void)
 		sleep(startup_delay);
 	}
 
-	/* Build list of multicast-capable physical interfaces that
-	 * are currently assigned an IP address. */
+	/*
+	 * Build list of multicast-capable physical interfaces
+	 */
 	iface_init();
 
-	if (mroute4_enable(do_vifs, table_id)) {
+	/*
+	 * Timer API needs to be initilized before mroute4_enable()
+	 */
+	timer_init();
+
+	if (mroute4_enable(do_vifs, table_id, cache_tmo)) {
 		if (errno == EADDRINUSE)
 			busy++;
 		api--;
@@ -200,21 +199,20 @@ static int start_server(void)
 	 * otherwise we abort the server initialization. */
 	if (!api) {
 		if (busy)
-			smclog(LOG_INIT, "Another multicast routing application is already running.");
+			smclog(LOG_ERR, "Another multicast routing application is already running.");
 		else
-			smclog(LOG_INIT, "Kernel does not support multicast routing.");
+			smclog(LOG_ERR, "Kernel does not support multicast routing.");
 		exit(1);
 	}
 
 	atexit(clean);
 	signal_init();
-	timer_init();
 	ipc_init();
 
 	conf_read(conf_file, do_vifs);
 
 	/* Everything setup, notify any clients by creating the pidfile */
-	if (pidfile(NULL, uid, gid))
+	if (pidfile(pid_file, uid, gid))
 		smclog(LOG_WARNING, "Failed create/chown pidfile: %s", strerror(errno));
 
 	/* Drop root privileges before entering the server loop */
@@ -223,9 +221,38 @@ static int start_server(void)
 	return server_loop();
 }
 
+static int compose_paths(void)
+{
+	/* Default .conf file path: "/etc" + '/' + "smcroute" + ".conf" */
+	if (!conf_file) {
+		size_t len = strlen(SYSCONFDIR) + strlen(ident) + 7;
+
+		conf_file = malloc(len);
+		if (!conf_file) {
+			smclog(LOG_ERR, "Failed allocating memory, exiting: %s", strerror(errno));
+			exit(1);
+		}
+
+		snprintf(conf_file, len, "%s/%s.conf", SYSCONFDIR, ident);
+	}
+
+	/* Default is to let pidfile() API construct PID file from ident */
+	if (!pid_file)
+		pid_file = ident;
+
+	return 0;
+}
 
 static int usage(int code)
 {
+        char pidfn[80];
+
+	compose_paths();
+	if (pid_file[0] != '/')
+		snprintf(pidfn, sizeof(pidfn), "%s/run/%s.pid", LOCALSTATEDIR, pid_file);
+	else
+		snprintf(pidfn, sizeof(pidfn), "%s", pid_file);
+
 	printf("Usage: %s [hnNsv] [-c SEC] [-d SEC] [-e CMD] "
 #ifdef ENABLE_DOTCONF
 	       "[-f FILE] "
@@ -234,6 +261,7 @@ static int usage(int code)
 #ifdef ENABLE_MRDISC
 	       "[-m SEC] "
 #endif
+	       "[-P FILE] "
 	       "[-t ID] "
 	       "\n\n"
 	       "  -c SEC          Flush dynamic (*,G) multicast routes every SEC seconds,\n"
@@ -242,9 +270,10 @@ static int usage(int code)
 	       "  -e CMD          Script or command to call on startup/reload when all routes\n"
 	       "                  have been installed, or when a (*,G) is installed\n"
 #ifdef ENABLE_DOTCONF
-	       "  -f FILE         File to use instead of default " SMCROUTE_SYSTEM_CONF "\n"
+	       "  -f FILE         Set configuration file, default uses ident NAME: %s\n"
 #endif
 	       "  -h              This help text\n"
+	       "  -I NAME         Identity for config, PID file, and syslog, default: %s\n"
 	       "  -l LVL          Set log level: none, err, notice*, info, debug\n"
 #ifdef ENABLE_MRDISC
 	       "  -m SEC          Multicast router discovery, 4-180, default: 20 sec\n"
@@ -254,14 +283,20 @@ static int usage(int code)
 	       "  -N              No multicast VIFs/MIFs created by default.  Use with\n"
 	       "                  smcroute.conf `phyint enable` directive\n"
 #endif
-#ifdef HAVE_LIBCAP
+#ifdef ENABLE_LIBCAP
 	       "  -p USER[:GROUP] After initialization set UID and GID to USER and GROUP\n"
 #endif
+	       "  -P FILE         Set daemon PID file name, with optional path.\n"
+	       "                  Default uses ident NAME: %s\n"
 	       "  -s              Use syslog, default unless running in foreground, -n\n"
 	       "  -t ID           Set multicast routing table ID, default: 0\n"
 	       "  -v              Show program version\n"
 	       "\n"
-	       "Bug report address: %s\n", prognm, PACKAGE_BUGREPORT);
+	       "Bug report address: %s\n", prognm, conf_file,
+#ifdef ENABLE_DOTCONF
+	       ident,
+#endif
+	       pidfn, PACKAGE_BUGREPORT);
 #ifdef PACKAGE_URL
 	printf("Project homepage:   %s\n", PACKAGE_URL);
 #endif
@@ -299,7 +334,7 @@ int main(int argc, char *argv[])
 	int log_opts = LOG_CONS | LOG_PID;
 
 	prognm = progname(argv[0]);
-	while ((c = getopt(argc, argv, "c:d:e:f:hl:m:nNp:st:v")) != EOF) {
+	while ((c = getopt(argc, argv, "c:d:e:f:hI:l:m:nNp:P:st:v")) != EOF) {
 		switch (c) {
 		case 'c':	/* cache timeout */
 			cache_tmo = atoi(optarg);
@@ -323,6 +358,10 @@ int main(int argc, char *argv[])
 
 		case 'h':	/* help */
 			return usage(0);
+
+		case 'I':
+			ident = optarg;
+			break;
 
 		case 'l':
 			log_level = loglvl(optarg);
@@ -355,6 +394,10 @@ int main(int argc, char *argv[])
 			cap_set_user(optarg, &uid, &gid);
 			break;
 
+		case 'P':
+			pid_file = optarg;
+			break;
+
 		case 's':	/* Force syslog even though in foreground */
 			do_syslog++;
 			break;
@@ -378,10 +421,12 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	compose_paths();
+
 	if (!background && do_syslog < 1)
 		log_opts |= LOG_PERROR;
 
-	openlog(prognm, log_opts, LOG_DAEMON);
+	openlog(ident, log_opts, LOG_DAEMON);
 	setlogmask(LOG_UPTO(log_level));
 
 	return start_server();

@@ -4,8 +4,6 @@
 
 #include <syslog.h>
 
-#define LOG_INIT 10
-
 extern int  log_level;
 extern char log_message[128];
 

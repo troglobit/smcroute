@@ -21,12 +21,14 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <net/if.h>
 
 #include "log.h"
 #include "inet.h"
 #include "mrdisc.h"
-#include "timer.h"
 #include "queue.h"
+#include "timer.h"
+#include "util.h"
 
 struct ifsock {
 	LIST_ENTRY(ifsock) link;
@@ -35,7 +37,7 @@ struct ifsock {
 	size_t refcnt;
 
 	int    sd;
-	char  *ifname;
+	char  ifname[IFNAMSIZ + 1];
 };
 
 static uint8_t interval       = 20;
@@ -60,9 +62,13 @@ static void announce(struct ifsock *entry)
 		return;
 
 	smclog(LOG_DEBUG, "Sending mrdisc announcement on %s", entry->ifname);
-	if (inet_send(entry->sd, IGMP_MRDISC_ANNOUNCE, interval))
-		smclog(LOG_WARNING, "Failed sending IGMP control message 0x%x on %s",
-		       IGMP_MRDISC_ANNOUNCE, entry->ifname);
+	if (inet_send(entry->sd, IGMP_MRDISC_ANNOUNCE, interval)) {
+		if (ENETUNREACH == errno || ENETDOWN == errno)
+			return;	/* Link down, ignore. */
+
+		smclog(LOG_WARNING, "Failed sending IGMP control message 0x%x on %s, error %d: %s",
+		       IGMP_MRDISC_ANNOUNCE, entry->ifname, errno, strerror(errno));
+	}
 }
 
 int mrdisc_init(int period)
@@ -109,8 +115,8 @@ int mrdisc_register(char *ifname, short vif)
 
 	entry->refcnt = 0;
 	entry->vif    = vif;
-	entry->ifname = ifname;
 	entry->sd     = -1;
+	strlcpy(entry->ifname, ifname, sizeof(entry->ifname));
 	LIST_INSERT_HEAD(&il, entry, link);
 
 	return 0;
