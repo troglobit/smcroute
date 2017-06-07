@@ -62,9 +62,13 @@ static void announce(struct ifsock *entry)
 		return;
 
 	smclog(LOG_DEBUG, "Sending mrdisc announcement on %s", entry->ifname);
-	if (inet_send(entry->sd, IGMP_MRDISC_ANNOUNCE, interval))
-		smclog(LOG_WARNING, "Failed sending IGMP control message 0x%x on %s",
-		       IGMP_MRDISC_ANNOUNCE, entry->ifname);
+	if (inet_send(entry->sd, IGMP_MRDISC_ANNOUNCE, interval)) {
+		if (ENETUNREACH == errno || ENETDOWN == errno)
+			return;	/* Link down, ignore. */
+
+		smclog(LOG_WARNING, "Failed sending IGMP control message 0x%x on %s, error %d: %s",
+		       IGMP_MRDISC_ANNOUNCE, entry->ifname, errno, strerror(errno));
+	}
 }
 
 int mrdisc_init(int period)
