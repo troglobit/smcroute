@@ -171,19 +171,23 @@ struct iface *iface_find_by_vif(int vif)
 }
 
 /**
- * iface_find_by_index - Find by kernel interface index
- * @ifindex: Kernel interface index
+ * iface_iterator - Interface iterator
+ * @first: Set to start from beginning
  *
  * Returns:
- * Pointer to a @struct iface of the requested interface, or %NULL if no
- * interface @ifindex exists.
+ * Pointer to a @struct iface, or %NULL when no more interfaces exist.
  */
-struct iface *iface_find_by_index(unsigned int ifindex)
+struct iface *iface_iterator(int first)
 {
-	if (ifindex >= num_ifaces)
+	static int i = 0;
+
+	if (first)
+		i = 0;
+
+	if (i >= num_ifaces)
 		return NULL;
 
-	return &iface_list[ifindex];
+	return &iface_list[i++];
 }
 
 

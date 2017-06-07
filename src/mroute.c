@@ -193,7 +193,6 @@ static void cache_flush(void *arg)
 int mroute4_enable(int do_vifs, int table_id, int timeout)
 {
 	int arg = 1;
-	unsigned int i;
 	struct iface *iface;
 	static int running = 0;
 
@@ -240,10 +239,9 @@ int mroute4_enable(int do_vifs, int table_id, int timeout)
 	memset(&vif_list, 0, sizeof(vif_list));
 
 	/* Create virtual interfaces (VIFs) for all non-loopback interfaces supporting multicast */
-	for (i = 0; do_vifs && (iface = iface_find_by_index(i)); i++) {
-		/* No point in continuing the loop when out of VIF's */
-		if (mroute4_add_vif(iface))
-			break;
+	if (do_vifs) {
+		for (iface = iface_iterator(1); iface; iface = iface_iterator(0))
+			mroute4_add_vif(iface);
 	}
 
 	LIST_INIT(&mroute4_conf_list);
@@ -879,10 +877,9 @@ int mroute6_enable(int do_vifs, int table_id)
 	}
 #endif
 	/* Create virtual interfaces, IPv6 MIFs, for all non-loopback interfaces */
-	for (i = 0; do_vifs && (iface = iface_find_by_index(i)); i++) {
-		/* No point in continuing the loop when out of MIF's */
-		if (mroute6_add_mif(iface))
-			break;
+	if (do_vifs) {
+		for (iface = iface_iterator(1); iface; iface = iface_iterator(0))
+			mroute6_add_mif(iface);
 	}
 
 	return 0;
