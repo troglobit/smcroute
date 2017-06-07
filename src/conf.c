@@ -124,9 +124,11 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 
 static int add_mroute(int lineno, char *ifname, char *group, char *source, char *outbound[], int num)
 {
-	int i, total, ret;
+	int i, total, ret, vif, result = 0;
 	char *ptr;
 	struct mroute4 mroute;
+	struct iface *iface;
+	struct ifmatch state_in, state_out;
 
 	if (!ifname || !group || !outbound || !num) {
 		errno = EINVAL;
@@ -139,109 +141,129 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 		return 0;
 #else
 		struct mroute6 mroute;
+		int mif;
 
-		memset(&mroute, 0, sizeof(mroute));
-		mroute.inbound = iface_get_mif_by_name(ifname);
-		if (mroute.inbound < 0) {
+		iface_match_init(&state_in);
+		while ((mif = iface_match_mif_by_name(ifname, &state_in, NULL)) >= 0) {
+			memset(&mroute, 0, sizeof(mroute));
+			mroute.inbound = mif;
+
+			if (!source || inet_pton(AF_INET6, source, &mroute.source.sin6_addr) <= 0) {
+				WARN("Invalid source IPv6 address: %s", source ?: "NONE");
+				return 1;
+			}
+
+			if (inet_pton(AF_INET6, group, &mroute.group.sin6_addr) <= 0 || !IN6_IS_ADDR_MULTICAST(&mroute.group.sin6_addr)) {
+				WARN("Invalid IPv6 multicast group: %s", group);
+				return 1;
+			}
+
+			total = 0;
+			for (i = 0; i < num; i++) {
+				iface_match_init(&state_out);
+				while ((mif = iface_match_mif_by_name(outbound[i], &state_out, &iface)) >= 0) {
+					if (mif == mroute.inbound) {
+						state_out.match_count--;
+						/* In case of wildcard matches, in==out is
+						 * quite normal, so don't complain
+						 */
+						if (!ifname_is_wildcard(ifname) && !ifname_is_wildcard(outbound[i]))
+							WARN("Same outbound IPv6 interface (%s) as inbound (%s)?", outbound[i], ifname);
+						continue;
+					}
+
+					/* Use a TTL threshold to indicate the list of outbound interfaces. */
+					mroute.ttl[mif] = iface->threshold;
+					total++;
+				}
+				if (!state_out.match_count)
+					WARN("Invalid outbound IPv6 interface: %s", outbound[i]);
+			}
+
+			if (!total) {
+				WARN("No valid outbound interfaces, skipping multicast route.");
+				result += 1;
+			} else {
+				result += mroute6_add(&mroute);
+			}
+		}
+
+		if (!state_in.match_count) {
 			WARN("Invalid inbound IPv6 interface: %s", ifname);
 			return 1;
 		}
-		if (!source || inet_pton(AF_INET6, source, &mroute.source.sin6_addr) <= 0) {
-			WARN("Invalid source IPv6 address: %s", source ?: "NONE");
-			return 1;
-		}
-
-		if (inet_pton(AF_INET6, group, &mroute.group.sin6_addr) <= 0 || !IN6_IS_ADDR_MULTICAST(&mroute.group.sin6_addr)) {
-			WARN("Invalid IPv6 multicast group: %s", group);
-			return 1;
-		}
-
-		total = num;
-		for (i = 0; i < num; i++) {
-			struct iface *iface;
-
-			iface = iface_find_by_name(outbound[i]);
-			if (!iface || iface->mif == -1) {
-				total--;
-				WARN("Invalid outbound IPv6 interface: %s", outbound[i]);
-				continue; /* Try next, if any. */
-			}
-
-			if (iface->mif == mroute.inbound)
-				WARN("Same outbound IPv6 interface (%s) as inbound (%s)?", outbound[i], ifname);
-
-			/* Use a TTL threshold to indicate the list of outbound interfaces. */
-			mroute.ttl[iface->mif] = iface->threshold;
-		}
-
-		if (!total) {
-			WARN("No valid outbound interfaces, skipping multicast route.");
-			return 1;
-		}
-
-		return mroute6_add(&mroute);
+		return result;
 #endif
 	}
 
-	memset(&mroute, 0, sizeof(mroute));
-	mroute.inbound = iface_get_vif_by_name(ifname);
-	if (mroute.inbound < 0) {
+	iface_match_init(&state_in);
+	while ((vif = iface_match_vif_by_name(ifname, &state_in, NULL)) >= 0) {
+		memset(&mroute, 0, sizeof(mroute));
+		mroute.inbound = vif;
+
+		if (!source) {
+			mroute.source.s_addr = htonl(INADDR_ANY);
+		} else if (inet_pton(AF_INET, source, &mroute.source) <= 0) {
+			WARN("Invalid source IPv4 address: %s", source);
+			return 1;
+		}
+
+		ptr = strchr(group, '/');
+		if (ptr) {
+			if (mroute.source.s_addr != htonl(INADDR_ANY)) {
+				WARN("GROUP/LEN not yet supported for source specific multicast.");
+				return 1;
+			}
+
+			*ptr++ = 0;
+			mroute.len = atoi(ptr);
+			if (mroute.len < 0 || mroute.len > 32) {
+				WARN("Invalid prefix length, %s/%d", group, mroute.len);
+				return 1;
+			}
+		}
+
+		ret = inet_pton(AF_INET, group, &mroute.group);
+		if (ret <= 0 || !IN_MULTICAST(ntohl(mroute.group.s_addr))) {
+			WARN("Invalid IPv4 multicast group: %s", group);
+			return 1;
+		}
+
+		total = 0;
+		for (i = 0; i < num; i++) {
+			iface_match_init(&state_out);
+			while ((vif = iface_match_vif_by_name(outbound[i], &state_out, &iface)) >= 0) {
+				if (vif == mroute.inbound) {
+					state_out.match_count--;
+					if (!ifname_is_wildcard(ifname) && !ifname_is_wildcard(outbound[i]))
+						/* In case of wildcard matches, in==out is
+						 * quite normal, so don't complain
+						 */
+						WARN("Same outbound IPv4 interface (%s) as inbound (%s)?", outbound[i], ifname);
+					continue;
+				}
+
+				/* Use a TTL threshold to indicate the list of outbound interfaces. */
+				mroute.ttl[vif] = iface->threshold;
+				total++;
+			}
+			if (!state_out.match_count)
+				WARN("Invalid outbound IPv4 interface: %s", outbound[i]);
+		}
+
+		if (!total) {
+			WARN("No valid outbound IPv4 interfaces, skipping multicast route.");
+			result += 1;
+		} else {
+			result += mroute4_add(&mroute);
+		}
+	}
+
+	if (!state_in.match_count) {
 		WARN("Invalid inbound IPv4 interface: %s", ifname);
 		return 1;
 	}
-
-	if (!source) {
-		mroute.source.s_addr = htonl(INADDR_ANY);
-	} else if (inet_pton(AF_INET, source, &mroute.source) <= 0) {
-		WARN("Invalid source IPv4 address: %s", source);
-		return 1;
-	}
-
-	ptr = strchr(group, '/');
-	if (ptr) {
-		if (mroute.source.s_addr != htonl(INADDR_ANY)) {
-			WARN("GROUP/LEN not yet supported for source specific multicast.");
-			return 1;
-		}
-
-		*ptr++ = 0;
-		mroute.len = atoi(ptr);
-		if (mroute.len < 0 || mroute.len > 32) {
-			WARN("Invalid prefix length, %s/%d", group, mroute.len);
-			return 1;
-		}
-	}
-
-	ret = inet_pton(AF_INET, group, &mroute.group);
-	if (ret <= 0 || !IN_MULTICAST(ntohl(mroute.group.s_addr))) {
-		WARN("Invalid IPv4 multicast group: %s", group);
-		return 1;
-	}
-
-	total = num;
-	for (i = 0; i < num; i++) {
-		struct iface *iface;
-
-		iface = iface_find_by_name(outbound[i]);
-		if (!iface || iface->vif == -1) {
-			total--;
-			WARN("Invalid outbound IPv4 interface: %s", outbound[i]);
-			continue; /* Try next, if any. */
-		}
-
-		if (iface->vif == mroute.inbound)
-			WARN("Same outbound IPv4 interface (%s) as inbound (%s)?", outbound[i], ifname);
-
-		/* Use a TTL threshold to indicate the list of outbound interfaces. */
-		mroute.ttl[iface->vif] = iface->threshold;
-	}
-
-	if (!total) {
-		WARN("No valid outbound IPv4 interfaces, skipping multicast route.");
-		return 1;
-	}
-
-	return mroute4_add(&mroute);
+	return result;
 }
 
 /*

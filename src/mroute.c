@@ -1069,40 +1069,46 @@ int mroute6_del(struct mroute6 *route)
 /* Used by file parser to add VIFs/MIFs after setup */
 int mroute_add_vif(char *ifname, uint8_t threshold)
 {
-	int ret;
+	int ret = 0;
 	struct iface *iface;
+	struct ifmatch state;
 
 	smclog(LOG_DEBUG, "Adding %s to list of multicast routing interfaces", ifname);
-	iface = iface_find_by_name(ifname);
-	if (!iface)
-		return 1;
-
-	iface->threshold = threshold;
-	ret = mroute4_add_vif(iface);
+	iface_match_init(&state);
+	while ((iface = iface_match_by_name(ifname, &state))) {
+		iface->threshold = threshold;
+		ret += mroute4_add_vif(iface);
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
-	ret += mroute6_add_mif(iface);
+		ret += mroute6_add_mif(iface);
 #endif
+	}
 
-	return ret;
+	if (!state.match_count)
+		return 1;
+	else
+		return ret;
 }
 
 /* Used by file parser to remove VIFs/MIFs after setup */
 int mroute_del_vif(char *ifname)
 {
-	int ret;
+	int ret = 0;
 	struct iface *iface;
+	struct ifmatch state;
 
 	smclog(LOG_DEBUG, "Pruning %s from list of multicast routing interfaces", ifname);
-	iface = iface_find_by_name(ifname);
-	if (!iface)
-		return 1;
-
-	ret = mroute4_del_vif(iface);
+	iface_match_init(&state);
+	while ((iface = iface_match_by_name(ifname, &state))) {
+		ret += mroute4_del_vif(iface);
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
-	ret += mroute6_del_mif(iface);
+		ret += mroute6_del_mif(iface);
 #endif
+	}
 
-	return ret;
+	if (!state.match_count)
+		return 1;
+	else
+		return ret;
 }
 
 #ifdef ENABLE_CLIENT

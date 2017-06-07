@@ -18,19 +18,28 @@ struct iface {
 	uint8_t threshold;	/* TTL threshold: 1-255, default: 1 */
 };
 
-void          iface_init            (void);
-void          iface_exit            (void);
+struct ifmatch {
+	unsigned int iter;
+	unsigned int match_count;
+};
 
-struct iface *iface_iterator        (int first);
+void          iface_init              (void);
+void          iface_exit              (void);
 
-struct iface *iface_find_by_name    (const char *ifname);
-struct iface *iface_find_by_vif     (int vif);
+struct iface *iface_iterator          (int first);
 
-int           iface_get_vif         (struct iface *iface);
-int           iface_get_mif         (struct iface *iface);
+struct iface *iface_find_by_name      (const char *ifname);
+struct iface *iface_find_by_vif       (int vif);
 
-int           iface_get_vif_by_name (const char *ifname);
-int           iface_get_mif_by_name (const char *ifname);
+void          iface_match_init        (struct ifmatch *state);
+struct iface *iface_match_by_name     (const char *ifname, struct ifmatch *state);
+int           ifname_is_wildcard      (const char *ifname);
+
+int           iface_get_vif           (struct iface *iface);
+int           iface_get_mif           (struct iface *iface);
+
+int           iface_match_vif_by_name (const char *ifname, struct ifmatch *state, struct iface **found);
+int           iface_match_mif_by_name (const char *ifname, struct ifmatch *state, struct iface **found);
 
 #endif /* SMCROUTE_IFVC_H_ */
 
