@@ -48,7 +48,7 @@ static int whoami(const char *user, const char *group, uid_t *uid, gid_t *gid)
 	/* Get target UID and target GID */
 	pw = getpwnam(user);
 	if (!pw) {
-		smclog(LOG_INIT, "User '%s' not found!", user);
+		smclog(LOG_ERR, "User '%s' not found!", user);
 		return -1;
 	}
 
@@ -57,7 +57,7 @@ static int whoami(const char *user, const char *group, uid_t *uid, gid_t *gid)
 	if (group) {
 		gr = getgrnam(group);
 		if (!gr) {
-			smclog(LOG_INIT, "Group '%s' not found!", group);
+			smclog(LOG_ERR, "Group '%s' not found!", group);
 			return -1;
 		}
 		*gid = gr->gr_gid;
@@ -133,9 +133,9 @@ void cap_drop_root(uid_t uid, gid_t gid)
 {
 	if (username) {
 		if (drop_root(username, uid, gid) == -1)
-			smclog(LOG_INIT, "Could not drop root privileges, continuing as root.");
+			smclog(LOG_WARNING, "Could not drop root privileges, continuing as root.");
 		else
-			smclog(LOG_INIT, "Root privileges dropped: Current UID %u, GID %u.", getuid(), getgid());
+			smclog(LOG_INFO, "Root privileges dropped: Current UID %u, GID %u.", getuid(), getgid());
 	}
 }
 

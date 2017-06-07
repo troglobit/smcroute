@@ -221,15 +221,15 @@ int mroute4_enable(int do_vifs, int table_id, int timeout)
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_INIT, (void *)&arg, sizeof(arg))) {
 		switch (errno) {
 		case EADDRINUSE:
-			smclog(LOG_INIT, "IPv4 multicast routing API already in use: %s", strerror(errno));
+			smclog(LOG_ERR, "IPv4 multicast routing API already in use: %s", strerror(errno));
 			break;
 
 		case EOPNOTSUPP:
-			smclog(LOG_WARNING, "Kernel does not support IPv4 multicast routing, skipping ...");
+			smclog(LOG_ERR, "Kernel does not support IPv4 multicast routing, skipping ...");
 			break;
 
 		default:
-			smclog(LOG_INIT, "Failed initializing IPv4 multicast routing API: %s", strerror(errno));
+			smclog(LOG_ERR, "Failed initializing IPv4 multicast routing API: %s", strerror(errno));
 			break;
 		}
 
@@ -850,15 +850,15 @@ int mroute6_enable(int do_vifs, int table_id)
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_INIT, (void *)&arg, sizeof(arg))) {
 		switch (errno) {
 		case EADDRINUSE:
-			smclog(LOG_INIT, "IPv6 multicast routing API already in use: %s", strerror(errno));
+			smclog(LOG_ERR, "IPv6 multicast routing API already in use: %s", strerror(errno));
 			break;
 
 		case EOPNOTSUPP:
-			smclog(LOG_WARNING, "Kernel does not support IPv6 multicast routing, skipping ...");
+			smclog(LOG_ERR, "Kernel does not support IPv6 multicast routing, skipping ...");
 			break;
 
 		default:
-			smclog(LOG_INIT, "Failed initializing IPv6 multicast routing API: %s", strerror(errno));
+			smclog(LOG_ERR, "Failed initializing IPv6 multicast routing API: %s", strerror(errno));
 			break;
 		}
 

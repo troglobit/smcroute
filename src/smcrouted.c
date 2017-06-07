@@ -199,9 +199,9 @@ static int start_server(void)
 	 * otherwise we abort the server initialization. */
 	if (!api) {
 		if (busy)
-			smclog(LOG_INIT, "Another multicast routing application is already running.");
+			smclog(LOG_ERR, "Another multicast routing application is already running.");
 		else
-			smclog(LOG_INIT, "Kernel does not support multicast routing.");
+			smclog(LOG_ERR, "Kernel does not support multicast routing.");
 		exit(1);
 	}
 
