@@ -231,7 +231,7 @@ struct iface *iface_find_by_vif(int vif)
  */
 struct iface *iface_iterator(int first)
 {
-	static int i = 0;
+	static size_t i = 0;
 
 	if (first)
 		i = 0;
