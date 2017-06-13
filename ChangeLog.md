@@ -19,7 +19,7 @@ on integrating SMCRoute v2.3 into WeOS v4.22!
 - Fix build error(s) on FreeBSD 9/9.3-RELEASE
 - Fix possible invalid interface name reference in new mrdisc support
 - Fix log macro bug in the .conf parser
-- Fix buggy interface and VIF re-initialization on SIGHUP
+- Fix buggy interface and VIF re-initialization on `SIGHUP`
 
 
 [v2.3.0][] - 2017-05-28
