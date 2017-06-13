@@ -4,6 +4,24 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
+[v2.3.1][] - 2017-06-13
+-----------------------
+
+Bug fix release courtesy of the Westermo WeOS automated testing
+framework.  Many thanks to Johan Askerin at Westermo for working
+on integrating SMCRoute v2.3 into WeOS v4.22!
+
+### Changes
+- Add `utimensat()` replacement for systems that don't have it
+- Ignore error messages from `send()` on interface link down
+
+### Fixes
+- Fix build error(s) on FreeBSD 9/9.3-RELEASE
+- Fix possible invalid interface name reference in new mrdisc support
+- Fix log macro bug in the .conf parser
+- Fix buggy interface and VIF re-initialization on SIGHUP
+
+
 [v2.3.0][] - 2017-05-28
 -----------------------
 
