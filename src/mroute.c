@@ -821,7 +821,6 @@ int mroute6_enable(int do_vifs, int table_id)
 	(void)table_id;
 #else
 	int arg = 1;
-	unsigned int i;
 	struct iface *iface;
 
 	mroute6_socket = socket_create(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6, handle_nocache6, NULL);
