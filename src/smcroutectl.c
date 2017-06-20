@@ -56,8 +56,8 @@ struct arg {
 	{ "restart", 0, 'H', NULL,   "Tell daemon to restart and reload its .conf file, like SIGHUP", NULL, 0 },
 	{ "show",    0, 's', NULL,   "Show passive (*,G) and active routes, as well as joined groups", NULL, 1 },
 	{ "add",     3, 'a', NULL,   "Add a multicast route",    "eth0 192.168.2.42 225.1.2.3 eth1 eth2", 0 },
-	{ "remove",  3, 'r', NULL,   "Remove a multicast route", "eth0 192.168.2.42 225.1.2.3", 0 },
-	{ "del",     3, 'r', NULL,   NULL, NULL, 0 }, /* Alias */
+	{ "remove",  2, 'r', NULL,   "Remove a multicast route", "eth0 192.168.2.42 225.1.2.3", 0 },
+	{ "del",     2, 'r', NULL,   NULL, NULL, 0 }, /* Alias */
 	{ "join",    2, 'j', NULL,   "Join multicast group on an interface", "eth0 225.1.2.3", 0 },
 	{ "leave",   2, 'l', NULL,   "Leave joined multicast group",         "eth0 225.1.2.3", 0 },
 	{ NULL, 0, 0, NULL, NULL, NULL, 0 }
