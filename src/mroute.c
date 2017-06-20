@@ -724,6 +724,22 @@ int mroute4_add(struct mroute4 *route)
 	return kern_add4(route, 1);
 }
 
+/* Remove from kernel and linked list */
+static int do_mroute4_del(struct mroute4 *entry)
+{
+	int ret;
+
+	ret = kern_del4(entry, is_active4(entry));
+	if (ret && ENOENT != errno)
+		return ret;
+
+	/* Also remove on ENOENT */
+	LIST_REMOVE(entry, link);
+	free(entry);
+
+	return ret;
+}
+
 /**
  * mroute4_del - Remove route from kernel, or all matching routes if wildcard
  * @route: Pointer to struct mroute4 IPv4 multicast route to remove
@@ -744,33 +760,46 @@ int mroute4_del(struct mroute4 *route)
 			if (!is_exact_match4(entry, route))
 				continue;
 
-			LIST_REMOVE(entry, link);
-			free(entry);
-			break;
+			return do_mroute4_del(entry);
 		}
 
-		return kern_del4(route, 1);
+		/* Not found in static list, check if spawned from a (*,G) rule. */
+		LIST_FOREACH_SAFE(entry, &mroute4_dyn_list, link, tmp) {
+			if (!is_exact_match4(entry, route))
+				continue;
+
+			return do_mroute4_del(entry);
+		}
+
+		errno = ENOENT;
+		return -1;
 	}
 
 	/* Find matching (*,G) ... and interface .. and prefix length. */
 	LIST_FOREACH_SAFE(entry, &mroute4_conf_list, link, tmp) {
+		int ret = 0;
+
 		if (!is_match4(entry, route) || entry->len != route->len)
 			continue;
 
+		/* Remove all (S,G) routes spawned from the (*,G) as well ... */
 		LIST_FOREACH_SAFE(set, &mroute4_dyn_list, link, tmp) {
 			if (!is_match4(entry, set) || entry->len != route->len)
 				continue;
 
-			kern_del4(set, is_active4(set));
-			LIST_REMOVE(set, link);
-			free(set);
+			ret += do_mroute4_del(set);
 		}
 
-		LIST_REMOVE(entry, link);
-		free(entry);
+		if (!ret) {
+			LIST_REMOVE(entry, link);
+			free(entry);
+		}
+
+		return ret;
 	}
 
-	return 0;
+	errno = ENOENT;
+	return -1;
 }
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
