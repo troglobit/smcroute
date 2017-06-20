@@ -526,22 +526,29 @@ int mroute4_dyn_add(struct mroute4 *route)
 		memset(route->ttl, 0, NELEMS(route->ttl) * sizeof(route->ttl[0]));
 	}
 
-	/* Add to list of dynamically added routes. Necessary if the user
+	ret = kern_add4(route, entry ? 1 : 0);
+	if (ret)
+		return ret;
+
+	/*
+	 * Add to list of dynamically added routes. Necessary if the user
 	 * removes the (*,G) using the command line interface rather than
 	 * updating the conf file and SIGHUP. Note: if we fail to alloc()
-	 * memory we don't do anything, just add kernel route silently. */
+	 * memory we don't do anything, just add kernel route silently.
+	 */
 	new_entry = malloc(sizeof(struct mroute4));
 	if (new_entry) {
 		memcpy(new_entry, route, sizeof(struct mroute4));
 		LIST_INSERT_HEAD(&mroute4_dyn_list, new_entry, link);
 	}
 
-	ret = kern_add4(route, entry ? 1 : 0);
+	/* Signal to cache handler we've added a stop filter */
 	if (!entry) {
 		errno = ENOENT;
-		ret = -1;
+		return -1;
 	}
-	return ret;
+
+	return 0;
 }
 
 /* 
