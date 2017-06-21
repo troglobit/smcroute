@@ -15,6 +15,7 @@ struct iface {
 	short flags;
 	short vif;
 	short mif;
+	uint8_t mrdisc;		/* Enable multicast router discovery */
 	uint8_t threshold;	/* TTL threshold: 1-255, default: 1 */
 };
 

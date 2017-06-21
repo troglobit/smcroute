@@ -300,7 +300,7 @@ static int conf_parse(const char *file, int do_vifs)
 	conf = file;
 	while ((line = fgets(linebuf, MAX_LINE_LEN, fp))) {
 		int   op = 0, num = 0, enable = do_vifs;
-		int   threshold = DEFAULT_THRESHOLD;
+		int   mrdisc = 0, threshold = DEFAULT_THRESHOLD;
 		char *token;
 		char *ifname = NULL;
 		char *source = NULL;
@@ -343,6 +343,8 @@ static int conf_parse(const char *file, int do_vifs)
 				enable = 1;
 			} else if (match("disable", token)) {
 				enable = 0;
+			} else if (match("mrdisc", token)) {
+				mrdisc = 1;
 			} else if (match("ttl-threshold", token)) {
 				token = pop_token(&line);
 				if (token) {
@@ -360,7 +362,7 @@ static int conf_parse(const char *file, int do_vifs)
 			add_mroute(lineno, ifname, group, source, dest, num);
 		} else if (op == 3) {
 			if (enable)
-				mroute_add_vif(ifname, threshold);
+				mroute_add_vif(ifname, mrdisc, threshold);
 			else
 				mroute_del_vif(ifname);
 		}

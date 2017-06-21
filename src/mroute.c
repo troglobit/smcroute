@@ -353,7 +353,10 @@ static int mroute4_add_vif(struct iface *iface)
 	iface->vif = vif;
 	vif_list[vif].iface = iface;
 
-	return mrdisc_register(iface->name, vif);
+	if (iface->mrdisc)
+		return mrdisc_register(iface->name, vif);
+
+	return 0;
 }
 
 static int mroute4_del_vif(struct iface *iface)
@@ -380,7 +383,10 @@ static int mroute4_del_vif(struct iface *iface)
 	else
 		iface->vif = -1;
 
-	return mrdisc_deregister(vif);
+	if (iface->mrdisc)
+		return mrdisc_deregister(vif);
+
+	return 0;
 }
 
 /* Actually set in kernel - called by mroute4_add() and mroute4_check_add() */
@@ -1102,7 +1108,7 @@ int mroute6_del(struct mroute6 *route)
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
 /* Used by file parser to add VIFs/MIFs after setup */
-int mroute_add_vif(char *ifname, uint8_t threshold)
+int mroute_add_vif(char *ifname, uint8_t mrdisc, uint8_t threshold)
 {
 	int ret = 0;
 	struct iface *iface;
@@ -1111,6 +1117,7 @@ int mroute_add_vif(char *ifname, uint8_t threshold)
 	smclog(LOG_DEBUG, "Adding %s to list of multicast routing interfaces", ifname);
 	iface_match_init(&state);
 	while ((iface = iface_match_by_name(ifname, &state))) {
+		iface->mrdisc    = mrdisc;
 		iface->threshold = threshold;
 		ret += mroute4_add_vif(iface);
 #ifdef HAVE_IPV6_MULTICAST_ROUTING

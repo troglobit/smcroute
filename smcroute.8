@@ -358,10 +358,11 @@ command line option.
 #       way of forwarding multicast to your router.
 #
 # Similarily supported is setting mroutes.  Removing mroutes is not
-# supported, remove/comment out the mroute or send a remove command.
+# supported, remove/comment out the mroute from the .conf file, or
+# send a remove command with smcroutectl.
 #
 # Syntax:
-#   phyint IFNAME <enable|disable> [ttl-threshold <1-255>]
+#   phyint IFNAME <enable|disable> [mrdisc] [ttl-threshold <1-255>]
 #   mgroup from IFNAME [source ADDRESS] group MCGROUP
 #   mroute from IFNAME [source ADDRESS] group MCGROUP[/LEN] to IFNAME [IFNAME ...]
 

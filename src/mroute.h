@@ -115,7 +115,7 @@ void mroute6_disable   (void);
 int  mroute6_add       (struct mroute6 *mroute);
 int  mroute6_del       (struct mroute6 *mroute);
 
-int  mroute_add_vif    (char *ifname, uint8_t threshold);
+int  mroute_add_vif    (char *ifname, uint8_t mrdisc, uint8_t threshold);
 int  mroute_del_vif    (char *ifname);
 
 int  mroute_show       (int sd, int detail);

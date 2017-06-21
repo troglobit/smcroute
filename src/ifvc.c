@@ -103,6 +103,7 @@ void iface_init(void)
 		iface->ifindex = if_nametoindex(iface->name);
 		iface->vif = -1;
 		iface->mif = -1;
+		iface->mrdisc = 0;
 		iface->threshold = DEFAULT_THRESHOLD;
 	}
 	freeifaddrs(ifaddr);
