@@ -115,6 +115,10 @@ rules required, it is possible to set (*,G) IPv4 multicast routes.
 
 Example `smcroute.conf`:
 
+    phyint eth0 enable mrdisc
+    phyint eth1 enable
+    phyint eth1 enable
+    
     mgroup from eth0 group 225.1.2.3
     mroute from eth0 group 225.1.2.3 to eth1 eth2
 
@@ -126,13 +130,17 @@ or, from the command line:
 Another experimental feature is multicast router discovery, [mrdisc][],
 described in [RFC4286][].  This feature is disabled by default, enable
 with `configure --enable-mrdisc`.  When enabled it periodically sends
-out an IGMP message on all inbound interfaces (above `eth0`) to alert
-switches to open up multicast in that direction.  Not many managed
-switches have support for this yet.
+out an IGMP message on inbound interfaces¹ to alert switches to open up
+multicast in that direction.  Not many managed switches have support for
+this yet.
 
 Also, see the `smcrouted -c SEC` option for periodic flushing of learned
 (*,G) rules, including the automatic blocking of unknown multicast, and
 the `smcroutectl flush` command.
+
+____  
+¹ Notice the `mrdisc` flag to the above `phyint eth0` directive, which
+is missing for `eth1` and `eth2`.
 
 
 Build & Install
