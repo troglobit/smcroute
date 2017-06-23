@@ -109,9 +109,9 @@ details:
 Experimental
 ------------
 
-Multicast often originates from different sources but usually never at
-the same time.  For a more generic setup, and to reduce the number of
-rules required, it is possible to set (*,G) IPv4 multicast routes.
+Multicast often originates from different sources but usually not at the
+same time.  For a more generic setup, and to reduce the number of rules
+required, it is possible to set (*,G) IPv4 multicast routes.
 
 Example `smcroute.conf`:
 
@@ -127,16 +127,16 @@ or, from the command line:
     # smcroutectl join eth0 225.1.2.3
     # smcroutectl add  eth0 225.1.2.3 eth1 eth2
 
+Also, see the `smcrouted -c SEC` option for periodic flushing of learned
+(*,G) rules, including the automatic blocking of unknown multicast, and
+the `smcroutectl flush` command.
+
 Another experimental feature is multicast router discovery, [mrdisc][],
 described in [RFC4286][].  This feature is disabled by default, enable
 with `configure --enable-mrdisc`.  When enabled it periodically sends
 out an IGMP message on inbound interfaces¹ to alert switches to open up
 multicast in that direction.  Not many managed switches have support for
 this yet.
-
-Also, see the `smcrouted -c SEC` option for periodic flushing of learned
-(*,G) rules, including the automatic blocking of unknown multicast, and
-the `smcroutectl flush` command.
 
 ____  
 ¹ Notice the `mrdisc` flag to the above `phyint eth0` directive, which
