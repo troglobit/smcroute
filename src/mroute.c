@@ -1176,7 +1176,7 @@ static int show_mroute(int sd, struct mroute4 *r, int detail)
 		unsigned long p = 0, b = 0;
 
 		get_stats4(r, &p, &b, NULL);
-		snprintf(stats, sizeof(stats), " %7ld %8ld ", p, b);
+		snprintf(stats, sizeof(stats), " %7lu %8lu ", p, b);
 		strcat(buf, stats);
 	}
 
