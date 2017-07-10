@@ -140,6 +140,10 @@ For
 the same option can be used to select the proper
 .Nm smcrouted
 instance to send IPC to.
+.Pp
+This option is required for both daemon and client when running multiple
+.Nm smcrouted
+instances, using multiple routing tables, on Linux.
 .It Fl l Ar LEVEL
 Set log level: none, err, notice, info, debug.  Default is notice.
 .It Fl p Ar USER Op :GROUP
@@ -329,10 +333,10 @@ desired interface.
 .Nm Note:
 when running multiple
 .Nm smcrouted
-instances, one per routing table, on Linux, it is currently not possible
-to communicate with all intances using
-.Nm smcroutectl .
-Only the configuration file interface is available.
+instances, one per routing table on Linux, it is required to use the
+.Fl I Ar NAME
+option to both daemon and client.  This because the name of the IPC
+socket used for communicating is composed from the identity.
 .Sh CONFIGURATION FILE
 .Nm smcrouted
 supports reading and setting up multicast routes from a config file.
