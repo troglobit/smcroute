@@ -26,7 +26,7 @@ on integrating SMCRoute v2.3 into WeOS v4.22!
 -----------------------
 
 ### Changes
-- Support for GROUP/LEN for IPv4 (*,G) routes
+- Support GROUP/LEN matching for IPv4 (*,G) routes
 - Support for IPv4 [mrdisc][], [RFC4286][]
 - Support for multiple routing tables on Linux, `-t ID`
 - `ssmgroup` code folded into general code, now with optional source
