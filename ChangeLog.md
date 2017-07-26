@@ -432,9 +432,3 @@ Initial public release by Carsten Schill.
 [v0.95]:      https://github.com/troglobit/smcroute/compare/0.94.1...0.95
 [v0.94.1]:    https://github.com/troglobit/smcroute/compare/0.94...0.94.1
 [v0.94]:      https://github.com/troglobit/smcroute/compare/0.94.1...0.95
-
-<!--
-  -- Local Variables:
-  -- mode: markdown
-  -- End:
-  -->
