@@ -13,7 +13,7 @@ Table of Contents
 * [Experimental](#experimental)
 * [Build & Install](#build--install)
   * [Linux Requirements](#linux-requirements)
-  * [*BSD Requirements](#-bsd-requirements)
+  * [*BSD Requirements](#bsd-requirements)
   * [General Requirements](#general-requirements)
   * [Configure & Build](#configure--build)
   * [Integration with systemd](#integration-with-systemd)
@@ -296,9 +296,3 @@ author.
 [Travis Status]:   https://travis-ci.org/troglobit/smcroute.png?branch=master
 [Coverity Scan]:   https://scan.coverity.com/projects/3061
 [Coverity Status]: https://scan.coverity.com/projects/3061/badge.svg
-
-<!--
-  -- Local Variables:
-  -- mode: markdown
-  -- End:
-  -->
