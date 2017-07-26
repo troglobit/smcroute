@@ -41,6 +41,9 @@ we should proxy for.  Resulting `smcroute.conf` may then look like this:
   `upstream` interface, although this could be an optional second step
   enabled by also setting the `igmp` flag on that `upstream` interface.
 
+For more information, see the above mentioned tools and [RFC4605][],
+which details exactly this use-case.
+
 
 IPv6 support for (*,G) on-demand routing rules
 ----------------------------------------------
@@ -66,3 +69,4 @@ Add unit tests
 
 [igmpproxy]: https://github.com/pali/igmpproxy
 [mcproxy]:   https://github.com/mcproxy/mcproxy
+[RFC4605]:   https://www.ietf.org/rfc/rfc4605.txt
