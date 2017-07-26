@@ -1,11 +1,3 @@
-Support for listing joined IPv6 groups and routes
--------------------------------------------------
-
-The current `smcroutectl show` command only lists IPv4 groups and
-routes.  Adding support for IPv6 as well is quite straight forward,
-but requires someone with IPv6 knowledge.
-
-
 Support for (re-)enumerating VIFs at runtime
 --------------------------------------------
 
@@ -33,6 +25,14 @@ IPv6 support for (*,G) on-demand routing rules
 As of SMCRoute v1.99.0 IPv4 support for (*,G) routes was added.  Adding
 support for IPv6 should be fairly straight forward but needs figuring
 out the kernel interface and some basic testing.
+
+
+IPv6 support for listing joined groups and routes
+-------------------------------------------------
+
+The current `smcroutectl show` command only lists IPv4 groups and
+routes.  Adding support for IPv6 as well is quite straight forward,
+but requires someone with IPv6 knowledge.
 
 
 Add unit tests
