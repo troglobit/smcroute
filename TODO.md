@@ -23,12 +23,6 @@ Support for filtering based on source ADDRESS/LEN
     mroute from eth0 except 192.168.1.0/24 group 225.1.2.0/24 to eth1 eth2
 
 
-Support for multiple routing tables on Linux
---------------------------------------------
-
-`pimd` supports it, should be quite simple to port to `smcrouted`.
-
-
 IPv6 support for (*,G) on-demand routing rules
 ----------------------------------------------
 
