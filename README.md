@@ -12,6 +12,13 @@ Table of Contents
   * [Client Tool](#client-tool)
 * [Experimental](#experimental)
 * [Build & Install](#build--install)
+  * [Linux Requirements](#linux-requirements)
+  * [*BSD Requirements](#-bsd-requirements)
+  * [General Requirements](#general-requirements)
+  * [Configure & Build](#configure--build)
+  * [Integration with systemd](#integration-with-systemd)
+  * [Static Build](#static-build)
+  * [Building from GIT](#building-from-git)
 * [Origin & References](#origin--references)
 
 SMCRoute is a UNIX/Linux tool to manage and monitor multicast routes.
@@ -194,6 +201,8 @@ SMCRoute should in theory work on any UNIX like operating system which
 supports the BSD MROUTING API.  Both Linux and FreeBSD are tested on a
 regular basis.
 
+### Linux Requirements
+
 On Linux the following kernel config is required:
 
     CONFIG_IP_MROUTE=y
@@ -201,6 +210,15 @@ On Linux the following kernel config is required:
     CONFIG_IP_PIMSM_V2=y
     CONFIG_IP_MROUTE_MULTIPLE_TABLES=y       # For multiple routing tables
     CONFIG_IPV6_MROUTE_MULTIPLE_TABLES=y     # For multiple routing tables
+
+### *BSD Requirements
+
+On *BSD the following kernel config is required:
+
+    options    MROUTING    # Multicast routing
+    options    PIM         # pimd extensions used for (*,G) support
+
+### General Requirements
 
 Check the list of multicast capable interfaces:
 
@@ -213,10 +231,7 @@ or look for interfaces with the `MULTICAST` flag in the output from:
 Some interfaces have the `MULTICAST` flag disabled by default, like `lo`
 and `greN`.  Usually this flag can be enabled administratively.
 
-On *BSD:
-
-    options    MROUTING    # Multicast routing
-    options    PIM         # Enable for pimd
+### Configure & Build
 
 As of SMCRoute v2.2, the `libcap` library is used to gain full privilege
 separation using POSIX capabilities.  At startup this library is used to
@@ -229,14 +244,28 @@ the multicast routes.  Use `--without-libcap` to disable this feature.
     $ make -j5
     $ sudo make install-strip
 
+### Integration with systemd
+
 For systemd integration you need to install `pkg-config`, which helps
-the SMCRoute build system figure out the systemd paths.
+the SMCRoute build system figure out the systemd paths.  When installed
+simply call `systemctl` to enable and start `smcrouted`:
+
+    $ sudo systemctl enable smcroute.service
+    $ sudo systemctl start smcroute.service
+
+Check that it started properly by inspecting the system log, or:
+
+    $ sudo systemctl status smcroute.service
+
+### Static Build
 
 Some people want to build statically, to do this with autoconf add the
 following `LDFLAGS=` *after* the configure script.  You may also need to
 add `LIBS=...`, which will depend on your particular system:
 
     $ ./configure LDFLAGS="-static" ...
+
+### Building from GIT
 
 The `configure` script and the `Makefile.in` files are generated and not
 stored in GIT.  So if you checkout the sources from GitHub you first
