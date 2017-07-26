@@ -2,7 +2,7 @@ SMCRoute - A static multicast routing daemon
 ============================================
 [![License Badge][]][License] [![Travis Status][]][Travis] [![Coverity Status][]][Coverity Scan]
 
-
+<p align="right">
 Table of Contents
 -----------------
 
@@ -15,7 +15,7 @@ Table of Contents
 * [Experimental](#experimental)
 * [Build & Install](#build--install)
 * [Origin & References](#origin--references)
-
+</p>
 
 SMCRoute is a UNIX/Linux tool to manage and monitor multicast routes.
 It supports both IPv4 and IPv6 multicast routing.
