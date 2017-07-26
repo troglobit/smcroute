@@ -94,17 +94,48 @@ Use the following in `/etc/smcroute.conf` to enable interfaces:
 
 It is possible to use any interface that supports the `MULTICAST` flag.
 
-### Client
+
+### Multiple Routing Tables
+
+On Linux it is possible to run multiple multicast routing daemons due to
+its support for multiple multicast routing tables.  In such setups it
+may be useful to change the default identity of SMCRoute:
+
+    # smcrouted -I mrt1 -t 1
+    # smcrouted -I mrt2 -t 2
+
+The `-I NAME` option alters the default syslog name, config file, PID
+file, and client socket file name used.  In the first instance above,
+`smcrouted` will use:
+
+- `/etc/mrt1.conf`
+- `/var/run/mrt1.pid`
+- `/var/run/mrt1.sock`
+
+and syslog messages will use the `mrt1` identity as well.  Remember to
+use the same `-I NAME` also to `smcroutectl`.
+
+
+### Client Tool
 
 SMCRoute also has a client interface to interact with the daemon:
 
     # smcroutectl join eth0 225.1.2.3
     # smcroutectl add  eth0 192.168.1.42 225.1.2.3 eth1 eth2
 
+If the damon runs with a different identity the client needs to be
+called using the same identity:
+
+    # smcrouted   -I mrt
+    # smcroutectl -I mrt show
+
 There are more commands.  See the man page or the online help for
 details:
 
     # smcroutectl help
+
+**Note:** Root privileges are required by default for `smcroutectl` due
+  to the IPC socket permissions.
 
 
 Experimental
