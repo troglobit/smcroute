@@ -20,6 +20,10 @@ mappings could be at least added at runtime.
 Support for filtering based on source ADDRESS/LEN
 -------------------------------------------------
 
+When setting up a (*,G/LEN) route it may be necessary to filter out some
+senders of multicast.  The following is a suggestion for hwo that might
+look, notice the omitted `source` argument:
+
     mroute from eth0 except 192.168.1.0/24 group 225.1.2.0/24 to eth1 eth2
 
 
