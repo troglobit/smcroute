@@ -19,6 +19,22 @@ look, notice the omitted `source` argument:
     mroute from eth0 except 192.168.1.0/24 group 225.1.2.0/24 to eth1 eth2
 
 
+Basic support for IGMP/MLD proxying
+-----------------------------------
+
+In some setups a semi-dynamic behavior is required, but the only
+signaling available is IGMP/MLD.  There exist tools like [igmpproxy][]
+and [mcproxy][] for this purpose, which do a great job, but why should
+you need to go elsewhere for your basic multicast routing needs?
+
+The idea itself is simple, listen for IGMP/MLD join/leave messages on
+enabled interfaces and add/remove routes dynamically from an `upstream`
+marked interface.
+
+**Note:** the IGMP/MLD signaling may also need to be "proxied" to the
+  `upstream` interface, although this could be an optional second step.
+
+
 IPv6 support for (*,G) on-demand routing rules
 ----------------------------------------------
 
@@ -40,3 +56,6 @@ Add unit tests
 
     ./configure --enable-maintainer-mode
     make test
+
+[igmpproxy]: https://github.com/pali/igmpproxy
+[mcproxy]:   https://github.com/mcproxy/mcproxy
