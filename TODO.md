@@ -31,8 +31,15 @@ The idea itself is simple, listen for IGMP/MLD join/leave messages on
 enabled interfaces and add/remove routes dynamically from an `upstream`
 marked interface.
 
+Possibly an `igmp` flag may be needed as well, for downstream interfaces
+we should proxy for.  Resulting `smcroute.conf` may then look like this:
+
+    phyint eth0 upstream
+    phyint eth1 igmp
+
 **Note:** the IGMP/MLD signaling may also need to be "proxied" to the
-  `upstream` interface, although this could be an optional second step.
+  `upstream` interface, although this could be an optional second step
+  enabled by also setting the `igmp` flag on that `upstream` interface.
 
 
 IPv6 support for (*,G) on-demand routing rules
