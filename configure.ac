@@ -166,6 +166,9 @@ test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
 SBINDIR=`eval echo $sbindir`
 SBINDIR=`eval echo $SBINDIR`
 AC_SUBST(SBINDIR)
+DOCDIR=`eval echo $docdir`
+DOCDIR=`eval echo $DOCDIR`
+AC_SUBST(DOCDIR)
 
 AS_IF([test "x$ac_cv_header_sys_capability_h" = "xno"], [
 	AS_IF([test "x$with_libcap" = "xyes"], [
