@@ -4,7 +4,7 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
-[v2.4.0][UNRELEASED] - 2017-07-xx
+[v2.4.0][UNRELEASED] - 2017-08-xx
 ---------------------------------
 
 ### Changes
@@ -15,11 +15,13 @@ All notable changes to the project are documented in this file.
 - Disable IPv4 [mrdisc][] by default, enable per `phyint` in the `.conf`
   file instead.  When *not* started with `smcrouted -N` mrdisc would
   otherwise be enabled on *all* interfaces found at startup
+- Minor doc updates, e.g. clarify need for root or `CAP_NET_ADMIN`
+  including some minor man page fixes
 
 ### Fixes
 - Fix #75: Not possible to remove (*,G) routes using `smcroutectl`
 - Fix #76: When removing a kernel route, also remove from internal lists
-  will otherwise be shown in `smcroutectl show`.  Conversely, adding a
+  otherwise route is shown in `smcroutectl show`.  Conversely, adding a
   route to internal list shall only be done after successful kernel add
 - Fix #77: Counter overflow due to wrong type used in `smcroutectl show`
 
