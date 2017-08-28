@@ -381,8 +381,10 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	while (optind < argc && !cmd) {
-		char *arg = argv[optind++];
+
+	pos = optind;
+	while (pos < argc && !cmd) {
+		char *arg = argv[pos];
 
 		for (i = 0; args[i].val; i++) {
 			int       c = args[i].val;
@@ -406,7 +408,7 @@ int main(int argc, char *argv[])
 
 			default:
 				cmd = &args[i];
-				if (argc - ++pos < args[i].min_args) {
+				if (argc - (pos + 1) < args[i].min_args) {
 					warnx("Not enough arguments to command %s", nm);
 					status = 1;
 					goto help;
@@ -416,6 +418,7 @@ int main(int argc, char *argv[])
 
 			break;	/* Next arg */
 		}
+		pos++;
 	}
 
 	if (help) {
