@@ -13,10 +13,14 @@ Support for filtering based on source ADDRESS/LEN
 -------------------------------------------------
 
 When setting up a (*,G/LEN) route it may be necessary to filter out some
-senders of multicast.  The following is a suggestion for hwo that might
+senders of multicast.  The following is a suggestion for how that might
 look, notice the omitted `source` argument:
 
     mroute from eth0 except 192.168.1.0/24 group 225.1.2.0/24 to eth1 eth2
+
+Filtering multiple sources:
+
+    mroute from eth0 except 192.168.1.0/24,192.168.2.3 group 225.1.2.0/24 to eth1 eth2
 
 
 Basic support for IGMP/MLD proxying
