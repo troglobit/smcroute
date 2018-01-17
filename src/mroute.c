@@ -1172,11 +1172,11 @@ static int show_mroute(int sd, struct mroute4 *r, int detail)
 	snprintf(buf, sizeof(buf), "%-34s %-16s", sg, i->name);
 
 	if (detail) {
-		char stats[20];
+		char stats[25];
 		unsigned long p = 0, b = 0;
 
 		get_stats4(r, &p, &b, NULL);
-		snprintf(stats, sizeof(stats), " %10lu %10lu ", p, b);
+		snprintf(stats, sizeof(stats), " %10.10lu %10.10lu ", p, b);
 		strcat(buf, stats);
 	}
 
