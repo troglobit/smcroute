@@ -259,6 +259,7 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 		switch (cmd) {
 		case 'S':
 			detail = 1;
+			/* fallthrough */
 		case 's':
 			table_heading(argv, count, detail);
 			do {
