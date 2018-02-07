@@ -676,6 +676,21 @@ static int mroute4_exists(struct mroute4 *route)
 	return 0;
 }
 
+/* Only inbound differs, there can only be one ... */
+static struct mroute4 *mroute4_similar(struct mroute4 *route)
+{
+	struct mroute4 *entry;
+
+	LIST_FOREACH(entry, &mroute4_static_list, link) {
+		if (entry->source.s_addr == route->source.s_addr &&
+		    entry->group.s_addr  == route->group.s_addr  &&
+		    entry->len           == route->len)
+			return entry;
+	}
+
+	return NULL;
+}
+
 /**
  * mroute4_add - Add route to kernel, or save a wildcard route for later use
  * @route: Pointer to struct mroute4 IPv4 multicast route to add
@@ -691,9 +706,18 @@ int mroute4_add(struct mroute4 *route)
 {
 	struct mroute4 *entry;
 
+	/* Exact match, then skip ... */
 	if (mroute4_exists(route)){
 		errno = EEXIST;
 		return 1;
+	}
+
+	/* ... (S,G) matches and inbound differs, then replace route */
+	entry = mroute4_similar(route);
+	if (entry) {
+		kern_del4(entry, is_active4(entry));
+		LIST_REMOVE(entry, link);
+		free(entry);
 	}
 
 	entry = malloc(sizeof(struct mroute4));
