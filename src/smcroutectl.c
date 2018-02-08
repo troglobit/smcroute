@@ -437,7 +437,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (!cmd)
-		return usage(1);
+		return ipc_command('s', NULL, 0);
 
 	c = cmd->val;
 	if (cmd->has_detail)
