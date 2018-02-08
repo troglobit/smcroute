@@ -24,6 +24,9 @@ All notable changes to the project are documented in this file.
   otherwise route is shown in `smcroutectl show`.  Conversely, adding a
   route to internal list shall only be done after successful kernel add
 - Fix #77: Counter overflow due to wrong type used in `smcroutectl show`
+- Fix #87: Possible buffer overrun in `ipc_receive()`
+- Fix #89: Adding similar (S,G) route should replace existing one if
+  inbound interface differs
 
 
 [v2.3.1][] - 2017-06-13
