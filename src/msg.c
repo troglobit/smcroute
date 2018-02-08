@@ -20,6 +20,7 @@
 #include "config.h"
 
 #include <errno.h>
+#include <signal.h>		/* sig_atomic_t */
 #include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -31,8 +32,8 @@
 #include "mroute.h"
 #include "mcgroup.h"
 
-extern int running;
-extern void reload(int signo);
+extern volatile sig_atomic_t running;
+extern volatile sig_atomic_t reloading;
 
 
 static int do_mgroup4(struct ipc_msg *msg)
@@ -363,7 +364,7 @@ int msg_do(int sd, struct ipc_msg *msg)
 		break;
 
 	case 'H':		/* HUP */
-		reload(0);
+		reloading = 1;
 		break;
 
 	case 'k':

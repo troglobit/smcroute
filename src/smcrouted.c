@@ -43,7 +43,6 @@
 #include "mroute.h"
 #include "mcgroup.h"
 
-int running    = 1;
 int background = 1;
 int do_vifs    = 1;
 int do_syslog  = 1;
@@ -60,6 +59,9 @@ char *conf_file = NULL;
 
 static uid_t uid = 0;
 static gid_t gid = 0;
+
+volatile sig_atomic_t reloading = 0;
+volatile sig_atomic_t running   = 1;
 
 static const char version_info[] = PACKAGE_NAME " v" PACKAGE_VERSION;
 
@@ -90,15 +92,8 @@ static void restart(void)
 	mroute6_enable(do_vifs, table_id);
 }
 
-void reload(int signo)
+void reload(void)
 {
-#ifdef ENABLE_DOTCONF
-	smclog(LOG_NOTICE, "Got %s, reloading %s ...",
-	       signo ? "SIGHUP" : "client restart command", conf_file);
-#else
-	smclog(LOG_NOTICE, "Got %s, restarting ...",
-	       signo ? "SIGHUP" : "client restart command");
-#endif
 	restart();
 	conf_read(conf_file, do_vifs);
 
@@ -119,7 +114,7 @@ static void handler(int signo)
 		break;
 
 	case SIGHUP:
-		reload(signo);
+		reloading = 1;
 		break;
 	}
 }
@@ -142,8 +137,14 @@ static int server_loop(void)
 	script_init(script);
 	mrdisc_init(interval);
 
-	while (running)
+	while (running) {
+		if (reloading) {
+			reload();
+			reloading = 0;
+		}
+
 		socket_poll(NULL);
+	}
 
 	return 0;
 }
