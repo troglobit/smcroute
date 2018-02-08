@@ -131,9 +131,10 @@ static void signal_init(void)
 	sa.sa_handler = handler;
 	sa.sa_flags = 0;	/* Interrupt system calls */
 	sigemptyset(&sa.sa_mask);
-	sigaction(SIGHUP, &sa, NULL);
-	sigaction(SIGTERM, &sa, NULL);
-	sigaction(SIGINT, &sa, NULL);
+	if (sigaction(SIGHUP,  &sa, NULL)  ||
+	    sigaction(SIGTERM, &sa, NULL) ||
+	    sigaction(SIGINT,  &sa, NULL))
+		smclog(LOG_WARNING, "Failed setting up signal handlers: %s", strerror(errno));
 }
 
 static int server_loop(void)
