@@ -94,6 +94,14 @@ requires `-t 2`, or greater, for multicast.  This limitation reduces the
 risk of accidentally flooding multicast.  Remember, multicast behaves
 like broadcast unless limited.
 
+The TTL should preferably be set on the sender side, e.g. the camera,
+but can also be modified in the firewall on a router.  Be careful though
+because the TTL is the only thing that helps prevent routing loops!  On
+Linux the following `iptables` command can be used to change the TTL:
+
+    # iptables -t mangle -A PREROUTING -i eth0 -d 225.1.2.3 -j TTL --ttl-inc 1
+
+
 ### Action Scripts
 
     # smcrouted -e /path/to/script
