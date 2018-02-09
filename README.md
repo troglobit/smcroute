@@ -84,15 +84,15 @@ multicast group 225.1.2.3 should be forwarded to interfaces `eth1` and
 
 **Note:** To test the above you can use ping from another device.  The
    multicast should be visible as long as your IP# matches the source
-   above and you ping 225.1.2.3 AND REMEMBER TO SET TTL >1!
+   above and you ping 225.1.2.3 -- **REMEMBER TO SET THE TTL >1**
    
     $ ping -I eth0 -t 2 225.1.2.3
 
-The TTL is what usually bites people trying out multicast routing.  Most
-TCP/IP stacks default to a TTL of 1 for multicast frames, e.g. ping
-requires `-t 2`, or greater, for multicast.  This limitation reduces the
-risk of accidentally flooding multicast.  Remember, multicast behaves
-like broadcast unless limited.
+The TTL is what usually bites people first trying out multicast routing.
+Most TCP/IP stacks default to a TTL of 1 for multicast frames, e.g. ping
+above requires `-t 2`, or greater.  This limitation is intentional and
+reduces the risk of someone accidentally flooding multicast.  Remember,
+multicast *behaves like broadcast* unless limited.
 
 The TTL should preferably be set on the sender side, e.g. the camera,
 but can also be modified in the firewall on a router.  Be careful though
@@ -110,6 +110,7 @@ With `-e CMD` a user script or command can be called when `smcrouted`
 receives a `SIGHUP` or installs a multicast route to the kernel.  This
 is useful if you, for instance, also run a NAT firewall and need to
 flush connection tracking after installing a multicast route.
+
 
 ### Many Interfaces
 
