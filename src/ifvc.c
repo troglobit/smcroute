@@ -143,6 +143,7 @@ struct iface *iface_find_by_name(const char *ifname)
 		if (!strcmp(ifname, iface->name)) {
 			if (iface->vif >= 0)
 				return iface;
+
 			candidate = iface;
 		}
 	}
@@ -165,10 +166,12 @@ void iface_match_init(struct ifmatch *state)
  * @ifname: Interface name pattern
  * @state: Iterator state
  *
+ * Interface name patterns use iptables- syntax, i.e. perform prefix
+ * match with a trailing '+' matching anything.
+ *
  * Returns:
  * Pointer to a @struct iface of the next matching interface, or %NULL if no
- * (more) interfaces exist (or are up). Interface name patterns use iptables-
- * syntax, i.e. perform prefix match with a trailing '+' matching anything.
+ * (more) interfaces exist (or are up).
  */
 struct iface *iface_match_by_name(const char *ifname, struct ifmatch *state)
 {
@@ -177,6 +180,7 @@ struct iface *iface_match_by_name(const char *ifname, struct ifmatch *state)
 
 	if (!ifname)
 		return NULL;
+
 	if (ifname_is_wildcard(ifname))
 		match_len = strlen(ifname) - 1;
 
@@ -185,6 +189,7 @@ struct iface *iface_match_by_name(const char *ifname, struct ifmatch *state)
 		if (!strncmp(ifname, iface->name, match_len)) {
 			state->iter++;
 			state->match_count++;
+
 			return iface;
 		}
 	}
@@ -194,7 +199,9 @@ struct iface *iface_match_by_name(const char *ifname, struct ifmatch *state)
 
 /**
  * ifname_is_wildcard - Check whether interface name is a wildcard
- * Returns: 1 if wildcard, 0 if normal interface name
+ *
+ * Returns:
+ * %TRUE(1) if wildcard, %FALSE(0) if normal interface name
  */
 int ifname_is_wildcard(const char *ifname)
 {
@@ -246,7 +253,7 @@ struct iface *iface_iterator(int first)
 
 /**
  * iface_get_vif - Get virtual interface index for an interface (IPv4)
- * @iface: Pointer to a @struct iface interface
+ * @iface: Pointer to a &struct iface interface
  *
  * Returns:
  * The virtual interface index if the interface is known and registered
@@ -262,7 +269,7 @@ int iface_get_vif(struct iface *iface)
 
 /**
  * iface_get_mif - Get virtual interface index for an interface (IPv6)
- * @iface: Pointer to a @struct iface interface
+ * @iface: Pointer to a &struct iface interface
  *
  * Returns:
  * The virtual interface index if the interface is known and registered
@@ -277,7 +284,7 @@ int iface_get_mif(struct iface *iface __attribute__ ((unused)))
 		return -1;
 
 	return iface->mif;
-#endif				/* HAVE_IPV6_MULTICAST_ROUTING */
+#endif
 }
 
 /**
@@ -299,10 +306,13 @@ int iface_match_vif_by_name(const char *ifname, struct ifmatch *state, struct if
 		if (vif >= 0) {
 			if (found)
 				*found = iface;
+
 			return vif;
 		}
+
 		state->match_count--;
 	}
+
 	return -1;
 }
 
@@ -325,10 +335,13 @@ int iface_match_mif_by_name(const char *ifname, struct ifmatch *state, struct if
 		if (mif >= 0) {
 			if (found)
 				*found = iface;
+
 			return mif;
 		}
+
 		state->match_count--;
 	}
+
 	return -1;
 }
 
