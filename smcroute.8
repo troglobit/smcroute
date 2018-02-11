@@ -204,8 +204,15 @@ Beware that these environment variables are unconditionally overwritten by
 and can thus not be used to pass information to the script from outside of
 .Nm smcrouted .
 .Sh COMMANDS
-The following
+The
+.Ar IFNAME
+argument in the below
 .Nm smcroutectl
+commands is the interface name, or an interface wildcard of the form
+.Ar eth+ ,
+which matches
+.Ar eth0 , eth10 ,
+etc.  Wildcards are available for inbound interfaces.  The following
 commands are availble:
 .Bl -tag -width Ds
 .It Nm add Ar IFNAME [SOURCE] GROUP[/LEN] OUTIFNAME [OUTIFNAME ...]
@@ -345,6 +352,15 @@ The default location is
 but this can be overridden using the
 .Fl f Ar FILE
 command line option.
+.Pp
+The
+.Ar IFNAME
+argument below is the interface name, or an interface wildcard of the
+form
+.Ar eth+ ,
+which matches
+.Ar eth0 , eth10 ,
+etc.  Wildcards are available for inbound interfaces.
 .Pp
 .Bd -unfilled -offset indent
 #

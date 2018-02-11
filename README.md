@@ -47,6 +47,7 @@ Features
 - Optional built-in [mrdisc][] support, [RFC4286][]
 - Support for multiple routing tables on Linux
 - Client with built-in support to show routes and joined groups
+- Interface wildcard matching, `eth+` matches `eth0, eth15`
 
 
 Usage
