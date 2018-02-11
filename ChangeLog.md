@@ -4,8 +4,8 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
-[v2.4.0][UNRELEASED] - 2017-08-xx
----------------------------------
+[v2.4.0][] - 2018-02-11
+-----------------------
 
 ### Changes
 - Interface wildcard support, Linux `iptables` like syntax, `eth+`
@@ -24,6 +24,11 @@ All notable changes to the project are documented in this file.
   otherwise route is shown in `smcroutectl show`.  Conversely, adding a
   route to internal list shall only be done after successful kernel add
 - Fix #77: Counter overflow due to wrong type used in `smcroutectl show`
+- Fix #78: Document interface wildcard feature
+- Fix #80: `smcroutectl` argument parser fixes by Pawel Rozlach
+- Fix #84: Check return value of `sigaction()`
+- Fix #85: Signal handling is async-signal-unsafe
+- Fix #86: Document how to use `iptables` on Linux to modify TTL
 - Fix #87: Possible buffer overrun in `ipc_receive()`
 - Fix #89: Adding similar (S,G) route should replace existing one if
   inbound interface differs
@@ -417,7 +422,7 @@ Initial public release by Carsten Schill.
 
 [mrdisc]:     https://github.com/troglobit/mrdisc
 [RFC4286]:    https://tools.ietf.org/html/rfc4286
-[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.3.1...HEAD
+[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.4.0...HEAD
 [v2.4.0]:     https://github.com/troglobit/smcroute/compare/2.3.1...2.4.0
 [v2.3.1]:     https://github.com/troglobit/smcroute/compare/2.3.0...2.3.1
 [v2.3.0]:     https://github.com/troglobit/smcroute/compare/2.2.2...2.3.0
