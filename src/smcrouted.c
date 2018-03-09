@@ -69,8 +69,8 @@ static const char version_info[] = PACKAGE_NAME " v" PACKAGE_VERSION;
 /* Cleans up, i.e. releases allocated resources. Called via atexit() */
 static void clean(void)
 {
-	mroute4_disable();
-	mroute6_disable();
+	mroute4_disable(1);
+	mroute6_disable(1);
 	mcgroup4_disable();
 	mcgroup6_disable();
 	ipc_exit();
@@ -80,8 +80,8 @@ static void clean(void)
 
 static void restart(void)
 {
-	mroute4_disable();
-	mroute6_disable();
+	mroute4_disable(0);
+	mroute6_disable(0);
 	mcgroup4_disable();
 	mcgroup6_disable();
 	/* No need to close the IPC, only at cleanup. */
