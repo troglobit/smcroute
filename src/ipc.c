@@ -83,7 +83,7 @@ static void ipc_accept(int sd, void *arg)
 }
 
 /**
- * ipc_server_init - Initialise an IPC server socket
+ * ipc_init - Initialise an IPC server socket
  *
  * Returns:
  * The socket descriptor, or -1 on error with @errno set.
