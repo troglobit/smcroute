@@ -196,13 +196,15 @@ int mroute4_enable(int do_vifs, int table_id, int timeout)
 	struct iface *iface;
 	static int running = 0;
 
-	mroute4_socket = socket_create(AF_INET, SOCK_RAW, IPPROTO_IGMP, handle_nocache4, NULL);
-	if (mroute4_socket < 0) {
-		if (ENOPROTOOPT == errno)
-			smclog(LOG_WARNING, "Kernel does not even support IGMP, skipping ...");
+	if(mroute4_socket < 0) {
+		mroute4_socket = socket_create(AF_INET, SOCK_RAW, IPPROTO_IGMP, handle_nocache4, NULL);
+		if (mroute4_socket < 0) {
+			if (ENOPROTOOPT == errno)
+				smclog(LOG_WARNING, "Kernel does not even support IGMP, skipping ...");
 
-		return -1;
-	}
+			return -1;
+		}
+	} // else: reuse "old" socket
 
 #ifdef MRT_TABLE /* Currently only available on Linux  */
 	if (table_id != 0) {
@@ -267,7 +269,7 @@ error:
  *
  * Disable IPv4 multicast routing and release kernel routing socket.
  */
-void mroute4_disable(void)
+void mroute4_disable(int close_socket)
 {
 	struct mroute4 *entry, *tmp;
 
@@ -278,8 +280,10 @@ void mroute4_disable(void)
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_DONE, NULL, 0))
 		smclog(LOG_WARNING, "Failed shutting down IPv4 multicast routing socket: %s", strerror(errno));
 
-	socket_close(mroute4_socket);
-	mroute4_socket = -1;
+	if(close_socket) {
+		socket_close(mroute4_socket);
+		mroute4_socket = -1;
+	}
 
 	/* Free list of (*,G) routes on SIGHUP */
 	LIST_FOREACH_SAFE(entry, &mroute4_conf_list, link, tmp) {
@@ -888,14 +892,15 @@ int mroute6_enable(int do_vifs, int table_id)
 #else
 	int arg = 1;
 	struct iface *iface;
+	if(mroute6_socket < 0) {
+		mroute6_socket = socket_create(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6, handle_nocache6, NULL);
+		if (mroute6_socket < 0) {
+			if (ENOPROTOOPT == errno)
+				smclog(LOG_WARNING, "Kernel does not even support IPv6 ICMP, skipping ...");
 
-	mroute6_socket = socket_create(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6, handle_nocache6, NULL);
-	if (mroute6_socket < 0) {
-		if (ENOPROTOOPT == errno)
-			smclog(LOG_WARNING, "Kernel does not even support IPv6 ICMP, skipping ...");
-
-		return -1;
-	}
+			return -1;
+		}
+	} // else: reuse "old" socket
 
 #ifdef MRT6_TABLE /* Currently only available on Linux  */
 	if (table_id != 0) {
@@ -961,7 +966,7 @@ error:
  *
  * Disable IPv6 multicast routing and release kernel routing socket.
  */
-void mroute6_disable(void)
+void mroute6_disable(int close_socket)
 {
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 	if (mroute6_socket < 0)
@@ -970,8 +975,10 @@ void mroute6_disable(void)
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_DONE, NULL, 0))
 		smclog(LOG_WARNING, "Failed shutting down IPv6 multicast routing socket: %s", strerror(errno));
 
-	socket_close(mroute6_socket);
-	mroute6_socket = -1;
+	if(close_socket) {
+		socket_close(mroute6_socket);
+		mroute6_socket = -1;
+	}
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
 }
 
