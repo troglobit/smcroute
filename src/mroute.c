@@ -196,7 +196,7 @@ int mroute4_enable(int do_vifs, int table_id, int timeout)
 	struct iface *iface;
 	static int running = 0;
 
-	if(mroute4_socket < 0) {
+	if (mroute4_socket < 0) {
 		mroute4_socket = socket_create(AF_INET, SOCK_RAW, IPPROTO_IGMP, handle_nocache4, NULL);
 		if (mroute4_socket < 0) {
 			if (ENOPROTOOPT == errno)
@@ -204,7 +204,7 @@ int mroute4_enable(int do_vifs, int table_id, int timeout)
 
 			return -1;
 		}
-	} // else: reuse "old" socket
+	}
 
 #ifdef MRT_TABLE /* Currently only available on Linux  */
 	if (table_id != 0) {
@@ -280,7 +280,7 @@ void mroute4_disable(int close_socket)
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_DONE, NULL, 0))
 		smclog(LOG_WARNING, "Failed shutting down IPv4 multicast routing socket: %s", strerror(errno));
 
-	if(close_socket) {
+	if (close_socket) {
 		socket_close(mroute4_socket);
 		mroute4_socket = -1;
 	}
@@ -892,7 +892,8 @@ int mroute6_enable(int do_vifs, int table_id)
 #else
 	int arg = 1;
 	struct iface *iface;
-	if(mroute6_socket < 0) {
+
+	if (mroute6_socket < 0) {
 		mroute6_socket = socket_create(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6, handle_nocache6, NULL);
 		if (mroute6_socket < 0) {
 			if (ENOPROTOOPT == errno)
@@ -900,7 +901,7 @@ int mroute6_enable(int do_vifs, int table_id)
 
 			return -1;
 		}
-	} // else: reuse "old" socket
+	}
 
 #ifdef MRT6_TABLE /* Currently only available on Linux  */
 	if (table_id != 0) {
@@ -975,7 +976,7 @@ void mroute6_disable(int close_socket)
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_DONE, NULL, 0))
 		smclog(LOG_WARNING, "Failed shutting down IPv6 multicast routing socket: %s", strerror(errno));
 
-	if(close_socket) {
+	if (close_socket) {
 		socket_close(mroute6_socket);
 		mroute6_socket = -1;
 	}
