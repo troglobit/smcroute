@@ -43,7 +43,7 @@ no proper IGMP or MLD signaling exists.
 .Pp
 Multicast routes exist in the UNIX kernel as long as a multicast routing
 daemon is running.  On Linux, multiple multicast routers can be used
-simltaneously with different multicast routing tables.  To run
+simultaneously with different multicast routing tables.  To run
 .Nm smcrouted
 and,
 .Nm mrouted
@@ -60,12 +60,12 @@ on Linux.  This also applies to
 .Ss WARNING
 Be careful when creating multicast routes.  You can easily flood your
 networks by inadvertently creating routing loops.  Either direct loops
-listing an inbound interface also as an oubound, or indirect loops by
-going throgh other routers.
+listing an inbound interface also as an outbound, or indirect loops by
+going through other routers.
 .Sh OPTIONS
 The following
 .Nm smcrouted
-commands are availble:
+commands are available:
 .Bl -tag -width Ds
 .It Fl n
 Run daemon in foreground, do not detach from controlling terminal
@@ -111,7 +111,7 @@ daemon is not ready yet.
 .Pp
 This command line option, although useful in some use-cases, is fragile.
 It is almost always better to rely on an init or process supervisor that
-handles dependencys properly, like
+handles dependencies properly, like
 .Xr finit 8 ,
 which can wait for interfaces to come up and files to be created before
 starting a service.
@@ -213,7 +213,7 @@ commands is the interface name, or an interface wildcard of the form
 which matches
 .Ar eth0 , eth10 ,
 etc.  Wildcards are available for inbound interfaces.  The following
-commands are availble:
+commands are available:
 .Bl -tag -width Ds
 .It Nm add Ar IFNAME [SOURCE] GROUP[/LEN] OUTIFNAME [OUTIFNAME ...]
 Add a multicast route to the kernel routing cache so that multicast packets
@@ -221,7 +221,7 @@ received on the network interface
 .Ar IFNAME
 originating from the IP address
 .Ar SOURCE
-and sent to the multicast group addess
+and sent to the multicast group address
 .Ar GROUP
 will be forwarded to the outbound network interfaces
 .Ar OUTIFNAME [OUTIFNAME ...] .
@@ -247,7 +247,7 @@ Flush dynamic (*,G) multicast routes now.  Similar to how
 .Fl c Ar SEC
 works in the daemon, this client command initiates an immediate flush of
 all dynamically set (*,G) routes.  Useful when a topology change has
-been detected and need to be propageted to
+been detected and need to be propagated to
 .Nm smcrouted.
 .It Nm join Ar IFNAME [SOURCE] GROUP
 Join a multicast group on a given interface.  The source address is
@@ -293,7 +293,7 @@ The intended purpose of
 is to aid in situations where dynamic multicast routing does not work
 properly.  However, a dynamic multicast routing protocol is in nearly
 all cases the preferred solution.  The reason for this is their ability
-to translate Layer-3 signalling to Layer-2 and vice versa (IGMP or MLD).
+to translate Layer-3 signaling to Layer-2 and vice versa (IGMP or MLD).
 .Pp
 .Nm smcrouted
 is capable of simple group join and leave by sending commands to the kernel.
@@ -308,7 +308,7 @@ on.  However, this feature of
 .Nm smcrouted
 is only intended as a workaround, and only 20 groups can be joined this
 way (kernel limit).  For bigger installations it is strongly recommended
-to instead adress the root cause, e.g. enable multcast router ports on
+to instead address the root cause, e.g. enable multicast router ports on
 intermediate switches, or try the embedded multicast router discovery
 feature of
 .Nm smcrouted .
@@ -371,13 +371,19 @@ etc.  Wildcards are available for inbound interfaces.
 # traffic to your interfaces.  Leave is not supported, remove the
 # mgroup and SIGHUP your daemon, or send a specific leave command.
 #
-# NOTE: Use of mgroup should really not be needed!  It is only available
-#       to aid a user in figuring out problems in multicast forwarding.
-#       Only 20 mgroup lines can be configured, this is a HARD kernel
-#       maximum.  If you need more, you probably need to find another
-#       way of forwarding multicast to your router.
+# NOTE: Use of the mgroup command should be avoided if possible.
+#       Instead configure "router ports" or similar on the switches
+#       or bridges on your LAN.  This to have them direct all the
+#       multicast to your router, or direct select groups they have
+#       such capabilities.  Usually MAC multicast filters exist.
 #
-# Similarily supported is setting mroutes.  Removing mroutes is not
+#       The UNIX kernel usually limits the number of multicast groups
+#       a socket/client can join.  In Linux, 20 mgroup lines can be
+#       configured by default, but this can be changed with sysctl:
+#
+#           sysctl -w net.ipv4.igmp_max_memberships=30
+#
+# Similarly supported is setting mroutes.  Removing mroutes is not
 # supported, remove/comment out the mroute from the .conf file, or
 # send a remove command with smcroutectl.
 #
@@ -392,15 +398,23 @@ etc.  Wildcards are available for inbound interfaces.
 # cause quite a bit of unnecessary traffic to reach the CPU if too
 # many interfaces have a VIF (or MIF in IPv6 lingo).  Only enable
 # interfaces required for inbound and outbound traffic.
-phyint wlan0 disable
+# phyint wlan0 disable
+phyint eth0 enable ttl-threshold 11
+phyint eth1 enable ttl-threshold 3
+phyint eth2 enable ttl-threshold 5
+phyint virbr0 enable ttl-threshold 5
 
 # The following example instructs the kernel to join the multicast
 # group 225.1.2.3 on interface eth0.  Followed by setting up an
 # mroute of the same multicast stream, but from the explicit sender
 # 192.168.1.42 on the eth0 network and forward to eth1 and eth2.
 #
-mgroup from eth0 source 192.168.1.42 group 225.1.2.3
+mgroup from eth0                     group 225.1.2.3
 mroute from eth0 source 192.168.1.42 group 225.1.2.3 to eth1 eth2
+
+# Similar example, but using source-specific group join
+mgroup from virbr0 source 192.168.123.110 group 225.1.2.4
+mroute from virbr0 source 192.168.123.110 group 225.1.2.4 to eth0
 
 # Here we allow routing of multicast to group 225.3.2.1 from ANY
 # source coming in from interface eth0 and forward to eth1 and eth2.
