@@ -4,6 +4,17 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
+[v2.4.1][] - 2018-06-16
+-----------------------
+
+### Changes
+- Update and spellecheck documentation and example `.conf` file
+
+### Fixes
+- Fix #91: Allow re-configuration of unprivileged `smcrouted`.   
+  Courtesy of Marcel Patzlaff
+
+
 [v2.4.0][] - 2018-02-11
 -----------------------
 
@@ -422,7 +433,8 @@ Initial public release by Carsten Schill.
 
 [mrdisc]:     https://github.com/troglobit/mrdisc
 [RFC4286]:    https://tools.ietf.org/html/rfc4286
-[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.4.0...HEAD
+[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.4.1...HEAD
+[v2.4.1]:     https://github.com/troglobit/smcroute/compare/2.4.1...2.4.1
 [v2.4.0]:     https://github.com/troglobit/smcroute/compare/2.3.1...2.4.0
 [v2.3.1]:     https://github.com/troglobit/smcroute/compare/2.3.0...2.3.1
 [v2.3.0]:     https://github.com/troglobit/smcroute/compare/2.2.2...2.3.0
