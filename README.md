@@ -34,7 +34,7 @@ like [mrouted][] or [pimd][] in setups where static multicast routes
 should be maintained and/or no proper IGMP or MLD signaling exists.
 
 Multicast routes exist in the UNIX kernel as long as a multicast routing
-daemon runs.  On Linux, multiple multicast routers can run simltaneously
+daemon runs.  On Linux, multiple multicast routers can run simultaneously
 using different multicast routing tables.
 
 
@@ -157,7 +157,7 @@ SMCRoute also has a client interface to interact with the daemon:
     # smcroutectl join eth0 225.1.2.3
     # smcroutectl add  eth0 192.168.1.42 225.1.2.3 eth1 eth2
 
-If the damon runs with a different identity the client needs to be
+If the daemon runs with a different identity the client needs to be
 called using the same identity:
 
     # smcrouted   -I mrt
@@ -274,7 +274,7 @@ Check that it started properly by inspecting the system log, or:
 
 ### Static Build
 
-Some people want to build statically, to do this with autoconf add the
+Some people want to build statically, to do this with `autoconf` add the
 following `LDFLAGS=` *after* the configure script.  You may also need to
 add `LIBS=...`, which will depend on your particular system:
 
