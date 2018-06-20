@@ -29,8 +29,11 @@
 #include "mcgroup.h"
 
 #define MAX_LINE_LEN 512
+#define DEBUG(fmt, args...)			\
+	smclog(LOG_DEBUG, "%s:%02d: " fmt, conf, lineno, ##args)
 #define WARN(fmt, args...)			\
 	smclog(LOG_WARNING, "%s:%02d: " fmt, conf, lineno, ##args)
+
 static const char *conf = NULL;
 
 static char *pop_token(char **line)
@@ -307,6 +310,7 @@ static int conf_parse(const char *file, int do_vifs)
 		char *group  = NULL;
 		char *dest[32];
 
+		DEBUG("Read line: '%s'", line);
 		while ((token = pop_token(&line))) {
 			/* Strip comments. */
 			if (match("#", token))
