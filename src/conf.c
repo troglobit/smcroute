@@ -55,7 +55,7 @@ static char *pop_token(char **line)
 	end = token;
 	while (*end && !isspace((int)*end))
 		end++;
-	if (*end == 0 || end == token) {
+	if (end == token) {
 		*line = NULL;
 		return NULL;
 	}
