@@ -25,3 +25,5 @@ smcrouted
 smcroutectl
 smcroute.service
 stamp-h1
+*.tar.*
+.dirstamp
