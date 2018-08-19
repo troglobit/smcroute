@@ -24,6 +24,7 @@ addons:
     packages:
       - tree
       - libcap-dev
+      - cppcheck
   coverity_scan:
     project:
       name: "troglobit/smcroute"
@@ -36,6 +37,7 @@ addons:
 # We don't store generated files (configure and Makefile) in GIT,
 # so we must customize the default build script to run ./autogen.sh
 script:
+  - cppcheck -j2 src/
   - ./autogen.sh
   - ./configure --disable-silent-rules --enable-mrdisc --prefix=
   - make clean
