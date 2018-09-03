@@ -10,8 +10,9 @@ case "$OP" in
 	smcrouted $*
 	;;
     -h)
-	echo "This is a simple compatibility wrapper script for SMCRoute"
-	echo "Use /etc/smcroute.conf instead, see man page for more info"
+	echo "This is a simple compatibility wrapper script for SMCRoute intended"
+	echo "for use with old style startup scripts.  Use the /etc/smcroute.conf"
+	echo "configuration file instead, see the smcroute(8) man page for help."
 	return 0
 	;;
     -k)
@@ -30,7 +31,8 @@ case "$OP" in
 	smcroutectl join $*
 	;;
     *)
-	echo "Unkown command or option to the SMCRoute wrapper script"
+	echo "Unkown command or option to the SMCRoute compatiblity wrapper script."
+	echo "See the smcroute(8) man page for help on available commands."
 	return 1
 	;;
 esac
