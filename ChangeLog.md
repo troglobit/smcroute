@@ -4,6 +4,20 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
+[v2.4.2][] - 2018-09-xx
+-----------------------
+
+### Changes
+- Add wrapper script `smcroute` for use with old style startup scripts
+- Add symlinks to man pages for `smcrouted.8 and` `smcroutectl.8`
+- Update SysV init script, daemon now called `smcrouted`
+
+### Fixes
+- Fix #96: A `.conf` line may be missing final newline, this is fine
+- Spellcheck `smcroute.conf` example
+- Fix Lintian warning (Debian) for unbreakable line in man page
+
+
 [v2.4.1][] - 2018-06-16
 -----------------------
 
