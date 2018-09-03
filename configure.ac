@@ -17,6 +17,7 @@ AC_CONFIG_MACRO_DIR([m4])
 
 # Checks for programs.
 AC_PROG_CC
+AC_PROG_LN_S
 AC_PROG_INSTALL
 
 # The pidfile() code needs asprintf(), which relies on -D_GNU_SOURCE
