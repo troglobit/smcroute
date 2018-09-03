@@ -20,7 +20,6 @@ depcomp
 install-sh
 mcsender
 missing
-smcroute
 smcrouted
 smcroutectl
 smcroute.service

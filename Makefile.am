@@ -1,8 +1,10 @@
 ## SMCRoute - A static multicast routing tool             -*-Makefile-*-
 ACLOCAL_AMFLAGS           = -I m4
 DISTCHECK_CONFIGURE_FLAGS = --with-systemd=$$dc_install_base/$(systemd)
+
 SUBDIRS                 = src
 DISTCLEANFILES		= *~ DEADJOE semantic.cache *.gdb *.elf core core.* *.d
+dist_sbin_SCRIPTS       = smcroute
 dist_man8_MANS		= smcroute.8
 doc_DATA		= README.md COPYING smcroute.conf
 EXTRA_DIST		= README.md AUTHORS ChangeLog.md autogen.sh smcroute.conf smcroute.init

@@ -1,0 +1,36 @@
+#!/bin/sh
+# Compatibility wrapper for users with old startup scripts
+# Written by Joachim Nilsson, placed in the public domain
+
+OP=$1
+shift
+
+case "$OP" in
+    -d)
+	smcrouted $*
+	;;
+    -h)
+	echo "This is a simple compatibility wrapper script for SMCRoute"
+	echo "Use /etc/smcroute.conf instead, see man page for more info"
+	return 0
+	;;
+    -k)
+	smcroutectl kill
+	;;
+    -v)
+	smcroutectl version
+	;;
+    -a)
+	smcroutectl add $*
+	;;
+    -r)
+	smcroutectl remove $*
+	;;
+    -j)
+	smcroutectl join $*
+	;;
+    *)
+	echo "Unkown command or option to the SMCRoute wrapper script"
+	return 1
+	;;
+esac
