@@ -52,13 +52,13 @@ static void ipc_read(int sd)
 	if (!msg) {
 		/* Skip logging client disconnects */
 		if (errno != ECONNRESET)
-			smclog(LOG_WARNING, "Failed receving IPC message from client: %s", strerror(errno));
+			smclog(LOG_WARNING, "Failed receiving IPC message from client: %s", strerror(errno));
 		return;
 	}
 
 	if (msg_do(sd, msg)) {
 		if (EINVAL == errno)
-			smclog(LOG_WARNING, "Unkown or malformed IPC message '%c' from client.", msg->cmd);
+			smclog(LOG_WARNING, "Unknown or malformed IPC message '%c' from client.", msg->cmd);
 		errno = 0;
 		ipc_send(sd, log_message, strlen(log_message) + 1);
 	} else {

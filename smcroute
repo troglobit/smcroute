@@ -52,7 +52,7 @@ case "$OP" in
 	smcroutectl join $*
 	;;
     *)
-	echo "Unkown command or option to the SMCRoute compatiblity wrapper script."
+	echo "Unknown command or option to the SMCRoute compatiblity wrapper script."
 	echo "See the smcroute(8) man page for help on available commands."
 	return 1
 	;;
