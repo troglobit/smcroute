@@ -4,7 +4,7 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
-[v2.4.2][] - 2018-09-xx
+[v2.4.2][] - 2018-09-09
 -----------------------
 
 ### Changes
@@ -447,7 +447,8 @@ Initial public release by Carsten Schill.
 
 [mrdisc]:     https://github.com/troglobit/mrdisc
 [RFC4286]:    https://tools.ietf.org/html/rfc4286
-[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.4.1...HEAD
+[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.4.2...HEAD
+[v2.4.2]:     https://github.com/troglobit/smcroute/compare/2.4.1...2.4.2
 [v2.4.1]:     https://github.com/troglobit/smcroute/compare/2.4.1...2.4.1
 [v2.4.0]:     https://github.com/troglobit/smcroute/compare/2.3.1...2.4.0
 [v2.3.1]:     https://github.com/troglobit/smcroute/compare/2.3.0...2.3.1
