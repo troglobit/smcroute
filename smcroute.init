@@ -72,6 +72,9 @@ case "$1" in
 	stop
 	start
 	;;
+  status)
+	status_of_proc "$DAEMON" "$DESC" && exit 0 || exit $?
+	;;
   *)
 	N=/etc/init.d/$NAME
 	echo "Usage: $N {start|stop|restart|force-reload}" >&2
