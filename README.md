@@ -248,22 +248,34 @@ and `greN`.  Usually this flag can be enabled administratively.
 
 ### Configure & Build
 
-As of SMCRoute v2.2, the `libcap` library is used to gain full privilege
-separation using POSIX capabilities.  At startup this library is used to
-drop full root privileges, retaining only `CAP_NET_ADMIN` for managing
-the multicast routes.  Use `--without-libcap` to disable this feature.
-
-**Note:** On RHEL/CentOS 6 you must `configure --without-libcap`
+The GNU Configure & Build system use `/usr/local` as the default install
+prefix.  In many cases this is useful, but this means the configuration
+files and cache files will also use that same prefix.  Most users have
+come to expect those files in `/etc/` and `/var/run/` and configure has
+a few useful options that are recommended to use:
 
     $ ./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var
     $ make -j5
     $ sudo make install-strip
 
+### Privilege Separation
+
+As of SMCRoute v2.2 support for privilege separation using the `libcap`
+library was added.  It is used to drop full root privileges at startup,
+retaining only `CAP_NET_ADMIN` for managing the multicast routes.
+
+The build system searches for the `libcap` library and header file(s).
+Bith `libcap-dev` and `pkg-config` are required.
+
+**Note:** Although support is automatically detected, the build system
+          will issue a warning if `libcap` is missing.  This can be
+          silenced with `configure --without-libcap`
+
 ### Integration with systemd
 
-For systemd integration you need to install `pkg-config`, which helps
-the SMCRoute build system figure out the systemd paths.  When installed
-simply call `systemctl` to enable and start `smcrouted`:
+For systemd integration `libsystemd-dev` and `pkg-config` are required.
+When the unit file is installed, `systemctl` can be used to enable and
+start `smcrouted`:
 
     $ sudo systemctl enable smcroute.service
     $ sudo systemctl start smcroute.service
