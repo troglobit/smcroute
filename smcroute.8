@@ -20,14 +20,16 @@
 .Op Fl dtv
 .Op Fl I Ar NAME
 .Op Ar COMMAND
-.Oo Ao add | rem Ac Ao ROUTE Ac Oc Oo Ao join | leave Ac Ao GROUP Ac Oc
 .Pp
 .Nm smcroutectl
-.Op help | flush | kill | restart | version | show Op groups | routes
+.Ao help | flush | kill | restart | version Ac
 .Nm smcroutectl
-.Oo \ add | \ \ rem Oc Ao IFNAME Ac Oo SOURCE Oc Ar GROUP[/LEN] IFNAME Op IFNAME ...
+.Ao show Ac
+.Op groups | routes
 .Nm smcroutectl
-.Oo join | leave Oc Ao IFNAME Ac Oo SOURCE Oc Ar GROUP
+.Ao add \ | \ \ rem Ac Ao IFNAME Ac Oo SOURCE Oc Ar GROUP[/LEN] IFNAME Op IFNAME ...
+.Nm smcroutectl
+.Ao join | leave Ac Ao IFNAME Ac Oo SOURCE Oc Ar GROUP
 .Sh DESCRIPTION
 .Nm
 is both a daemon and command line tool to manipulate the multicast
