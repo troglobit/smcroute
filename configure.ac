@@ -33,7 +33,7 @@ AC_FUNC_FORK
 AC_CHECK_FUNCS([atexit dup2 memset select socket strchr strerror strrchr asprintf])
 
 # Check for usually missing API's
-AC_REPLACE_FUNCS([strlcpy utimensat])
+AC_REPLACE_FUNCS([strlcpy strlcat utimensat])
 AC_CONFIG_LIBOBJ_DIR([lib])
 
 # Check for sun_len in struct sockaddr_un
