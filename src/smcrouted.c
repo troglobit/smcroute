@@ -331,7 +331,7 @@ static char *progname(const char *arg0)
 int main(int argc, char *argv[])
 {
 	int c;
-	int log_opts = LOG_CONS | LOG_PID;
+	int log_opts = LOG_NDELAY | LOG_PID;
 
 	prognm = progname(argv[0]);
 	while ((c = getopt(argc, argv, "c:d:e:f:hI:l:m:nNp:P:st:v")) != EOF) {
