@@ -1177,7 +1177,7 @@ static int show_mroute(int sd, struct mroute4 *r, int detail)
 
 		get_stats4(r, &p, &b, NULL);
 		snprintf(stats, sizeof(stats), " %10lu %10lu ", p, b);
-		strcat(buf, stats);
+		strlcat(buf, stats, sizeof(buf));
 	}
 
 	for (vif = 0; vif < MAX_MC_VIFS; vif++) {
@@ -1191,9 +1191,9 @@ static int show_mroute(int sd, struct mroute4 *r, int detail)
 			continue;
 
 		snprintf(tmp, sizeof(tmp), " %s", i->name);
-		strcat(buf, tmp);
+		strlcat(buf, tmp, sizeof(buf));
 	}
-	strcat(buf, "\n");
+	strlcat(buf, "\n", sizeof(buf));
 
 	if (ipc_send(sd, buf, strlen(buf)) < 0) {
 		smclog(LOG_ERR, "Failed sending reply to client: %s", strerror(errno));
