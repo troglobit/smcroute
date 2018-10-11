@@ -18,13 +18,16 @@
 #define NELEMS(array) (sizeof(array) / sizeof(array[0]))
 #endif
 
-int pidfile(const char *basename, uid_t uid, gid_t gid);
+int pidfile_create(const char *basename, uid_t uid, gid_t gid);
+
 #ifndef HAVE_UTIMENSAT
 int utimensat(int dirfd, const char *pathname, const struct timespec ts[2], int flags);
 #endif
+
 #ifndef HAVE_STRLCPY
 size_t strlcpy(char *dst, const char *src, size_t len);
 #endif
+
 #ifndef HAVE_STRLCAT
 size_t strlcat(char *dst, const char *src, size_t dsize);
 #endif

@@ -47,14 +47,20 @@
 static char *pidfile_path = NULL;
 static pid_t pidfile_pid  = 0;
 
-static void pidfile_cleanup(void);
-
 const  char *__pidfile_path = LOCALSTATEDIR "/run";
 const  char *__pidfile_name = NULL;
 extern char *prognm;
 
-int
-pidfile(const char *basename, uid_t uid, gid_t gid)
+static void pidfile_cleanup(void)
+{
+	if (pidfile_path != NULL && pidfile_pid == getpid()) {
+		(void) unlink(pidfile_path);
+		free(pidfile_path);
+		pidfile_path = NULL;
+	}
+}
+
+int pidfile_create(const char *basename, uid_t uid, gid_t gid)
 {
 	int save_errno;
 	int atexit_already;
@@ -70,7 +76,7 @@ pidfile(const char *basename, uid_t uid, gid_t gid)
 	if (pidfile_path != NULL) {
 		if (!access(pidfile_path, R_OK) && pid == pidfile_pid) {
 			utimensat(0, pidfile_path, NULL, 0);
-			return (0);
+			return 0;
 		}
 		free(pidfile_path);
 		pidfile_path = NULL;
@@ -80,10 +86,10 @@ pidfile(const char *basename, uid_t uid, gid_t gid)
 
 	if (basename[0] != '/') {
 		if (asprintf(&pidfile_path, "%s/%s.pid", __pidfile_path, basename) == -1)
-			return (-1);
+			return -1;
 	} else {
 		if (asprintf(&pidfile_path, "%s", basename) == -1)
-			return (-1);
+			return -1;
 	}
 
 	smclog(LOG_DEBUG, "Creating PID file %s", pidfile_path);
@@ -92,7 +98,7 @@ pidfile(const char *basename, uid_t uid, gid_t gid)
 		free(pidfile_path);
 		pidfile_path = NULL;
 		errno = save_errno;
-		return (-1);
+		return -1;
 	}
 
 	if (fprintf(f, "%ld\n", (long)pid) <= 0 || fflush(f) != 0) {
@@ -102,20 +108,20 @@ pidfile(const char *basename, uid_t uid, gid_t gid)
 		free(pidfile_path);
 		pidfile_path = NULL;
 		errno = save_errno;
-		return (-1);
+		return -1;
 	}
 	(void) fclose(f);
 	__pidfile_name = pidfile_path;
 
 	if (chown(pidfile_path, uid, gid))
-		return (-1);
+		return -1;
 
 	/*
 	 * LITE extension, no need to set up another atexit() handler
 	 * if user only called us to update the mtime of the PID file
 	 */
 	if (atexit_already)
-		return (0);
+		return 0;
 
 	pidfile_pid = pid;
 	if (atexit(pidfile_cleanup) < 0) {
@@ -125,18 +131,8 @@ pidfile(const char *basename, uid_t uid, gid_t gid)
 		pidfile_path = NULL;
 		pidfile_pid = 0;
 		errno = save_errno;
-		return (-1);
+		return -1;
 	}
 
-	return (0);
-}
-
-static void
-pidfile_cleanup(void)
-{
-	if (pidfile_path != NULL && pidfile_pid == getpid()) {
-		(void) unlink(pidfile_path);
-		free(pidfile_path);
-		pidfile_path = NULL;
-	}
+	return 0;
 }
