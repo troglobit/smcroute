@@ -134,19 +134,33 @@ struct iface *iface_find_by_name(const char *ifname)
 	unsigned int i;
 	struct iface *iface;
 	struct iface *candidate = NULL;
+	char *nm, *ptr;
 
 	if (!ifname)
 		return NULL;
 
+	nm = strdup(ifname);
+	if (!nm)
+		return NULL;
+
+	/* Alias interfaces should use the same VIF/MIF as parent */
+	ptr = strchr(nm, ':');
+	if (ptr)
+		*ptr = 0;
+
 	for (i = 0; i < num_ifaces; i++) {
 		iface = &iface_list[i];
-		if (!strcmp(ifname, iface->name)) {
-			if (iface->vif >= 0)
+		if (!strcmp(nm, iface->name)) {
+			if (iface->vif >= 0) {
+				free(nm);
 				return iface;
+			}
 
 			candidate = iface;
 		}
 	}
+
+	free(nm);
 
 	return candidate;
 }
