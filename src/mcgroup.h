@@ -2,6 +2,8 @@
 #ifndef SMCROUTE_MCGROUP_H_
 #define SMCROUTE_MCGROUP_H_
 
+void mcgroup_refresh    (void);
+
 int  mcgroup4_join      (const char *ifname, struct in_addr  source, struct in_addr  group);
 int  mcgroup4_leave     (const char *ifname, struct in_addr  source, struct in_addr  group);
 void mcgroup4_disable   (void);

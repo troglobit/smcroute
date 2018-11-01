@@ -33,33 +33,33 @@
 
 #include "log.h"
 #include "ifvc.h"
+#include "mcgroup.h"
 #include "util.h"
 
 static unsigned int num_ifaces = 0, num_ifaces_alloc = 0;
 static struct iface *iface_list = NULL;
 
 /**
- * iface_init - Setup vector of active interfaces
+ * iface_update - Periodic check of new interfaces or addresses
  *
- * Builds up a vector with active system interfaces.  Must be called
- * before any other interface functions in this module!
+ * This functions is not only called by iface_init() at startup or
+ * SIGHUP, it is also called periodically to check if known ifaces
+ * have changed or gained an IP address.  This is required because
+ * on Linux (and possibly other UNICES too) it is not possible to
+ * join a multicast group without an address (YMMV).
+ *
+ * Note:
+ * For now we only return %TRUE for interface updates.
+ *
+ * Returns:
+ * %TRUE(1), at least one interface added or updated, otherwise
+ * %FALSE(0) if there was no change.
  */
-void iface_init(void)
+int iface_update(void)
 {
-	struct iface *iface;
 	struct ifaddrs *ifaddr, *ifa;
-
-	num_ifaces = 0;
-
-	if (iface_list)
-		free(iface_list);
-
-	num_ifaces_alloc = 1;
-	iface_list = calloc(num_ifaces_alloc, sizeof(struct iface));
-	if (!iface_list) {
-		smclog(LOG_ERR, "Failed allocating space for interfaces: %s", strerror(errno));
-		exit(255);
-	}
+	struct iface *iface;
+	int change = 0;
 
 	if (getifaddrs(&ifaddr) == -1) {
 		smclog(LOG_ERR, "Failed retrieving interface addresses: %s", strerror(errno));
@@ -69,8 +69,10 @@ void iface_init(void)
 	for (ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
 		/* Check if already added? */
 		if ((iface = iface_find_by_name(ifa->ifa_name))) {
-			if (!iface->inaddr.s_addr && ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET)
+			if (!iface->inaddr.s_addr && ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET) {
 				iface->inaddr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
+				change = 1;
+			}
 			continue;
 		}
 
@@ -107,6 +109,41 @@ void iface_init(void)
 		iface->threshold = DEFAULT_THRESHOLD;
 	}
 	freeifaddrs(ifaddr);
+
+	return change;
+}
+
+/**
+ * iface_init - Setup vector of active interfaces
+ *
+ * Builds up a vector with active system interfaces.  Must be called
+ * before any other interface functions in this module!
+ */
+void iface_init(void)
+{
+	num_ifaces = 0;
+
+	if (iface_list)
+		free(iface_list);
+
+	num_ifaces_alloc = 1;
+	iface_list = calloc(num_ifaces_alloc, sizeof(struct iface));
+	if (!iface_list) {
+		smclog(LOG_ERR, "Failed allocating space for interfaces: %s", strerror(errno));
+		exit(255);
+	}
+
+	iface_update();
+}
+
+void iface_refresh(void *arg)
+{
+	(void)arg;
+
+	if (!iface_update())
+		return;
+
+	mcgroup_refresh();
 }
 
 /**

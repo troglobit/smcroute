@@ -220,6 +220,10 @@ static int start_server(void)
 	/* Drop root privileges before entering the server loop */
 	cap_drop_root(uid, gid);
 
+	/* In case of ifaces coming or addresses being added ... */
+	if (timer_add(10, iface_refresh, NULL) < 0)
+		smclog(LOG_WARNING, "failed creating iface refresh timer: %s", strerror(errno));
+
 	return server_loop();
 }
 

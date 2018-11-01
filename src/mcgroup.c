@@ -52,6 +52,11 @@ struct mgroup {
  */
 LIST_HEAD(, mgroup) mgroup_static_list = LIST_HEAD_INITIALIZER();
 
+/*
+ * Failed joins due to no-ip-address on iface yet ...
+ */
+LIST_HEAD(, mgroup) mgroup_retry_list  = LIST_HEAD_INITIALIZER();
+
 static int mcgroup4_socket = -1;
 
 #ifdef HAVE_LINUX_FILTER_H
@@ -67,6 +72,7 @@ static struct sock_fprog fprog = {
 };
 #endif /* HAVE_LINUX_FILTER_H */
 
+
 static struct iface *match_valid_iface(const char *ifname, struct ifmatch *state)
 {
 	struct iface *iface = iface_match_by_name(ifname, state);
@@ -77,7 +83,7 @@ static struct iface *match_valid_iface(const char *ifname, struct ifmatch *state
 	return iface;
 }
 
-static void list_add(struct iface *iface, struct in_addr source, struct in_addr group)
+static void list_add(struct iface *iface, struct in_addr source, struct in_addr group, int fail)
 {
 	struct mgroup *entry;
 
@@ -91,7 +97,11 @@ static void list_add(struct iface *iface, struct in_addr source, struct in_addr 
 	entry->inbound = iface->vif;
 	entry->source  = source;
 	entry->group   = group;
-	LIST_INSERT_HEAD(&mgroup_static_list, entry, link);
+
+	if (fail)
+		LIST_INSERT_HEAD(&mgroup_retry_list, entry, link);
+	else
+ 		LIST_INSERT_HEAD(&mgroup_static_list, entry, link);
 }
 
 static void list_rem(struct iface *iface, struct in_addr source, struct in_addr group)
@@ -126,35 +136,105 @@ static void mcgroup4_init(void)
 	}
 }
 
+static int join_leave_ipv4(int sd, int cmd, struct iface *iface, struct in_addr group)
+{
+	struct ip_mreq mreq;
+	int opt, retry = 0;
+
+	if (!cmd) {
+		cmd = 'j';
+		retry = 1;
+	}
+
+	if (cmd == 'j')
+		opt = IP_ADD_MEMBERSHIP;
+	else
+		opt = IP_DROP_MEMBERSHIP;
+
+	mreq.imr_multiaddr.s_addr = group.s_addr;
+	mreq.imr_interface.s_addr = iface->inaddr.s_addr;
+	if (setsockopt(sd, IPPROTO_IP, opt, &mreq, sizeof(mreq))) {
+		char grp[16];
+
+		if (retry)
+			return 1;
+
+		inet_ntop(AF_INET, &group, grp, sizeof(grp));
+		if (EADDRNOTAVAIL == errno && cmd == 'l')
+			smclog(LOG_DEBUG, "failed leave (*,%s), not a member", grp);
+		else if (EADDRINUSE == errno && cmd == 'j')
+			smclog(LOG_DEBUG, "failed join (*,%s), already member", grp);
+		else if (ENODEV == errno && cmd == 'j')
+			smclog(LOG_ERR, "failed join (*,%s) on %s, no interface address.", grp, iface);
+		else
+			smclog(LOG_ERR, "failed %s (*,%s) on iface %s.  Error %d: %s",
+			       cmd == 'j' ? "join" : "leave", grp, iface->name, errno, strerror(errno));
+
+		return 1;
+	}
+
+	return 0;
+}
+
+static int join_leave_ssm_ipv4(int sd, int cmd, struct iface *iface, struct in_addr source, struct in_addr group)
+{
+	struct ip_mreq_source mreqsrc;
+	int opt, retry = 0;
+
+	if (!cmd) {
+		cmd = 'j';
+		retry = 1;
+	}
+
+	if (cmd == 'j')
+		opt = IP_ADD_SOURCE_MEMBERSHIP;
+	else
+		opt = IP_DROP_SOURCE_MEMBERSHIP;
+
+	mreqsrc.imr_multiaddr.s_addr = group.s_addr;
+	mreqsrc.imr_sourceaddr.s_addr = source.s_addr;
+	mreqsrc.imr_interface.s_addr = iface->inaddr.s_addr;
+	if (setsockopt(sd, IPPROTO_IP, opt, &mreqsrc, sizeof(mreqsrc))) {
+		char *src, grp[16];
+
+		if (retry)
+			return 1;
+
+		src = inet_ntoa(source);
+		inet_ntop(AF_INET, &group, grp, sizeof(grp));
+
+		if (EADDRNOTAVAIL == errno && cmd == 'j')
+			smclog(LOG_DEBUG, "failed join (%s,%s), already member", src, grp);
+		else if (EADDRNOTAVAIL == errno && cmd == 'l')
+			smclog(LOG_DEBUG, "failed leave (%s,%s), not a member from that source", src, grp);
+		else if (EINVAL == errno && cmd == 'l')
+			smclog(LOG_DEBUG, "failed leave (%s,%s), not a member", src, grp);
+		else
+			smclog(LOG_WARNING, "failed %s (%s,%s) on iface %s.  Error %d: %s",
+			       cmd == 'j' ? "join" : "leave", src, grp, iface->name, errno, strerror(errno));
+
+		return 1;
+	}
+
+	return 0;
+}
+
 static int mcgroup_join_leave_ipv4(int sd, int cmd, const char *ifname, struct in_addr group)
 {
-	int opt, ret = 0;
-	struct ip_mreq mreq;
-	struct iface *iface;
 	struct ifmatch state;
 	struct in_addr any_src;
+	struct iface *iface;
+	int ret = 0;
 
 	any_src.s_addr = htonl(INADDR_ANY);
 	iface_match_init(&state);
 	while ((iface = match_valid_iface(ifname, &state))) {
-		if (cmd == 'j') {
-			list_add(iface, any_src, group);
-			opt = IP_ADD_MEMBERSHIP;
-		} else {
+		ret += join_leave_ipv4(sd, cmd, iface, group);
+
+		if (cmd == 'j')
+			list_add(iface, any_src, group, ret);
+		else
 			list_rem(iface, any_src, group);
-			opt = IP_DROP_MEMBERSHIP;
-		}
-		mreq.imr_multiaddr.s_addr = group.s_addr;
-		mreq.imr_interface.s_addr = iface->inaddr.s_addr;
-		if (setsockopt(sd, IPPROTO_IP, opt, &mreq, sizeof(mreq))) {
-			if (EADDRNOTAVAIL == errno && cmd == 'l')
-				smclog(LOG_DEBUG, "failed leaving group, not a member of %s", inet_ntoa(group));
-			else if (EADDRINUSE == errno && cmd == 'j')
-				smclog(LOG_DEBUG, "failed joining group, already member of %s", inet_ntoa(group));
-			else
-				smclog(LOG_DEBUG, "failed group %s: %s", cmd == 'j' ? "join" : "leave", strerror(errno));
-			ret = 1;
-		}
 	}
 
 	if (!state.match_count)
@@ -169,34 +249,18 @@ static int mcgroup_join_leave_ssm_ipv4(int sd, int cmd, const char *ifname, stru
 	smclog(LOG_WARNING, "Source specific join/leave not supported, ignoring source %s", inet_ntoa(source));
 	return mcgroup_join_leave_ipv4(sd, cmd, ifname, group);
 #else
-	int opt, ret = 0;
-	struct ip_mreq_source mreqsrc;
 	struct iface *iface;
 	struct ifmatch state;
+	int ret = 0;
 
 	iface_match_init(&state);
 	while ((iface = match_valid_iface(ifname, &state))) {
-		if (cmd == 'j') {
-			list_add(iface, source, group);
-			opt = IP_ADD_SOURCE_MEMBERSHIP;
-		} else {
+		ret += join_leave_ssm_ipv4(sd, cmd, iface, source, group);
+
+		if (cmd == 'j')
+			list_add(iface, source, group, ret);
+		else
 			list_rem(iface, source, group);
-			opt = IP_DROP_SOURCE_MEMBERSHIP;
-		}
-		mreqsrc.imr_multiaddr.s_addr = group.s_addr;
-		mreqsrc.imr_sourceaddr.s_addr = source.s_addr;
-		mreqsrc.imr_interface.s_addr = iface->inaddr.s_addr;
-		if (setsockopt(sd, IPPROTO_IP, opt, &mreqsrc, sizeof(mreqsrc))) {
-			if (EADDRNOTAVAIL == errno && cmd == 'j')
-				smclog(LOG_DEBUG, "failed join, already member of %s", inet_ntoa(group));
-			else if (EADDRNOTAVAIL == errno && cmd == 'l')
-				smclog(LOG_DEBUG, "failed leave, not a member of %s from that source", inet_ntoa(group));
-			else if (EINVAL == errno && cmd == 'l')
-				smclog(LOG_DEBUG, "failed leave, not a member of %s", inet_ntoa(group));
-			else
-				smclog(LOG_WARNING, "failed %s: %s", cmd == 'j' ? "join" : "leave", strerror(errno));
-			ret = 1;
-		}
 	}
 
 	if (!state.match_count)
@@ -256,7 +320,42 @@ void mcgroup4_disable(void)
 		LIST_REMOVE(entry, link);
 		free(entry);
 	}
+}
 
+/*
+ * Retry join of previously failed joins, called by iface_update()
+ */
+static void mcgroup4_retry(void)
+{
+	struct in_addr any_src;
+	struct mgroup *entry, *tmp;
+
+	any_src.s_addr = htonl(INADDR_ANY);
+
+	LIST_FOREACH_SAFE(entry, &mgroup_retry_list, link, tmp) {
+		struct iface *iface;
+		int rc;
+
+		iface = iface_find_by_vif(entry->inbound);
+		if (!iface)
+			continue;
+
+		if (!memcmp(&entry->source, &any_src, sizeof(any_src)))
+			rc = join_leave_ipv4(mcgroup4_socket, 0, iface, entry->group);
+		else
+			rc = join_leave_ssm_ipv4(mcgroup4_socket, 0, iface, entry->source, entry->group);
+
+		if (rc)
+			continue;
+
+		LIST_REMOVE(entry, link);
+ 		LIST_INSERT_HEAD(&mgroup_static_list, entry, link);
+	}
+}
+
+void mcgroup_refresh(void)
+{
+	mcgroup4_retry();
 }
 
 #ifdef HAVE_IPV6_MULTICAST_HOST
