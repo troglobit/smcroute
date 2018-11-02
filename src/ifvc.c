@@ -41,6 +41,7 @@ static struct iface *iface_list = NULL;
 
 /**
  * iface_update - Periodic check of new interfaces or addresses
+ * @refresh: Only update interface addresses
  *
  * This functions is not only called by iface_init() at startup or
  * SIGHUP, it is also called periodically to check if known ifaces
@@ -55,7 +56,7 @@ static struct iface *iface_list = NULL;
  * %TRUE(1), at least one interface added or updated, otherwise
  * %FALSE(0) if there was no change.
  */
-int iface_update(void)
+int iface_update(int refresh)
 {
 	struct ifaddrs *ifaddr, *ifa;
 	struct iface *iface;
@@ -75,6 +76,9 @@ int iface_update(void)
 			}
 			continue;
 		}
+
+		if (refresh)
+			continue;
 
 		/* Allocate more space? */
 		if (num_ifaces == num_ifaces_alloc) {
@@ -133,14 +137,14 @@ void iface_init(void)
 		exit(255);
 	}
 
-	iface_update();
+	iface_update(0);
 }
 
 void iface_refresh(void *arg)
 {
 	(void)arg;
 
-	if (!iface_update())
+	if (!iface_update(1))
 		return;
 
 	mcgroup_refresh();
