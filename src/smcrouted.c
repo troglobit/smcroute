@@ -176,14 +176,14 @@ static int start_server(void)
 	}
 
 	/*
-	 * Build list of multicast-capable physical interfaces
-	 */
-	iface_init();
-
-	/*
 	 * Timer API needs to be initilized before mroute4_enable()
 	 */
 	timer_init();
+
+	/*
+	 * Build list of multicast-capable physical interfaces
+	 */
+	iface_init();
 
 	if (mroute4_enable(do_vifs, table_id, cache_tmo)) {
 		if (errno == EADDRINUSE)
@@ -219,10 +219,6 @@ static int start_server(void)
 
 	/* Drop root privileges before entering the server loop */
 	cap_drop_root(uid, gid);
-
-	/* In case of ifaces coming or addresses being added ... */
-	if (timer_add(10, iface_refresh, NULL) < 0)
-		smclog(LOG_WARNING, "failed creating iface refresh timer: %s", strerror(errno));
 
 	return server_loop();
 }

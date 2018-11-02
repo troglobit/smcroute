@@ -34,6 +34,7 @@
 #include "log.h"
 #include "ifvc.h"
 #include "mcgroup.h"
+#include "timer.h"
 #include "util.h"
 
 static unsigned int num_ifaces = 0, num_ifaces_alloc = 0;
@@ -138,6 +139,10 @@ void iface_init(void)
 	}
 
 	iface_update(0);
+
+	/* In case of addresses being added later ... */
+	if (timer_add(5, iface_refresh, NULL) < 0 && errno != EEXIST)
+		smclog(LOG_WARNING, "failed creating iface refresh timer: %s", strerror(errno));
 }
 
 void iface_refresh(void *arg)
@@ -147,7 +152,8 @@ void iface_refresh(void *arg)
 	if (!iface_update(1))
 		return;
 
-	mcgroup_refresh();
+	if (mcgroup_refresh())
+		timer_del(iface_refresh, arg);
 }
 
 /**

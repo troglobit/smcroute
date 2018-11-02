@@ -361,9 +361,13 @@ static void mcgroup4_retry(void)
 	}
 }
 
-void mcgroup_refresh(void)
+int mcgroup_refresh(void)
 {
 	mcgroup4_retry();
+	if (LIST_EMPTY(&mgroup_retry_list))
+		return 1;
+
+	return 0;
 }
 
 #ifdef HAVE_IPV6_MULTICAST_HOST
