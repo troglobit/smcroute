@@ -149,7 +149,7 @@ static void table_heading(char *argv[], size_t count, int detail)
 	if (count && argv[0][0] == 'g')
 		snprintf(line, sizeof(line), "\e[7m%-34s %-16s", g, i);
 	else if (detail)
-		snprintf(line, sizeof(line), "\e[7m%-34s %-16s %10s %10s %-8s", r, i, p, b, o);
+		snprintf(line, sizeof(line), "\e[7m%-34s %-16s %10s %10s  %-8s", r, i, p, b, o);
 	else
 		snprintf(line, sizeof(line), "\e[7m%-34s %-16s %-8s", r, i, o);
 
