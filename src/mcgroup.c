@@ -334,20 +334,28 @@ static void mcgroup4_retry(void)
 
 	LIST_FOREACH_SAFE(entry, &mgroup_retry_list, link, tmp) {
 		struct iface *iface;
+		char grp[16];
+		int is_any = 0;
 		int rc;
 
 		iface = iface_find_by_vif(entry->inbound);
 		if (!iface)
 			continue;
 
-		if (!memcmp(&entry->source, &any_src, sizeof(any_src)))
+		if (!memcmp(&entry->source, &any_src, sizeof(any_src))) {
+			is_any = 1;
 			rc = join_leave_ipv4(mcgroup4_socket, 0, iface, entry->group);
-		else
+		} else
 			rc = join_leave_ssm_ipv4(mcgroup4_socket, 0, iface, entry->source, entry->group);
-
 		if (rc)
 			continue;
 
+		inet_ntop(AF_INET, &entry->group, grp, sizeof(grp));
+		smclog(LOG_NOTICE, "successful join (%s,%s) on iface %s.",
+		       is_any ? "*" : inet_ntoa(entry->source), grp, iface->name,
+		       errno, strerror(errno));
+
+		/* Move to list of joined groups */
 		LIST_REMOVE(entry, link);
  		LIST_INSERT_HEAD(&mgroup_static_list, entry, link);
 	}
