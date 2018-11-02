@@ -74,7 +74,7 @@ static void announce(struct ifsock *entry)
 int mrdisc_init(int period)
 {
 	interval = period;
-	if (timer_add(interval, mrdisc_send, NULL) < 0) {
+	if (timer_add(interval, mrdisc_send, NULL) < 0 && errno != EEXIST) {
 		smclog(LOG_ERR, "Failed starting mrdisc announcement timer.");
 		return -1;
 	}

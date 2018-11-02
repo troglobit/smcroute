@@ -187,6 +187,12 @@ int timer_add(int period, void (*cb)(void *), void *arg)
 	struct timer *t;
 	struct timespec now;
 
+	t = find(cb, arg);
+	if (t && t->active) {
+		errno = EEXIST;
+		return -1;
+	}
+
 	if (clock_gettime(CLOCK_MONOTONIC, &now) < 0)
 		return -1;
 
