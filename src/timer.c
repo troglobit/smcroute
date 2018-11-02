@@ -27,6 +27,7 @@
 #include "log.h"
 #include "queue.h"
 #include "socket.h"
+#include "timer.h"
 
 /*
  * TODO
@@ -35,6 +36,7 @@
  */
 struct timer {
 	LIST_ENTRY(timer) link;
+	int             active;	/* Set to 0 to delete */
 
 	int             period;	/* period time in seconds */
 	struct timespec timeout;
@@ -77,6 +79,21 @@ static struct timer *compare(struct timer *a, struct timer *b)
 	return b;
 }
 
+static struct timer *find(void (*cb), void *arg)
+{
+	struct timer *entry;
+
+	LIST_FOREACH(entry, &tl, link) {
+		if (entry->cb != cb || entry->arg != arg)
+			continue;
+
+		return entry;
+	}
+
+	return NULL;
+}
+
+
 static int start(struct timespec *now)
 {
 	struct timer *next, *entry;
@@ -102,18 +119,23 @@ static void run(int sd, void *arg)
 {
 	char dummy;
 	struct timespec now;
-	struct timer *entry;
+	struct timer *entry, *tmp;
 
 	(void)arg;
 	if (read(sd, &dummy, 1) < 0)
 		smclog(LOG_DEBUG, "Failed read(pipe): %s", strerror(errno));
 
 	clock_gettime(CLOCK_MONOTONIC, &now);
-	LIST_FOREACH(entry, &tl, link) {
+	LIST_FOREACH_SAFE(entry, &tl, link, tmp) {
 		if (expired(entry, &now)) {
 			if (entry->cb)
 				entry->cb(entry->arg);
 			set(entry, &now);
+		}
+
+		if (!entry->active) {
+			LIST_REMOVE(entry, link);
+			free(entry);
 		}
 	}
 
@@ -172,6 +194,7 @@ int timer_add(int period, void (*cb)(void *), void *arg)
 	if (!t)
 		return -1;
 
+	t->active = 1;
 	t->period = period;
 	t->cb     = cb;
 	t->arg    = arg;
@@ -181,6 +204,24 @@ int timer_add(int period, void (*cb)(void *), void *arg)
 	LIST_INSERT_HEAD(&tl, t, link);
 
 	return start(&now);
+}
+
+/*
+ * delete a timer
+ */
+int timer_del(void (*cb)(void *), void *arg)
+{
+	struct timer *entry;
+
+	entry = find(cb, arg);
+	if (!entry)
+		return 1;
+
+	/* Mark for deletion and issue a new run */
+	entry->active = 0;
+	handler(0);
+
+	return 0;
 }
 
 /**
