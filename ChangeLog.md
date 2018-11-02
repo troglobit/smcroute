@@ -3,6 +3,29 @@ ChangeLog
 
 All notable changes to the project are documented in this file.
 
+[v2.4.3][UNRELEASED]
+--------------------
+
+### Changes
+- Add `strlcat()` replacement from OpenBSD, use instead of `strcat()`
+- `smcrouted` should never log to system console, proposed by Westermo
+
+### Fixes
+- `smcrouted` fails to join multicast groups on interfaces that do not
+  yet have an IP address when `smcrouted` starts up, or when it receives
+  `SIGHUP`, e.g. DHCP client interfaces.  This patch release adds a timer
+  refresh of interface addresses that retries multicast group joins until
+  an address is set.  This is similar to issue #55, but does not handle
+  interfaces that do not exist yet
+- Make sure Linux alias interfaces (baseif:num) are registered as
+  baseif.  Westermo found that use of alias interfaces cause multiple
+  VIFs to be registered for the same base interface causing multicast
+  routes to use the wrong inbound or outbound VIF.  Alias interfaces
+  use the same underlying physical interface so only one VIF needed
+- Minor spelling fixes, found by Debian
+- Add missing status command to SysV init script, found by Debian
+- Simplify `utimensat()` replacement, `AT_SYMLINK_NOFOLLOW` unused
+
 
 [v2.4.2][] - 2018-09-09
 -----------------------
