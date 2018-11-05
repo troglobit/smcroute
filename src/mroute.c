@@ -561,8 +561,8 @@ int mroute4_dyn_add(struct mroute4 *route)
 	return 0;
 }
 
-/* 
- * Query kernel for install MFC entry usage statistics
+/*
+ * Query kernel for route usage statistics
  */
 static int get_stats4(struct mroute4 *route, unsigned long *pktcnt, unsigned long *bytecnt, unsigned long *wrong_if)
 {
