@@ -86,8 +86,8 @@ multicast group 225.1.2.3 should be forwarded to interfaces `eth1` and
 **Note:** To test the above you can use ping from another device.  The
    multicast should be visible as long as your IP# matches the source
    above and you ping 225.1.2.3 -- **REMEMBER TO SET THE TTL >1**
-   
-    $ ping -I eth0 -t 2 225.1.2.3
+
+    ping -I eth0 -t 2 225.1.2.3
 
 The TTL is what usually bites people first trying out multicast routing.
 Most TCP/IP stacks default to a TTL of 1 for multicast frames, e.g. ping
@@ -100,12 +100,15 @@ but can also be modified in the firewall on a router.  Be careful though
 because the TTL is the only thing that helps prevent routing loops!  On
 Linux the following `iptables` command can be used to change the TTL:
 
-    # iptables -t mangle -A PREROUTING -i eth0 -d 225.1.2.3 -j TTL --ttl-inc 1
+    iptables -t mangle -A PREROUTING -i eth0 -d 225.1.2.3 -j TTL --ttl-inc 1
+
+Some commands, like this one, must usually be run with root privileges
+or the correct set of capabilities.
 
 
 ### Action Scripts
 
-    # smcrouted -e /path/to/script
+    smcrouted -e /path/to/script
 
 With `-e CMD` a user script or command can be called when `smcrouted`
 receives a `SIGHUP` or installs a multicast route to the kernel.  This
@@ -115,7 +118,7 @@ flush connection tracking after installing a multicast route.
 
 ### Many Interfaces
 
-    # smcrouted -N
+    smcrouted -N
 
 With the `-N` command line option SMCRoute does *not* prepare all system
 interfaces for multicast routing.  Very useful if your system has a lot
@@ -135,8 +138,8 @@ On Linux it is possible to run multiple multicast routing daemons due to
 its support for multiple multicast routing tables.  In such setups it
 may be useful to change the default identity of SMCRoute:
 
-    # smcrouted -I mrt1 -t 1
-    # smcrouted -I mrt2 -t 2
+    smcrouted -I mrt1 -t 1
+    smcrouted -I mrt2 -t 2
 
 The `-I NAME` option alters the default syslog name, config file, PID
 file, and client socket file name used.  In the first instance above,
@@ -154,19 +157,19 @@ use the same `-I NAME` also to `smcroutectl`.
 
 SMCRoute also has a client interface to interact with the daemon:
 
-    # smcroutectl join eth0 225.1.2.3
-    # smcroutectl add  eth0 192.168.1.42 225.1.2.3 eth1 eth2
+    smcroutectl join eth0 225.1.2.3
+    smcroutectl add  eth0 192.168.1.42 225.1.2.3 eth1 eth2
 
 If the daemon runs with a different identity the client needs to be
 called using the same identity:
 
-    # smcrouted   -I mrt
-    # smcroutectl -I mrt show
+    smcrouted   -I mrt
+    smcroutectl -I mrt show
 
 There are more commands.  See the man page or the online help for
 details:
 
-    # smcroutectl help
+    smcroutectl help
 
 **Note:** Root privileges are required by default for `smcroutectl` due
   to the IPC socket permissions.
@@ -254,9 +257,9 @@ files and cache files will also use that same prefix.  Most users have
 come to expect those files in `/etc/` and `/var/run/` and configure has
 a few useful options that are recommended to use:
 
-    $ ./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var
-    $ make -j5
-    $ sudo make install-strip
+    ./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var
+    make -j5
+    sudo make install-strip
 
 ### Privilege Separation
 
@@ -290,7 +293,7 @@ Some people want to build statically, to do this with `autoconf` add the
 following `LDFLAGS=` *after* the configure script.  You may also need to
 add `LIBS=...`, which will depend on your particular system:
 
-    $ ./configure LDFLAGS="-static" ...
+    ./configure LDFLAGS="-static" ...
 
 ### Building from GIT
 
