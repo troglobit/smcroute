@@ -3,8 +3,10 @@ ChangeLog
 
 All notable changes to the project are documented in this file.
 
-[v2.4.3][UNRELEASED]
---------------------
+[v2.4.3][]
+----------
+
+The Lyon release.
 
 ### Changes
 - Add `strlcat()` replacement from OpenBSD, use instead of `strcat()`
@@ -22,6 +24,7 @@ All notable changes to the project are documented in this file.
   VIFs to be registered for the same base interface causing multicast
   routes to use the wrong inbound or outbound VIF.  Alias interfaces
   use the same underlying physical interface so only one VIF needed
+- Fix display of route counters and column alignment
 - Minor spelling fixes, found by Debian
 - Add missing status command to SysV init script, found by Debian
 - Simplify `utimensat()` replacement, `AT_SYMLINK_NOFOLLOW` unused
@@ -470,7 +473,8 @@ Initial public release by Carsten Schill.
 
 [mrdisc]:     https://github.com/troglobit/mrdisc
 [RFC4286]:    https://tools.ietf.org/html/rfc4286
-[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.4.2...HEAD
+[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.4.3...HEAD
+[v2.4.2]:     https://github.com/troglobit/smcroute/compare/2.4.2...2.4.3
 [v2.4.2]:     https://github.com/troglobit/smcroute/compare/2.4.1...2.4.2
 [v2.4.1]:     https://github.com/troglobit/smcroute/compare/2.4.1...2.4.1
 [v2.4.0]:     https://github.com/troglobit/smcroute/compare/2.3.1...2.4.0
