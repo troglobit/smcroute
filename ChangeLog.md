@@ -3,8 +3,8 @@ ChangeLog
 
 All notable changes to the project are documented in this file.
 
-[v2.4.3][]
-----------
+[v2.4.3][] - 2018-11-06
+-----------------------
 
 The Lyon release.
 
@@ -474,7 +474,7 @@ Initial public release by Carsten Schill.
 [mrdisc]:     https://github.com/troglobit/mrdisc
 [RFC4286]:    https://tools.ietf.org/html/rfc4286
 [UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.4.3...HEAD
-[v2.4.2]:     https://github.com/troglobit/smcroute/compare/2.4.2...2.4.3
+[v2.4.3]:     https://github.com/troglobit/smcroute/compare/2.4.2...2.4.3
 [v2.4.2]:     https://github.com/troglobit/smcroute/compare/2.4.1...2.4.2
 [v2.4.1]:     https://github.com/troglobit/smcroute/compare/2.4.1...2.4.1
 [v2.4.0]:     https://github.com/troglobit/smcroute/compare/2.3.1...2.4.0
