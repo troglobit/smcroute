@@ -36,6 +36,37 @@
 
 #define MC_ALL_SNOOPERS      "224.0.0.106"
 
+/* Checksum routine for Internet Protocol family headers */
+static unsigned short in_cksum(unsigned short *addr, int len)
+{
+	unsigned short *w = addr;
+	unsigned short answer = 0;
+	int nleft = len;
+	int sum = 0;
+
+	/*
+	 * Our algorithm is simple, using a 32 bit accumulator (sum), we add
+	 * sequential 16 bit words to it, and at the end, fold back all the
+	 * carry bits from the top 16 bits into the lower 16 bits.
+	 */
+	while (nleft > 1) {
+		sum += *w++;
+		nleft -= 2;
+	}
+
+	/* mop up an odd byte, if necessary */
+	if (nleft == 1) {
+		*(unsigned char *)(&answer) = *(unsigned char *)w;
+		sum += answer;
+	}
+
+	/* add back carry outs from top 16 bits to low 16 bits */
+	sum  = (sum >> 16) + (sum & 0xffff);	/* add hi 16 to low 16 */
+	sum += (sum >> 16);			/* add carry */
+	answer = ~sum;				/* truncate to 16 bits */
+
+	return answer;
+}
 
 int inet_open(char *ifname)
 {
@@ -121,7 +152,7 @@ int inet_send(int sd, uint8_t type, uint8_t interval)
 	memset(&igmp, 0, sizeof(igmp));
 	igmp.igmp_type = type;
 	igmp.igmp_code = interval;
-	igmp.igmp_cksum = 0;
+	igmp.igmp_cksum = in_cksum(&igmp, sizeof(igmp));
 
 	compose_addr((struct sockaddr_in *)&dest, MC_ALL_SNOOPERS);
 
