@@ -744,10 +744,16 @@ int mroute4_add(struct mroute4 *route)
 		/* Also, immediately expire any currently blocked traffic */
 		LIST_FOREACH_SAFE(dyn, &mroute4_dyn_list, link, tmp) {
 			if (!is_active4(dyn) && is_match4(entry, dyn)) {
+				char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
+
+				inet_ntop(AF_INET, &dyn->group,  group,  INET_ADDRSTRLEN);
+				inet_ntop(AF_INET, &dyn->source, origin, INET_ADDRSTRLEN);
+				smclog(LOG_DEBUG, "Flushing (%s,%s) on VIF %d, new matching (*,G) rule ...",
+				       origin, group, dyn->inbound);
+
 				kern_del4(dyn, 0);
 				LIST_REMOVE(dyn, link);
 				free(dyn);
-				break;
 			}
 		}
 
