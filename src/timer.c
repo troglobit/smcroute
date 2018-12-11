@@ -58,10 +58,13 @@ static void set(struct timer *t, struct timespec *now)
 
 static int expired(struct timer *t, struct timespec *now)
 {
+	long round_nsec = now->tv_nsec + 250000000;
+	round_nsec = round_nsec > 999999999 ? 999999999 : round_nsec;
+
 	if (t->timeout.tv_sec < now->tv_sec)
 		return 1;
 
-	if (t->timeout.tv_sec == now->tv_sec && t->timeout.tv_nsec <= now->tv_nsec)
+	if (t->timeout.tv_sec == now->tv_sec && t->timeout.tv_nsec <= round_nsec)
 		return 1;
 
 	return 0;
@@ -108,7 +111,7 @@ static int start(struct timespec *now)
 
 	memset(&it, 0, sizeof(it));
 	it.it_value.tv_sec  = next->timeout.tv_sec - now->tv_sec;
-	it.it_value.tv_nsec = 0;
+	it.it_value.tv_nsec = next->timeout.tv_nsec - now->tv_nsec;
 	timer_settime(timer, 0, &it, NULL);
 
 	return 0;
