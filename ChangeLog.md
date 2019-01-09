@@ -3,6 +3,17 @@ ChangeLog
 
 All notable changes to the project are documented in this file.
 
+[v2.4.4][] - 2019-01-xx
+-----------------------
+
+### Fixes
+- Fix #106: Timer nanosecond bug causing loss of address refresh on DHCP
+  interfaces.  Interface monitoring feature introduced in v2.4.3
+- Fix #105: Unblock *all* matching, and currently blocked, (S,G) to a
+  newly installed (*,G) route, only the first know was unblocked
+- Fix #104: IGMP header checksum missing from mrdisc frames
+
+
 [v2.4.3][] - 2018-11-06
 -----------------------
 
