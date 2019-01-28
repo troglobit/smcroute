@@ -7,11 +7,12 @@ All notable changes to the project are documented in this file.
 -----------------------
 
 ### Fixes
-- Fix #106: Timer nanosecond bug causing loss of address refresh on DHCP
-  interfaces.  Interface monitoring feature introduced in v2.4.3
+- Fix #104: IGMP header checksum missing from mrdisc frames
 - Fix #105: Unblock *all* matching, and currently blocked, (S,G) to a
   newly installed (*,G) route, only the first know was unblocked
-- Fix #104: IGMP header checksum missing from mrdisc frames
+- Fix #106: Timer nanosecond bug causing loss of address refresh on DHCP
+  interfaces.  Interface monitoring feature introduced in v2.4.3
+- Fix #108: Calling init script with `stop` does not stop `smcrouted`
 
 
 [v2.4.3][] - 2018-11-06
