@@ -18,6 +18,7 @@
 
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 DAEMON=/usr/sbin/smcrouted
+DAEMONCTL=/usr/sbin/smcroutectl
 DAEMON_OPTS=
 NAME=smcrouted
 DESC="static multicast router daemon"
@@ -50,7 +51,7 @@ stop() {
 	local error
 	local result
 	log_begin_msg "Stopping $DESC: $NAME"
-	error=$($DAEMON -k 2>&1)
+	error=$($DAEMONCTL kill 2>&1)
 	result=$?
 	log_progress_msg ${error#ERRO: }
 	log_end_msg $result
