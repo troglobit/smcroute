@@ -11,7 +11,7 @@
 struct iface {
 	char name[IFNAMSIZ + 1];
 	struct in_addr inaddr;	/* == 0 for non IP interfaces */
-	u_short ifindex;	/* Physical interface index   */
+	int   ifindex;          /* Physical interface index   */
 	short flags;
 	short vif;
 	short mif;
