@@ -10,7 +10,10 @@ Requires=network-online.target
 [Service]
 Type=simple
 ExecStart=@SBINDIR@/smcrouted -n -s
-NoNewPrivileges=yes
+
+# Hardening settings
+NoNewPrivileges=true
+ProtectControlGroups=true
 ProtectSystem=full
 ProtectHome=true
 
