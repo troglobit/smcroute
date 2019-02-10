@@ -27,13 +27,6 @@ uninstall-hook:
 		$(RM) $(DESTDIR)$(mandir)/$$file;	\
 	done
 
-## Generate detached signature file (ascii-armored), like OpenVPN does
-GPG = gpg
-gpg-dist:
-	for file in $(DIST_ARCHIVES); do 	\
-		$(GPG) -ba $$file; 		\
-	done
-
 ## Generate MD5 checksum file
 MD5 = md5sum
 md5-dist:
@@ -60,7 +53,7 @@ release-hook:
 	fi
 
 ## Target to run when building a release
-release: distcheck release-hook md5-dist gpg-dist
+release: distcheck release-hook md5-dist
 	@echo
 	@echo "Resulting release files:"
 	@echo "================================================================="
