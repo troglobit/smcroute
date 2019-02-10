@@ -10,6 +10,9 @@ Requires=network-online.target
 [Service]
 Type=simple
 ExecStart=@SBINDIR@/smcrouted -n -s
+NoNewPrivileges=yes
+ProtectSystem=full
+ProtectHome=true
 
 [Install]
 WantedBy=multi-user.target
