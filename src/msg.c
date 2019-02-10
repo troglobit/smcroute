@@ -179,13 +179,9 @@ static int do_mroute4(struct ipc_msg *msg)
 				iface_match_init(&state_out);
 				while ((vif = iface_match_vif_by_name(ifname_out, &state_out, NULL)) >= 0) {
 					if (vif == mroute.inbound) {
-						state_out.match_count--;
-						/* In case of wildcard matches, in==out is
-						 * quite normal, so don't complain
-						 */
+						/* In case of wildcard match in==out is normal, so don't complain */
 						if (!ifname_is_wildcard(ifname_in) && !ifname_is_wildcard(ifname_out) && !errmsg++)
-							smclog(LOG_WARNING, "Same outbound interface (%s) as inbound (%s)?", ifname_out, ifname_in);
-						continue;
+							smclog(LOG_WARNING, "Same outbound interface (%s) as inbound (%s) may cause routing loops.", ifname_out, ifname_in);
 					}
 					mroute.ttl[vif] = 1;	/* Use a TTL threshold */
 					total++;
@@ -267,13 +263,9 @@ static int do_mroute6(struct ipc_msg *msg)
 				iface_match_init(&state_out);
 				while ((mif = iface_match_mif_by_name(ifname_out, &state_out, NULL)) >= 0) {
 					if (mif == mroute.inbound) {
-						state_out.match_count--;
-						/* In case of wildcard matches, in==out is
-						 * quite normal, so don't complain
-						 */
+						/* In case of wildcard match in==out is normal, so don't complain */
 						if (!ifname_is_wildcard(ifname_in) && !ifname_is_wildcard(ifname_out) && !errmsg++)
-							smclog(LOG_WARNING, "Same outbound interface (%s) as inbound (%s)?", ifname_out, ifname_in);
-						continue;
+							smclog(LOG_INFO, "Same outbound interface (%s) as inbound (%s) may cause routing loops.", ifname_out, ifname_in);
 					}
 					mroute.ttl[mif] = 1;	/* Use a TTL threshold */
 					total++;

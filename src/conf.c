@@ -31,6 +31,8 @@
 #define MAX_LINE_LEN 512
 #define DEBUG(fmt, args...)			\
 	smclog(LOG_DEBUG, "%s:%02d: " fmt, conf, lineno, ##args)
+#define INFO(fmt, args...)			\
+	smclog(LOG_INFO, "%s:%02d: " fmt, conf, lineno, ##args)
 #define WARN(fmt, args...)			\
 	smclog(LOG_WARNING, "%s:%02d: " fmt, conf, lineno, ##args)
 
@@ -166,13 +168,9 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 				iface_match_init(&state_out);
 				while ((mif = iface_match_mif_by_name(outbound[i], &state_out, &iface)) >= 0) {
 					if (mif == mroute.inbound) {
-						state_out.match_count--;
-						/* In case of wildcard matches, in==out is
-						 * quite normal, so don't complain
-						 */
+						/* In case of wildcard match in==out is normal, so don't complain */
 						if (!ifname_is_wildcard(ifname) && !ifname_is_wildcard(outbound[i]))
-							WARN("Same outbound IPv6 interface (%s) as inbound (%s)?", outbound[i], ifname);
-						continue;
+							INFO("Same outbound IPv6 interface (%s) as inbound (%s) may cause routing loops.", outbound[i], ifname);
 					}
 
 					/* Use a TTL threshold to indicate the list of outbound interfaces. */
@@ -237,13 +235,9 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 			iface_match_init(&state_out);
 			while ((vif = iface_match_vif_by_name(outbound[i], &state_out, &iface)) >= 0) {
 				if (vif == mroute.inbound) {
-					state_out.match_count--;
+					/* In case of wildcard match in==out is normal, so don't complain */
 					if (!ifname_is_wildcard(ifname) && !ifname_is_wildcard(outbound[i]))
-						/* In case of wildcard matches, in==out is
-						 * quite normal, so don't complain
-						 */
-						WARN("Same outbound IPv4 interface (%s) as inbound (%s)?", outbound[i], ifname);
-					continue;
+						INFO("Same outbound IPv4 interface (%s) as inbound (%s) may cause routing loops.", outbound[i], ifname);
 				}
 
 				/* Use a TTL threshold to indicate the list of outbound interfaces. */
