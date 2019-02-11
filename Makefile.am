@@ -31,7 +31,7 @@ uninstall-hook:
 MD5 = md5sum
 md5-dist:
 	@for file in $(DIST_ARCHIVES); do	\
-		$(MD5) $$file > $$file.md5;	\
+		$(MD5) $$file > ../$$file.md5;	\
 	done
 
 ## Check if tagged in git
@@ -54,12 +54,11 @@ release-hook:
 
 ## Target to run when building a release
 release: distcheck release-hook md5-dist
+	@mv $(DIST_ARCHIVES) ../
 	@echo
 	@echo "Resulting release files:"
 	@echo "================================================================="
 	@for file in $(DIST_ARCHIVES); do						\
 		printf "$$file    \tDistribution tarball\n";				\
-		printf "$$file.md5\t"; cat $$file.md5 | cut -f1 -d' ';			\
-		printf "$$file.asc\tGPG signature "; gpg --verify $$file.asc 2>&1	\
-			| grep 'key ID' | sed 's/.*using \(.*\)/\1/'; echo;		\
+		printf "$$file.md5\t"; cat ../$$file.md5 | cut -f1 -d' ';		\
 	done
