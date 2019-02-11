@@ -240,7 +240,7 @@ int mroute4_enable(int do_vifs, int table_id, int timeout)
 	/* Initialize virtual interface table */
 	memset(&vif_list, 0, sizeof(vif_list));
 
-	/* Create virtual interfaces (VIFs) for all non-loopback interfaces supporting multicast */
+	/* Create virtual interfaces (VIFs) for all IFF_MULTICAST interfaces */
 	if (do_vifs) {
 		for (iface = iface_iterator(1); iface; iface = iface_iterator(0))
 			mroute4_add_vif(iface);
@@ -953,7 +953,7 @@ int mroute6_enable(int do_vifs, int table_id)
 		}
 	}
 #endif
-	/* Create virtual interfaces, IPv6 MIFs, for all non-loopback interfaces */
+	/* Create virtual interfaces, IPv6 MIFs, for all IFF_MULTICAST interfaces */
 	if (do_vifs) {
 		for (iface = iface_iterator(1); iface; iface = iface_iterator(0))
 			mroute6_add_mif(iface);
