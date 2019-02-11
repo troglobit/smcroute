@@ -6,6 +6,11 @@ All notable changes to the project are documented in this file.
 [v2.4.4][] - 2019-01-xx
 -----------------------
 
+### Changes
+- Allow same outbound interface as inbound for routes, only warn user
+- systemd unit file hardening, recommended by Debian
+- Discontinued GPG signing, unused and signed with only one dev key
+
 ### Fixes
 - Fix #104: IGMP header checksum missing from mrdisc frames
 - Fix #105: Unblock *all* matching, and currently blocked, (S,G) to a
@@ -13,6 +18,7 @@ All notable changes to the project are documented in this file.
 - Fix #106: Timer nanosecond bug causing loss of address refresh on DHCP
   interfaces.  Interface monitoring feature introduced in v2.4.3
 - Fix #108: Calling init script with `stop` does not stop `smcrouted`
+- Fix #109: ifindex in UNIX/POSIX is an interger, not unsigned short
 
 
 [v2.4.3][] - 2018-11-06
