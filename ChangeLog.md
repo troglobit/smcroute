@@ -3,7 +3,7 @@ ChangeLog
 
 All notable changes to the project are documented in this file.
 
-[v2.4.4][] - 2019-02-xx
+[v2.4.4][] - 2019-02-11
 -----------------------
 
 ### Changes
