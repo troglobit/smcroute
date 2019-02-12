@@ -29,6 +29,7 @@
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 
 #include "ipc.h"
@@ -119,6 +120,8 @@ int ipc_init(void)
 		socket_close(sd);
 		return -1;
 	}
+
+	chmod(sun.sun_path, 0777);
 
 	return sd;
 }
