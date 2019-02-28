@@ -488,7 +488,8 @@ static int is_exact_match4(struct mroute4 *a, struct mroute4 *b)
  */
 static int is_match4(struct mroute4 *rule, struct mroute4 *cand)
 {
-	uint32_t g1, g2, mask;
+	uint32_t addr1, addr2, mask;
+	int ret = 0;
 
 	if (rule->inbound != cand->inbound)
 		return 0;
@@ -498,10 +499,24 @@ static int is_match4(struct mroute4 *rule, struct mroute4 *cand)
 	else
 		mask = 0xFFFFFFFFu;
 	mask = htonl(mask);
-	g1 = rule->group.s_addr & mask;
-	g2 = cand->group.s_addr & mask;
+	addr1 = rule->group.s_addr & mask;
+	addr2 = cand->group.s_addr & mask;
 
-	return g1 == g2;
+	ret = (addr1 == addr2);
+
+	if (!ret || rule->source.s_addr == htonl(INADDR_ANY)) {
+		return ret;
+	}
+
+	if (rule->src_len > 0)
+		mask = 0xFFFFFFFFu << (32 - rule->src_len);
+	else
+		mask = 0xFFFFFFFFu;
+	mask = htonl(mask);
+	addr1 = rule->source.s_addr & mask;
+	addr2 = cand->source.s_addr & mask;
+
+	return ret && (addr1 == addr2);
 }
 
 /**
