@@ -1219,17 +1219,24 @@ static int show_mroute(int sd, struct mroute4 *r, int detail)
 {
 	int vif;
 	char src[INET_ADDRSTRLEN] = "*";
+	char src_len[4] = "";
 	char grp[INET_ADDRSTRLEN];
-	char sg[INET_ADDRSTRLEN * 2 + 5];
+	char grp_len[4] = "";
+	char sg[(INET_ADDRSTRLEN+3) * 2 + 5];
 	char buf[MAX_MC_VIFS * 17 + 80];
 	struct iface *i;
 
-	if (r->source.s_addr != htonl(INADDR_ANY))
+	if (r->source.s_addr != htonl(INADDR_ANY)) {
 		inet_ntop(AF_INET, &r->source, src, sizeof(src));
+		if (r->src_len)
+			snprintf(src_len, sizeof(src_len), "/%u", r->src_len);
+	}
 	inet_ntop(AF_INET, &r->group, grp, sizeof(grp));
+	if (r->len)
+		snprintf(grp_len, sizeof(grp_len), "/%u", r->len);
 
 	i = iface_find_by_vif(r->inbound);
-	snprintf(sg, sizeof(sg), "(%s, %s)", src, grp);
+	snprintf(sg, sizeof(sg), "(%s%s, %s%s)", src, src_len, grp, grp_len);
 	snprintf(buf, sizeof(buf), "%-34s %-16s", sg, i->name);
 
 	if (detail) {
