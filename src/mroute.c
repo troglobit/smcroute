@@ -758,7 +758,7 @@ int mroute4_add(struct mroute4 *route)
 	 * For (*,G) we save to a linked list to be added on-demand when
 	 * the kernel sends IGMPMSG_NOCACHE.
 	 */
-	if (route->source.s_addr == htonl(INADDR_ANY)) {
+	if (!is_mroute4_static(route)) {
 		struct mroute4 *dyn, *tmp;
 
 		LIST_INSERT_HEAD(&mroute4_conf_list, entry, link);
@@ -817,7 +817,7 @@ int mroute4_del(struct mroute4 *route)
 {
 	struct mroute4 *entry, *set, *tmp;
 
-	if (route->source.s_addr != htonl(INADDR_ANY)) {
+	if (is_mroute4_static(route)) {
 		LIST_FOREACH_SAFE(entry, &mroute4_static_list, link, tmp) {
 			if (!is_exact_match4(entry, route))
 				continue;
@@ -841,7 +841,8 @@ int mroute4_del(struct mroute4 *route)
 	LIST_FOREACH_SAFE(entry, &mroute4_conf_list, link, tmp) {
 		int ret = 0;
 
-		if (!is_match4(entry, route) || entry->len != route->len)
+		if (!is_match4(entry, route) || entry->len != route->len ||
+		    entry->src_len != route->src_len)
 			continue;
 
 		/* Remove all (S,G) routes spawned from the (*,G) as well ... */
