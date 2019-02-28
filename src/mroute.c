@@ -703,7 +703,8 @@ static struct mroute4 *mroute4_similar(struct mroute4 *route)
 	LIST_FOREACH(entry, &mroute4_static_list, link) {
 		if (entry->source.s_addr == route->source.s_addr &&
 		    entry->group.s_addr  == route->group.s_addr  &&
-		    entry->len           == route->len)
+		    entry->len           == route->len &&
+		    entry->src_len       == route->src_len)
 			return entry;
 	}
 
