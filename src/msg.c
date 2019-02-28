@@ -119,7 +119,7 @@ static int do_mroute4(struct ipc_msg *msg)
 
 	iface_match_init(&state_in);
 	while (1) {
-		int len, pos = 0, vif;
+		int len, src_len, pos = 0, vif;
 		struct mroute4 mroute;
 		struct ifmatch state_out;
 		struct in_addr src, grp;
@@ -131,7 +131,12 @@ static int do_mroute4(struct ipc_msg *msg)
 		memset(&mroute, 0, sizeof(mroute));
 		mroute.inbound = vif;
 
-		len = is_range(msg->argv[pos]);
+		src_len = is_range(msg->argv[pos]);
+		if (src_len && (src_len < 0 || src_len > 32)) {
+			smclog(LOG_DEBUG, "Invalid prefix length (/LEN), must be 0-32");
+			return 1;
+		}
+
 		if (inet_pton(AF_INET, msg->argv[pos++], &src) <= 0) {
 			smclog(LOG_DEBUG, "Invalid IPv4 source or group address");
 			return 1;
@@ -150,17 +155,15 @@ static int do_mroute4(struct ipc_msg *msg)
 			}
 		} else {
 			grp = src;
+			len = src_len;
+			src_len = 0;
 			src.s_addr = htonl(INADDR_ANY);
 		}
 
+		mroute.src_len = src_len;
 		mroute.source  = src;
 		mroute.len     = len;
 		mroute.group   = grp;
-
-		if (len && mroute.source.s_addr != htonl(INADDR_ANY)) {
-			smclog(LOG_DEBUG, "GROUP/LEN not yet supported for source specific multicast routes.");
-			return 1;
-		}
 
 		/*
 		 * Scan output interfaces for the 'add' command only, just
