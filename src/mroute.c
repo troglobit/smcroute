@@ -519,6 +519,12 @@ static int is_match4(struct mroute4 *rule, struct mroute4 *cand)
 	return ret && (addr1 == addr2);
 }
 
+static int is_mroute4_static(struct mroute4 *route)
+{
+	return route->source.s_addr != htonl(INADDR_ANY) &&
+	       route->src_len == 0 && route->len == 0;
+}
+
 /**
  * mroute4_dyn_add - Add route to kernel if it matches a known (*,G) route.
  * @route: Pointer to candidate struct mroute4 IPv4 multicast route
