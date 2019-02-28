@@ -65,6 +65,7 @@ struct mroute4 {
 	struct in_addr source;
 	struct in_addr group;           /* multicast group */
 	short          len;		/* prefix len, or 0:disabled */
+	short          src_len;         /* source prefix len, or 0:disabled */
 
 	short          inbound;         /* incoming VIF    */
 	uint8_t        ttl[MAX_MC_VIFS];/* outgoing VIFs   */

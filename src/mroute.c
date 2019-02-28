@@ -488,7 +488,8 @@ static int is_exact_match4(struct mroute4 *a, struct mroute4 *b)
  */
 static int is_match4(struct mroute4 *rule, struct mroute4 *cand)
 {
-	uint32_t g1, g2, mask;
+	uint32_t addr1, addr2, mask;
+	int ret = 0;
 
 	if (rule->inbound != cand->inbound)
 		return 0;
@@ -498,10 +499,30 @@ static int is_match4(struct mroute4 *rule, struct mroute4 *cand)
 	else
 		mask = 0xFFFFFFFFu;
 	mask = htonl(mask);
-	g1 = rule->group.s_addr & mask;
-	g2 = cand->group.s_addr & mask;
+	addr1 = rule->group.s_addr & mask;
+	addr2 = cand->group.s_addr & mask;
 
-	return g1 == g2;
+	ret = (addr1 == addr2);
+
+	if (!ret || rule->source.s_addr == htonl(INADDR_ANY)) {
+		return ret;
+	}
+
+	if (rule->src_len > 0)
+		mask = 0xFFFFFFFFu << (32 - rule->src_len);
+	else
+		mask = 0xFFFFFFFFu;
+	mask = htonl(mask);
+	addr1 = rule->source.s_addr & mask;
+	addr2 = cand->source.s_addr & mask;
+
+	return ret && (addr1 == addr2);
+}
+
+static int is_mroute4_static(struct mroute4 *route)
+{
+	return route->source.s_addr != htonl(INADDR_ANY) &&
+	       route->src_len == 0 && route->len == 0;
 }
 
 /**
@@ -688,7 +709,8 @@ static struct mroute4 *mroute4_similar(struct mroute4 *route)
 	LIST_FOREACH(entry, &mroute4_static_list, link) {
 		if (entry->source.s_addr == route->source.s_addr &&
 		    entry->group.s_addr  == route->group.s_addr  &&
-		    entry->len           == route->len)
+		    entry->len           == route->len &&
+		    entry->src_len       == route->src_len)
 			return entry;
 	}
 
@@ -736,7 +758,7 @@ int mroute4_add(struct mroute4 *route)
 	 * For (*,G) we save to a linked list to be added on-demand when
 	 * the kernel sends IGMPMSG_NOCACHE.
 	 */
-	if (route->source.s_addr == htonl(INADDR_ANY)) {
+	if (!is_mroute4_static(route)) {
 		struct mroute4 *dyn, *tmp;
 
 		LIST_INSERT_HEAD(&mroute4_conf_list, entry, link);
@@ -795,7 +817,7 @@ int mroute4_del(struct mroute4 *route)
 {
 	struct mroute4 *entry, *set, *tmp;
 
-	if (route->source.s_addr != htonl(INADDR_ANY)) {
+	if (is_mroute4_static(route)) {
 		LIST_FOREACH_SAFE(entry, &mroute4_static_list, link, tmp) {
 			if (!is_exact_match4(entry, route))
 				continue;
@@ -819,7 +841,8 @@ int mroute4_del(struct mroute4 *route)
 	LIST_FOREACH_SAFE(entry, &mroute4_conf_list, link, tmp) {
 		int ret = 0;
 
-		if (!is_match4(entry, route) || entry->len != route->len)
+		if (!is_match4(entry, route) || entry->len != route->len ||
+		    entry->src_len != route->src_len)
 			continue;
 
 		/* Remove all (S,G) routes spawned from the (*,G) as well ... */
@@ -1196,17 +1219,24 @@ static int show_mroute(int sd, struct mroute4 *r, int detail)
 {
 	int vif;
 	char src[INET_ADDRSTRLEN] = "*";
+	char src_len[4] = "";
 	char grp[INET_ADDRSTRLEN];
-	char sg[INET_ADDRSTRLEN * 2 + 5];
+	char grp_len[4] = "";
+	char sg[(INET_ADDRSTRLEN+3) * 2 + 5];
 	char buf[MAX_MC_VIFS * 17 + 80];
 	struct iface *i;
 
-	if (r->source.s_addr != htonl(INADDR_ANY))
+	if (r->source.s_addr != htonl(INADDR_ANY)) {
 		inet_ntop(AF_INET, &r->source, src, sizeof(src));
+		if (r->src_len)
+			snprintf(src_len, sizeof(src_len), "/%u", r->src_len);
+	}
 	inet_ntop(AF_INET, &r->group, grp, sizeof(grp));
+	if (r->len)
+		snprintf(grp_len, sizeof(grp_len), "/%u", r->len);
 
 	i = iface_find_by_vif(r->inbound);
-	snprintf(sg, sizeof(sg), "(%s, %s)", src, grp);
+	snprintf(sg, sizeof(sg), "(%s%s, %s%s)", src, src_len, grp, grp_len);
 	snprintf(buf, sizeof(buf), "%-34s %-16s", sg, i->name);
 
 	if (detail) {

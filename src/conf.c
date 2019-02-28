@@ -204,18 +204,26 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 
 		if (!source) {
 			mroute.source.s_addr = htonl(INADDR_ANY);
-		} else if (inet_pton(AF_INET, source, &mroute.source) <= 0) {
-			WARN("Invalid source IPv4 address: %s", source);
-			return 1;
+		} else {
+			ptr = strchr(source, '/');
+			if (ptr) {
+				*ptr++ = 0;
+				mroute.src_len = atoi(ptr);
+				if (mroute.src_len < 0 || mroute.src_len > 32) {
+					WARN("Invalid prefix length, %s/%d", source, mroute.src_len);
+					return 1;
+				}
+			}
+
+			if (inet_pton(AF_INET, source, &mroute.source) <= 0) {
+				WARN("Invalid source IPv4 address: %s", source);
+				return 1;
+			}
 		}
+
 
 		ptr = strchr(group, '/');
 		if (ptr) {
-			if (mroute.source.s_addr != htonl(INADDR_ANY)) {
-				WARN("GROUP/LEN not yet supported for source specific multicast.");
-				return 1;
-			}
-
 			*ptr++ = 0;
 			mroute.len = atoi(ptr);
 			if (mroute.len < 0 || mroute.len > 32) {
