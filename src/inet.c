@@ -34,6 +34,7 @@
 #include "mrdisc.h"
 #include "socket.h"
 
+#define MC_ALL_ROUTERS       "224.0.0.2"
 #define MC_ALL_SNOOPERS      "224.0.0.106"
 
 /* Checksum routine for Internet Protocol family headers */
@@ -98,6 +99,14 @@ int inet_open(char *ifname)
 
 	memset(&mreq, 0, sizeof(mreq));
 	mreq.imr_multiaddr.s_addr = inet_addr(MC_ALL_SNOOPERS);
+	mreq.imr_ifindex = if_nametoindex(ifname);
+        if (setsockopt(sd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq))) {
+		smclog(LOG_ERR, "Failed joining group %s: %s", MC_ALL_SNOOPERS);
+		return -1;
+	}
+
+	/* mrdisc solicitation messages goes to the All-Routers group */
+	mreq.imr_multiaddr.s_addr = inet_addr(MC_ALL_ROUTERS);
 	mreq.imr_ifindex = if_nametoindex(ifname);
         if (setsockopt(sd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq))) {
 		smclog(LOG_ERR, "Failed joining group %s: %s", MC_ALL_SNOOPERS);
