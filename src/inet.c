@@ -132,7 +132,7 @@ int inet_open(char *ifname)
 
 int inet_close(int sd)
 {
-	return  inet_send(sd, IGMP_MRDISC_TERM, 0) || 
+	return  inet_send(sd, IGMP_MRDISC_TERM, 0) ||
 		socket_close(sd);
 }
 
