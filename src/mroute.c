@@ -833,6 +833,7 @@ int mroute4_del(struct mroute4 *route)
 			return do_mroute4_del(entry);
 		}
 
+		smclog(LOG_NOTICE, "Cannot delete multicast route: not found");
 		errno = ENOENT;
 		return -1;
 	}
@@ -861,6 +862,7 @@ int mroute4_del(struct mroute4 *route)
 		return ret;
 	}
 
+	smclog(LOG_NOTICE, "Cannot delete multicast route: not found");
 	errno = ENOENT;
 	return -1;
 }
