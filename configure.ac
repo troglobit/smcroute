@@ -125,7 +125,12 @@ LIBS=$old_LIBS
 AC_SEARCH_LIBS([cap_set_flag], [cap],, ac_cv_header_sys_capability_h=no)
 LIBS=$old_LIBS
 
-# Check for Linux-style extension struct ip_mreqn
+# Check for RFC 3678-style struct group_req (Linux, FreeBSD, Solaris, macOS, AIX)
+AC_CHECK_MEMBER([struct group_req.gr_interface],
+	AC_DEFINE([HAVE_STRUCT_GROUP_REQ], [1], [Define to 1 if you have RFC 3678 struct group_req]),
+	[], [[#include <netinet/in.h>]])
+
+# Check for Linux-style extension struct ip_mreqn (Linux, FreeBSD)
 AC_CHECK_MEMBER([struct ip_mreqn.imr_ifindex],
 	AC_DEFINE([HAVE_STRUCT_IP_MREQN], [1], [Define to 1 if you have a Linux-style struct ip_mreqn]),
 	[], [[#include <netinet/in.h>]])
