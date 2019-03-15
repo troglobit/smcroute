@@ -153,8 +153,7 @@ void iface_refresh(void *arg)
 	if (!iface_update(1))
 		return;
 
-	if (mcgroup_refresh())
-		timer_del(iface_refresh, arg);
+	mcgroup_refresh();
 }
 
 /**
