@@ -70,7 +70,8 @@ int iface_update(int refresh)
 
 	for (ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
 		/* Check if already added? */
-		if ((iface = iface_find_by_name(ifa->ifa_name))) {
+		iface = iface_find_by_name(ifa->ifa_name);
+		if (iface) {
 			if (!iface->inaddr.s_addr && ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET) {
 				iface->inaddr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
 				change = 1;
