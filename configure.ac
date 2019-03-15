@@ -128,7 +128,7 @@ LIBS=$old_LIBS
 # Check for Linux-style extension struct ip_mreqn
 AC_CHECK_MEMBER([struct ip_mreqn.imr_ifindex],
 	AC_DEFINE([HAVE_STRUCT_IP_MREQN], [1], [Define to 1 if you have a Linux-style struct ip_mreqn]),
-	[], [[#include <netinet/ip.h>]])
+	[], [[#include <netinet/in.h>]])
 
 # Check for IPv4 support
 AC_CHECK_MROUTE()
