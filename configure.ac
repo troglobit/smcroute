@@ -36,8 +36,10 @@ AC_CHECK_FUNCS([atexit dup2 memset select socket strchr strerror strrchr asprint
 AC_REPLACE_FUNCS([strlcpy strlcat utimensat])
 AC_CONFIG_LIBOBJ_DIR([lib])
 
-# Check for sun_len in struct sockaddr_un
+# Check for sun_len in struct sockaddr_un and sin_len in sockaddr_in
+# These are used on *BSD UNIX and don't exist on Linux
 AC_CHECK_SUN_LEN()
+AC_CHECK_SIN_LEN()
 
 # Check user options
 AC_ARG_ENABLE([mrdisc],
