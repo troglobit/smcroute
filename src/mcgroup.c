@@ -250,7 +250,6 @@ static int join_leave_ssm_ipv4(int sd, int cmd, struct iface *iface, struct in_a
 #ifdef HAVE_STRUCT_GROUP_REQ	/* Prefer RFC 3678 */
 	struct sockaddr_in sin_source, sin_group;
 
-	smclog(LOG_ERR, "We have signal");
 	sin_source.sin_family = AF_INET;
 	sin_source.sin_addr = source;
 #ifdef HAVE_SOCKADDR_IN_SIN_LEN
