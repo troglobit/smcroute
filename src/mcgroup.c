@@ -119,7 +119,6 @@ static void list_rem(struct iface *iface, struct in_addr source, struct in_addr 
 	}
 }
 
-
 static void mcgroup4_init(void)
 {
 	if (mcgroup4_socket < 0) {
@@ -136,8 +135,77 @@ static void mcgroup4_init(void)
 	}
 }
 
+#ifdef HAVE_STRUCT_GROUP_REQ
+/*
+ * This function handles both ASM and SSM join/leave for IPv4 and IPv6
+ * using the RFC 3678 API available on Linux, FreeBSD, and a few other
+ * operating systems.
+ *
+ * On Linux this makes it possible to join a group on an interface that
+ * is down and/or has no IP address assigned to it yet.  The latter is
+ * one of the most common causes of malfunction on Linux and IPv4 with
+ * the old struct ip_mreq API.
+ */
+static int join_leave(int sd, int cmd, struct iface *iface, void *src, void *grp)
+{
+	struct sockaddr_storage *source = (struct sockaddr_storage *)src;
+	struct sockaddr_storage *group = (struct sockaddr_storage *)grp;
+	struct group_source_req gsr;
+	struct group_req gr;
+	size_t len;
+	void *arg;
+	int op;
+
+	if (!cmd)
+		cmd = 'j';
+
+	if (!source) {
+		if (cmd == 'j')	op = MCAST_JOIN_GROUP;
+		else		op = MCAST_LEAVE_GROUP;
+
+		gr.gr_interface    = iface->ifindex;
+		gr.gr_group        = *group;
+
+		arg                = &gr;
+		len                = sizeof(gr);
+	} else {
+		if (cmd == 'j')	op = MCAST_JOIN_SOURCE_GROUP;
+		else		op = MCAST_LEAVE_SOURCE_GROUP;
+
+		gsr.gsr_interface  = iface->ifindex;
+		gsr.gsr_source     = *source;
+		gsr.gsr_group      = *group;
+
+		arg                = &gsr;
+		len                = sizeof(gsr);
+	}
+
+	return setsockopt(sd, IPPROTO_IP, op, arg, len);
+}
+#endif
+
 static int join_leave_ipv4(int sd, int cmd, struct iface *iface, struct in_addr group)
 {
+#ifdef HAVE_STRUCT_GROUP_REQ	/* Prefer RFC 3678 */
+	struct sockaddr_in sin;
+
+	sin.sin_family = AF_INET;
+	sin.sin_addr = group;
+#ifdef HAVE_SOCKADDR_IN_SIN_LEN
+	sin.sin_len = sizeof(struct sockaddr_in);
+#endif
+
+	if (join_leave(sd, cmd, iface, NULL, &sin)) {
+		char grp[16];
+
+		inet_ntop(AF_INET, &group, grp, sizeof(grp));
+		smclog(LOG_ERR, "Failed joining group %s on %s: %s", grp, iface->name, strerror(errno));
+
+		return 1;
+	}
+
+	return 0;
+#else
 	struct ip_mreq mreq;
 	int opt, retry = 0;
 
@@ -174,10 +242,39 @@ static int join_leave_ipv4(int sd, int cmd, struct iface *iface, struct in_addr 
 	}
 
 	return 0;
+#endif
 }
 
 static int join_leave_ssm_ipv4(int sd, int cmd, struct iface *iface, struct in_addr source, struct in_addr group)
 {
+#ifdef HAVE_STRUCT_GROUP_REQ	/* Prefer RFC 3678 */
+	struct sockaddr_in sin_source, sin_group;
+
+	smclog(LOG_ERR, "We have signal");
+	sin_source.sin_family = AF_INET;
+	sin_source.sin_addr = source;
+#ifdef HAVE_SOCKADDR_IN_SIN_LEN
+	sin_source.sin_len = sizeof(struct sockaddr_in);
+#endif
+	sin_group.sin_family = AF_INET;
+	sin_group.sin_addr = group;
+#ifdef HAVE_SOCKADDR_IN_SIN_LEN
+	sin_group.sin_len = sizeof(struct sockaddr_in);
+#endif
+
+	if (join_leave(sd, cmd, iface, &sin_source, &sin_group)) {
+		char src[16], grp[16];
+
+		inet_ntop(AF_INET, &source, src, sizeof(src));
+		inet_ntop(AF_INET, &group, grp, sizeof(grp));
+		smclog(LOG_ERR, "Failed joining (S,G) %s,%s on %s: %s",
+		       src, grp, iface->name, strerror(errno));
+
+		return 1;
+	}
+
+	return 0;
+#else
 	struct ip_mreq_source mreqsrc;
 	int opt, retry = 0;
 
@@ -217,6 +314,7 @@ static int join_leave_ssm_ipv4(int sd, int cmd, struct iface *iface, struct in_a
 	}
 
 	return 0;
+#endif
 }
 
 static int mcgroup_join_leave_ipv4(int sd, int cmd, const char *ifname, struct in_addr group)
