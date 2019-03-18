@@ -313,12 +313,12 @@ static int usage(int code)
 	}
 
 	printf("\nArguments:\n"
-	       "         <-------- INBOUND --------->  <--- OUTBOUND ---->\n"
-	       "  add    IFNAME [SOURCE-IP] GROUP/LEN  IFNAME [IFNAME ...]\n"
-	       "  remove IFNAME [SOURCE-IP] GROUP/LEN\n"
+	       "         <--------- INBOUND ---------->  <--- OUTBOUND ---->\n"
+	       "  add    IFNAME [SOURCE-IP] GROUP[/LEN]  IFNAME [IFNAME ...]\n"
+	       "  remove IFNAME [SOURCE-IP] GROUP[/LEN]\n"
 	       "\n"
-	       "  join   IFNAME [SOURCE-IP] GROUP\n"
-	       "  leave  IFNAME [SOURCE-IP] GROUP\n"
+	       "  join   IFNAME [SOURCE-IP] GROUP[/LEN]\n"
+	       "  leave  IFNAME [SOURCE-IP] GROUP[/LEN]\n"
 	       "\n"
 	       "  show   [groups|routes]\n"
 	       "\n"

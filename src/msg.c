@@ -29,6 +29,7 @@
 #include "log.h"
 #include "msg.h"
 #include "ifvc.h"
+#include "util.h"
 #include "mroute.h"
 #include "mcgroup.h"
 
@@ -36,30 +37,54 @@ extern volatile sig_atomic_t running;
 extern volatile sig_atomic_t reloading;
 
 
-static int do_mgroup4(struct ipc_msg *msg)
+/*
+ * Check for prefix length, only applicable for (*,G) routes
+ */
+static int is_range(char *arg)
 {
-	int ret = 0;
-	char *ifname = msg->argv[0];
-	struct in_addr src, grp;
+	char *ptr;
 
-	if (msg->count == 3) {
-		ret += inet_pton(AF_INET, msg->argv[1], &src);
-		ret += inet_pton(AF_INET, msg->argv[2], &grp);
-	} else {
-		src.s_addr = htonl(INADDR_ANY);
-		ret  = 1;
-		ret += inet_pton(AF_INET, msg->argv[1], &grp);
+	ptr = strchr(arg, '/');
+	if (ptr) {
+		*ptr++ = 0;
+		return atoi(ptr);
 	}
 
+	return 0;
+}
+
+static int do_mgroup4(struct ipc_msg *msg)
+{
+	struct in_addr src, grp;
+	char *ifname = msg->argv[0];
+	char group[20];
+	int len, ret = 0;
+
+	if (msg->count == 3) {
+		strlcpy(group, msg->argv[2], sizeof(group));
+		ret += inet_pton(AF_INET, msg->argv[1], &src);
+	} else {
+		strlcpy(group, msg->argv[1], sizeof(group));
+		src.s_addr = htonl(INADDR_ANY);
+		ret = 1;
+	}
+
+	len = is_range(group);
+	if (len < 0 || len > 32) {
+		smclog(LOG_DEBUG, "Invalid IPv4 group prefix length (0-32): %d", len);
+		return 1;
+	}
+
+	ret += inet_pton(AF_INET, group, &grp);
 	if (ret < 2 || !IN_MULTICAST(ntohl(grp.s_addr))) {
 		smclog(LOG_DEBUG, "Invalid IPv4 source or group address.");
 		return 1;
 	}
 
 	if (msg->cmd == 'j')
-		return mcgroup4_join(ifname, src, grp);
+		return mcgroup4_join(ifname, src, grp, len);
 
-	return mcgroup4_leave(ifname, src, grp);
+	return mcgroup4_leave(ifname, src, grp, len);
 }
 
 static int do_mgroup6(struct ipc_msg *msg)
@@ -92,22 +117,6 @@ static int do_mgroup6(struct ipc_msg *msg)
 
 	return mcgroup6_leave(ifname, grp);
 #endif
-}
-
-/*
- * Check for prefix length, only applicable for (*,G) routes
- */
-static int is_range(char *arg)
-{
-	char *ptr;
-
-	ptr = strchr(arg, '/');
-	if (ptr) {
-		*ptr++ = 0;
-		return atoi(ptr);
-	}
-
-	return 0;
 }
 
 static int do_mroute4(struct ipc_msg *msg)

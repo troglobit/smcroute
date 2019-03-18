@@ -108,6 +108,8 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 	} else {
 		struct in_addr src;
 		struct in_addr grp;
+		char *ptr;
+		int len = 0;
 
 		memset(&src, 0, sizeof(src));
 
@@ -116,12 +118,23 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 			return 1;
 		}
 
+		ptr = strchr(group, '/');
+		if (ptr) {
+			*ptr++ = 0;
+			len = atoi(ptr);
+
+			if (len < 0 || len > 32) {
+				WARN("Invalid IPv4 group prefix length (0-32): %d", len);
+				return 1;
+			}
+		}
+
 		if ((inet_pton(AF_INET, group, &grp) <= 0) || !IN_MULTICAST(ntohl(grp.s_addr))) {
 			WARN("Invalid IPv4 multicast group: %s", group);
 			return 1;
 		}
 
-		result = mcgroup4_join(ifname, src, grp);
+		result = mcgroup4_join(ifname, src, grp, len);
 	}
 
 	return result;

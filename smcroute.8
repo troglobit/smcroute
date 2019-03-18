@@ -29,7 +29,7 @@
 .Nm smcroutectl
 .Ao add \ | \ \ rem Ac Ao IFNAME Ac Oo SOURCE Oc Ar GROUP[/LEN] IFNAME Op IFNAME ...
 .Nm smcroutectl
-.Ao join | leave Ac Ao IFNAME Ac Oo SOURCE Oc Ar GROUP
+.Ao join | leave Ac Ao IFNAME Ac Oo SOURCE Oc Ar GROUP[/LEN]
 .Sh DESCRIPTION
 .Nm
 is both a daemon and command line tool to manipulate the multicast
@@ -251,12 +251,14 @@ works in the daemon, this client command initiates an immediate flush of
 all dynamically set (*,G) routes.  Useful when a topology change has
 been detected and need to be propagated to
 .Nm smcrouted.
-.It Nm join Ar IFNAME [SOURCE] GROUP
-Join a multicast group on a given interface.  The source address is
-optional, but if given a source specific (SSM) join is performed.
-.It Nm leave Ar IFNAME [SOURCE] GROUP
-Leave a multicast group on a given interface.  As with the join command,
-above, the source address is optional.
+.It Nm join Ar IFNAME [SOURCE] GROUP[/LEN]
+Join a multicast group, with optional prefix length (IPv4 only), on a
+given interface.  The source address is optional, but if given a source
+specific (SSM) join is performed.
+.It Nm leave Ar IFNAME [SOURCE] GROUP[/LEN]
+Leave a multicast group, with optional prefix length (IPv4 only), on a
+given interface.  As with the join command, above, the source address is
+optional.
 .It Nm help [cmd]
 Print a usage information message.
 .It Nm kill
@@ -381,8 +383,8 @@ etc.  Wildcards are available for inbound interfaces.
 #       such capabilities.  Usually MAC multicast filters exist.
 #
 #       The UNIX kernel usually limits the number of multicast groups
-#       a socket/client can join.  In Linux, 20 mgroup lines can be
-#       configured by default, but this can be changed with sysctl:
+#       a socket/client can join.  On Linux, 20 groups can be joined
+#       by default, but this can be changed with sysctl:
 #
 #           sysctl -w net.ipv4.igmp_max_memberships=30
 #
@@ -392,7 +394,7 @@ etc.  Wildcards are available for inbound interfaces.
 #
 # Syntax:
 #   phyint IFNAME <enable|disable> [mrdisc] [ttl-threshold <1-255>]
-#   mgroup from IFNAME [source ADDRESS] group MCGROUP
+#   mgroup from IFNAME [source ADDRESS] group MCGROUP[/LEN]
 #   mroute from IFNAME [source ADDRESS] group MCGROUP[/LEN] to IFNAME [IFNAME ...]
 
 # This example disables the creation of a multicast VIF for WiFi

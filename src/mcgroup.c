@@ -45,6 +45,7 @@ struct mgroup {
 	short          inbound;
 	struct in_addr source;
 	struct in_addr group;
+	uint8_t        len;
 };
 
 /*
@@ -83,7 +84,7 @@ static struct iface *match_valid_iface(const char *ifname, struct ifmatch *state
 	return iface;
 }
 
-static void list_add(struct iface *iface, struct in_addr source, struct in_addr group, int fail)
+static void list_add(struct iface *iface, struct in_addr source, struct in_addr group, int len, int fail)
 {
 	struct mgroup *entry;
 
@@ -97,6 +98,7 @@ static void list_add(struct iface *iface, struct in_addr source, struct in_addr 
 	entry->inbound = iface->vif;
 	entry->source  = source;
 	entry->group   = group;
+	entry->len     = len;
 
 	if (fail)
 		LIST_INSERT_HEAD(&mgroup_retry_list, entry, link);
@@ -104,14 +106,15 @@ static void list_add(struct iface *iface, struct in_addr source, struct in_addr 
  		LIST_INSERT_HEAD(&mgroup_static_list, entry, link);
 }
 
-static void list_rem(struct iface *iface, struct in_addr source, struct in_addr group)
+static void list_rem(struct iface *iface, struct in_addr source, struct in_addr group, int len)
 {
 	struct mgroup *entry, *tmp;
 
 	LIST_FOREACH_SAFE(entry, &mgroup_static_list, link, tmp) {
 		if (entry->inbound       != iface->vif    ||
 		    entry->source.s_addr != source.s_addr ||
-		    entry->group.s_addr  != group.s_addr)
+		    entry->group.s_addr  != group.s_addr  ||
+		    entry->len           != len)
 			continue;
 
 		LIST_REMOVE(entry, link);
@@ -184,27 +187,39 @@ static int join_leave(int sd, int cmd, struct iface *iface, void *src, void *grp
 }
 #endif
 
-static int join_leave_ipv4(int sd, int cmd, struct iface *iface, struct in_addr group)
+static int join_leave_ipv4(int sd, int cmd, struct iface *iface, struct in_addr group, int len)
 {
 #ifdef HAVE_STRUCT_GROUP_REQ	/* Prefer RFC 3678 */
 	struct sockaddr_in sin;
+	uint32_t addr, addr_max, mask;
+	char grp[16];
 
-	sin.sin_family = AF_INET;
-	sin.sin_addr = group;
+	if (len > 0)
+		mask = 0xFFFFFFFFu << (32 - len);
+	else
+		mask = 0xFFFFFFFFu;
+
+	addr = ntohl(group.s_addr) & mask;
+	addr_max = addr | ~mask;
+
+	while (addr <= addr_max) {
+		group.s_addr = htonl(addr++);
+
+		sin.sin_family = AF_INET;
+		sin.sin_addr = group;
 #ifdef HAVE_SOCKADDR_IN_SIN_LEN
-	sin.sin_len = sizeof(struct sockaddr_in);
+		sin.sin_len = sizeof(struct sockaddr_in);
 #endif
-
-	if (join_leave(sd, cmd, iface, NULL, &sin)) {
-		char grp[16];
-
-		inet_ntop(AF_INET, &group, grp, sizeof(grp));
-		smclog(LOG_ERR, "Failed joining group %s on %s: %s", grp, iface->name, strerror(errno));
-
-		return 1;
+		if (join_leave(sd, cmd, iface, NULL, &sin))
+			goto error;
 	}
 
 	return 0;
+error:
+	inet_ntop(AF_INET, &group, grp, sizeof(grp));
+	smclog(LOG_ERR, "Failed join/leave group %s on %s: %s", grp, iface->name, strerror(errno));
+
+	return 1;
 #else
 	struct ip_mreq mreq;
 	int opt, retry = 0;
@@ -245,34 +260,47 @@ static int join_leave_ipv4(int sd, int cmd, struct iface *iface, struct in_addr 
 #endif
 }
 
-static int join_leave_ssm_ipv4(int sd, int cmd, struct iface *iface, struct in_addr source, struct in_addr group)
+static int join_leave_ssm_ipv4(int sd, int cmd, struct iface *iface, struct in_addr source, struct in_addr group, int len)
 {
 #ifdef HAVE_STRUCT_GROUP_REQ	/* Prefer RFC 3678 */
 	struct sockaddr_in sin_source, sin_group;
+	uint32_t addr, addr_max, mask;
+	char src[16], grp[16];
 
 	sin_source.sin_family = AF_INET;
 	sin_source.sin_addr = source;
 #ifdef HAVE_SOCKADDR_IN_SIN_LEN
 	sin_source.sin_len = sizeof(struct sockaddr_in);
 #endif
-	sin_group.sin_family = AF_INET;
-	sin_group.sin_addr = group;
+
+	if (len > 0)
+		mask = 0xFFFFFFFFu << (32 - len);
+	else
+		mask = 0xFFFFFFFFu;
+
+	addr = ntohl(group.s_addr) & mask;
+	addr_max = addr | ~mask;
+
+	while (addr <= addr_max) {
+		group.s_addr = htonl(addr++);
+
+		sin_group.sin_family = AF_INET;
+		sin_group.sin_addr = group;
 #ifdef HAVE_SOCKADDR_IN_SIN_LEN
-	sin_group.sin_len = sizeof(struct sockaddr_in);
+		sin_group.sin_len = sizeof(struct sockaddr_in);
 #endif
-
-	if (join_leave(sd, cmd, iface, &sin_source, &sin_group)) {
-		char src[16], grp[16];
-
-		inet_ntop(AF_INET, &source, src, sizeof(src));
-		inet_ntop(AF_INET, &group, grp, sizeof(grp));
-		smclog(LOG_ERR, "Failed joining (S,G) %s,%s on %s: %s",
-		       src, grp, iface->name, strerror(errno));
-
-		return 1;
+		if (join_leave(sd, cmd, iface, &sin_source, &sin_group))
+			goto error;
 	}
 
 	return 0;
+error:
+	inet_ntop(AF_INET, &source, src, sizeof(src));
+	inet_ntop(AF_INET, &group, grp, sizeof(grp));
+	smclog(LOG_ERR, "Failed joining (S,G) %s,%s on %s: %s",
+	       src, grp, iface->name, strerror(errno));
+
+	return 1;
 #else
 	struct ip_mreq_source mreqsrc;
 	int opt, retry = 0;
@@ -316,7 +344,7 @@ static int join_leave_ssm_ipv4(int sd, int cmd, struct iface *iface, struct in_a
 #endif
 }
 
-static int mcgroup_join_leave_ipv4(int sd, int cmd, const char *ifname, struct in_addr group)
+static int mcgroup_join_leave_ipv4(int sd, int cmd, const char *ifname, struct in_addr group, int len)
 {
 	struct ifmatch state;
 	struct in_addr any_src;
@@ -326,12 +354,12 @@ static int mcgroup_join_leave_ipv4(int sd, int cmd, const char *ifname, struct i
 	any_src.s_addr = htonl(INADDR_ANY);
 	iface_match_init(&state);
 	while ((iface = match_valid_iface(ifname, &state))) {
-		ret += join_leave_ipv4(sd, cmd, iface, group);
+		ret += join_leave_ipv4(sd, cmd, iface, group, len);
 
 		if (cmd == 'j')
-			list_add(iface, any_src, group, ret);
+			list_add(iface, any_src, group, len, ret);
 		else
-			list_rem(iface, any_src, group);
+			list_rem(iface, any_src, group, len);
 	}
 
 	if (!state.match_count)
@@ -340,11 +368,11 @@ static int mcgroup_join_leave_ipv4(int sd, int cmd, const char *ifname, struct i
 		return ret;
 }
 
-static int mcgroup_join_leave_ssm_ipv4(int sd, int cmd, const char *ifname, struct in_addr source, struct in_addr group)
+static int mcgroup_join_leave_ssm_ipv4(int sd, int cmd, const char *ifname, struct in_addr source, struct in_addr group, int len)
 {
 #ifndef IP_ADD_SOURCE_MEMBERSHIP
 	smclog(LOG_WARNING, "Source specific join/leave not supported, ignoring source %s", inet_ntoa(source));
-	return mcgroup_join_leave_ipv4(sd, cmd, ifname, group);
+	return mcgroup_join_leave_ipv4(sd, cmd, ifname, group, len);
 #else
 	struct iface *iface;
 	struct ifmatch state;
@@ -352,12 +380,12 @@ static int mcgroup_join_leave_ssm_ipv4(int sd, int cmd, const char *ifname, stru
 
 	iface_match_init(&state);
 	while ((iface = match_valid_iface(ifname, &state))) {
-		ret += join_leave_ssm_ipv4(sd, cmd, iface, source, group);
+		ret += join_leave_ssm_ipv4(sd, cmd, iface, source, group, len);
 
 		if (cmd == 'j')
-			list_add(iface, source, group, ret);
+			list_add(iface, source, group, len, ret);
 		else
-			list_rem(iface, source, group);
+			list_rem(iface, source, group, len);
 	}
 
 	if (!state.match_count)
@@ -375,14 +403,14 @@ static int mcgroup_join_leave_ssm_ipv4(int sd, int cmd, const char *ifname, stru
  * returns: - 0 if the function succeeds
  *          - 1 if parameters are wrong or the join fails
  */
-int mcgroup4_join(const char *ifname, struct in_addr source, struct in_addr group)
+int mcgroup4_join(const char *ifname, struct in_addr source, struct in_addr group, int len)
 {
 	mcgroup4_init();
 
 	if (!source.s_addr)
-		return mcgroup_join_leave_ipv4(mcgroup4_socket, 'j', ifname, group);
+		return mcgroup_join_leave_ipv4(mcgroup4_socket, 'j', ifname, group, len);
 
-	return mcgroup_join_leave_ssm_ipv4(mcgroup4_socket, 'j', ifname, source, group);
+	return mcgroup_join_leave_ssm_ipv4(mcgroup4_socket, 'j', ifname, source, group, len);
 }
 
 /*
@@ -391,14 +419,14 @@ int mcgroup4_join(const char *ifname, struct in_addr source, struct in_addr grou
  * returns: - 0 if the function succeeds
  *          - 1 if parameters are wrong or the join fails
  */
-int mcgroup4_leave(const char *ifname, struct in_addr source, struct in_addr group)
+int mcgroup4_leave(const char *ifname, struct in_addr source, struct in_addr group, int len)
 {
 	mcgroup4_init();
 
 	if (!source.s_addr)
-		return mcgroup_join_leave_ipv4(mcgroup4_socket, 'l', ifname, group);
+		return mcgroup_join_leave_ipv4(mcgroup4_socket, 'l', ifname, group, len);
 
-	return mcgroup_join_leave_ssm_ipv4(mcgroup4_socket, 'l', ifname, source, group);
+	return mcgroup_join_leave_ssm_ipv4(mcgroup4_socket, 'l', ifname, source, group, len);
 }
 
 /*
@@ -441,9 +469,9 @@ static void mcgroup4_retry(void)
 
 		if (!memcmp(&entry->source, &any_src, sizeof(any_src))) {
 			is_any = 1;
-			rc = join_leave_ipv4(mcgroup4_socket, 0, iface, entry->group);
+			rc = join_leave_ipv4(mcgroup4_socket, 0, iface, entry->group, entry->len);
 		} else
-			rc = join_leave_ssm_ipv4(mcgroup4_socket, 0, iface, entry->source, entry->group);
+			rc = join_leave_ssm_ipv4(mcgroup4_socket, 0, iface, entry->source, entry->group, entry->len);
 		if (rc)
 			continue;
 
@@ -580,7 +608,10 @@ int mcgroup_show(int sd, int detail)
 			inet_ntop(AF_INET, &g->source, src, sizeof(src));
 		inet_ntop(AF_INET, &g->group, grp, sizeof(grp));
 
-		snprintf(sg, sizeof(sg), "(%s, %s)", src, grp);
+		if (g->len > 0)
+			snprintf(sg, sizeof(sg), "(%s, %s/%d)", src, grp, g->len);
+		else
+			snprintf(sg, sizeof(sg), "(%s, %s)", src, grp);
 		snprintf(buf, sizeof(buf), "%-34s %s\n", sg, i->name);
 
 		if (ipc_send(sd, buf, strlen(buf)) < 0) {
