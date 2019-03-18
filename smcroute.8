@@ -308,11 +308,12 @@ located on the same physical port as you run
 .Nm smcrouted
 on.  However, this feature of
 .Nm smcrouted
-is only intended as a workaround, and only 20 groups can be joined this
-way (kernel limit).  For bigger installations it is strongly recommended
-to instead address the root cause, e.g. enable multicast router ports on
-intermediate switches, or try the embedded multicast router discovery
-feature of
+is only intended as a workaround.  Some platforms impose a limit on the
+maximum number of groups that can be joined, some of these systems can
+be tuned to increase this limit.  For bigger installations it is
+strongly recommended to instead address the root cause, e.g. enable
+multicast router ports on intermediate switches, either statically or by
+enabling the multicast router discovery feature of
 .Nm smcrouted .
 .Pp
 To emulate a multicast client using
@@ -537,6 +538,8 @@ Holds the IPv6 virtual interfaces used by the active multicast routing daemon.
 Holds active IGMP joins.
 .It Pa /proc/net/igmp6
 Holds active MLD joins.
+.It Pa /proc/sys/net/ipv4/igmp_max_memberships
+Linux specific tuning of max IGMP groups/socket, default: 20
 .El
 .Pp
 .Sh SEE ALSO
