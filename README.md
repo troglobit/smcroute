@@ -71,9 +71,7 @@ something like this:
 The first line means "Join multicast group 225.1.2.3 on interface eth0".
 Useful if `eth0` is not directly connected to the source, but to a LAN
 with switches with IGMP snooping.  Joining the group opens up multicast
-for that group towards `eth0`.  Only 20 groups can be joined, for large
-setups investigate enabling multicast router ports in the switches, or
-possibly use a dynamic multicast routing protocol.
+for that group towards `eth0`.  See below Caveat for limitations.
 
 The second `mgroup` is for source specific group join, i.e. the host
 specifies that it wants packets from 192.168.1.42 and no other source.
@@ -104,6 +102,21 @@ Linux the following `iptables` command can be used to change the TTL:
 
 Some commands, like this one, must usually be run with root privileges
 or the correct set of capabilities.
+
+### Caveat
+
+On some platforms there is a limit of 20 groups per socket.  This stems
+from a limit in BSD UNIX, which also affects Linux.  The setting that
+controls this is `IP_MAX_MEMBERSHIPTS`, defined in the system header
+file `netinet/in.h`.  Linux users can tweak this with the following
+`/proc` setting:
+
+    echo 40 > /proc/sys/net/ipv4/igmp_max_memberships
+
+For large setups it is recommended to investigate enabling multicast
+router ports in the switches, either statically or by enabling support
+for multicast router discovery, RFC 4286, or possibly use a dynamic
+multicast routing protocol.
 
 
 ### Action Scripts
