@@ -593,7 +593,7 @@ void mcgroup6_disable(void)
 int mcgroup_show(int sd, int detail)
 {
 	char buf[256];
-	char sg[INET_ADDRSTRLEN * 2 + 5];
+	char sg[INET_ADDRSTRLEN * 2 + 5 + 3];
 	struct mgroup *g;
 
 	(void)detail;
