@@ -33,8 +33,12 @@
 	smclog(LOG_DEBUG, "%s:%02d: " fmt, conf, lineno, ##args)
 #define INFO(fmt, args...)			\
 	smclog(LOG_INFO, "%s:%02d: " fmt, conf, lineno, ##args)
-#define WARN(fmt, args...)			\
-	smclog(LOG_WARNING, "%s:%02d: " fmt, conf, lineno, ##args)
+#define WARN(fmt, args...) {						\
+		smclog(LOG_WARNING, "%s:%02d: " fmt, conf,		\
+		       lineno, ##args);					\
+		if (conf_vrfy)						\
+			return 1;					\
+	}
 
 static const char *conf = NULL;
 
@@ -298,9 +302,10 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
  */
 static int conf_parse(const char *file, int do_vifs)
 {
-	int lineno = 1;
-	char *linebuf, *line;
 	FILE *fp;
+	char *linebuf, *line;
+	int lineno = 1;
+	int rc = 0;
 
 	fp = fopen(file, "r");
 	if (!fp)
@@ -326,7 +331,7 @@ static int conf_parse(const char *file, int do_vifs)
 		char *group  = NULL;
 		char *dest[32];
 
-		DEBUG("Read line: '%s'", line);
+		DEBUG(".conf line: '%s'", line);
 		while ((token = pop_token(&line))) {
 			/* Strip comments. */
 			if (match("#", token))
@@ -377,14 +382,14 @@ static int conf_parse(const char *file, int do_vifs)
 		}
 
 		if (op == 1) {
-			join_mgroup(lineno, ifname, source, group);
+			rc += join_mgroup(lineno, ifname, source, group);
 		} else if (op == 2) {
-			add_mroute(lineno, ifname, group, source, dest, num);
+			rc += add_mroute(lineno, ifname, group, source, dest, num);
 		} else if (op == 3) {
 			if (enable)
-				mroute_add_vif(ifname, mrdisc, threshold);
+				rc += mroute_add_vif(ifname, mrdisc, threshold);
 			else
-				mroute_del_vif(ifname);
+				rc += mroute_del_vif(ifname);
 		}
 
 		lineno++;
@@ -393,7 +398,7 @@ static int conf_parse(const char *file, int do_vifs)
 	free(linebuf);
 	fclose(fp);
 
-	return 0;
+	return rc;
 }
 
 /* Parse .conf file and setup routes */
@@ -415,7 +420,7 @@ int conf_read(char *file, int do_vifs)
 
 	rc = conf_parse(file, do_vifs);
 	if (rc)
-		smclog(LOG_WARNING, "Failed parsing %s: %s", file, strerror(errno));
+		smclog(LOG_WARNING, "Failed reading %s: %s.", file, errno ? strerror(errno): "parse error");
 	else
 		script_exec(NULL);
 
