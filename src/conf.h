@@ -3,8 +3,10 @@
 
 #include "config.h"
 
+extern int conf_vrfy;
+
 #ifdef ENABLE_DOTCONF
-void    conf_read(char *file, int do_vifs);
+int     conf_read(char *file, int do_vifs);
 #else
 #define conf_read(file, do_vifs)
 #endif

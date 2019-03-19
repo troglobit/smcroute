@@ -24,6 +24,7 @@
 #include <stdlib.h>
 
 #include "log.h"
+#include "conf.h"
 #include "util.h"
 
 int  log_level = LOG_NOTICE;
@@ -66,7 +67,14 @@ void smclog(int severity, const char *fmt, ...)
 	va_list args;
 
 	va_start(args, fmt);
-	vsnprintf(log_message, sizeof(log_message), fmt, args);
+	if (!conf_vrfy) {
+		vsnprintf(log_message, sizeof(log_message), fmt, args);
+	} else {
+		if (severity <= log_level) {
+			vprintf(fmt, args);
+			puts("");
+		}
+	}
 	va_end(args);
 
 	syslog(severity, "%s", log_message);

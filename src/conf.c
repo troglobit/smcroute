@@ -281,6 +281,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 		WARN("Invalid inbound IPv4 interface: %s", ifname);
 		return 1;
 	}
+
 	return result;
 }
 
@@ -396,22 +397,29 @@ static int conf_parse(const char *file, int do_vifs)
 }
 
 /* Parse .conf file and setup routes */
-void conf_read(char *file, int do_vifs)
+int conf_read(char *file, int do_vifs)
 {
+	int rc;
+
 	if (access(file, R_OK)) {
 		if (errno == ENOENT)
 			smclog(LOG_NOTICE, "Configuration file %s does not exist", file);
 		else
 			smclog(LOG_WARNING, "Unexpected error when accessing %s: %s", file, strerror(errno));
 
-		smclog(LOG_NOTICE, "Continuing anyway, waiting for client to connect.");
-		return;
+		if (!conf_vrfy)
+			smclog(LOG_NOTICE, "Continuing anyway, waiting for client to connect.");
+
+		return 1;
 	}
 
-	if (conf_parse(file, do_vifs))
+	rc = conf_parse(file, do_vifs);
+	if (rc)
 		smclog(LOG_WARNING, "Failed parsing %s: %s", file, strerror(errno));
 	else
 		script_exec(NULL);
+
+	return rc;
 }
 
 /**

@@ -56,6 +56,7 @@ char *ident     = PACKAGE;
 char *prognm    = NULL;
 char *pid_file  = NULL;
 char *conf_file = NULL;
+int   conf_vrfy = 0;
 
 static uid_t uid = 0;
 static gid_t gid = 0;
@@ -273,6 +274,7 @@ static int usage(int code)
 	       "                  have been installed, or when a (*,G) is installed\n"
 #ifdef ENABLE_DOTCONF
 	       "  -f FILE         Set configuration file, default uses ident NAME: %s\n"
+	       "  -F FILE         Check configuration file syntax, use -l to increase verbosity\n"
 #endif
 	       "  -h              This help text\n"
 	       "  -I NAME         Identity for config, PID file, and syslog, default: %s\n"
@@ -332,11 +334,11 @@ static char *progname(const char *arg0)
  */
 int main(int argc, char *argv[])
 {
-	int c;
 	int log_opts = LOG_NDELAY | LOG_PID;
+	int c, new_log_level = -1;
 
 	prognm = progname(argv[0]);
-	while ((c = getopt(argc, argv, "c:d:e:f:hI:l:m:nNp:P:st:v")) != EOF) {
+	while ((c = getopt(argc, argv, "c:d:e:f:F:hI:l:m:nNp:P:st:v")) != EOF) {
 		switch (c) {
 		case 'c':	/* cache timeout */
 			cache_tmo = atoi(optarg);
@@ -350,13 +352,20 @@ int main(int argc, char *argv[])
 			script = optarg;
 			break;
 
-		case 'f':
 #ifndef ENABLE_DOTCONF
+		case 'F':
+		case 'f':
 			warnx("Built without .conf file support.");
-#else
-			conf_file = optarg;
-#endif
 			break;
+#else
+		case 'F':
+			log_level = LOG_INFO; /* Raise log level for verify */
+			conf_vrfy = 1;
+			/* fallthrough */
+		case 'f':
+			conf_file = optarg;
+			break;
+#endif
 
 		case 'h':	/* help */
 			return usage(0);
@@ -366,7 +375,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'l':
-			log_level = loglvl(optarg);
+			new_log_level = loglvl(optarg);
 			break;
 
 		case 'm':
@@ -423,7 +432,18 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (new_log_level != -1)
+		log_level = new_log_level;
+
 	compose_paths();
+
+	if (conf_vrfy) {
+		smclog(LOG_INFO, "Verifying configuration file %s ...", conf_file);
+		c = conf_read(conf_file, do_vifs);
+		smclog(LOG_INFO, "Configuration file %s.", c ? "has unrecoverable errors" : "is OK");
+
+		return c;
+	}
 
 	if (!background && do_syslog < 1)
 		log_opts |= LOG_PERROR;
