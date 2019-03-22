@@ -106,8 +106,11 @@ int script_exec(struct mroute *mroute)
 	}
 
 	pid = fork();
-	if (!pid)
+	if (!pid) {
+		/* Prevent children from accessing systemd socket (if enabled) */
+		unsetenv("NOTIFY_SOCKET");
 		_exit(execv(argv[0], argv));
+	}
 	if (pid < 0) {
 		smclog(LOG_WARNING, "Cannot start script %s: %s", exec, strerror(errno));
 		return -1;

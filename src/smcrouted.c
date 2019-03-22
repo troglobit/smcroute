@@ -1,6 +1,6 @@
 /* Static multicast routing daemon
  *
- * Copyright (C) 2011-2017  Joachim Nilsson <troglobit@gmail.com>
+ * Copyright (C) 2011-2019  Joachim Nilsson <troglobit@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,6 +37,7 @@
 #include "ifvc.h"
 #include "util.h"
 #include "timer.h"
+#include "notify.h"
 #include "script.h"
 #include "socket.h"
 #include "mrdisc.h"
@@ -95,11 +96,15 @@ static void restart(void)
 
 void reload(void)
 {
+	notify_reload();
+
 	restart();
 	conf_read(conf_file, do_vifs);
 
 	/* Acknowledge client SIGHUP/reload by touching the pidfile */
 	pidfile_create(NULL, uid, gid);
+
+	notify_ready();
 }
 
 /*
@@ -217,6 +222,8 @@ static int start_server(void)
 	/* Everything setup, notify any clients by creating the pidfile */
 	if (pidfile_create(pid_file, uid, gid))
 		smclog(LOG_WARNING, "Failed create/chown PID file: %s", strerror(errno));
+
+	notify_ready();
 
 	/* Drop root privileges before entering the server loop */
 	cap_drop_root(uid, gid);
