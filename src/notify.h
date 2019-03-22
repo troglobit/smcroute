@@ -11,7 +11,7 @@ void    notify_reload(void);
 void    systemd_notify_ready(const char *status);
 void    systemd_notify_reload(const char *status);
 #else
-#define systemd_notfiy_ready(status)
+#define systemd_notify_ready(status)
 #define systemd_notify_reload(status)
 #endif
 
