@@ -4,12 +4,12 @@
 
 #include "config.h"
 
-void    notify_ready(void);
+void    notify_ready(char *pidfn, uid_t uid, gid_t gid);
 void    notify_reload(void);
 
 #ifdef HAVE_LIBSYSTEMD
-void    systemd_notify_ready(char *status);
-void    systemd_notify_reload(char *status);
+void    systemd_notify_ready(const char *status);
+void    systemd_notify_reload(const char *status);
 #else
 #define systemd_notfiy_ready(status)
 #define systemd_notify_reload(status)

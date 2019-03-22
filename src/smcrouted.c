@@ -101,10 +101,8 @@ void reload(void)
 	restart();
 	conf_read(conf_file, do_vifs);
 
-	/* Acknowledge client SIGHUP/reload by touching the pidfile */
-	pidfile_create(NULL, uid, gid);
-
-	notify_ready();
+	/* Acknowledge client SIGHUP/reload */
+	notify_ready(NULL, uid, gid);
 }
 
 /*
@@ -219,11 +217,8 @@ static int start_server(void)
 
 	conf_read(conf_file, do_vifs);
 
-	/* Everything setup, notify any clients by creating the pidfile */
-	if (pidfile_create(pid_file, uid, gid))
-		smclog(LOG_WARNING, "Failed create/chown PID file: %s", strerror(errno));
-
-	notify_ready();
+	/* Everything setup, notify any clients waiting for us */
+	notify_ready(pid_file, uid, gid);
 
 	/* Drop root privileges before entering the server loop */
 	cap_drop_root(uid, gid);
