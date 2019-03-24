@@ -222,6 +222,28 @@ struct iface *iface_find_by_name(const char *ifname)
 }
 
 /**
+ * iface_find_by_vif - Find by virtual interface index
+ * @vif: Virtual multicast interface index
+ *
+ * Returns:
+ * Pointer to a @struct iface of the requested interface, or %NULL if no
+ * interface matching @vif exists.
+ */
+struct iface *iface_find_by_vif(int vif)
+{
+	size_t i;
+
+	for (i = 0; i < num_ifaces; i++) {
+		struct iface *iface = &iface_list[i];
+
+		if (iface->vif >= 0 && iface->vif == vif)
+			return iface;
+	}
+
+	return NULL;
+}
+
+/**
  * iface_match_init - Initialize interface matching iterator
  * @state: Iterator state to be initialized
  */
@@ -229,6 +251,17 @@ void iface_match_init(struct ifmatch *state)
 {
 	state->iter = 0;
 	state->match_count = 0;
+}
+
+/**
+ * ifname_is_wildcard - Check whether interface name is a wildcard
+ *
+ * Returns:
+ * %TRUE(1) if wildcard, %FALSE(0) if normal interface name
+ */
+int ifname_is_wildcard(const char *ifname)
+{
+	return (ifname && ifname[0] && ifname[strlen(ifname) - 1] == '+');
 }
 
 /**
@@ -262,39 +295,6 @@ struct iface *iface_match_by_name(const char *ifname, struct ifmatch *state)
 
 			return iface;
 		}
-	}
-
-	return NULL;
-}
-
-/**
- * ifname_is_wildcard - Check whether interface name is a wildcard
- *
- * Returns:
- * %TRUE(1) if wildcard, %FALSE(0) if normal interface name
- */
-int ifname_is_wildcard(const char *ifname)
-{
-	return (ifname && ifname[0] && ifname[strlen(ifname) - 1] == '+');
-}
-
-/**
- * iface_find_by_vif - Find by virtual interface index
- * @vif: Virtual multicast interface index
- *
- * Returns:
- * Pointer to a @struct iface of the requested interface, or %NULL if no
- * interface matching @vif exists.
- */
-struct iface *iface_find_by_vif(int vif)
-{
-	size_t i;
-
-	for (i = 0; i < num_ifaces; i++) {
-		struct iface *iface = &iface_list[i];
-
-		if (iface->vif >= 0 && iface->vif == vif)
-			return iface;
 	}
 
 	return NULL;
