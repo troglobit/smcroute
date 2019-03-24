@@ -36,17 +36,8 @@
 #include "log.h"
 #include "ipc.h"
 #include "ifvc.h"
-#include "queue.h"
 #include "socket.h"
-
-struct mgroup {
-	LIST_ENTRY(mgroup) link;
-
-	short          inbound;
-	struct in_addr source;
-	struct in_addr group;
-	uint8_t        len;
-};
+#include "mcgroup.h"
 
 /*
  * Track IGMP join, any-source and source specific
@@ -95,7 +86,7 @@ static void list_add(struct iface *iface, struct in_addr source, struct in_addr 
 	}
 
 	memset(entry, 0, sizeof(*entry));
-	entry->inbound = iface->vif;
+	entry->ifindex = iface->ifindex;
 	entry->source  = source;
 	entry->group   = group;
 	entry->len     = len;
@@ -111,9 +102,9 @@ static void list_rem(struct iface *iface, struct in_addr source, struct in_addr 
 	struct mgroup *entry, *tmp;
 
 	LIST_FOREACH_SAFE(entry, &mgroup_static_list, link, tmp) {
-		if (entry->inbound       != iface->vif    ||
-		    entry->source.s_addr != source.s_addr ||
-		    entry->group.s_addr  != group.s_addr  ||
+		if (entry->ifindex       != iface->ifindex ||
+		    entry->source.s_addr != source.s_addr  ||
+		    entry->group.s_addr  != group.s_addr   ||
 		    entry->len           != len)
 			continue;
 
@@ -463,7 +454,7 @@ static void mcgroup4_retry(void)
 		int is_any = 0;
 		int rc;
 
-		iface = iface_find_by_vif(entry->inbound);
+		iface = iface_find(entry->ifindex);
 		if (!iface)
 			continue;
 
@@ -594,25 +585,27 @@ int mcgroup_show(int sd, int detail)
 {
 	char buf[256];
 	char sg[INET_ADDRSTRLEN * 2 + 5 + 3];
-	struct mgroup *g;
+	struct mgroup *entry;
 
 	(void)detail;
-	LIST_FOREACH(g, &mgroup_static_list, link) {
+	LIST_FOREACH(entry, &mgroup_static_list, link) {
 		char src[INET_ADDRSTRLEN] = "*";
 		char grp[INET_ADDRSTRLEN];
-		struct iface *i;
+		struct iface *iface;
 
-		i = iface_find_by_vif(g->inbound);
+		iface = iface_find(entry->ifindex);
+		if (!iface)
+			continue;
 
-		if (g->source.s_addr != htonl(INADDR_ANY))
-			inet_ntop(AF_INET, &g->source, src, sizeof(src));
-		inet_ntop(AF_INET, &g->group, grp, sizeof(grp));
+		if (entry->source.s_addr != htonl(INADDR_ANY))
+			inet_ntop(AF_INET, &entry->source, src, sizeof(src));
+		inet_ntop(AF_INET, &entry->group, grp, sizeof(grp));
 
-		if (g->len > 0)
-			snprintf(sg, sizeof(sg), "(%s, %s/%d)", src, grp, g->len);
+		if (entry->len > 0)
+			snprintf(sg, sizeof(sg), "(%s, %s/%d)", src, grp, entry->len);
 		else
 			snprintf(sg, sizeof(sg), "(%s, %s)", src, grp);
-		snprintf(buf, sizeof(buf), "%-34s %s\n", sg, i->name);
+		snprintf(buf, sizeof(buf), "%-34s %s\n", sg, iface->name);
 
 		if (ipc_send(sd, buf, strlen(buf)) < 0) {
 			smclog(LOG_ERR, "Failed sending reply to client: %s", strerror(errno));
