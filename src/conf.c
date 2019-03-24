@@ -29,7 +29,8 @@
 #include "mcgroup.h"
 
 #define MAX_LINE_LEN 512
-#define DEBUG(fmt, args...)			\
+
+#define DEBUG(fmt, args...)						\
 	smclog(LOG_DEBUG, "%s:%02d: " fmt, conf, lineno, ##args)
 #define INFO(fmt, args...)			\
 	smclog(LOG_INFO, "%s:%02d: " fmt, conf, lineno, ##args)
@@ -39,6 +40,11 @@
 		if (conf_vrfy)						\
 			return 1;					\
 	}
+
+/* Tokens */
+#define MGROUP 1
+#define MROUTE 2
+#define PHYINT 3
 
 static const char *conf = NULL;
 
@@ -338,16 +344,16 @@ static int conf_parse(const char *file, int do_vifs)
 
 			if (!op) {
 				if (match("mgroup", token)) {
-					op = 1;
+					op = MGROUP;
 				} else if (match("mroute", token)) {
-					op = 2;
+					op = MROUTE;
 				} else if (match("phyint", token)) {
-					op = 3;
+					op = PHYINT;
 					ifname = pop_token(&line);
 					if (!ifname)
 						op = 0;
 				} else if (match("ssmgroup", token)) {
-					op = 1; /* Compat */
+					op = MGROUP; /* Compat */
 				} else {
 					WARN("Unknown command %s, skipping.", token);
 					continue;
@@ -380,11 +386,11 @@ static int conf_parse(const char *file, int do_vifs)
 			}
 		}
 
-		if (op == 1) {
+		if (op == MGROUP) {
 			rc += join_mgroup(lineno, ifname, source, group);
-		} else if (op == 2) {
+		} else if (op == MROUTE) {
 			rc += add_mroute(lineno, ifname, group, source, dest, num);
-		} else if (op == 3) {
+		} else if (op == PHYINT) {
 			if (enable)
 				rc += mroute_add_vif(ifname, mrdisc, threshold);
 			else
