@@ -177,6 +177,29 @@ void iface_exit(void)
 }
 
 /**
+ * iface_find - Find an interface by ifindex
+ * @ifindex: Interface index
+ *
+ * Returns:
+ * Pointer to a @struct iface of the matching interface, or %NULL if no
+ * interface exists, or is up.  If more than one interface exists, chose
+ * the interface that corresponds to a virtual interface.
+ */
+struct iface *iface_find(int ifindex)
+{
+	size_t i;
+
+	for (i = 0; i < num_ifaces; i++) {
+		struct iface *iface = &iface_list[i];
+
+		if (iface->ifindex == ifindex)
+			return iface;
+	}
+
+	return NULL;
+}
+
+/**
  * iface_find_by_name - Find an interface by name
  * @ifname: Interface name
  *
