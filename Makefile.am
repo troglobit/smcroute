@@ -8,7 +8,7 @@ dist_sbin_SCRIPTS       = smcroute
 dist_man8_MANS		= smcroute.8
 SYMLINKS                = smcrouted.8 smcroutectl.8
 doc_DATA		= README.md COPYING smcroute.conf
-EXTRA_DIST		= README.md AUTHORS ChangeLog.md autogen.sh smcroute.conf smcroute.init
+EXTRA_DIST		= README.md AUTHORS ChangeLog.md autogen.sh smcroute.conf smcroute.default smcroute.init
 
 if HAVE_SYSTEMD
 systemd_DATA            = smcroute.service

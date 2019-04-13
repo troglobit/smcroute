@@ -416,6 +416,28 @@ int iface_match_mif_by_name(const char *ifname, struct ifmatch *state, struct if
 }
 
 /**
+ * iface_find_by_mif - Find by virtual interface index
+ * @mif: Virtual multicast interface index
+ *
+ * Returns:
+ * Pointer to a @struct iface of the requested interface, or %NULL if no
+ * interface matching @mif exists.
+ */
+struct iface *iface_find_by_mif(int mif)
+{
+	size_t i;
+
+	for (i = 0; i < num_ifaces; i++) {
+		struct iface *iface = &iface_list[i];
+
+		if (iface->mif >= 0 && iface->mif == mif)
+			return iface;
+	}
+
+	return NULL;
+}
+
+/**
  * Local Variables:
  *  indent-tabs-mode: t
  *  c-file-style: "linux"

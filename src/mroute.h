@@ -50,6 +50,14 @@
 #define IN6_IS_ADDR_MULTICAST(a) (((__const uint8_t *) (a))[0] == 0xff)
 #endif
 
+#ifndef IN6_ALLOW_DEFAULT_MULTICAST_SCOPE
+#define IN6_ALLOW_DEFAULT_MULTICAST_SCOPE (0xfff0)
+#endif
+
+#ifndef IN6_IS_ADDR_ANY
+#define IN6_IS_ADDR_ANY(a) (memcmp(a, &in6addr_any, sizeof(in6addr_any)) == 0)
+#endif
+
 /*
  * IPv4 multicast route
  */
@@ -87,10 +95,16 @@ struct mroute4 {
 #endif
 
 struct mroute6 {
+	LIST_ENTRY(mroute6) link;
 	struct sockaddr_in6 source;
-	struct sockaddr_in6 group;      /* multicast group */
-	short   inbound;                /* incoming VIF    */
-	uint8_t ttl[MAX_MC_MIFS];       /* outgoing VIFs   */
+	struct sockaddr_in6 group;            /* multicast group */
+	short               src_len;          /* source prefix len, or 0:disabled */
+	short               len;		      /* prefix len, or 0:disabled */
+	short               inbound;          /* incoming MIF    */
+	uint8_t             ttl[MAX_MC_MIFS]; /* outgoing MIFs   */
+	unsigned long       valid_pkt;        /* packet counter at last mroute6_dyn_expire() */
+	time_t              last_use;         /* timestamp of last forwarded packet */
+	uint16_t            scope_mask;       /* mask of multicast group scope */
 };
 
 /*
@@ -111,8 +125,10 @@ void mroute4_dyn_expire(int max_idle);
 int  mroute4_add       (struct mroute4 *mroute);
 int  mroute4_del       (struct mroute4 *mroute);
 
-int  mroute6_enable    (int do_vifs, int table_id);
+int  mroute6_enable    (int do_mifs, int table_id, int timeout);
 void mroute6_disable   (int close_socket);
+int  mroute6_dyn_add   (struct mroute6 *mroute);
+void mroute6_dyn_expire(int max_idle);
 int  mroute6_add       (struct mroute6 *mroute);
 int  mroute6_del       (struct mroute6 *mroute);
 

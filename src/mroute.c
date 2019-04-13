@@ -64,6 +64,11 @@
 static int cache_timeout = 0;
 
 /*
+ * Indicates whether or not the timer is running.
+ */
+static int running = 0;
+
+/*
  * Raw IGMP socket used as interface for the IPv4 mrouted API.
  * Receives IGMP packets and upcall messages from the kernel.
  */
@@ -86,14 +91,6 @@ LIST_HEAD(, mroute4) mroute4_dyn_list = LIST_HEAD_INITIALIZER();
  */
 LIST_HEAD(, mroute4) mroute4_static_list = LIST_HEAD_INITIALIZER();
 
-#ifdef HAVE_IPV6_MULTICAST_ROUTING
-/*
- * Raw ICMPv6 socket used as interface for the IPv6 mrouted API.
- * Receives MLD packets and upcall messages from the kenrel.
- */
-static int mroute6_socket = -1;
-#endif
-
 /* IPv4 internal virtual interfaces (VIF) descriptor vector */
 static struct {
 	struct iface *iface;
@@ -102,12 +99,48 @@ static struct {
 static int mroute4_add_vif(struct iface *iface);
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
+/*
+ * Raw ICMPv6 socket used as interface for the IPv6 mrouted API.
+ * Receives MLD packets and upcall messages from the kenrel.
+ */
+static int mroute6_socket = -1;
+
+/*
+ * User added/configured (*,G) matched on-demand at runtime.  See
+ * mroute6_dyn_list for the (S,G) routes set from this "template".
+ */
+LIST_HEAD(, mroute6) mroute6_conf_list = LIST_HEAD_INITIALIZER();
+
+/*
+ * Dynamically, on-demand, set (S,G) routes.  Tracks if the user
+ * removes a configured (*,G) route.
+ */
+LIST_HEAD(, mroute6) mroute6_dyn_list = LIST_HEAD_INITIALIZER();
+
+/*
+ * Tracks regular static routes, mostly for 'smcroutectl show'
+ */
+LIST_HEAD(, mroute6) mroute6_static_list = LIST_HEAD_INITIALIZER();
+
 /* IPv6 internal virtual interfaces (VIF) descriptor vector */
 static struct mif {
 	struct iface *iface;
+	uint16_t scope_mask;
 } mif_list[MAXMIFS];
 
 static int mroute6_add_mif(struct iface *iface);
+static int get_stats6(struct mroute6 *route, unsigned long *pktcnt, unsigned long *bytecnt, unsigned long *wrong_if);
+static unsigned long get_valid_pkt6(struct mroute6 *route);
+static int is_match6(struct mroute6 *rule, struct mroute6 *cand);
+static int is_exact_match6(struct mroute6 *a, struct mroute6 *b);
+static int mroute6_exists(struct mroute6 *route);
+static struct mroute6 *mroute6_similar(struct mroute6 *route);
+static int is_mroute6_static(struct mroute6 *route);
+static int is_active6(struct mroute6 *route);
+static int kern_add6(struct mroute6 *route, int active);
+static int do_mroute6_del(struct mroute6 *entry);
+static int kern_del6(struct mroute6 *route, int active);
+static int show_mroute6(int sd, struct mroute6 *r, int detail);
 #endif
 
 /* Check for kernel IGMPMSG_NOCACHE for (*,G) hits. I.e., source-less routes. */
@@ -179,6 +212,11 @@ static void cache_flush(void *arg)
 
 	smclog(LOG_INFO, "Cache timeout, flushing unused (*,G) routes!");
 	mroute4_dyn_expire(cache_timeout);
+
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
+	mroute6_dyn_expire(cache_timeout);
+#endif
+
 }
 
 /**
@@ -194,7 +232,6 @@ int mroute4_enable(int do_vifs, int table_id, int timeout)
 {
 	int arg = 1;
 	struct iface *iface;
-	static int running = 0;
 
 	if (mroute4_socket < 0) {
 		mroute4_socket = socket_create(AF_INET, SOCK_RAW, IPPROTO_IGMP, handle_nocache4, NULL);
@@ -892,7 +929,7 @@ static int proc_set_val(char *file, int val)
  * Receive and drop ICMPv6 stuff. This is either MLD packets or upcall
  * messages sent up from the kernel.
  *
- * XXX: Currently MRT6MSG_NOCACHE messages for IPv6 (*,G) is unsupported.
+ * Done:Check for kernel IGMPMSG_NOCACHE for (*,G) hits. I.e., source-less routes.
  */
 static void handle_nocache6(int sd, void *arg)
 {
@@ -903,7 +940,54 @@ static void handle_nocache6(int sd, void *arg)
 	result = read(sd, tmp, sizeof(tmp));
 	if (result < 0)
 		smclog(LOG_INFO, "Failed clearing MLD message from kernel: %s", strerror(errno));
+
+	struct mrt6msg *msg = (struct mrt6msg *)tmp;
+	if (msg->im6_msgtype == MRT6MSG_NOCACHE &&
+		IN6_IS_ADDR_MULTICAST(&msg->im6_dst)) {
+		struct mroute mrt;
+		struct mroute6 route;
+		struct iface *iface;
+		char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
+
+		memset(&route, 0, sizeof(route));
+
+		route.source.sin6_addr = msg->im6_src;
+		route.group.sin6_addr = msg->im6_dst;
+		route.inbound = msg->im6_mif;
+		route.src_len = 128;
+		route.len = 128;
+		inet_ntop(AF_INET6, &route.group.sin6_addr,  group,  INET6_ADDRSTRLEN);
+		inet_ntop(AF_INET6, &route.source.sin6_addr, origin, INET6_ADDRSTRLEN);
+		smclog(LOG_DEBUG, "New multicast data from %s to group %s on MIF %d", origin, group, route.inbound);
+
+		iface = iface_find_by_mif(route.inbound);
+		if (!iface) {
+			smclog(LOG_WARNING, "No matching interface for MIF %d, cannot add mroute.", route.inbound);
+			return;
+		}
+
+		result = mroute6_dyn_add(&route);
+
+		if (result) {
+			/*
+			 * This is a common error, the router receives streams it is not
+			 * set up to route -- we ignore these by default, but if the user
+			 * sets a more permissive log level we help out by showing what
+			 * is going on.
+			 */
+			if (ENOENT == errno)
+				smclog(LOG_INFO, "Multicast from %s, group %s, on %s does not match any (*,G) rule",
+				       origin, group, iface->name);
+
+			return;
+		}
+
+		mrt.version = 6;
+		mrt.u.mroute6 = route;
+		script_exec(&mrt);
+	}
 }
+
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
 /**
@@ -915,7 +999,7 @@ static void handle_nocache6(int sd, void *arg)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute6_enable(int do_vifs, int table_id)
+int mroute6_enable(int do_mifs, int table_id, int timeout)
 {
 #ifndef HAVE_IPV6_MULTICAST_ROUTING
 	(void)do_vifs;
@@ -979,9 +1063,15 @@ int mroute6_enable(int do_vifs, int table_id)
 	}
 #endif
 	/* Create virtual interfaces, IPv6 MIFs, for all IFF_MULTICAST interfaces */
-	if (do_vifs) {
+	if (do_mifs) {
 		for (iface = iface_iterator(1); iface; iface = iface_iterator(0))
 			mroute6_add_mif(iface);
+	}
+
+	if (timeout && !running) {
+		running++;
+		cache_timeout = timeout;
+		timer_add(timeout, cache_flush, NULL);
 	}
 
 	return 0;
@@ -1015,6 +1105,159 @@ void mroute6_disable(int close_socket)
 }
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
+static int show_mroute6(int sd, struct mroute6 *r, int detail)
+{
+	int mif;
+	char src[INET6_ADDRSTRLEN] = "::";
+	char src_len[6] = "";
+	char grp[INET6_ADDRSTRLEN];
+	char grp_len[6] = "";
+	char mask[7] = "";
+	char sg[INET6_ADDRSTRLEN + 5];
+	char buf[MAX_MC_MIFS * 17 + 100];
+	struct iface *i;
+
+	inet_ntop(AF_INET6, &r->source.sin6_addr, src, sizeof(src));
+	if (r->src_len && r->src_len != 128) {
+		snprintf(src_len, sizeof(src_len), "/%u", r->src_len);
+	}
+
+	inet_ntop(AF_INET6, &r->group.sin6_addr, grp, sizeof(grp));
+	if (r->len && r->len != 128) {
+		snprintf(grp_len, sizeof(grp_len), "/%u", r->len);
+	}
+
+	i = iface_find_by_mif(r->inbound);
+
+	if (IN6_IS_ADDR_ANY(&r->source.sin6_addr) &&
+	   IN6_IS_ADDR_ANY(&r->group.sin6_addr))
+	{
+		snprintf(mask, sizeof(mask), "<%04X>", r->scope_mask);
+	}
+
+	snprintf(sg, sizeof(sg), "(%s%s, %s%s%s)", src, src_len, grp, grp_len, mask);
+	snprintf(buf, sizeof(buf), "%-70s %-16s", sg, i->name);
+
+	if (detail) {
+		char stats[30];
+		unsigned long p = 0, b = 0;
+
+		get_stats6(r, &p, &b, NULL);
+		snprintf(stats, sizeof(stats), " %10lu %10lu ", p, b);
+		strlcat(buf, stats, sizeof(buf));
+	}
+
+	for (mif = 0; mif < MAX_MC_MIFS; mif++) {
+		char tmp[22];
+
+		if (r->ttl[mif] == 0)
+			continue;
+
+		i = iface_find_by_mif(mif);
+		if (!i)
+			continue;
+
+		snprintf(tmp, sizeof(tmp), " %s", i->name);
+		strlcat(buf, tmp, sizeof(buf));
+	}
+
+	strlcat(buf, "\n", sizeof(buf));
+
+	if (ipc_send(sd, buf, strlen(buf)) < 0) {
+		smclog(LOG_ERR, "Failed sending reply to client: %s", strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
+ * Query kernel for route usage statistics
+ */
+static int get_stats6(struct mroute6 *route, unsigned long *pktcnt, unsigned long *bytecnt, unsigned long *wrong_if)
+{
+	struct sioc_sg_req6 sg_req;
+
+	if (mroute6_socket < 0)
+		return -1;
+
+	memset(&sg_req, 0, sizeof(sg_req));
+	sg_req.src = route->source;
+	sg_req.grp = route->group;
+
+	if (ioctl(mroute6_socket, SIOCGETSGCNT_IN6, &sg_req) < 0) {
+		if (wrong_if)
+			smclog(LOG_WARNING, "Failed getting MFC stats: %s", strerror(errno));
+		return errno;
+	}
+
+	if (pktcnt)
+		*pktcnt = sg_req.pktcnt;
+	if (bytecnt)
+		*bytecnt = sg_req.bytecnt;
+	if (wrong_if)
+		*wrong_if = sg_req.wrong_if;
+
+	return 0;
+}
+
+/**
+ * mroute6_dyn_expire - Expire dynamically added (*,G) routes
+ * @max_idle: Timeout for routes in seconds, 0 to expire all dynamic routes
+ *
+ * This function flushes all (*,G) routes which haven't been used (i.e. no
+ * packets matching them have been forwarded) in the last max_idle seconds.
+ * It is called periodically on cache-timeout or on request of smcroutectl.
+ * The latter is useful in case of topology changes (e.g. VRRP fail-over)
+ * or similar.
+ */
+void mroute6_dyn_expire(int max_idle)
+{
+	struct mroute6 *entry, *tmp;
+	struct timespec now;
+
+	clock_gettime(CLOCK_MONOTONIC, &now);
+
+	LIST_FOREACH_SAFE(entry, &mroute6_dyn_list, link, tmp) {
+		if (!entry->last_use) {
+			/* New entry */
+			entry->last_use = now.tv_sec;
+			entry->valid_pkt = get_valid_pkt6(entry);
+		}
+
+		if (entry->last_use + max_idle <= now.tv_sec) {
+			unsigned long valid_pkt;
+
+			valid_pkt = get_valid_pkt6(entry);
+			if (valid_pkt != entry->valid_pkt) {
+				/* Used since last check, update */
+				entry->last_use = now.tv_sec;
+				entry->valid_pkt = valid_pkt;
+				continue;
+			}
+
+			/* Not used, expire */
+			kern_del6(entry, is_active6(entry));
+			LIST_REMOVE(entry, link);
+			free(entry);
+		}
+	}
+}
+
+/*
+ * Get valid packet usage statistics (i.e. number of actually forwarded
+ * packets) from the kernel for an installed MFC entry
+ */
+static unsigned long get_valid_pkt6(struct mroute6 *route)
+{
+	unsigned long pktcnt = 0, wrong_if = 0;
+
+	if (get_stats6(route, &pktcnt, NULL, &wrong_if) < 0)
+		return 0;
+
+	return pktcnt - wrong_if;
+}
+
 /* Create a virtual interface from @iface so it can be used for IPv6 multicast routing. */
 static int mroute6_add_mif(struct iface *iface)
 {
@@ -1068,6 +1311,7 @@ static int mroute6_add_mif(struct iface *iface)
 
 	iface->mif = mif;
 	mif_list[mif].iface = iface;
+	mif_list[mif].scope_mask = IN6_ALLOW_DEFAULT_MULTICAST_SCOPE;
 
 	return 0;
 }
@@ -1092,34 +1336,141 @@ static int mroute6_del_mif(struct iface *iface)
 	return 0;
 }
 
-/**
- * mroute6_add - Add route to kernel, or save a wildcard route for later use
- * @route: Pointer to struct mroute6 IPv6 multicast route to add
- *
- * Adds the given multicast @route to the kernel multicast routing table.
- *
- * Returns:
- * POSIX OK(0) on success, non-zero on error with @errno set.
+static int is_any_match6(struct mroute6 *rule, struct mroute6 *cand)
+{
+	if ((rule->inbound == cand->inbound) && rule->src_len == 0 && rule->len == 0)
+	{
+		return 1;
+	}
+
+	return 0;
+}
+
+static uint8_t get_multicast_scope6(struct in6_addr *addr)
+{
+	return ((addr->s6_addr[1]) & 0xf);
+}
+
+static int is_match6(struct mroute6 *rule, struct mroute6 *cand)
+{
+	int i, j;
+
+	if (rule->inbound != cand->inbound)
+		return 0;
+
+	i = rule->len / 8;
+	if (i > 0 &&
+		memcmp(rule->group.sin6_addr.s6_addr, cand->group.sin6_addr.s6_addr, i))
+	{
+		return 0;
+	}
+
+	j = rule->len % 8;
+	if (j > 0 &&
+		(rule->group.sin6_addr.s6_addr[i] >> (8 - j)) == (cand->group.sin6_addr.s6_addr[i] >> (8 - j))) {
+		return 0;
+	}
+
+	return 1;
+}
+
+
+/*
+ * Used for exact (S,G) matching
  */
-int mroute6_add(struct mroute6 *route)
+static int is_exact_match6(struct mroute6 *a, struct mroute6 *b)
+{
+	if (memcmp(&a->source.sin6_addr, &b->source.sin6_addr, sizeof(struct in6_addr)) == 0 &&
+	    memcmp(&a->group.sin6_addr, &b->group.sin6_addr, sizeof(struct in6_addr)) == 0 &&
+	    a->len           == b->len &&
+	    a->inbound       == b->inbound)
+		return 1;
+
+	return 0;
+}
+
+static int mroute6_exists(struct mroute6 *route)
+{
+	struct mroute6 *entry;
+
+	LIST_FOREACH(entry, &mroute6_conf_list, link) {
+		if (is_match6(entry, route)) {
+			if (is_any_match6(entry, route)) {
+				if (IN6_IS_ADDR_ANY(&route->source.sin6_addr) &&
+						IN6_IS_ADDR_ANY(&route->group.sin6_addr)) {
+					if (entry->scope_mask != route->scope_mask)
+					{
+						smclog(LOG_INFO, "scope mask is updated from %04X to %04X",
+								entry->scope_mask, route->scope_mask);
+						mif_list[route->inbound].scope_mask = route->scope_mask;
+						entry->scope_mask = route->scope_mask;
+					}
+				}
+				else if (!IN6_IS_ADDR_ANY(&route->group.sin6_addr)) {
+					uint8_t scope = get_multicast_scope6(&route->group.sin6_addr);
+
+					if (!(mif_list[route->inbound].scope_mask & (uint16_t)(1 << scope)))
+					{
+						smclog(LOG_WARNING, "scope_mask %04x, mroute rule for scope (%d) is not allowed",
+								mif_list[route->inbound].scope_mask, scope);
+					}
+					// FIXME: whether allowing to add finer-grade rule
+				}
+			}
+			smclog(LOG_INFO, "(*,G) route already exists");
+			return 1;
+		}
+	}
+
+	LIST_FOREACH(entry, &mroute6_static_list, link) {
+		if (is_exact_match6(entry, route)) {
+			smclog(LOG_INFO, "Static route already exists");
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+static int is_mroute6_static(struct mroute6 *route)
+{
+	return route->src_len == 128;
+}
+
+static int is_active6(struct mroute6 *route)
 {
 	size_t i;
+
+	for (i = 0; i < NELEMS(route->ttl); i++) {
+		if (route->ttl[i])
+			return 1;
+	}
+
+	return 0;
+}
+
+/* Actually set in kernel - called by mroute6_add() */
+static int kern_add6(struct mroute6 *route, int active)
+{
 	char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
 	struct mf6cctl mc;
+	size_t i = 0;
 
 	if (mroute6_socket == -1)
 		return 0;
 
 	memset(&mc, 0, sizeof(mc));
+
 	mc.mf6cc_origin   = route->source;
 	mc.mf6cc_mcastgrp = route->group;
 	mc.mf6cc_parent   = route->inbound;
 
 	/* copy the outgoing MIFs */
-	for (i = 0; i < NELEMS(route->ttl); i++) {
+	for (; i < NELEMS(route->ttl); i++) {
 		if (route->ttl[i] > 0)
 			IF_SET(i, &mc.mf6cc_ifset);
 	}
+
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MFC, (void *)&mc, sizeof(mc))) {
 		smclog(LOG_DEBUG, "failed adding IPv6 multicast route: %s", strerror(errno));
 		return 1;
@@ -1130,20 +1481,32 @@ int mroute6_add(struct mroute6 *route)
 	       inet_ntop(AF_INET6, &mc.mf6cc_mcastgrp.sin6_addr, group, INET6_ADDRSTRLEN),
 	       mc.mf6cc_parent);
 
+	if (active) {
+		/* Only enable mrdisc for active routes, i.e. with outbound */
+		mrdisc_enable(route->inbound);
+	}
+
 	return 0;
 }
 
-/**
- * mroute6_del - Remove route from kernel
- * @route: Pointer to struct mroute6 IPv6 multicast route to remove
- *
- * Removes the given multicast @route from the kernel multicast routing
- * table.
- *
- * Returns:
- * POSIX OK(0) on success, non-zero on error with @errno set.
- */
-int mroute6_del(struct mroute6 *route)
+/* Remove from kernel and linked list */
+static int do_mroute6_del(struct mroute6 *entry)
+{
+	int ret;
+
+	ret = kern_del6(entry, is_active6(entry));
+	if (ret && ENOENT != errno)
+		return ret;
+
+	/* Also remove on ENOENT */
+	LIST_REMOVE(entry, link);
+	free(entry);
+
+	return ret;
+}
+
+/* Actually remove from kernel - called by mroute6_del() */
+static int kern_del6(struct mroute6 *route, int active)
 {
 	char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
 	struct mf6cctl mc;
@@ -1166,8 +1529,252 @@ int mroute6_del(struct mroute6 *route)
 	       inet_ntop(AF_INET6, &mc.mf6cc_origin.sin6_addr, origin, INET6_ADDRSTRLEN),
 	       inet_ntop(AF_INET6, &mc.mf6cc_mcastgrp.sin6_addr, group, INET6_ADDRSTRLEN));
 
+	if (active) {
+		/* Only disable mrdisc for active routes. */
+		mrdisc_disable(route->inbound);
+	}
+
 	return 0;
 }
+
+/* Only inbound differs, there can only be one ... */
+static struct mroute6 *mroute6_similar(struct mroute6 *route)
+{
+	struct mroute6 *entry;
+
+	LIST_FOREACH(entry, &mroute6_static_list, link) {
+
+		if (!IN6_IS_ADDR_ANY(&route->source.sin6_addr) &&
+				memcmp(&entry->source.sin6_addr, &route->source.sin6_addr, sizeof(struct in6_addr)) == 0 &&
+				!IN6_IS_ADDR_ANY(&route->group.sin6_addr) &&
+				memcmp(&entry->group.sin6_addr, &route->group.sin6_addr, sizeof(struct in6_addr)) == 0 &&
+				entry->len           == route->len &&
+				entry->src_len       == route->src_len)
+			return entry;
+	}
+
+	return NULL;
+}
+
+/**
+ * mroute6_dyn_add - Add route to kernel if it matches a known (*,G) route.
+ * @route: Pointer to candidate struct mroute6 IPv6 multicast route
+ *
+ * Returns:
+ * POSIX OK(0) on success, non-zero on error with @errno set.
+ */
+int mroute6_dyn_add(struct mroute6 *route)
+{
+	struct mroute6 *entry, *new_entry;
+	int ret;
+	uint8_t scope = get_multicast_scope6(&route->group.sin6_addr);
+
+	if (!(mif_list[route->inbound].scope_mask & (uint16_t)(1 << scope)))
+	{
+		smclog(LOG_WARNING, "scope_mask %04x, multicast to scope (%d) is not allowed",
+				mif_list[route->inbound].scope_mask, scope);
+		errno = EINVAL;
+		return 1;
+	}
+
+	smclog(LOG_DEBUG, "scope_mask %04x, multicast to scope (%d) is allowed",
+				mif_list[route->inbound].scope_mask, scope);
+
+	LIST_FOREACH(entry, &mroute6_conf_list, link) {
+		/* Find matching (*,G) ... and interface. */
+		if (!is_match6(entry, route))
+			continue;
+
+		/* Use configured template (*,G) outbound interfaces. */
+		memcpy(route->ttl, entry->ttl, NELEMS(route->ttl) * sizeof(route->ttl[0]));
+		smclog(LOG_DEBUG, "%s matched (*, G) or (*,*)", __FUNCTION__);
+		break;
+	}
+
+	if (!entry) {
+		/*
+		 * No match, add entry without outbound interfaces
+		 * nevertheless to avoid continuous cache misses from
+		 * the kernel. Note that this still gets reported as an
+		 * error (ENOENT) below.
+		 */
+		smclog(LOG_WARNING, "no match");
+		memset(route->ttl, 0, NELEMS(route->ttl) * sizeof(route->ttl[0]));
+	}
+
+	ret = kern_add6(route, entry ? 1 : 0);
+	if (ret)
+		return ret;
+
+	/* Add to list of dynamically added routes. Necessary if the user
+	 * removes the (*,G) using the command line interface rather than
+	 * updating the conf file and SIGHUP. Note: if we fail to alloc()
+	 * memory we don't do anything, just add kernel route silently. */
+	new_entry = malloc(sizeof(struct mroute6));
+	if (new_entry) {
+		memcpy(new_entry, route, sizeof(struct mroute6));
+		LIST_INSERT_HEAD(&mroute6_dyn_list, new_entry, link);
+	}
+
+	/* Signal to cache handler we've added a stop filter */
+	if (!entry) {
+		errno = ENOENT;
+		return -1;
+	}
+
+	return ret;
+}
+
+/**
+ * mroute6_add - Add route to kernel, or save a wildcard route for later use
+ * @route: Pointer to struct mroute6 IPv6 multicast route to add
+ *
+ * Adds the given multicast @route to the kernel multicast routing table.
+ * unless the source IP is %INADDR_ANY, i.e., a (*,G) route.  Those we
+ * save for and check against at runtime when the kernel signals us.
+ *
+ * Returns:
+ * POSIX OK(0) on success, non-zero on error with @errno set.
+ */
+int mroute6_add(struct mroute6 *route)
+{
+	struct mroute6 *entry;
+	char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
+
+	/* Exact match, then skip ... */
+	if (mroute6_exists(route)) {
+		errno = EEXIST;
+		return 1;
+	}
+
+	/* ... (S,G) matches and inbound differs, then replace route */
+	entry = mroute6_similar(route);
+
+	if (entry) {
+		kern_del6(entry, is_active6(entry));
+		LIST_REMOVE(entry, link);
+		free(entry);
+	}
+
+	entry = malloc(sizeof(struct mroute6));
+	if (!entry) {
+		smclog(LOG_WARNING, "Cannot add multicast route: %s", strerror(errno));
+		return 1;
+	}
+
+	memcpy(entry, route, sizeof(struct mroute6));
+
+	/*
+	 * For (*,G) we save to a linked list to be added on-demand when
+	 * the kernel sends IGMPMSG_NOCACHE.
+	 */
+	if (!is_mroute6_static(entry)) {
+		struct mroute6 *dyn, *tmp;
+
+		LIST_INSERT_HEAD(&mroute6_conf_list, entry, link);
+		if (IN6_IS_ADDR_ANY(&entry->source.sin6_addr) &&
+				IN6_IS_ADDR_ANY(&entry->group.sin6_addr))
+		{
+			smclog(LOG_INFO, "scope mask is %04X", entry->scope_mask);
+			mif_list[route->inbound].scope_mask = entry->scope_mask;
+		}
+
+		/* Also, immediately expire any currently blocked traffic */
+		LIST_FOREACH_SAFE(dyn, &mroute6_dyn_list, link, tmp) {
+			if (!is_active6(dyn) && is_match6(entry, dyn)) {
+				inet_ntop(AF_INET6, &dyn->group.sin6_addr,  group,  INET6_ADDRSTRLEN);
+				inet_ntop(AF_INET6, &dyn->source.sin6_addr, origin, INET6_ADDRSTRLEN);
+				smclog(LOG_DEBUG, "Flushing (%s,%s) on MIF %d, new matching (*,G) rule ...",
+				       origin, group, dyn->inbound);
+
+				kern_del6(dyn, 0);
+				LIST_REMOVE(dyn, link);
+				free(dyn);
+			}
+		}
+
+		smclog(LOG_DEBUG, "Add conf %s -> %s from MIF %d",
+				inet_ntop(AF_INET6, &entry->source.sin6_addr, origin, INET6_ADDRSTRLEN),
+				inet_ntop(AF_INET6, &entry->group.sin6_addr, group, INET6_ADDRSTRLEN),
+				entry->inbound);
+
+		return 0;
+	}
+
+	LIST_INSERT_HEAD(&mroute6_static_list, entry, link);
+	return kern_add6(route, 1);
+}
+
+/**
+ * mroute6_del - Remove route from kernel, or all matching routes if wildcard
+ * @route: Pointer to struct mroute6 IPv6 multicast route to remove
+ *
+ * Removes the given multicast @route from the kernel multicast routing
+ * table.
+ *
+ * Returns:
+ * POSIX OK(0) on success, non-zero on error with @errno set.
+ */
+int mroute6_del(struct mroute6 *route)
+{
+	struct mroute6 *entry, *set, *tmp, *innertmp;
+	
+	if (is_mroute6_static(route)) {
+		LIST_FOREACH_SAFE(entry, &mroute6_static_list, link, tmp) {
+			if (!is_exact_match6(entry, route))
+				continue;
+
+			return do_mroute6_del(entry);
+		}
+
+		/* Not found in static list, check if spawned from a (*,G)/(*, *) rule. */
+		LIST_FOREACH_SAFE(entry, &mroute6_dyn_list, link, tmp) {
+			if (!is_exact_match6(entry, route))
+				continue;
+
+			return do_mroute6_del(entry);
+		}
+
+		smclog(LOG_NOTICE, "Cannot delete multicast route: not found");
+		errno = ENOENT;
+		return -1;
+	}
+	else {
+		/* Find matching (*,G) ... and interface .. and prefix length. */
+		LIST_FOREACH_SAFE(entry, &mroute6_conf_list, link, tmp) {
+			int ret = 0;
+
+			if (!is_match6(entry, route) || entry->len != route->len ||
+					entry->src_len != route->src_len)
+				continue;
+
+			/* Remove all (S,G) routes spawned from the (*,G)/(*, *) as well ... */
+			LIST_FOREACH_SAFE(set, &mroute6_dyn_list, link, innertmp) {
+				if (is_match6(route, set))
+				{
+					ret += do_mroute6_del(set);
+				}
+			}
+
+			if (!ret) {
+				char origin[INET6_ADDRSTRLEN] = "", group[INET6_ADDRSTRLEN] = "";
+				smclog(LOG_DEBUG, "Remove conf %s -> %s from MIF %d",
+						inet_ntop(AF_INET6, &entry->source.sin6_addr, origin, INET6_ADDRSTRLEN),
+						inet_ntop(AF_INET6, &entry->group.sin6_addr, group, INET6_ADDRSTRLEN),
+						entry->inbound);
+				LIST_REMOVE(entry, link);
+				free(entry);
+			}
+
+			return ret;
+		}
+
+		smclog(LOG_NOTICE, "Cannot delete multicast route: not found");
+		errno = ENOENT;
+		return -1;
+	}
+}
+
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
 /* Used by file parser to add VIFs/MIFs after setup */
@@ -1239,7 +1846,7 @@ static int show_mroute(int sd, struct mroute4 *r, int detail)
 
 	i = iface_find_by_vif(r->inbound);
 	snprintf(sg, sizeof(sg), "(%s%s, %s%s)", src, src_len, grp, grp_len);
-	snprintf(buf, sizeof(buf), "%-34s %-16s", sg, i->name);
+	snprintf(buf, sizeof(buf), "%-50s %-16s", sg, i->name);
 
 	if (detail) {
 		char stats[30];
@@ -1292,6 +1899,25 @@ int mroute_show(int sd, int detail)
 		if (show_mroute(sd, r, detail) < 0)
 			return 1;
 	}
+
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
+	struct mroute6 *r6;
+
+	LIST_FOREACH(r6, &mroute6_conf_list, link) {
+		if (show_mroute6(sd, r6, detail) < 0)
+			return 1;
+	}
+
+	LIST_FOREACH(r6, &mroute6_dyn_list, link) {
+		if (show_mroute6(sd, r6, detail) < 0)
+			return 1;
+	}
+
+	LIST_FOREACH(r6, &mroute6_static_list, link) {
+		if (show_mroute6(sd, r6, detail) < 0)
+			return 1;
+	}
+#endif // HAVE_IPV6_MULTICAST_ROUTING
 
 	return 0;
 }

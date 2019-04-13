@@ -205,10 +205,14 @@ Example `smcroute.conf`:
     mgroup from eth0 group 225.1.2.3
     mroute from eth0 group 225.1.2.3 to eth1 eth2
 
+    mroute from wpan0 source :: group :: to 65520 eth0
+
 or, from the command line:
 
     # smcroutectl join eth0 225.1.2.3
     # smcroutectl add  eth0 225.1.2.3 eth1 eth2
+
+    # smcroutectl add wpan0 :: :: 65472 eth0
 
 Also, see the `smcrouted -c SEC` option for periodic flushing of learned
 (*,G) rules, including the automatic blocking of unknown multicast, and

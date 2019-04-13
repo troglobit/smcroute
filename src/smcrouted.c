@@ -91,7 +91,7 @@ static void restart(void)
 	/* Update list of interfaces and create new virtual interface mappings in kernel. */
 	iface_init();
 	mroute4_enable(do_vifs, table_id, cache_tmo);
-	mroute6_enable(do_vifs, table_id);
+	mroute6_enable(do_vifs, table_id, cache_tmo);
 }
 
 void reload(void)
@@ -180,7 +180,7 @@ static int start_server(void)
 	}
 
 	/*
-	 * Timer API needs to be initilized before mroute4_enable()
+	 * Timer API needs to be initilized before mroute4_enable()/mroute6_enable()
 	 */
 	timer_init();
 
@@ -195,7 +195,7 @@ static int start_server(void)
 		api--;
 	}
 
-	if (mroute6_enable(do_vifs, table_id)) {
+	if (mroute6_enable(do_vifs, table_id, cache_tmo)) {
 		if (errno == EADDRINUSE)
 			busy++;
 		api--;

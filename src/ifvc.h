@@ -32,6 +32,7 @@ struct iface *iface_iterator          (int first);
 
 struct iface *iface_find_by_name      (const char *ifname);
 struct iface *iface_find_by_vif       (int vif);
+struct iface *iface_find_by_mif       (int mif);
 
 void          iface_match_init        (struct ifmatch *state);
 struct iface *iface_match_by_name     (const char *ifname, struct ifmatch *state);

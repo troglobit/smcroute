@@ -36,11 +36,10 @@
 extern volatile sig_atomic_t running;
 extern volatile sig_atomic_t reloading;
 
-
 /*
  * Check for prefix length, only applicable for (*,G) routes
  */
-static int is_range(char *arg)
+int is_range(char *arg)
 {
 	char *ptr;
 
@@ -236,7 +235,7 @@ static int do_mroute6(struct ipc_msg *msg)
 
 	iface_match_init(&state_in);
 	while (1) {
-		int pos = 0, mif;
+		int len = 0, pos = 0, mif;
 		struct mroute6 mroute;
 		struct ifmatch state_out;
 		char *ifname_in = msg->argv[pos++];
@@ -244,18 +243,67 @@ static int do_mroute6(struct ipc_msg *msg)
 		mif = iface_match_mif_by_name(ifname_in, &state_in, NULL);
 		if (mif < 0)
 			break;
+
 		memset(&mroute, 0, sizeof(mroute));
 		mroute.inbound = mif;
+		mroute.src_len = 128;
+		mroute.len = 128;
+
+		if ((len = is_range(msg->argv[pos])) != 0)
+		{
+			mroute.src_len = len;
+		}
 
 		if (inet_pton(AF_INET6, msg->argv[pos++], &mroute.source.sin6_addr) <= 0) {
-			smclog(LOG_DEBUG, "Invalid IPv6 source address");
+			smclog(LOG_DEBUG, "Invalid IPv6 source or group address %s", msg->argv[pos-1]);
 			return 1;
 		}
 
-		if (inet_pton(AF_INET6, msg->argv[pos++], &mroute.group.sin6_addr) <= 0 ||
-		    !IN6_IS_ADDR_MULTICAST(&mroute.group.sin6_addr)) {
-			smclog(LOG_DEBUG, "Invalid IPv6 group address");
+		if (IN6_IS_ADDR_ANY(&mroute.source.sin6_addr))
+		{
+			mroute.src_len = 0;
+		}
+
+		if (mroute.src_len < 0 || mroute.src_len > 128) {
+			smclog(LOG_DEBUG, "Invalid prefix length (/LEN), must be 0-128");
 			return 1;
+		}
+
+		if (!IN6_IS_ADDR_MULTICAST(&mroute.source.sin6_addr))
+		{
+			if ((len = is_range(msg->argv[pos])) != 0)
+			{
+				mroute.len = len;
+			}
+
+			if (inet_pton(AF_INET6, msg->argv[pos++], &mroute.group.sin6_addr) <= 0 ||
+					(!IN6_IS_ADDR_MULTICAST(&mroute.group.sin6_addr) &&
+					 !IN6_IS_ADDR_ANY(&mroute.group.sin6_addr))) {
+				smclog(LOG_DEBUG, "Invalid IPv6 group address");
+				return 1;
+			}
+
+			if (IN6_IS_ADDR_ANY(&mroute.group.sin6_addr))
+			{
+				mroute.len = 0;
+			}
+
+			if (mroute.len < 0 || mroute.len > 128) {
+				smclog(LOG_DEBUG, "Invalid prefix length (/LEN), must be 0-128");
+				return 1;
+			}
+		}
+		else
+		{
+			mroute.group = mroute.source;
+			mroute.len = mroute.src_len;
+			mroute.src_len = 0;
+			mroute.source.sin6_addr = in6addr_any;
+		}
+
+		if (mroute.len > 0 && mroute.len < 128)
+		{
+		    smclog(LOG_WARNING, "GROUP/LEN not supported yet");
 		}
 
 		/*
@@ -263,6 +311,17 @@ static int do_mroute6(struct ipc_msg *msg)
 		 * for the 'remove' command to be compatible to the first release.
 		 */
 		if (msg->cmd == 'a') {
+			if (IN6_IS_ADDR_ANY(&mroute.group.sin6_addr) && IN6_IS_ADDR_ANY(&mroute.group.sin6_addr))
+			{
+				if (pos >= msg->count) {
+					smclog(LOG_DEBUG, "Missing scope specification");
+					return 1;
+				}
+
+				mroute.scope_mask = (uint16_t)atoi(msg->argv[pos++]);
+				smclog(LOG_DEBUG, "Multicast scope mask %4x", mroute.scope_mask);
+			}
+
 			if (pos >= msg->count) {
 				smclog(LOG_DEBUG, "Missing outbound interface");
 				return 1;
@@ -316,8 +375,8 @@ static int do_mroute(struct ipc_msg *msg)
 
 	if (strchr(msg->argv[1], ':'))
 		return do_mroute6(msg);
-
-	return do_mroute4(msg);
+	else
+	        return do_mroute4(msg);
 }
 
 static int do_mgroup(struct ipc_msg *msg)
@@ -365,6 +424,9 @@ int msg_do(int sd, struct ipc_msg *msg)
 
 	case 'F':
 		mroute4_dyn_expire(0);
+#if HAVE_IPV6_MULTICAST_ROUTING
+		mroute6_dyn_expire(0);
+#endif
 		break;
 
 	case 'H':		/* HUP */
