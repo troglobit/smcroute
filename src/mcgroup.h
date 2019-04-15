@@ -2,6 +2,7 @@
 #ifndef SMCROUTE_MCGROUP_H_
 #define SMCROUTE_MCGROUP_H_
 
+#include "ifvc.h"
 #include "queue.h"
 
 struct mgroup {
@@ -12,6 +13,17 @@ struct mgroup {
 	struct in_addr group;
 	uint8_t        len;
 };
+
+struct mcgroup {
+	LIST_ENTRY(mcgroup) link;
+
+	int            ifindex;
+	inet_addr_t    source;
+	inet_addr_t    group;
+	uint8_t        len;
+};
+
+int  mcgroup_add        (const char *ifname, inet_addr_t *source, inet_addr_t *group, int len);
 
 int  mcgroup_refresh    (void);
 

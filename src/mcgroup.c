@@ -39,10 +39,13 @@
 #include "socket.h"
 #include "mcgroup.h"
 
+extern int kern_join_leave(int sd, int cmd, struct mcgroup *mcg);
+
 /*
  * Track IGMP join, any-source and source specific
  */
 LIST_HEAD(, mgroup) mgroup_static_list = LIST_HEAD_INITIALIZER();
+LIST_HEAD(, mcgroup) mcgroup_conf_list = LIST_HEAD_INITIALIZER();
 
 /*
  * Failed joins due to no-ip-address on iface yet ...
@@ -50,6 +53,10 @@ LIST_HEAD(, mgroup) mgroup_static_list = LIST_HEAD_INITIALIZER();
 LIST_HEAD(, mgroup) mgroup_retry_list  = LIST_HEAD_INITIALIZER();
 
 static int mcgroup4_socket = -1;
+#ifdef HAVE_IPV6_MULTICAST_HOST
+static int mcgroup6_socket = -1;
+static void mcgroup6_init(void);
+#endif
 
 #ifdef HAVE_LINUX_FILTER_H
 /* Extremely simple "drop everything" filter for Linux so we do not get
@@ -130,6 +137,7 @@ static void mcgroup4_init(void)
 }
 
 #ifdef HAVE_STRUCT_GROUP_REQ
+
 /*
  * This function handles both ASM and SSM join/leave for IPv4 and IPv6
  * using the RFC 3678 API available on Linux, FreeBSD, and a few other
@@ -420,6 +428,38 @@ int mcgroup4_leave(const char *ifname, struct in_addr source, struct in_addr gro
 	return mcgroup_join_leave_ssm_ipv4(mcgroup4_socket, 'l', ifname, source, group, len);
 }
 
+int mcgroup_add(const char *ifname, inet_addr_t *source, inet_addr_t *group, int len)
+{
+	struct mcgroup *mcg;
+	struct iface *iface;
+	int sd = mcgroup4_socket;
+
+	iface = iface_find_by_name(ifname);
+	if (!iface)
+		return 1;
+
+	mcg = calloc(1, sizeof(*mcg));
+	if (!mcg)
+		return 1;
+
+	mcg->ifindex = iface->ifindex;
+	mcg->source  = *source;
+	mcg->group   = *group;
+	mcg->len     = len;
+
+	LIST_INSERT_HEAD(&mcgroup_conf_list, mcg, link);
+
+#ifdef HAVE_IPV6_MULTICAST_HOST
+	if (mcg->group.ss_family == AF_INET6) {
+		mcgroup6_init();
+		sd = mcgroup6_socket;
+	} else
+#endif
+		mcgroup4_init();
+
+	return kern_join_leave(sd, 'j', mcg);
+}
+
 /*
  * Close IPv4 multicast socket to kernel to leave any joined groups
  */
@@ -487,8 +527,6 @@ int mcgroup_refresh(void)
 }
 
 #ifdef HAVE_IPV6_MULTICAST_HOST
-static int mcgroup6_socket = -1;
-
 static void mcgroup6_init(void)
 {
 	if (mcgroup6_socket < 0) {
@@ -584,28 +622,28 @@ void mcgroup6_disable(void)
 int mcgroup_show(int sd, int detail)
 {
 	char buf[256];
-	char sg[INET_ADDRSTRLEN * 2 + 5 + 3];
-	struct mgroup *entry;
+	char sg[INET_ADDRSTR_LEN * 2 + 5 + 3];
+	struct mcgroup *entry;
 
 	(void)detail;
-	LIST_FOREACH(entry, &mgroup_static_list, link) {
-		char src[INET_ADDRSTRLEN] = "*";
-		char grp[INET_ADDRSTRLEN];
+	LIST_FOREACH(entry, &mcgroup_conf_list, link) {
+		char src[INET_ADDRSTR_LEN] = "*";
+		char grp[INET_ADDRSTR_LEN];
 		struct iface *iface;
 
 		iface = iface_find(entry->ifindex);
 		if (!iface)
 			continue;
 
-		if (entry->source.s_addr != htonl(INADDR_ANY))
-			inet_ntop(AF_INET, &entry->source, src, sizeof(src));
-		inet_ntop(AF_INET, &entry->group, grp, sizeof(grp));
+		if (!is_anyaddr(&entry->source))
+			convert_address(&entry->source, src, sizeof(src));
+		convert_address(&entry->group, grp, sizeof(grp));
 
 		if (entry->len > 0)
 			snprintf(sg, sizeof(sg), "(%s, %s/%d)", src, grp, entry->len);
 		else
 			snprintf(sg, sizeof(sg), "(%s, %s)", src, grp);
-		snprintf(buf, sizeof(buf), "%-34s %s\n", sg, iface->name);
+		snprintf(buf, sizeof(buf), "%-46s %s\n", sg, iface->name);
 
 		if (ipc_send(sd, buf, strlen(buf)) < 0) {
 			smclog(LOG_ERR, "Failed sending reply to client: %s", strerror(errno));

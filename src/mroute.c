@@ -1239,7 +1239,7 @@ static int show_mroute(int sd, struct mroute4 *r, int detail)
 
 	i = iface_find_by_vif(r->inbound);
 	snprintf(sg, sizeof(sg), "(%s%s, %s%s)", src, src_len, grp, grp_len);
-	snprintf(buf, sizeof(buf), "%-34s %-16s", sg, i->name);
+	snprintf(buf, sizeof(buf), "%-46s %-16s", sg, i->name);
 
 	if (detail) {
 		char stats[30];

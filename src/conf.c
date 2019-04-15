@@ -102,27 +102,39 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 #if !defined(HAVE_IPV6_MULTICAST_HOST) || !defined(HAVE_IPV6_MULTICAST_ROUTING)
 		WARN("Ignoring join %s on %s, IPv6 disabled.", group, ifname);
 #else
-		struct in6_addr grp;
+		struct sockaddr_in6 src, grp;
 
-		if (source)
-			WARN("IPv6 is not (yet) supported for source specific multicast (SSM) join.");
+		memset(&src, 0, sizeof(src));
+		memset(&grp, 0, sizeof(grp));
 
-		if (inet_pton(AF_INET6, group, &grp) <= 0 || !IN6_IS_ADDR_MULTICAST(&grp)) {
+		src.sin6_family = AF_INET6;
+		grp.sin6_family = AF_INET6;
+
+		if (source && inet_pton(AF_INET6, source, &src.sin6_addr) <= 0) {
+			WARN("join: Invalid IPv6 multicast source: %s", group);
+			return 1;
+		}
+		if (inet_pton(AF_INET6, group, &grp.sin6_addr) <= 0 ||
+		    !IN6_IS_ADDR_MULTICAST(&grp.sin6_addr)) {
 			WARN("join: Invalid IPv6 multicast group: %s", group);
 			return 1;
 		}
 
-		rc = mcgroup6_join(ifname, grp);
+		/* XXX: Add support for GROUP/LEN to IPv6 */
+		rc = mcgroup_add(ifname, (inet_addr_t *)&src, (inet_addr_t *)&grp, 0);
 #endif
 	} else {
-		struct in_addr src;
-		struct in_addr grp;
+		struct sockaddr_in src, grp;
 		char *ptr;
 		int len = 0;
 
 		memset(&src, 0, sizeof(src));
+		memset(&grp, 0, sizeof(grp));
 
-		if (source && (inet_pton(AF_INET, source, &src) <= 0)) {
+		src.sin_family = AF_INET;
+		grp.sin_family = AF_INET;
+
+		if (source && inet_pton(AF_INET, source, &src.sin_addr) <= 0) {
 			WARN("join: Invalid IPv4 multicast source: %s", source);
 			return 1;
 		}
@@ -138,12 +150,13 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 			}
 		}
 
-		if ((inet_pton(AF_INET, group, &grp) <= 0) || !IN_MULTICAST(ntohl(grp.s_addr))) {
+		if (inet_pton(AF_INET, group, &grp.sin_addr) <= 0 ||
+		    !IN_MULTICAST(ntohl(grp.sin_addr.s_addr))) {
 			WARN("join: Invalid IPv4 multicast group: %s", group);
 			return 1;
 		}
 
-		rc = mcgroup4_join(ifname, src, grp, len);
+		rc = mcgroup_add(ifname, (inet_addr_t *)&src, (inet_addr_t *)&grp, len);
 	}
 
 	return rc;

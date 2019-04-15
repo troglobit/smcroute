@@ -26,6 +26,7 @@
 #include <sys/socket.h>		/* AF_INET, AF_INET6 */
 
 #include "log.h"
+#include "ifvc.h"
 #include "script.h"
 
 static char *exec   = NULL;
@@ -87,7 +88,7 @@ int script_exec(struct mroute *mroute)
 		return 0;
 
 	if (mroute) {
-		char source[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
+		char source[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
 
 		if (mroute->version == 4) {
 			inet_ntop(AF_INET, &mroute->u.mroute4.source.s_addr, source, INET_ADDRSTRLEN);
