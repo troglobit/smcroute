@@ -294,6 +294,22 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 	return rc;
 }
 
+static char *chomp(char *str)
+{
+	char *p;
+
+	if (!str || strlen(str) < 1) {
+		errno = EINVAL;
+		return NULL;
+	}
+
+	p = str + strlen(str) - 1;
+        while (*p == '\n')
+		*p-- = 0;
+
+	return str;
+}
+
 /*
  * This function parses the given configuration file according to the
  * below format rules.  Joins multicast groups and creates multicast
@@ -335,6 +351,9 @@ static int conf_parse(const char *file, int do_vifs)
 		char *source = NULL;
 		char *group  = NULL;
 		char *dest[32];
+
+		/* Strip any line end character(s) */
+		chomp(line);
 
 		DEBUG(".conf line: '%s'", line);
 		while ((token = pop_token(&line))) {
