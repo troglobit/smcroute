@@ -112,7 +112,9 @@ AS_IF([test "x$with_systemd" != "xno"],
 AM_CONDITIONAL([HAVE_SYSTEMD], [test "x$with_systemd" != "xno"])
 
 AS_IF([test "x$with_libsystemd" != "xno"],
-     AC_DEFINE([HAVE_LIBSYSTEMD], [1], [Define to 1 if you have libsystemd-dev]))
+     AC_DEFINE([HAVE_LIBSYSTEMD], [1], [Define to 1 if you have libsystemd-dev])
+     AC_SUBST([DAEMON_TYPE], "Notify"),
+     AC_SUBST([DAEMON_TYPE], "Simple"))
 AM_CONDITIONAL([HAVE_LIBSYSTEMD], [test "x$with_libsystemd" != "xno"])
 
 # Check if we need -lpthread (building statically) and -lrt (older GLIBC)

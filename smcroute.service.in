@@ -8,7 +8,7 @@ After=network-online.target
 Requires=network-online.target
 
 [Service]
-Type=notify
+Type=@DAEMON_TYPE@
 ExecStart=@SBINDIR@/smcrouted -n -s
 ExecReload=@SBINDIR@/smcroutectl restart
 
