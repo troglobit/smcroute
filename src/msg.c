@@ -40,7 +40,7 @@ extern volatile sig_atomic_t reloading;
 /*
  * Check for prefix length, only applicable for (*,G) routes
  */
-static int is_range(char *arg)
+int is_range(char *arg)
 {
 	char *ptr;
 

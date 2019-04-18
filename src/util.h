@@ -32,4 +32,6 @@ size_t strlcpy(char *dst, const char *src, size_t len);
 size_t strlcat(char *dst, const char *src, size_t dsize);
 #endif
 
+int is_range(char *arg);  // return perfix len after '/'
+
 #endif /* SMCROUTE_UTIL_H_ */
