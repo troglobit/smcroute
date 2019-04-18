@@ -87,10 +87,15 @@ struct mroute4 {
 #endif
 
 struct mroute6 {
+	LIST_ENTRY(mroute6) link;
 	struct sockaddr_in6 source;
-	struct sockaddr_in6 group;      /* multicast group */
-	short   inbound;                /* incoming VIF    */
-	uint8_t ttl[MAX_MC_MIFS];       /* outgoing VIFs   */
+	struct sockaddr_in6 group;            /* multicast group */
+	short               src_len;          /* source prefix len, or 0:disabled */
+	short               len;		      /* prefix len, or 0:disabled */
+	short               inbound;          /* incoming MIF    */
+	uint8_t             ttl[MAX_MC_MIFS]; /* outgoing MIFs   */
+	unsigned long       valid_pkt;        /* packet counter at last mroute6_dyn_expire() */
+	time_t              last_use;         /* timestamp of last forwarded packet */
 };
 
 /*
