@@ -43,6 +43,7 @@ Features
 --------
 
 - Configuration file support, `/etc/smcroute.conf`
+- Daemon startup options support, `/etc/default/smcroute`
 - Support for restarting and reloading the `.conf` on `SIGHUP`
 - Source-less on-demand routing, a.k.a. (*,G) based static routing
 - Optional built-in [mrdisc][] support, [RFC4286][]
@@ -61,6 +62,15 @@ To set multicast routes and join groups you must first start the daemon,
 which needs *root privileges*, or `CAP_NET_ADMIN`.  Use `smcrouted -n`
 to run the daemon in the foreground, as required by modern init daemons
 like systemd and [Finit][].
+
+By default `smcrouted` is started with `-n -s` options, i.e. the daemon runs
+in the foreground and uses syslog.
+
+By default `smcrouted` reads `/etc/default/smcroute` if the file exists. More
+startup options could be specified in this file. For example, to raise log level
+for debug purpose:
+
+    SMCROUTED_OPTS=-l debug
 
 By default `smcrouted` reads `/etc/smcroute.conf`, which can look
 something like this:
