@@ -113,10 +113,10 @@ static int mroute6_add_mif(struct iface *iface);
 /* Check for kernel IGMPMSG_NOCACHE for (*,G) hits. I.e., source-less routes. */
 static void handle_nocache4(int sd, void *arg)
 {
-	int result;
-	char tmp[128];
-	struct ip *ip;
 	struct igmpmsg *igmpctl;
+	struct ip *ip;
+	char tmp[128];
+	int result;
 
 	(void)arg;
 	memset(tmp, 0, sizeof(tmp));
@@ -192,9 +192,9 @@ static void cache_flush(void *arg)
  */
 int mroute4_enable(int do_vifs, int table_id, int timeout)
 {
-	int arg = 1;
 	struct iface *iface;
 	static int running = 0;
+	int arg = 1;
 
 	if (mroute4_socket < 0) {
 		mroute4_socket = socket_create(AF_INET, SOCK_RAW, IPPROTO_IGMP, handle_nocache4, NULL);
@@ -305,8 +305,8 @@ void mroute4_disable(int close_socket)
 static int mroute4_add_vif(struct iface *iface)
 {
 	struct vifctl vc;
-	int vif = -1;
 	size_t i;
+	int vif = -1;
 
 	if (mroute4_socket < 0)
 		return -1;
@@ -365,8 +365,8 @@ static int mroute4_add_vif(struct iface *iface)
 
 static int mroute4_del_vif(struct iface *iface)
 {
-	int ret;
 	int16_t vif = iface->vif;
+	int ret;
 
 	if (mroute4_socket < 0)
 		return -1;
@@ -396,8 +396,8 @@ static int mroute4_del_vif(struct iface *iface)
 /* Actually set in kernel - called by mroute4_add() and mroute4_check_add() */
 static int kern_add4(struct mroute4 *route, int active)
 {
-	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	struct mfcctl mc;
+	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 
 	if (mroute4_socket < 0)
 		return -1;
@@ -435,8 +435,8 @@ static int kern_add4(struct mroute4 *route, int active)
 /* Actually remove from kernel - called by mroute4_del() */
 static int kern_del4(struct mroute4 *route, int active)
 {
-	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	struct mfcctl mc;
+	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 
 	if (mroute4_socket < 0)
 		return -1;
@@ -650,8 +650,8 @@ static unsigned long get_valid_pkt4(struct mroute4 *route)
  */
 void mroute4_dyn_expire(int max_idle)
 {
-	struct mroute4 *entry, *tmp;
 	struct timespec now;
+	struct mroute4 *entry, *tmp;
 
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
@@ -896,12 +896,12 @@ static int proc_set_val(char *file, int val)
  */
 static void handle_nocache6(int sd, void *arg)
 {
-	int result;
 	char tmp[128];
+	int rc;
 
 	(void)arg;
-	result = read(sd, tmp, sizeof(tmp));
-	if (result < 0)
+	rc = read(sd, tmp, sizeof(tmp));
+	if (rc < 0)
 		smclog(LOG_INFO, "Failed clearing MLD message from kernel: %s", strerror(errno));
 }
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
@@ -921,8 +921,8 @@ int mroute6_enable(int do_vifs, int table_id)
 	(void)do_vifs;
 	(void)table_id;
 #else
-	int arg = 1;
 	struct iface *iface;
+	int arg = 1;
 
 	if (mroute6_socket < 0) {
 		mroute6_socket = socket_create(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6, handle_nocache6, NULL);
@@ -969,8 +969,10 @@ int mroute6_enable(int do_vifs, int table_id)
 	memset(&mif_list, 0, sizeof(mif_list));
 
 #ifdef __linux__
-	/* On Linux pre 2.6.29 kernels net.ipv6.conf.all.mc_forwarding
-	 * is not set on MRT6_INIT so we have to do this manually */
+	/*
+	 * On Linux pre 2.6.29 kernels net.ipv6.conf.all.mc_forwarding
+	 * is not set on MRT6_INIT so we have to do this manually
+	 */
 	if (proc_set_val(IPV6_ALL_MC_FORWARD, 1)) {
 		if (errno != EACCES) {
 			smclog(LOG_ERR, "Failed enabling IPv6 multicast forwarding: %s", strerror(errno));
@@ -1173,9 +1175,9 @@ int mroute6_del(struct mroute6 *route)
 /* Used by file parser to add VIFs/MIFs after setup */
 int mroute_add_vif(char *ifname, uint8_t mrdisc, uint8_t threshold)
 {
-	int ret = 0;
-	struct iface *iface;
 	struct ifmatch state;
+	struct iface *iface;
+	int ret = 0;
 
 	smclog(LOG_DEBUG, "Adding %s to list of multicast routing interfaces", ifname);
 	iface_match_init(&state);
@@ -1190,16 +1192,16 @@ int mroute_add_vif(char *ifname, uint8_t mrdisc, uint8_t threshold)
 
 	if (!state.match_count)
 		return 1;
-	else
-		return ret;
+
+	return ret;
 }
 
 /* Used by file parser to remove VIFs/MIFs after setup */
 int mroute_del_vif(char *ifname)
 {
-	int ret = 0;
-	struct iface *iface;
 	struct ifmatch state;
+	struct iface *iface;
+	int ret = 0;
 
 	smclog(LOG_DEBUG, "Pruning %s from list of multicast routing interfaces", ifname);
 	iface_match_init(&state);
@@ -1212,21 +1214,21 @@ int mroute_del_vif(char *ifname)
 
 	if (!state.match_count)
 		return 1;
-	else
-		return ret;
+
+	return ret;
 }
 
 #ifdef ENABLE_CLIENT
 static int show_mroute(int sd, struct mroute4 *r, int detail)
 {
-	int vif;
+	struct iface *i;
 	char src[INET_ADDRSTRLEN] = "*";
 	char src_len[4] = "";
 	char grp[INET_ADDRSTRLEN];
 	char grp_len[4] = "";
 	char sg[(INET_ADDRSTRLEN+3) * 2 + 5];
 	char buf[MAX_MC_VIFS * 17 + 80];
-	struct iface *i;
+	int vif;
 
 	if (r->source.s_addr != htonl(INADDR_ANY)) {
 		inet_ntop(AF_INET, &r->source, src, sizeof(src));
@@ -1242,8 +1244,8 @@ static int show_mroute(int sd, struct mroute4 *r, int detail)
 	snprintf(buf, sizeof(buf), "%-46s %-16s", sg, i->name);
 
 	if (detail) {
-		char stats[30];
 		unsigned long p = 0, b = 0;
+		char stats[30];
 
 		get_stats4(r, &p, &b, NULL);
 		snprintf(stats, sizeof(stats), " %10lu %10lu ", p, b);

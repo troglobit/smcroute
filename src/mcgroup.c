@@ -363,8 +363,8 @@ static int mcgroup_join_leave_ipv4(int sd, int cmd, const char *ifname, struct i
 
 	if (!state.match_count)
 		return 1;
-	else
-		return ret;
+
+	return ret;
 }
 
 static int mcgroup_join_leave_ssm_ipv4(int sd, int cmd, const char *ifname, struct in_addr source, struct in_addr group, int len)
@@ -373,8 +373,8 @@ static int mcgroup_join_leave_ssm_ipv4(int sd, int cmd, const char *ifname, stru
 	smclog(LOG_WARNING, "Source specific join/leave not supported, ignoring source %s", inet_ntoa(source));
 	return mcgroup_join_leave_ipv4(sd, cmd, ifname, group, len);
 #else
-	struct iface *iface;
 	struct ifmatch state;
+	struct iface *iface;
 	int ret = 0;
 
 	iface_match_init(&state);
@@ -389,8 +389,8 @@ static int mcgroup_join_leave_ssm_ipv4(int sd, int cmd, const char *ifname, stru
 
 	if (!state.match_count)
 		return 1;
-	else
-		return ret;
+
+	return ret;
 #endif
 }
 
@@ -545,10 +545,10 @@ static void mcgroup6_init(void)
 
 static int mcgroup_join_leave_ipv6(int sd, int cmd, const char *ifname, struct in6_addr group)
 {
-	int ret = 0;
 	struct ipv6_mreq mreq;
-	struct iface *iface;
 	struct ifmatch state;
+	struct iface *iface;
+	int ret = 0;
 
 	iface_match_init(&state);
 	while ((iface = match_valid_iface(ifname, &state))) {
@@ -571,8 +571,8 @@ static int mcgroup_join_leave_ipv6(int sd, int cmd, const char *ifname, struct i
 
 	if (!state.match_count)
 		return 1;
-	else
-		return ret;
+
+	return ret;
 }
 
 /*
@@ -621,15 +621,15 @@ void mcgroup6_disable(void)
 /* Write all joined IGMP/MLD groups to client socket */
 int mcgroup_show(int sd, int detail)
 {
+	struct mcgroup *entry;
 	char buf[256];
 	char sg[INET_ADDRSTR_LEN * 2 + 5 + 3];
-	struct mcgroup *entry;
-
+ 
 	(void)detail;
 	LIST_FOREACH(entry, &mcgroup_conf_list, link) {
+		struct iface *iface;
 		char src[INET_ADDRSTR_LEN] = "*";
 		char grp[INET_ADDRSTR_LEN];
-		struct iface *iface;
 
 		iface = iface_find(entry->ifindex);
 		if (!iface)
