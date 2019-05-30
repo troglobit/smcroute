@@ -37,8 +37,9 @@
 #include "timer.h"
 #include "util.h"
 
-static unsigned int num_ifaces = 0, num_ifaces_alloc = 0;
 static struct iface *iface_list = NULL;
+static unsigned int num_ifaces_alloc = 0;
+static unsigned int num_ifaces = 0;
 
 /**
  * iface_update - Periodic check of new interfaces or addresses
@@ -210,9 +211,9 @@ struct iface *iface_find(int ifindex)
  */
 struct iface *iface_find_by_name(const char *ifname)
 {
-	unsigned int i;
-	struct iface *iface;
 	struct iface *candidate = NULL;
+	struct iface *iface;
+	unsigned int i;
 	char *nm, *ptr;
 
 	if (!ifname)
@@ -391,8 +392,8 @@ int iface_get_mif(struct iface *iface __attribute__ ((unused)))
  */
 int iface_match_vif_by_name(const char *ifname, struct ifmatch *state, struct iface **found)
 {
-	int vif;
 	struct iface *iface;
+	int vif;
 
 	while ((iface = iface_match_by_name(ifname, state))) {
 		vif = iface_get_vif(iface);
@@ -420,8 +421,8 @@ int iface_match_vif_by_name(const char *ifname, struct ifmatch *state, struct if
  */
 int iface_match_mif_by_name(const char *ifname, struct ifmatch *state, struct iface **found)
 {
-	int mif;
 	struct iface *iface;
+	int mif;
 
 	while ((iface = iface_match_by_name(ifname, state))) {
 		mif = iface_get_mif(iface);
