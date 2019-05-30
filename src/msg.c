@@ -335,11 +335,20 @@ static int do_mgroup(struct ipc_msg *msg)
 
 static int do_show(struct ipc_msg *msg, int sd, int detail)
 {
-	if (msg->count == 0)
-		return mroute_show(sd, detail);
+	if (msg->count > 0) {
+		char cmd = msg->argv[0][0];
 
-	if (msg->argv[0][0] == 'g')
-		return mcgroup_show(sd, detail);
+		switch (cmd) {
+		case 'g':
+			return mcgroup_show(sd, detail);
+
+		case 'i':
+			return iface_show(sd, detail);
+
+		default:
+			break;
+		}
+	}
 
 	return mroute_show(sd, detail);
 }

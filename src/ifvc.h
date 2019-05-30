@@ -53,6 +53,7 @@ int           iface_get_mif           (struct iface *iface);
 int           iface_match_vif_by_name (const char *ifname, struct ifmatch *state, struct iface **found);
 int           iface_match_mif_by_name (const char *ifname, struct ifmatch *state, struct iface **found);
 
+int           iface_show              (int sd, int detail);
 
 static inline int is_anyaddr(inet_addr_t *ss)
 {

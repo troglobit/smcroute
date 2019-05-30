@@ -23,6 +23,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -32,6 +33,7 @@
 #include <netinet/in.h>
 
 #include "log.h"
+#include "ipc.h"
 #include "ifvc.h"
 #include "mcgroup.h"
 #include "timer.h"
@@ -438,6 +440,32 @@ int iface_match_mif_by_name(const char *ifname, struct ifmatch *state, struct if
 
 	return -1;
 }
+
+#ifdef ENABLE_CLIENT
+/* Return all currently known interfaces */
+int iface_show(int sd, int detail)
+{
+	struct iface *iface;
+
+	(void)detail;
+
+	iface = iface_iterator(1);
+	while (iface) {
+		char buf[256];
+
+		snprintf(buf, sizeof(buf), "%-16s  %6d  %3d  %3d\n",
+			 iface->name, iface->ifindex, iface->vif, iface->mif);
+		if (ipc_send(sd, buf, strlen(buf)) < 0) {
+			smclog(LOG_ERR, "Failed sending reply to client: %s", strerror(errno));
+			return -1;
+		}
+
+		iface = iface_iterator(0);
+	}
+
+	return 0;
+}
+#endif
 
 /**
  * Local Variables:

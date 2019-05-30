@@ -54,7 +54,7 @@ struct arg {
 	{ "flush" ,  0, 'F', NULL,   "Flush all dynamically set (*,G) multicast routes", NULL, 0 },
 	{ "kill",    0, 'k', NULL,   "Kill running daemon", NULL, 0 },
 	{ "restart", 0, 'H', NULL,   "Tell daemon to restart and reload its .conf file, like SIGHUP", NULL, 0 },
-	{ "show",    0, 's', NULL,   "Show passive (*,G) and active routes, as well as joined groups", NULL, 1 },
+	{ "show",    0, 's', NULL,   "Show status of routes, joined groups, interfaces, etc.", NULL, 1 },
 	{ "add",     3, 'a', NULL,   "Add a multicast route",    "eth0 192.168.2.42 225.1.2.3 eth1 eth2", 0 },
 	{ "remove",  2, 'r', NULL,   "Remove a multicast route", "eth0 192.168.2.42 225.1.2.3", 0 },
 	{ "del",     2, 'r', NULL,   NULL, NULL, 0 }, /* Alias */
@@ -135,7 +135,7 @@ static int get_width(void)
 	return ret;
 }
 
-static void table_heading(char *argv[], size_t count, int detail)
+static void table_heading(char cmd, size_t count, int detail)
 {
 	int len;
 	char line[120];
@@ -146,12 +146,30 @@ static void table_heading(char *argv[], size_t count, int detail)
 	if (!heading || !isatty(STDOUT_FILENO))
 		return;
 
-	if (count && argv[0][0] == 'g')
+	if (detail)
+		cmd -= 0x20;
+
+	switch (cmd) {
+	case 'g':
 		snprintf(line, sizeof(line), "\e[7m%-46s %-16s", g, i);
-	else if (detail)
+		break;
+
+	case 'R':
 		snprintf(line, sizeof(line), "\e[7m%-46s %-16s %10s %10s  %-8s", r, i, p, b, o);
-	else
+		break;
+
+	case 'r':
 		snprintf(line, sizeof(line), "\e[7m%-46s %-16s %-8s", r, i, o);
+		break;
+
+	case 'i':
+	case 'I':
+		snprintf(line, sizeof(line), "\e[7mPHYINT           IFINDEX  VIF  MIF");
+		break;
+
+	default:
+		return;
+	}
 
 	len = get_width() - (int)strlen(line) + 4;
 	fprintf(stderr, "%s%*s\n\e[0m", line, len < 0 ? 0 : len, "");
@@ -261,7 +279,7 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 			detail = 1;
 			/* fallthrough */
 		case 's':
-			table_heading(argv, count, detail);
+			table_heading(argv[0][0], count, detail);
 			do {
 				fputs(buf, stdout);
 				len = read(sd, buf, sizeof(buf) - 1);
@@ -320,7 +338,9 @@ static int usage(int code)
 	       "  join   IFNAME [SOURCE-IP] GROUP[/LEN]\n"
 	       "  leave  IFNAME [SOURCE-IP] GROUP[/LEN]\n"
 	       "\n"
-	       "  show   [groups|routes]\n"
+	       "  show   interfaces    Show configured multicast interfaces\n"
+	       "  show   groups        Show joined multicast groups\n"
+	       "  show   routes        Show (*,G) and (S,G) multicast routes, default\n"
 	       "\n"
 	       "NOTE: IFNAME is either an interface name or wildcard.  E.g., `eth+` matches\n"
 	       "      eth0, eth15, etc.  Wildcards are available for inbound interfaces.\n"
