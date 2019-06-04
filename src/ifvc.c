@@ -60,7 +60,7 @@ static unsigned int num_ifaces = 0;
  * %TRUE(1), at least one interface added or updated, otherwise
  * %FALSE(0) if there was no change.
  */
-int iface_update(int refresh)
+static int iface_update(int refresh)
 {
 	struct ifaddrs *ifaddr, *ifa;
 	struct iface *iface;
@@ -143,30 +143,7 @@ void iface_init(void)
 	}
 
 	iface_update(0);
-
-#ifndef HAVE_STRUCT_GROUP_REQ
-	/*
-	 * Systems which use the old `struct ip_mreq` API for group
-	 * join/leave, e.g. NetBSD and OpenBSD, require using the
-	 * interface address.  So we set up a refresh timer here to
-	 * handle DHCP client use-cases and similar.
-	 */
-	if (timer_add(5, iface_refresh, NULL) < 0 && errno != EEXIST)
-		smclog(LOG_WARNING, "failed creating iface refresh timer: %s", strerror(errno));
-#endif
 }
-
-#ifndef HAVE_STRUCT_GROUP_REQ
-void iface_refresh(void *arg)
-{
-	(void)arg;
-
-	if (!iface_update(1))
-		return;
-
-	mcgroup_refresh();
-}
-#endif
 
 /**
  * iface_exit - Tear down interface list and clean up

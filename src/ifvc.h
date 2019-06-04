@@ -34,7 +34,6 @@ struct ifmatch {
 };
 
 void          iface_init              (void);
-void          iface_refresh           (void *arg);
 void          iface_exit              (void);
 
 struct iface *iface_iterator          (int first);
