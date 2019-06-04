@@ -33,11 +33,11 @@
 #define MAX_LINE_LEN 512
 
 #define DEBUG(fmt, args...)						\
-	smclog(LOG_DEBUG, "%s:%02d: " fmt, conf, lineno, ##args)
-#define INFO(fmt, args...)			\
-	smclog(LOG_INFO, "%s:%02d: " fmt, conf, lineno, ##args)
+	smclog(LOG_DEBUG, "%s: L%02d: " fmt, conf, lineno, ##args)
+#define INFO(fmt, args...)						\
+	smclog(LOG_INFO, "%s: L%02d: " fmt, conf, lineno, ##args)
 #define WARN(fmt, args...) {						\
-		smclog(LOG_WARNING, "%s:%02d: " fmt, conf,		\
+		smclog(LOG_WARNING, "%s: L%02d: " fmt, conf,		\
 		       lineno, ##args);					\
 		if (conf_vrfy)						\
 			return 1;					\
@@ -427,7 +427,7 @@ static int conf_parse(const char *file, int do_vifs)
 		/* Strip any line end character(s) */
 		chomp(line);
 
-		DEBUG(".conf line: '%s'", line);
+		DEBUG("'%s'", line);
 		while ((token = pop_token(&line))) {
 			/* Strip comments. */
 			if (match("#", token))
