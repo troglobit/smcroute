@@ -33,6 +33,31 @@ struct ifmatch {
 	unsigned int match_count;
 };
 
+static inline int inet_addr_cmp(inet_addr_t *a, inet_addr_t *b)
+{
+	if (!a || !b) {
+		errno = EINVAL;
+		return 1;
+	}
+
+	if (a->ss_family == AF_INET) {
+		struct sockaddr_in *sa = (struct sockaddr_in *)a;
+		struct sockaddr_in *sb = (struct sockaddr_in *)b;
+
+		return sa->sin_addr.s_addr - sb->sin_addr.s_addr;
+	}
+
+#ifdef  HAVE_IPV6_MULTICAST_HOST
+	struct sockaddr_in6 *sa = (struct sockaddr_in6 *)a;
+	struct sockaddr_in6 *sb = (struct sockaddr_in6 *)b;
+
+	return memcmp(sa, sb, sizeof(*sa));
+#endif
+
+	errno = EAFNOSUPPORT;
+	return 1;
+}
+
 void          iface_init              (void);
 void          iface_exit              (void);
 

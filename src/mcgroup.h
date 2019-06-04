@@ -8,34 +8,27 @@
 struct mgroup {
 	LIST_ENTRY(mgroup) link;
 
-	int            ifindex;
-	struct in_addr source;
-	struct in_addr group;
+	struct iface  *iface;
+	inet_addr_t    source;
+	inet_addr_t    group;
 	uint8_t        len;
 };
 
 struct mcgroup {
 	LIST_ENTRY(mcgroup) link;
 
-	int            ifindex;
+	char           ifname[IFNAMSIZ + 1];
+	struct iface  *iface;
 	inet_addr_t    source;
 	inet_addr_t    group;
 	uint8_t        len;
 };
 
-int  mcgroup_add        (const char *ifname, inet_addr_t *source, inet_addr_t *group, int len);
+void mcgroup_disable   (void);
 
-int  mcgroup_refresh    (void);
+int  mcgroup_action    (int cmd, const char *ifname, inet_addr_t *source, inet_addr_t *group, int len);
 
-int  mcgroup4_join      (const char *ifname, struct in_addr source, struct in_addr group, int len);
-int  mcgroup4_leave     (const char *ifname, struct in_addr source, struct in_addr group, int len);
-void mcgroup4_disable   (void);
-
-int  mcgroup6_join      (const char *ifname, struct in6_addr group);
-int  mcgroup6_leave     (const char *ifname, struct in6_addr group);
-void mcgroup6_disable   (void);
-
-int  mcgroup_show       (int sd, int detail);
+int  mcgroup_show      (int sd, int detail);
 
 #endif /* SMCROUTE_MCGROUP_H_ */
 

@@ -140,7 +140,7 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 		}
 
 		/* XXX: Add support for GROUP/LEN to IPv6 */
-		rc = mcgroup_add(ifname, (inet_addr_t *)&src, (inet_addr_t *)&grp, 0);
+		rc = mcgroup_action('j', ifname, (inet_addr_t *)&src, (inet_addr_t *)&grp, 0);
 #endif
 	} else {
 		struct sockaddr_in src, grp;
@@ -178,7 +178,7 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 			}
 		}
 
-		rc = mcgroup_add(ifname, (inet_addr_t *)&src, (inet_addr_t *)&grp, len);
+		rc = mcgroup_action('j', ifname, (inet_addr_t *)&src, (inet_addr_t *)&grp, len);
 	}
 
 	return rc;

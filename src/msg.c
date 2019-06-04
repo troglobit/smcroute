@@ -55,18 +55,23 @@ int is_range(char *arg)
 
 static int do_mgroup4(struct ipc_msg *msg)
 {
-	struct in_addr src, grp;
+	struct sockaddr_in src, grp;
 	char *ifname = msg->argv[0];
 	char group[20];
-	int len, ret = 0;
+	int len, rc = 0;
+
+	memset(&src, 0, sizeof(src));
+	memset(&grp, 0, sizeof(grp));
+
+	src.sin_family = AF_INET;
+	grp.sin_family = AF_INET;
 
 	if (msg->count == 3) {
 		strlcpy(group, msg->argv[2], sizeof(group));
-		ret += inet_pton(AF_INET, msg->argv[1], &src);
+		rc += inet_pton(AF_INET, msg->argv[1], &src.sin_addr);
 	} else {
 		strlcpy(group, msg->argv[1], sizeof(group));
-		src.s_addr = htonl(INADDR_ANY);
-		ret = 1;
+		rc += inet_pton(AF_INET, "0.0.0.0", &src.sin_addr);
 	}
 
 	len = is_range(group);
@@ -75,16 +80,13 @@ static int do_mgroup4(struct ipc_msg *msg)
 		return 1;
 	}
 
-	ret += inet_pton(AF_INET, group, &grp);
-	if (ret < 2 || !IN_MULTICAST(ntohl(grp.s_addr))) {
+	rc += inet_pton(AF_INET, group, &grp.sin_addr);
+	if (rc < 2 || !IN_MULTICAST(ntohl(grp.sin_addr.s_addr))) {
 		smclog(LOG_DEBUG, "Invalid IPv4 source or group address.");
 		return 1;
 	}
 
-	if (msg->cmd == 'j')
-		return mcgroup4_join(ifname, src, grp, len);
-
-	return mcgroup4_leave(ifname, src, grp, len);
+	return mcgroup_action(msg->cmd, ifname, (inet_addr_t *)&src, (inet_addr_t *)&grp, len);
 }
 
 static int do_mgroup6(struct ipc_msg *msg)
@@ -94,28 +96,38 @@ static int do_mgroup6(struct ipc_msg *msg)
 	smclog(LOG_WARNING, "IPv6 multicast support disabled.");
 	return 1;
 #else
-	int ret = 0;
+	struct sockaddr_in6 src, grp;
+	char group[INET6_ADDRSTRLEN];
 	char *ifname = msg->argv[0];
-	struct in6_addr src, grp;
+	int len, rc = 0;
+
+	memset(&src, 0, sizeof(src));
+	memset(&grp, 0, sizeof(grp));
+
+	src.sin6_family = AF_INET6;
+	grp.sin6_family = AF_INET6;
 
 	if (msg->count == 3) {
-		ret += inet_pton(AF_INET6, msg->argv[1], &src);
-		ret += inet_pton(AF_INET6, msg->argv[2], &grp);
+		strlcpy(group, msg->argv[2], sizeof(group));
+		rc += inet_pton(AF_INET6, msg->argv[1], &src);
 	} else {
-		memset(&src, 0, sizeof(src));
-		ret = 1;
-		ret += inet_pton(AF_INET6, msg->argv[1], &grp);
+		strlcpy(group, msg->argv[1], sizeof(group));
+		rc += inet_pton(AF_INET6, "::", &src.sin6_addr);
 	}
 
-	if (ret < 2 || !IN6_IS_ADDR_MULTICAST(&grp)) {
+	len = is_range(group);
+	if (len < 1 || len > 128) {
+		smclog(LOG_DEBUG, "Invalid IPv6 group prefix length (1-128): %d", len);
+		return 1;
+	}
+
+	rc += inet_pton(AF_INET6, group, &grp);
+	if (rc < 2 || !IN6_IS_ADDR_MULTICAST(&grp.sin6_addr)) {
 		smclog(LOG_DEBUG, "Invalid IPv6 source or group address.");
 		return 1;
 	}
 
-	if (msg->cmd == 'j')
-		return mcgroup6_join(ifname, grp);
-
-	return mcgroup6_leave(ifname, grp);
+	return mcgroup_action(msg->cmd, ifname, (inet_addr_t *)&src, (inet_addr_t *)&grp, len);
 #endif
 }
 

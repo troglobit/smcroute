@@ -73,8 +73,7 @@ static void clean(void)
 {
 	mroute4_disable(1);
 	mroute6_disable(1);
-	mcgroup4_disable();
-	mcgroup6_disable();
+	mcgroup_disable();
 	ipc_exit();
 	iface_exit();
 	smclog(LOG_NOTICE, "Exiting.");
@@ -84,8 +83,7 @@ static void restart(void)
 {
 	mroute4_disable(0);
 	mroute6_disable(0);
-	mcgroup4_disable();
-	mcgroup6_disable();
+	mcgroup_disable();
 	/* No need to close the IPC, only at cleanup. */
 
 	/* Update list of interfaces and create new virtual interface mappings in kernel. */

@@ -22,17 +22,28 @@
 #include "ifvc.h"
 #include "mcgroup.h"
 
-int kern_join_leave(int sd, int cmd, struct mcgroup *mcg)
-{
+
+/*
+ * This function handles both ASM and SSM join/leave for IPv4 and IPv6
+ * using the RFC 3678 API available on Linux, FreeBSD, and a few other
+ * operating systems.
+ *
+ * On Linux this makes it possible to join a group on an interface that
+ * is down and/or has no IP address assigned to it yet.  The latter is
+ * one of the most common causes of malfunction on Linux and IPv4 with
+ * the old struct ip_mreq API.
+ */
 #ifdef HAVE_STRUCT_GROUP_REQ	/* Prefer RFC 3678 */
+static size_t group_req(int sd, int cmd, struct mcgroup *mcg)
+{
 	struct group_source_req gsr;
+	struct sockaddr_in group;
 	struct group_req gr;
+	uint32_t addr = 0, addr_max = 0, mask;
 	size_t len;
 	void *arg;
 	int op, proto;
-
-	if (!cmd)
-		cmd = 'j';
+	int rc = 0;
 
 #ifdef HAVE_IPV6_MULTICAST_HOST
 	if (mcg->group.ss_family == AF_INET6)
@@ -41,27 +52,70 @@ int kern_join_leave(int sd, int cmd, struct mcgroup *mcg)
 #endif
 		proto = IPPROTO_IP;
 
-	if (is_anyaddr(&mcg->source)) {
-		if (cmd == 'j')	op = MCAST_JOIN_GROUP;
-		else		op = MCAST_LEAVE_GROUP;
+	if (mcg->group.ss_family == AF_INET) {
+		group = *(struct sockaddr_in *)&mcg->group;
 
-		gr.gr_interface    = mcg->ifindex;
-		gr.gr_group        = mcg->group;
+		if (mcg->len > 0)
+			mask = 0xFFFFFFFFu << (32 - mcg->len);
+		else
+			mask = 0xFFFFFFFFu;
 
-		arg                = &gr;
-		len                = sizeof(gr);
-	} else {
-		if (cmd == 'j')	op = MCAST_JOIN_SOURCE_GROUP;
-		else		op = MCAST_LEAVE_SOURCE_GROUP;
-
-		gsr.gsr_interface  = mcg->ifindex;
-		gsr.gsr_source     = mcg->source;
-		gsr.gsr_group      = mcg->group;
-
-		arg                = &gsr;
-		len                = sizeof(gsr);
+		addr = ntohl(group.sin_addr.s_addr) & mask;
+		addr_max = addr | ~mask;
 	}
+
+	while (addr <= addr_max) {
+		if (addr) {
+			struct sockaddr_in *sin;
+
+			sin = (struct sockaddr_in *)&mcg->group;
+			sin->sin_addr.s_addr = htonl(addr);
+		}
+		addr++;
+
+		if (is_anyaddr(&mcg->source)) {
+			if (cmd == 'j')	op = MCAST_JOIN_GROUP;
+			else		op = MCAST_LEAVE_GROUP;
+
+			gr.gr_interface    = mcg->iface->ifindex;;
+			gr.gr_group        = mcg->group;
+
+			arg                = &gr;
+			len                = sizeof(gr);
+		} else {
+			if (cmd == 'j')	op = MCAST_JOIN_SOURCE_GROUP;
+			else		op = MCAST_LEAVE_SOURCE_GROUP;
+
+			gsr.gsr_interface  = mcg->iface->ifindex;;
+			gsr.gsr_source     = mcg->source;
+			gsr.gsr_group      = mcg->group;
+
+			arg                = &gsr;
+			len                = sizeof(gsr);
+		}
+
+		rc = setsockopt(sd, proto, op, arg, len);
+		if (rc) {
+			if (cmd == 'j' && errno == EADDRINUSE)
+				continue; /* Already joined, ignore */
+			break;
+		}
+	}
+
+	if (addr) {
+		struct sockaddr_in *sin;
+
+		sin = (struct sockaddr_in *)&mcg->group;
+		*sin = group;
+	}
+
+	return rc;
+}
+
 #else  /* Assume we have old style struct ip_mreq */
+
+static size_t group_req(int sd, int cmd, struct mcgroup *mcg, void *arg)
+{
 	struct ip_mreq_source mreqsrc;
 #ifdef HAVE_IPV6_MULTICAST_HOST
 	struct ipv6_mreq ipv6mr;
@@ -77,7 +131,7 @@ int kern_join_leave(int sd, int cmd, struct mcgroup *mcg)
 
 		sin6 = (struct sockaddr_in6 *)&mcg->group;
 		ipv6mr.ipv6mr_multiaddr = sin6->sin6_addr;
-		ipv6mr.ipv6mr_interface = mcg->ifindex;
+		ipv6mr.ipv6mr_interface = mcg->iface->ifindex;
 		proto = IPPROTO_IPV6;
 	} else
 #endif
@@ -86,6 +140,7 @@ int kern_join_leave(int sd, int cmd, struct mcgroup *mcg)
 
 		sin = (struct sockaddr_in *)&mcg->group;
 		ipmr.imr_multiaddr = sin->sin_addr;
+		ipmr.imr_interface = mcg->iface->inaddr;
 		proto = IPPROTO_IP;
 	}
 
@@ -96,8 +151,20 @@ int kern_join_leave(int sd, int cmd, struct mcgroup *mcg)
 		if (cmd == 'j')	op = IP_ADD_SOURCE_MEMBERSHIP;
 		else		op = IP_DROP_SOURCE_MEMBERSHIP;
 	}
+
+	return setsockopt(sd, proto, op, arg, len);
+}
 #endif
-	if (setsockopt(sd, proto, op, arg, len)) {
+
+int kern_join_leave(int sd, int cmd, struct mcgroup *mcg)
+{
+	int err;
+
+	if (!cmd)
+		cmd = 'j';
+
+	err = group_req(sd, cmd, mcg);
+	if (err) {
 		char source[INET_ADDRSTR_LEN] = "*";
 		char group[INET_ADDRSTR_LEN];
 
@@ -105,10 +172,10 @@ int kern_join_leave(int sd, int cmd, struct mcgroup *mcg)
 			convert_address(&mcg->source, source, sizeof(source));
 		convert_address(&mcg->group, group, sizeof(group));
 
-		smclog(LOG_ERR, "Failed %s group (%s,%g) on sd %d ... %d: %s",
-		       source, group,
+		smclog(LOG_ERR, "Failed %s group (%s,%s) on sd %d ... %d: %s",
 		       cmd == 'j' ? "joining" : "leaving",
-		       sd, errno, strerror(errno));
+		       source, group, sd,
+		       errno, strerror(errno));
 		return 1;
 	}
 
