@@ -135,7 +135,7 @@ static int get_width(void)
 	return ret;
 }
 
-static void table_heading(char cmd, size_t count, int detail)
+static void table_heading(char cmd, int detail)
 {
 	int len;
 	char line[120];
@@ -279,7 +279,7 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 			detail = 1;
 			/* fallthrough */
 		case 's':
-			table_heading(argv[0][0], count, detail);
+			table_heading(argv[0][0], detail);
 			do {
 				fputs(buf, stdout);
 				len = read(sd, buf, sizeof(buf) - 1);
