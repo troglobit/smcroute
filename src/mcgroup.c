@@ -145,6 +145,31 @@ static void mcgroup_init(void)
 #endif
 }
 
+/*
+ * Close IPv4/IPv6 multicast sockets to kernel to leave any joined groups
+ */
+void mcgroup_exit(void)
+{
+	struct mgroup *entry, *tmp;
+
+	if (mcgroup4_socket != -1) {
+		socket_close(mcgroup4_socket);
+		mcgroup4_socket = -1;
+	}
+
+#ifdef HAVE_IPV6_MULTICAST_HOST
+	if (mcgroup6_socket != -1) {
+		socket_close(mcgroup6_socket);
+		mcgroup6_socket = -1;
+	}
+#endif
+
+	LIST_FOREACH_SAFE(entry, &mgroup_static_list, link, tmp) {
+		LIST_REMOVE(entry, link);
+		free(entry);
+	}
+}
+
 int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, inet_addr_t *group, int len)
 {
 	struct mcgroup *mcg;
@@ -189,32 +214,6 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, inet_addr_t
 
 	return rc;
 }
-
-/*
- * Close IPv4/IPv6 multicast sockets to kernel to leave any joined groups
- */
-void mcgroup_disable(void)
-{
-	struct mgroup *entry, *tmp;
-
-	if (mcgroup4_socket != -1) {
-		socket_close(mcgroup4_socket);
-		mcgroup4_socket = -1;
-	}
-
-#ifdef HAVE_IPV6_MULTICAST_HOST
-	if (mcgroup6_socket != -1) {
-		socket_close(mcgroup6_socket);
-		mcgroup6_socket = -1;
-	}
-#endif
-
-	LIST_FOREACH_SAFE(entry, &mgroup_static_list, link, tmp) {
-		LIST_REMOVE(entry, link);
-		free(entry);
-	}
-}
-
 
 #ifdef ENABLE_CLIENT
 /* Write all joined IGMP/MLD groups to client socket */

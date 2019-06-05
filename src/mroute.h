@@ -109,20 +109,19 @@ struct mroute {
 	} u;
 };
 
-int  mroute4_enable    (int do_vifs, int table_id, int timeout);
-void mroute4_disable   (int close_socket);
 int  mroute4_dyn_add   (struct mroute4 *mroute);
 void mroute4_dyn_expire(int max_idle);
 int  mroute4_add       (struct mroute4 *mroute);
 int  mroute4_del       (struct mroute4 *mroute);
 
-int  mroute6_enable    (int do_vifs, int table_id);
-void mroute6_disable   (int close_socket);
 int  mroute6_add       (struct mroute6 *mroute);
 int  mroute6_del       (struct mroute6 *mroute);
 
 int  mroute_add_vif    (char *ifname, uint8_t mrdisc, uint8_t threshold);
 int  mroute_del_vif    (char *ifname);
+
+int  mroute_init       (int do_vifs, int table_id, int cache_tmo);
+void mroute_exit       (int close_socket);
 
 int  mroute_show       (int sd, int detail);
 

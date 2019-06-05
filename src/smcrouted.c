@@ -71,9 +71,8 @@ static const char version_info[] = PACKAGE_NAME " v" PACKAGE_VERSION;
 /* Cleans up, i.e. releases allocated resources. Called via atexit() */
 static void clean(void)
 {
-	mroute4_disable(1);
-	mroute6_disable(1);
-	mcgroup_disable();
+	mroute_exit(1);
+	mcgroup_exit();
 	ipc_exit();
 	iface_exit();
 	smclog(LOG_NOTICE, "Exiting.");
@@ -81,15 +80,13 @@ static void clean(void)
 
 static void restart(void)
 {
-	mroute4_disable(0);
-	mroute6_disable(0);
-	mcgroup_disable();
+	mroute_exit(0);
+	mcgroup_exit();
 	/* No need to close the IPC, only at cleanup. */
 
 	/* Update list of interfaces and create new virtual interface mappings in kernel. */
 	iface_init();
-	mroute4_enable(do_vifs, table_id, cache_tmo);
-	mroute6_enable(do_vifs, table_id);
+	mroute_init(do_vifs, table_id, cache_tmo);
 }
 
 void reload(void)
@@ -178,7 +175,7 @@ static int start_server(void)
 	}
 
 	/*
-	 * Timer API needs to be initilized before mroute4_enable()
+	 * Timer API needs to be initilized before mroute_init()
 	 */
 	timer_init();
 
@@ -187,13 +184,7 @@ static int start_server(void)
 	 */
 	iface_init();
 
-	if (mroute4_enable(do_vifs, table_id, cache_tmo)) {
-		if (errno == EADDRINUSE)
-			busy++;
-		api--;
-	}
-
-	if (mroute6_enable(do_vifs, table_id)) {
+	if (mroute_init(do_vifs, table_id, cache_tmo)) {
 		if (errno == EADDRINUSE)
 			busy++;
 		api--;

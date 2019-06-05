@@ -1172,6 +1172,18 @@ int mroute6_del(struct mroute6 *route)
 }
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
+int mroute_init(int do_vifs, int table_id, int cache_tmo)
+{
+	return  mroute4_enable(do_vifs, table_id, cache_tmo) ||
+		mroute6_enable(do_vifs, table_id);
+}
+
+void mroute_exit(int close_socket)
+{
+	mroute4_disable(close_socket);
+	mroute6_disable(close_socket);
+}
+
 /* Used by file parser to add VIFs/MIFs after setup */
 int mroute_add_vif(char *ifname, uint8_t mrdisc, uint8_t threshold)
 {

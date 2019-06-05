@@ -24,7 +24,7 @@ struct mcgroup {
 	uint8_t        len;
 };
 
-void mcgroup_disable   (void);
+void mcgroup_exit   (void);
 
 int  mcgroup_action    (int cmd, const char *ifname, inet_addr_t *source, inet_addr_t *group, int len);
 
