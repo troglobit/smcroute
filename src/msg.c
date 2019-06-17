@@ -79,6 +79,8 @@ static int do_mgroup4(struct ipc_msg *msg)
 		smclog(LOG_DEBUG, "Invalid IPv4 group prefix length (0-32): %d", len);
 		return 1;
 	}
+	if (!len)
+		len = 32;
 
 	rc += inet_pton(AF_INET, group, &grp.sin_addr);
 	if (rc < 2 || !IN_MULTICAST(ntohl(grp.sin_addr.s_addr))) {
@@ -120,6 +122,8 @@ static int do_mgroup6(struct ipc_msg *msg)
 		smclog(LOG_DEBUG, "Invalid IPv6 group prefix length (1-128): %d", len);
 		return 1;
 	}
+	if (!len)
+		len = 128;
 
 	rc += inet_pton(AF_INET6, group, &grp);
 	if (rc < 2 || !IN6_IS_ADDR_MULTICAST(&grp.sin6_addr)) {

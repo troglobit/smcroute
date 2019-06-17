@@ -167,14 +167,16 @@ int kern_join_leave(int sd, int cmd, struct mcgroup *mcg)
 	if (err) {
 		char source[INET_ADDRSTR_LEN] = "*";
 		char group[INET_ADDRSTR_LEN];
+		int len;
 
 		if (!is_anyaddr(&mcg->source))
 			convert_address(&mcg->source, source, sizeof(source));
 		convert_address(&mcg->group, group, sizeof(group));
+		len = mcg->len == 0 ? 32 : mcg->len;
 
-		smclog(LOG_ERR, "Failed %s group (%s,%s) on sd %d ... %d: %s",
+		smclog(LOG_ERR, "Failed %s group (%s,%s/%d) on sd %d ... %d: %s",
 		       cmd == 'j' ? "joining" : "leaving",
-		       source, group, sd,
+		       source, group, len, sd,
 		       errno, strerror(errno));
 		return 1;
 	}

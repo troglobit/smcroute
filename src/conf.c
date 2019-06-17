@@ -124,9 +124,13 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 		}
 
 		if (group) {
-			if ((len = is_range(group)) > 0) {
-				WARN("join: Ignore group prefix len: %d - (GROUP/LEN is to be supported)", len);
+			len = is_range(group);
+			if (len < 1 || len > 128) {
+				WARN("Invalid IPv6 group prefix length (1-128): %d", len);
+				return 1;
 			}
+			if (!len)
+				len = 128;
 
 			if (inet_pton(AF_INET6, group, &grp.sin6_addr) <= 0 ||
 					!IN6_IS_ADDR_MULTICAST(&grp.sin6_addr)) {
@@ -140,7 +144,7 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 		}
 
 		/* XXX: Add support for GROUP/LEN to IPv6 */
-		rc = mcgroup_action('j', ifname, (inet_addr_t *)&src, (inet_addr_t *)&grp, 0);
+		rc = mcgroup_action('j', ifname, (inet_addr_t *)&src, (inet_addr_t *)&grp, len);
 #endif
 	} else {
 		struct sockaddr_in src, grp;
@@ -165,11 +169,12 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 
 		if (group) {
 			len = is_range(group);
-
 			if (len < 0 || len > 32) {
 				WARN("join: Invalid IPv4 group s prefix length (0-32): %d", len);
 				return 1;
 			}
+			if (!len)
+				len = 32;
 
 			if (inet_pton(AF_INET, group, &grp.sin_addr) <= 0 ||
 					!IN_MULTICAST(ntohl(grp.sin_addr.s_addr))) {
