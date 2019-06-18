@@ -55,13 +55,11 @@ int is_range(char *arg)
 
 static int do_mgroup4(struct ipc_msg *msg)
 {
-	struct sockaddr_in src, grp;
+	struct sockaddr_in src =  { 0 };
+	struct sockaddr_in grp =  { 0 };
 	char *ifname = msg->argv[0];
 	char group[20];
 	int len, rc = 0;
-
-	memset(&src, 0, sizeof(src));
-	memset(&grp, 0, sizeof(grp));
 
 	src.sin_family = AF_INET;
 	grp.sin_family = AF_INET;
@@ -98,13 +96,11 @@ static int do_mgroup6(struct ipc_msg *msg)
 	smclog(LOG_WARNING, "IPv6 multicast support disabled.");
 	return 1;
 #else
-	struct sockaddr_in6 src, grp;
+	struct sockaddr_in6 src = { 0 };
+	struct sockaddr_in6 grp = { 0 };
 	char group[INET6_ADDRSTRLEN];
 	char *ifname = msg->argv[0];
 	int len, rc = 0;
-
-	memset(&src, 0, sizeof(src));
-	memset(&grp, 0, sizeof(grp));
 
 	src.sin6_family = AF_INET6;
 	grp.sin6_family = AF_INET6;
@@ -145,7 +141,7 @@ static int do_mroute4(struct ipc_msg *msg)
 	iface_match_init(&state_in);
 	while (1) {
 		int len, src_len, pos = 0, vif;
-		struct mroute4 mroute;
+		struct mroute4 mroute = { 0 };
 		struct ifmatch state_out;
 		struct in_addr src, grp;
 		char *ifname_in = msg->argv[pos++];
@@ -153,8 +149,6 @@ static int do_mroute4(struct ipc_msg *msg)
 		vif = iface_match_vif_by_name(ifname_in, &state_in, NULL);
 		if (vif < 0)
 			break;
-		memset(&mroute, 0, sizeof(mroute));
-		mroute.inbound = vif;
 
 		src_len = is_range(msg->argv[pos]);
 		if (src_len && (src_len < 0 || src_len > 32)) {
@@ -185,6 +179,7 @@ static int do_mroute4(struct ipc_msg *msg)
 			src.s_addr = htonl(INADDR_ANY);
 		}
 
+		mroute.inbound = vif;
 		mroute.src_len = src_len;
 		mroute.source  = src;
 		mroute.len     = len;
@@ -253,15 +248,13 @@ static int do_mroute6(struct ipc_msg *msg)
 	iface_match_init(&state_in);
 	while (1) {
 		int pos = 0, mif;
-		struct mroute6 mroute;
+		struct mroute6 mroute = { 0 };
 		struct ifmatch state_out;
 		char *ifname_in = msg->argv[pos++];
 
 		mif = iface_match_mif_by_name(ifname_in, &state_in, NULL);
 		if (mif < 0)
 			break;
-		memset(&mroute, 0, sizeof(mroute));
-		mroute.inbound = mif;
 
 		if (inet_pton(AF_INET6, msg->argv[pos++], &mroute.source.sin6_addr) <= 0) {
 			smclog(LOG_DEBUG, "Invalid IPv6 source address");
@@ -273,6 +266,8 @@ static int do_mroute6(struct ipc_msg *msg)
 			smclog(LOG_DEBUG, "Invalid IPv6 group address");
 			return 1;
 		}
+
+		mroute.inbound = mif;
 
 		/*
 		 * Scan output interfaces for the 'add' command only, just ignore it
