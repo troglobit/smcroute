@@ -140,12 +140,13 @@ static int do_mroute4(struct ipc_msg *msg)
 
 	iface_match_init(&state_in);
 	while (1) {
-		int len, src_len, pos = 0, vif;
 		struct mroute4 mroute = { 0 };
 		struct ifmatch state_out;
 		struct in_addr src, grp;
-		char *ifname_in = msg->argv[pos++];
+		char *ifname_in;
+		int len, src_len, pos = 0, vif;
 
+		ifname_in = msg->argv[pos++];
 		vif = iface_match_vif_by_name(ifname_in, &state_in, NULL);
 		if (vif < 0)
 			break;
@@ -230,6 +231,7 @@ static int do_mroute4(struct ipc_msg *msg)
 		smclog(LOG_DEBUG, "Invalid input interface");
 		return 1;
 	}
+
 	return result;
 }
 
@@ -247,11 +249,12 @@ static int do_mroute6(struct ipc_msg *msg)
 
 	iface_match_init(&state_in);
 	while (1) {
-		int pos = 0, mif;
 		struct mroute6 mroute = { 0 };
 		struct ifmatch state_out;
-		char *ifname_in = msg->argv[pos++];
+		char *ifname_in;
+		int pos = 0, mif;
 
+		ifname_in = msg->argv[pos++];
 		mif = iface_match_mif_by_name(ifname_in, &state_in, NULL);
 		if (mif < 0)
 			break;
