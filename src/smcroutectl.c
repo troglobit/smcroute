@@ -150,7 +150,7 @@ static void table_heading(char cmd, int detail)
 		cmd -= 0x20;
 
 	switch (cmd) {
-	case 'g':
+	case 'G':
 		snprintf(line, sizeof(line), "\e[7m%-46s %-16s", g, i);
 		break;
 
