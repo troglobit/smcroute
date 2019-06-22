@@ -269,7 +269,11 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 		goto error;
 
 	if (len != 1 || *buf != '\0') {
+		char *fallback[] = { "route" };
 		int detail = 0;
+
+		if (!argv || !argv[0])
+			argv = fallback;
 
 		/* Make sure buffer is NULL terminated */
 		buf[len] = 0;
