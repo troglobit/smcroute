@@ -92,6 +92,23 @@ LIST_HEAD(, mroute4) mroute4_static_list = LIST_HEAD_INITIALIZER();
  * Receives MLD packets and upcall messages from the kenrel.
  */
 static int mroute6_socket = -1;
+
+/*
+ * User added/configured (*,G) matched on-demand at runtime.  See
+ * mroute6_dyn_list for the (S,G) routes set from this "template".
+ */
+LIST_HEAD(, mroute6) mroute6_conf_list = LIST_HEAD_INITIALIZER();
+
+/*
+ * Dynamically, on-demand, set (S,G) routes.  Tracks if the user
+ * removes a configured (*,G) route.
+ */
+LIST_HEAD(, mroute6) mroute6_dyn_list = LIST_HEAD_INITIALIZER();
+
+/*
+ * Tracks regular static routes, mostly for 'smcroutectl show'
+ */
+LIST_HEAD(, mroute6) mroute6_static_list = LIST_HEAD_INITIALIZER();
 #endif
 
 /* IPv4 internal virtual interfaces (VIF) descriptor vector */
@@ -896,6 +913,7 @@ static int proc_set_val(char *file, int val)
  */
 static void handle_nocache6(int sd, void *arg)
 {
+	struct mrt6msg *mrtctl;
 	char tmp[128];
 	int rc;
 
@@ -903,6 +921,53 @@ static void handle_nocache6(int sd, void *arg)
 	rc = read(sd, tmp, sizeof(tmp));
 	if (rc < 0)
 		smclog(LOG_INFO, "Failed clearing MLD message from kernel: %s", strerror(errno));
+
+	mrtctl = (struct mrt6msg *)tmp;
+
+	if (mrtctl->im6_msgtype == MRT6MSG_NOCACHE) {
+		struct iface *iface;
+		struct mroute mrt;
+		struct mroute6 *mroute;
+		char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
+		int result;
+
+		memset(&mrt, 0, sizeof(mrt));
+		mrt.version = 6;
+		mroute = &mrt.u.mroute6;
+
+		mroute->group.sin6_addr  = mrtctl->im6_dst;
+		mroute->source.sin6_addr = mrtctl->im6_src;
+		mroute->inbound          = mrtctl->im6_mif;
+		mroute->len              = 128;
+		mroute->src_len          = 128;
+
+		inet_ntop(AF_INET6, &mroute->group.sin6_addr,  group,  INET6_ADDRSTRLEN);
+		inet_ntop(AF_INET6, &mroute->source.sin6_addr, origin, INET6_ADDRSTRLEN);
+		smclog(LOG_DEBUG, "New multicast data from %s to group %s on MIF %d", origin, group, mroute->inbound);
+
+		iface = iface_find_by_vif(mroute->inbound);
+		if (!iface) {
+			smclog(LOG_WARNING, "No matching interface for MIF %d, cannot add mroute.", mroute->inbound);
+			return;
+		}
+
+		/* Find any matching route for this group on that iif. */
+		result = mroute6_dyn_add(mroute);
+		if (result) {
+			/*
+			 * This is a common error, the router receives streams it is not
+			 * set up to route -- we ignore these by default, but if the user
+			 * sets a more permissive log level we help out by showing what
+			 * is going on.
+			 */
+			if (ENOENT == errno)
+				smclog(LOG_INFO, "Multicast from %s, group %s, on %s does not match any (*,G) rule",
+				       origin, group, iface->name);
+			return;
+		}
+
+		script_exec(&mrt);
+	}
 }
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
@@ -1094,6 +1159,215 @@ static int mroute6_del_mif(struct iface *iface)
 	return 0;
 }
 
+/* Actually set in kernel - called by mroute6_add() and mroute6_check_add() */
+static int kern_add6(struct mroute6 *route, int active)
+{
+	struct mf6cctl mc;
+	char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
+	size_t i;
+
+	if (mroute6_socket < 0)
+		return -1;
+
+	memset(&mc, 0, sizeof(mc));
+
+	mc.mf6cc_origin   = route->source;
+	mc.mf6cc_mcastgrp = route->group;
+	mc.mf6cc_parent   = route->inbound;
+
+	IF_ZERO(&mc.mf6cc_ifset);
+	for (i = 0; i < NELEMS(route->ttl); i++) {
+		if (route->ttl[i]) {
+			IF_SET(i, &mc.mf6cc_ifset);
+		}
+	}
+
+	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MFC, &mc, sizeof(mc))) {
+		smclog(LOG_WARNING, "failed adding IPv6 multicast route: %s", strerror(errno));
+		return 1;
+	}
+
+	if (active) {
+		smclog(LOG_DEBUG, "Add %s -> %s from MIF %d",
+		       inet_ntop(AF_INET6, &mc.mf6cc_origin.sin6_addr, origin, INET6_ADDRSTRLEN),
+		       inet_ntop(AF_INET6, &mc.mf6cc_mcastgrp.sin6_addr, group, INET6_ADDRSTRLEN),
+		       mc.mf6cc_parent);
+
+		/* Only enable mrdisc for active routes, i.e. with outbound */
+		mrdisc_enable(route->inbound);
+	}
+
+	return 0;
+}
+
+/* Actually remove from kernel - called by mroute6_del() */
+static int kern_del6(struct mroute6 *route, int active)
+{
+	struct mf6cctl mc;
+	char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
+
+	if (mroute4_socket < 0)
+		return -1;
+
+	memset(&mc, 0, sizeof(mc));
+
+	mc.mf6cc_origin   = route->source;
+	mc.mf6cc_mcastgrp = route->group;
+	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_DEL_MFC, &mc, sizeof(mc))) {
+		if (ENOENT == errno)
+			smclog(LOG_DEBUG, "failed removing IPv6 multicast route, does not exist.");
+		else
+			smclog(LOG_DEBUG, "failed removing IPv6 multicast route: %s", strerror(errno));
+		return 1;
+	}
+
+	if (active) {
+		smclog(LOG_DEBUG, "Del %s -> %s",
+		       inet_ntop(AF_INET6, &mc.mf6cc_origin.sin6_addr,  origin, INET6_ADDRSTRLEN),
+		       inet_ntop(AF_INET6, &mc.mf6cc_mcastgrp.sin6_addr, group, INET6_ADDRSTRLEN));
+
+		/* Only disable mrdisc for active routes. */
+		mrdisc_disable(route->inbound);
+	}
+
+	return 0;
+}
+
+/*
+ * Used for exact (S,G) matching
+ */
+static int is_exact_match6(struct mroute6 *rule, struct mroute6 *cand)
+{
+	int result;
+
+	result =  (0 == memcmp(&rule->group.sin6_addr,  &cand->group.sin6_addr,  sizeof(struct in6_addr)));
+	result &= (0 == memcmp(&rule->source.sin6_addr, &cand->source.sin6_addr, sizeof(struct in6_addr)));
+
+	return result;
+}
+
+/*
+ * Used for (*,G) matches
+ *
+ * The incoming candidate is compared to the configured rule, e.g.
+ * does ff05:bad1::1 fall inside ff05:bad0::/16? => Yes
+ * does ff05:bad1::1 fall inside ff05:bad0::/31? => Yes
+ * does ff05:bad1::1 fall inside ff05:bad0::/32? => No
+ */
+static int is_match6(struct mroute6 *rule, struct mroute6 *cand)
+{
+	int result;
+
+	if (rule->len == 128 && cand->len == 128) {
+		result = (0 == memcmp(&rule->group.sin6_addr, &cand->group.sin6_addr, sizeof(struct in6_addr)));
+	}
+	else {
+		// TODO: Match based on prefix length
+		result = 1;
+	}
+
+	if (rule->src_len == 128 && cand->src_len == 128) {
+		result &= (0 == memcmp(&rule->source.sin6_addr, &cand->source.sin6_addr, sizeof(struct in6_addr)));
+	}
+
+	return result;
+}
+
+static int is_mroute6_static(struct mroute6 *route)
+{
+	return (0 != memcmp(&route->source.sin6_addr, &in6addr_any, sizeof(struct in6_addr))) &&
+		route->src_len == 0 && route->len == 0;
+}
+
+static int is_active6(struct mroute6 *route)
+{
+	size_t i;
+
+	for (i = 0; i < NELEMS(route->ttl); i++) {
+		if (route->ttl[i])
+			return 1;
+	}
+
+	return 0;
+}
+
+/**
+ * mroute6_dyn_add - Add route to kernel if it matches a known (*,G) route.
+ * @route: Pointer to candidate struct mroute6 IPv6 multicast route
+ *
+ * Returns:
+ * POSIX OK(0) on success, non-zero on error with @errno set.
+ */
+int mroute6_dyn_add(struct mroute6 *route)
+{
+	struct mroute6 *entry, *new_entry;
+	int ret;
+
+	LIST_FOREACH(entry, &mroute6_conf_list, link) {
+		/* Find matching (*,G) ... and interface. */
+		if (!is_match6(entry, route))
+			continue;
+
+		/* Use configured template (*,G) outbound interfaces. */
+		memcpy(route->ttl, entry->ttl, NELEMS(route->ttl) * sizeof(route->ttl[0]));
+		break;
+	}
+
+	if (!entry) {
+		/*
+		 * No match, add entry without outbound interfaces
+		 * nevertheless to avoid continuous cache misses from
+		 * the kernel. Note that this still gets reported as an
+		 * error (ENOENT) below.
+		 */
+		memset(route->ttl, 0, NELEMS(route->ttl) * sizeof(route->ttl[0]));
+	}
+
+	ret = kern_add6(route, entry ? 1 : 0);
+	if (ret)
+		return ret;
+
+	/*
+	 * Add to list of dynamically added routes. Necessary if the user
+	 * removes the (*,G) using the command line interface rather than
+	 * updating the conf file and SIGHUP. Note: if we fail to alloc()
+	 * memory we don't do anything, just add kernel route silently.
+	 */
+	new_entry = malloc(sizeof(struct mroute6));
+	if (new_entry) {
+		memcpy(new_entry, route, sizeof(struct mroute6));
+		LIST_INSERT_HEAD(&mroute6_dyn_list, new_entry, link);
+	}
+
+	/* Signal to cache handler we've added a stop filter */
+	if (!entry) {
+		errno = ENOENT;
+		return -1;
+	}
+
+	return 0;
+}
+
+static int mroute6_exists(struct mroute6 *route)
+{
+	struct mroute6 *entry;
+
+	LIST_FOREACH(entry, &mroute6_conf_list, link) {
+		if (is_match6(entry, route)) {
+			smclog(LOG_INFO, "(*,G) route already exists");
+			return 1;
+		}
+	}
+	LIST_FOREACH(entry, &mroute6_static_list, link) {
+		if (is_exact_match6(entry, route)) {
+			smclog(LOG_INFO, "Static route already exists");
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
 /**
  * mroute6_add - Add route to kernel, or save a wildcard route for later use
  * @route: Pointer to struct mroute6 IPv6 multicast route to add
@@ -1105,34 +1379,59 @@ static int mroute6_del_mif(struct iface *iface)
  */
 int mroute6_add(struct mroute6 *route)
 {
-	size_t i;
-	char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
-	struct mf6cctl mc;
+	struct mroute6 *entry;
 
-	if (mroute6_socket == -1)
-		return 0;
-
-	memset(&mc, 0, sizeof(mc));
-	mc.mf6cc_origin   = route->source;
-	mc.mf6cc_mcastgrp = route->group;
-	mc.mf6cc_parent   = route->inbound;
-
-	/* copy the outgoing MIFs */
-	for (i = 0; i < NELEMS(route->ttl); i++) {
-		if (route->ttl[i] > 0)
-			IF_SET(i, &mc.mf6cc_ifset);
-	}
-	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MFC, (void *)&mc, sizeof(mc))) {
-		smclog(LOG_DEBUG, "failed adding IPv6 multicast route: %s", strerror(errno));
+	/* Exact match, then skip ... */
+	if (mroute6_exists(route)){
+		errno = EEXIST;
 		return 1;
 	}
 
-	smclog(LOG_DEBUG, "Add %s -> %s from MIF %d",
-	       inet_ntop(AF_INET6, &mc.mf6cc_origin.sin6_addr, origin, INET6_ADDRSTRLEN),
-	       inet_ntop(AF_INET6, &mc.mf6cc_mcastgrp.sin6_addr, group, INET6_ADDRSTRLEN),
-	       mc.mf6cc_parent);
+#if 0
+	// TODO: implement this part
+	/* ... (S,G) matches and inbound differs, then replace route */
+	entry = mroute6_similar(route);
+	if (entry) {
+		kern_del6(entry, is_active6(entry));
+		LIST_REMOVE(entry, link);
+		free(entry);
+	}
+#endif
 
-	return 0;
+	entry = malloc(sizeof(struct mroute6));
+	if (!entry) {
+		smclog(LOG_WARNING, "Cannot add multicast route: %s", strerror(errno));
+		return 1;
+	}
+
+	memcpy(entry, route, sizeof(struct mroute6));
+
+	if (!is_mroute6_static(route)) {
+		struct mroute6 *dyn, *tmp;
+
+		LIST_INSERT_HEAD(&mroute6_conf_list, entry, link);
+
+		/* Also, immediately expire any currently blocked traffic */
+		LIST_FOREACH_SAFE(dyn, &mroute6_dyn_list, link, tmp) {
+			if (!is_active6(dyn) && is_match6(entry, dyn)) {
+				char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
+
+				inet_ntop(AF_INET6, &dyn->group,  group,  INET6_ADDRSTRLEN);
+				inet_ntop(AF_INET6, &dyn->source, origin, INET6_ADDRSTRLEN);
+				smclog(LOG_DEBUG, "Flushing (%s,%s) on MIF %d, new matching (*,G) rule ...",
+				       origin, group, dyn->inbound);
+
+				kern_del6(dyn, 0);
+				LIST_REMOVE(dyn, link);
+				free(dyn);
+			}
+		}
+
+		return 0;
+	}
+
+	LIST_INSERT_HEAD(&mroute6_static_list, entry, link);
+	return kern_add6(route, 1);
 }
 
 /**
