@@ -234,8 +234,8 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 				mroute.len = 0;
 			} else {
 				if (inet_pton(AF_INET6, group, &mroute.group.sin6_addr) <= 0 ||
-						!IN6_IS_ADDR_MULTICAST(&mroute.group.sin6_addr) ||
-						!IN6_IS_ADDR_UNSPECIFIED(&mroute.group.sin6_addr)) {
+						!(IN6_IS_ADDR_MULTICAST(&mroute.group.sin6_addr) ||
+						  IN6_IS_ADDR_UNSPECIFIED(&mroute.group.sin6_addr))) {
 					WARN("mroute: Invalid IPv6 multicast group: %s", group);
 					return 1;
 				}
@@ -251,6 +251,11 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 				if (mroute.len != 0)
 				{
 					WARN("mroute: Ignore IPv6 multicast group prefix length: %d", mroute.len);
+					mroute.len = 128;
+				}
+				else
+				{
+					// Assume missing prefix for specified address as 128
 					mroute.len = 128;
 				}
 
