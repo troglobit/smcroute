@@ -1368,6 +1368,22 @@ static int mroute6_exists(struct mroute6 *route)
 	return 0;
 }
 
+/* Only inbound differs, there can only be one ... */
+static struct mroute6 *mroute6_similar(struct mroute6 *route)
+{
+	struct mroute6 *entry;
+
+	LIST_FOREACH(entry, &mroute6_static_list, link) {
+		if (0 == memcmp(&entry->source.sin6_addr, &route->source.sin6_addr, sizeof(struct in6_addr)) &&
+		    0 == memcmp(&entry->group.sin6_addr, &route->group.sin6_addr, sizeof(struct in6_addr))   &&
+		    entry->len           == route->len &&
+		    entry->src_len       == route->src_len)
+			return entry;
+	}
+
+	return NULL;
+}
+
 /**
  * mroute6_add - Add route to kernel, or save a wildcard route for later use
  * @route: Pointer to struct mroute6 IPv6 multicast route to add
@@ -1387,8 +1403,6 @@ int mroute6_add(struct mroute6 *route)
 		return 1;
 	}
 
-#if 0
-	// TODO: implement this part
 	/* ... (S,G) matches and inbound differs, then replace route */
 	entry = mroute6_similar(route);
 	if (entry) {
@@ -1396,7 +1410,6 @@ int mroute6_add(struct mroute6 *route)
 		LIST_REMOVE(entry, link);
 		free(entry);
 	}
-#endif
 
 	entry = malloc(sizeof(struct mroute6));
 	if (!entry) {
@@ -1434,6 +1447,22 @@ int mroute6_add(struct mroute6 *route)
 	return kern_add6(route, 1);
 }
 
+/* Remove from kernel and linked list */
+static int do_mroute6_del(struct mroute6 *entry)
+{
+	int ret;
+
+	ret = kern_del6(entry, is_active6(entry));
+	if (ret && ENOENT != errno)
+		return ret;
+
+	/* Also remove on ENOENT */
+	LIST_REMOVE(entry, link);
+	free(entry);
+
+	return ret;
+}
+
 /**
  * mroute6_del - Remove route from kernel
  * @route: Pointer to struct mroute6 IPv6 multicast route to remove
@@ -1446,28 +1475,56 @@ int mroute6_add(struct mroute6 *route)
  */
 int mroute6_del(struct mroute6 *route)
 {
-	char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
-	struct mf6cctl mc;
+	struct mroute6 *entry, *set, *tmp;
 
-	if (mroute6_socket == -1)
-		return 0;
+	if (is_mroute6_static(route)) {
+		LIST_FOREACH_SAFE(entry, &mroute6_static_list, link, tmp) {
+			if (!is_exact_match6(entry, route))
+				continue;
 
-	memset(&mc, 0, sizeof(mc));
-	mc.mf6cc_origin = route->source;
-	mc.mf6cc_mcastgrp = route->group;
-	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_DEL_MFC, (void *)&mc, sizeof(mc))) {
-		if (ENOENT == errno)
-			smclog(LOG_DEBUG, "failed removing multicast route, does not exist.");
-		else
-			smclog(LOG_DEBUG, "failed removing IPv6 multicast route: %s", strerror(errno));
-		return 1;
+			return do_mroute6_del(entry);
+		}
+
+		/* Not found in static list, check if spawned from a (*,G) rule. */
+		LIST_FOREACH_SAFE(entry, &mroute6_dyn_list, link, tmp) {
+			if (!is_exact_match6(entry, route))
+				continue;
+
+			return do_mroute6_del(entry);
+		}
+
+		smclog(LOG_NOTICE, "Cannot delete multicast route: not found");
+		errno = ENOENT;
+		return -1;
 	}
 
-	smclog(LOG_DEBUG, "Del %s -> %s",
-	       inet_ntop(AF_INET6, &mc.mf6cc_origin.sin6_addr, origin, INET6_ADDRSTRLEN),
-	       inet_ntop(AF_INET6, &mc.mf6cc_mcastgrp.sin6_addr, group, INET6_ADDRSTRLEN));
+	/* Find matching (*,G) ... and interface .. and prefix length. */
+	LIST_FOREACH_SAFE(entry, &mroute6_conf_list, link, tmp) {
+		int ret = 0;
 
-	return 0;
+		if (!is_match6(entry, route) || entry->len != route->len ||
+		    entry->src_len != route->src_len)
+			continue;
+
+		/* Remove all (S,G) routes spawned from the (*,G) as well ... */
+		LIST_FOREACH_SAFE(set, &mroute6_dyn_list, link, tmp) {
+			if (!is_match6(entry, set) || entry->len != route->len)
+				continue;
+
+			ret += do_mroute6_del(set);
+		}
+
+		if (!ret) {
+			LIST_REMOVE(entry, link);
+			free(entry);
+		}
+
+		return ret;
+	}
+
+	smclog(LOG_NOTICE, "Cannot delete multicast route: not found");
+	errno = ENOENT;
+	return -1;
 }
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
