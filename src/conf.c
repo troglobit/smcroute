@@ -125,8 +125,8 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 
 		if (group) {
 			len = is_range(group);
-			if (len < 1 || len > 128) {
-				WARN("Invalid IPv6 group prefix length (1-128): %d", len);
+			if (len < 0 || len > 128) {
+				WARN("Invalid IPv6 group prefix length (0-128): %d", len);
 				return 1;
 			}
 			if (!len)

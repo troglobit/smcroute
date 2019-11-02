@@ -114,8 +114,8 @@ static int do_mgroup6(struct ipc_msg *msg)
 	}
 
 	len = is_range(group);
-	if (len < 1 || len > 128) {
-		smclog(LOG_DEBUG, "Invalid IPv6 group prefix length (1-128): %d", len);
+	if (len < 0 || len > 128) {
+		smclog(LOG_DEBUG, "Invalid IPv6 group prefix length (0-128): %d", len);
 		return 1;
 	}
 	if (!len)
