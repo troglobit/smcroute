@@ -107,21 +107,21 @@ static int do_mgroup6(struct ipc_msg *msg)
 
 	if (msg->count == 3) {
 		strlcpy(group, msg->argv[2], sizeof(group));
-		rc += inet_pton(AF_INET6, msg->argv[1], &src);
+		rc += inet_pton(AF_INET6, msg->argv[1], &src.sin6_addr);
 	} else {
 		strlcpy(group, msg->argv[1], sizeof(group));
 		rc += inet_pton(AF_INET6, "::", &src.sin6_addr);
 	}
 
 	len = is_range(group);
-	if (len < 1 || len > 128) {
-		smclog(LOG_DEBUG, "Invalid IPv6 group prefix length (1-128): %d", len);
+	if (len < 0 || len > 128) {
+		smclog(LOG_DEBUG, "Invalid IPv6 group prefix length (0-128): %d", len);
 		return 1;
 	}
 	if (!len)
 		len = 128;
 
-	rc += inet_pton(AF_INET6, group, &grp);
+	rc += inet_pton(AF_INET6, group, &grp.sin6_addr);
 	if (rc < 2 || !IN6_IS_ADDR_MULTICAST(&grp.sin6_addr)) {
 		smclog(LOG_DEBUG, "Invalid IPv6 source or group address.");
 		return 1;
