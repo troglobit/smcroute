@@ -93,7 +93,7 @@ int ipc_init(void)
 	int sd;
 	socklen_t len;
 
-	if (strlen(LOCALSTATEDIR) + strlen(ident) + 11 >= sizeof(sun.sun_path)) {
+	if (strlen(RUNSTATEDIR) + strlen(ident) + 11 >= sizeof(sun.sun_path)) {
 		smclog(LOG_ERR, "Too long socket path, max %zd chars", sizeof(sun.sun_path));
 		return -1;
 	}
@@ -108,7 +108,7 @@ int ipc_init(void)
 	sun.sun_len = 0;	/* <- correct length is set by the OS */
 #endif
 	sun.sun_family = AF_UNIX;
-	snprintf(sun.sun_path, sizeof(sun.sun_path), "%s/run/%s.sock", LOCALSTATEDIR, ident);
+	snprintf(sun.sun_path, sizeof(sun.sun_path), "%s/%s.sock", RUNSTATEDIR, ident);
 
 	unlink(sun.sun_path);
 	smclog(LOG_DEBUG, "Binding IPC socket to %s", sun.sun_path);

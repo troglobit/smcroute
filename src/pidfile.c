@@ -47,7 +47,7 @@
 static char *pidfile_path = NULL;
 static pid_t pidfile_pid  = 0;
 
-const  char *__pidfile_path = LOCALSTATEDIR "/run";
+const  char *__pidfile_path = RUNSTATEDIR;
 const  char *__pidfile_name = NULL;
 extern char *prognm;
 

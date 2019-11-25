@@ -192,7 +192,7 @@ static int ipc_connect(void)
 	sa.sun_len = 0;	/* <- correct length is set by the OS */
 #endif
 	sa.sun_family = AF_UNIX;
-	snprintf(sa.sun_path, sizeof(sa.sun_path), "%s/run/%s.sock", LOCALSTATEDIR, ident);
+	snprintf(sa.sun_path, sizeof(sa.sun_path), "%s/%s.sock", RUNSTATEDIR, ident);
 
 	len = offsetof(struct sockaddr_un, sun_path) + strlen(sa.sun_path);
 	if (connect(sd, (struct sockaddr *)&sa, len) < 0) {

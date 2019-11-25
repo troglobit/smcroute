@@ -217,7 +217,7 @@ cat <<EOF
  $PACKAGE_NAME version $PACKAGE_VERSION
   Prefix.........: $prefix
   Sysconfdir.....: `eval echo $sysconfdir`
-  Localstatedir..: `eval echo $localstatedir`
+  Runstatedir....: `eval echo $runstatedir`
   C Compiler.....: $CC $CFLAGS $CPPFLAGS $LDFLAGS $LIBS
 
  Optional features:

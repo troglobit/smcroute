@@ -243,7 +243,7 @@ static int usage(int code)
 
 	compose_paths();
 	if (pid_file[0] != '/')
-		snprintf(pidfn, sizeof(pidfn), "%s/run/%s.pid", LOCALSTATEDIR, pid_file);
+		snprintf(pidfn, sizeof(pidfn), "%s/%s.pid", RUNSTATEDIR, pid_file);
 	else
 		snprintf(pidfn, sizeof(pidfn), "%s", pid_file);
 

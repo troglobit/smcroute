@@ -6,7 +6,7 @@ smcrouted_SOURCES	= smcrouted.c mroute.c mroute.h ifvc.c ifvc.h mcgroup.c mcgrou
 			  kern.c socket.c socket.h timer.c timer.h queue.h
 smcrouted_CFLAGS        = -W -Wall -Wextra -Wno-deprecated-declarations
 smcrouted_CPPFLAGS	= -D_ATFILE_SOURCE -D_INCOMPLETE_XOPEN_C063
-smcrouted_CPPFLAGS     += -DSYSCONFDIR=\"@sysconfdir@\" -DLOCALSTATEDIR=\"@localstatedir@\"
+smcrouted_CPPFLAGS     += -DSYSCONFDIR=\"@sysconfdir@\" -DRUNSTATEDIR=\"@runstatedir@\"
 smcrouted_LDADD		= $(LIBS) $(LIBOBJS) @LIB_RT@ @LIB_PTHREAD@
 if USE_LIBCAP
 smcrouted_SOURCES      += cap.c cap.h
@@ -27,7 +27,7 @@ sbin_PROGRAMS	       += smcroutectl
 smcrouted_SOURCES      += msg.c msg.h ipc.c ipc.h
 smcroutectl_SOURCES	= smcroutectl.c msg.h util.h
 smcroutectl_CFLAGS      = -W -Wall -Wextra
-smcroutectl_CPPFLAGS    = -DLOCALSTATEDIR=\"@localstatedir@\"
+smcroutectl_CPPFLAGS    = -DRUNSTATEDIR=\"@runstatedir@\"
 endif
 
 if USE_DOTCONF

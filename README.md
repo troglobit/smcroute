@@ -277,13 +277,18 @@ and `greN`.  Usually this flag can be enabled administratively.
 
 The GNU Configure & Build system use `/usr/local` as the default install
 prefix.  In many cases this is useful, but this means the configuration
-files and cache files will also use that same prefix.  Most users have
-come to expect those files in `/etc/` and `/var/run/` and configure has
-a few useful options that are recommended to use:
+files, cache, and PID files will also use that prefix.  Most users have
+come to expect those files in `/etc/` and `/var/` and configure has a
+few useful options that are recommended to use.  For SMCRoute you may
+want to use something like this:
 
-    ./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var
+    ./configure --prefix=/usr --sysconfdir=/etc --runstatedir=/var/run
     make -j5
     sudo make install-strip
+
+**Note:** Usually your system of choice reserves `/usr`, so most users
+   drop `--prefix`, installing to `/usr/local`, or use `/opt`.
+
 
 ### Privilege Separation
 
