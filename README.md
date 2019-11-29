@@ -286,8 +286,11 @@ want to use something like this:
     make -j5
     sudo make install-strip
 
-**Note:** Usually your system of choice reserves `/usr`, so most users
-   drop `--prefix`, installing to `/usr/local`, or use `/opt`.
+Usually your system reserves `/usr` for native pacakges, so most users
+drop `--prefix`, installing to `/usr/local`, or use `--prefix=/opt`.
+
+**Note:** On some systems `--runstatedir` may not be available in the
+  configure script, try `--localstatedir=/var` instead.
 
 
 ### Privilege Separation
