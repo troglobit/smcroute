@@ -142,12 +142,17 @@ void cap_drop_root(uid_t uid, gid_t gid)
 void cap_set_user(char *arg, uid_t *uid, gid_t *gid)
 {
 	char *ptr;
+	char *user;
+	char *group;
 
 	ptr = strdup(arg);
 	if (!ptr)
 		err(1, "Failed parsing user:group argument");
 
-	if (whoami(strtok(ptr, ":"), strtok(NULL, ":"), uid, gid))
+	user = strtok(ptr, ":");
+	group = strtok(NULL, ":");
+
+	if (whoami(user, group, uid, gid))
 		err(1, "Invalid user:group argument");
 
 	free(ptr);
