@@ -399,9 +399,8 @@ static char *chomp(char *str)
  *
  * Format:
  *    phyint IFNAME <enable|disable> [threshold <1-255>]
- *    mgroup   from IFNAME                group MCGROUP
- *    ssmgroup from IFNAME source ADDRESS group MCGROUP
- *    mroute   from IFNAME source ADDRESS group MCGROUP to IFNAME [IFNAME ...]
+ *    mgroup   from IFNAME [source ADDRESS] group MCGROUP
+ *    mroute   from IFNAME source ADDRESS   group MCGROUP to IFNAME [IFNAME ...]
  */
 static int conf_parse(const char *file, int do_vifs)
 {
