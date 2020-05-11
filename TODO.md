@@ -1,3 +1,16 @@
+Support for reloading smcroute.conf without disturbing existing flows
+---------------------------------------------------------------------
+
+When `restart()` is called, SMCRoute currently calls `mroute_exit()` and
+`mcgroup_exit()` to shut down the multicast routing socket, to flush all
+routes and leave all multicast groups, before parsing `smcroute.conf` to
+join new groups and set new routes.
+
+A common use-case is when a user makes a small change to `smcroute.conf`
+to leave a group or add a new route.  The expectation from the user is
+for established flows and joins to not be disturbed.
+
+
 Support for (re-)enumerating VIFs at runtime
 --------------------------------------------
 
