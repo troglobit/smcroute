@@ -150,6 +150,7 @@ static void mcgroup_init(void)
  */
 void mcgroup_exit(void)
 {
+	struct mcgroup *centry, *ctmp;
 	struct mgroup *entry, *tmp;
 
 	if (mcgroup4_socket != -1) {
@@ -164,6 +165,10 @@ void mcgroup_exit(void)
 	}
 #endif
 
+	LIST_FOREACH_SAFE(centry, &mcgroup_conf_list, link, ctmp) {
+		LIST_REMOVE(centry, link);
+		free(centry);
+	}
 	LIST_FOREACH_SAFE(entry, &mgroup_static_list, link, tmp) {
 		LIST_REMOVE(entry, link);
 		free(entry);
