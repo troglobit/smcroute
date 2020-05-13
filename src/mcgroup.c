@@ -175,6 +175,24 @@ void mcgroup_exit(void)
 	}
 }
 
+static struct mcgroup *find_conf(const char *ifname, inet_addr_t *source, inet_addr_t *group, int len)
+{
+	struct mcgroup *entry, *tmp;
+
+	LIST_FOREACH_SAFE(entry, &mcgroup_conf_list, link, tmp) {
+		if (strcmp(entry->ifname, ifname))
+			continue;
+		if (inet_addr_cmp(&entry->source, source))
+			continue;
+		if (inet_addr_cmp(&entry->group, group) || entry->len != len)
+			continue;
+
+		return entry;
+	}
+
+	return NULL;
+}
+
 int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, inet_addr_t *group, int len)
 {
 	struct mcgroup *mcg;
@@ -182,16 +200,29 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, inet_addr_t
 	int rc = 0;
 	int sd;
 
-	mcg = calloc(1, sizeof(*mcg));
-	if (!mcg)
-		return 1;
+	mcg = find_conf(ifname, source, group, len);
+	if (mcg) {
+		if (cmd == 'j') {
+			errno = EALREADY;
+			return 1;
+		}
+	} else {
+		if (cmd != 'j') {
+			errno = ENOENT;
+			return 1;
+		}
 
-	strlcpy(mcg->ifname, ifname, sizeof(mcg->ifname));
-	mcg->source  = *source;
-	mcg->group   = *group;
-	mcg->len     = len;
+		mcg = calloc(1, sizeof(*mcg));
+		if (!mcg)
+			return 1;
 
-	LIST_INSERT_HEAD(&mcgroup_conf_list, mcg, link);
+		strlcpy(mcg->ifname, ifname, sizeof(mcg->ifname));
+		mcg->source  = *source;
+		mcg->group   = *group;
+		mcg->len     = len;
+
+		LIST_INSERT_HEAD(&mcgroup_conf_list, mcg, link);
+	}
 
 	mcgroup_init();
 #ifdef HAVE_IPV6_MULTICAST_HOST
@@ -212,6 +243,11 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, inet_addr_t
 			list_add(mcg->iface, source, group, len);
 		else
 			list_rem(mcg->iface, source, group, len);
+	}
+
+	if (cmd != 'j') {
+		LIST_REMOVE(mcg, link);
+		free(mcg);
 	}
 
 	if (!state.match_count)
