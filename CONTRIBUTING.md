@@ -45,8 +45,8 @@ issue or pull request with this project:
    clear and concise as possible in your commit messages, and always, be
    proud of your work and set up a proper GIT identity for your commits:
 
-        git config --global user.name "Jane Doe"
-        git config --global user.email jane.doe@example.com
+        git config --global user.name "J. Random Hacker"
+        git config --global user.email random.j.hacker@example.com
 
    See this helpful guide for how to write simple, readable commit
    messages, or have at least a look at the below example.
@@ -82,7 +82,7 @@ how `git commit -s` is used to automatically add a `Signed-off-by`:
     
     - Use a hanging indent
     
-    Signed-off-by: Jane Doe <jane.doe@example.com>
+    Signed-off-by: J. Random Hacker <random.j.hacker@example.com>
 
 
 [1]:       http://www.gnu.org/philosophy/free-sw.en.html
