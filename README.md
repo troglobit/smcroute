@@ -2,6 +2,9 @@ SMCRoute - A static multicast routing daemon
 ============================================
 [![License Badge][]][License] [![Travis Status][]][Travis] [![Coverity Status][]][Coverity Scan]
 
+<a href="https://repology.org/project/smcroute/versions"><img align="right" alt="Packaging status"
+   src="https://repology.org/badge/vertical-allrepos/smcroute.svg"></a>
+
 Table of Contents
 -----------------
 * [About](#about)
