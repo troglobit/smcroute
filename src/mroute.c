@@ -160,7 +160,6 @@ static void handle_nocache4(int sd, void *arg)
 
 	inet_ntop(AF_INET, &mroute.group,  group,  INET_ADDRSTRLEN);
 	inet_ntop(AF_INET, &mroute.source, origin, INET_ADDRSTRLEN);
-	smclog(LOG_DEBUG, "New multicast data from %s to group %s on VIF %d", origin, group, mroute.inbound);
 
 	iface = iface_find_by_vif(mroute.inbound);
 	if (!iface) {
@@ -173,6 +172,8 @@ static void handle_nocache4(int sd, void *arg)
 	switch (igmpctl->im_msgtype) {
 	case IGMPMSG_NOCACHE:
 		/* Find any matching route for this group on that iif. */
+		smclog(LOG_DEBUG, "New multicast data from %s to group %s on VIF %d", origin, group, mroute.inbound);
+
 		result = mroute4_dyn_add(&mroute);
 		if (result) {
 			/*
