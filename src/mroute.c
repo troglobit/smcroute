@@ -252,7 +252,7 @@ int mroute4_enable(int do_vifs, int table_id, int timeout)
 	(void)table_id;
 #endif
 
-	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_INIT, (void *)&arg, sizeof(arg))) {
+	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_INIT, &arg, sizeof(arg))) {
 		switch (errno) {
 		case EADDRINUSE:
 			smclog(LOG_ERR, "IPv4 multicast routing API already in use: %s", strerror(errno));
@@ -381,7 +381,7 @@ static int mroute4_add_vif(struct iface *iface)
 	smclog(LOG_DEBUG, "Map iface %-16s => VIF %-2d ifindex %2d flags 0x%04x TTL threshold %u",
 	       iface->name, vc.vifc_vifi, iface->ifindex, vc.vifc_flags, iface->threshold);
 
-	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_VIF, (void *)&vc, sizeof(vc))) {
+	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_VIF, &vc, sizeof(vc))) {
 		smclog(LOG_ERR, "Failed adding VIF for iface %s: %s", iface->name, strerror(errno));
 		iface->vif = -1;
 		return 1;
@@ -411,9 +411,9 @@ static int mroute4_del_vif(struct iface *iface)
 
 #ifdef __linux__
 	struct vifctl vc = { .vifc_vifi = vif };
-	ret = setsockopt(mroute4_socket, IPPROTO_IP, MRT_DEL_VIF, (void *)&vc, sizeof(vc));
+	ret = setsockopt(mroute4_socket, IPPROTO_IP, MRT_DEL_VIF, &vc, sizeof(vc));
 #else
-	ret = setsockopt(mroute4_socket, IPPROTO_IP, MRT_DEL_VIF, (void *)&vif, sizeof(vif));
+	ret = setsockopt(mroute4_socket, IPPROTO_IP, MRT_DEL_VIF, &vif, sizeof(vif));
 #endif
 	if (ret)
 		smclog(LOG_ERR, "Failed deleting VIF for iface %s: %s", iface->name, strerror(errno));
@@ -1028,7 +1028,7 @@ int mroute6_enable(int do_vifs, int table_id)
 	(void)table_id;
 #endif
 
-	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_INIT, (void *)&arg, sizeof(arg))) {
+	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_INIT, &arg, sizeof(arg))) {
 		switch (errno) {
 		case EADDRINUSE:
 			smclog(LOG_ERR, "IPv6 multicast routing API already in use: %s", strerror(errno));
@@ -1143,7 +1143,7 @@ static int mroute6_add_mif(struct iface *iface)
 	smclog(LOG_DEBUG, "Map iface %-16s => MIF %-2d ifindex %2d flags 0x%04x TTL threshold %u",
 	       iface->name, mc.mif6c_mifi, mc.mif6c_pifi, mc.mif6c_flags, iface->threshold);
 
-	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MIF, (void *)&mc, sizeof(mc))) {
+	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MIF, &mc, sizeof(mc))) {
 		smclog(LOG_ERR, "Failed adding MIF for iface %s: %s", iface->name, strerror(errno));
 		iface->mif = -1;
 		return 1;
@@ -1167,7 +1167,7 @@ static int mroute6_del_mif(struct iface *iface)
 
 	smclog(LOG_DEBUG, "Removing  %-16s => MIF %-2d", iface->name, mif);
 
-	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_DEL_MIF, (void *)&mif, sizeof(mif)))
+	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_DEL_MIF, &mif, sizeof(mif)))
 		smclog(LOG_ERR, "Failed deleting MIF for iface %s: %s", iface->name, strerror(errno));
 	else
 		iface->mif = -1;
