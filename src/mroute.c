@@ -130,7 +130,11 @@ static int mroute6_add_mif(struct iface *iface);
 /* Check for kernel IGMPMSG_NOCACHE for (*,G) hits. I.e., source-less routes. */
 static void handle_nocache4(int sd, void *arg)
 {
+	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
+	struct mroute4 mroute = { 0 };
 	struct igmpmsg *igmpctl;
+	struct iface *iface;
+	struct mroute mrt;
 	struct ip *ip;
 	char tmp[128];
 	int result;
@@ -143,32 +147,31 @@ static void handle_nocache4(int sd, void *arg)
 		return;
 	}
 
-	/* packets sent up from kernel to daemon have ip->ip_p = 0 */
 	ip = (struct ip *)tmp;
 	igmpctl = (struct igmpmsg *)tmp;
 
-	/* Check for IGMPMSG_NOCACHE to do (*,G) based routing. */
-	if (ip->ip_p == 0 && igmpctl->im_msgtype == IGMPMSG_NOCACHE) {
-		struct iface *iface;
-		struct mroute mrt;
-		struct mroute4 mroute;
-		char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
+	/* packets sent up from kernel to daemon have ip->ip_p = 0 */
+	if (ip->ip_p != 0)
+		return;
 
-		memset(&mroute, 0, sizeof(mroute));
-		mroute.group.s_addr  = igmpctl->im_dst.s_addr;
-		mroute.source.s_addr = igmpctl->im_src.s_addr;
-		mroute.inbound       = igmpctl->im_vif;
+	mroute.group.s_addr  = igmpctl->im_dst.s_addr;
+	mroute.source.s_addr = igmpctl->im_src.s_addr;
+	mroute.inbound       = igmpctl->im_vif;
 
-		inet_ntop(AF_INET, &mroute.group,  group,  INET_ADDRSTRLEN);
-		inet_ntop(AF_INET, &mroute.source, origin, INET_ADDRSTRLEN);
-		smclog(LOG_DEBUG, "New multicast data from %s to group %s on VIF %d", origin, group, mroute.inbound);
+	inet_ntop(AF_INET, &mroute.group,  group,  INET_ADDRSTRLEN);
+	inet_ntop(AF_INET, &mroute.source, origin, INET_ADDRSTRLEN);
+	smclog(LOG_DEBUG, "New multicast data from %s to group %s on VIF %d", origin, group, mroute.inbound);
 
-		iface = iface_find_by_vif(mroute.inbound);
-		if (!iface) {
-			smclog(LOG_WARNING, "No matching interface for VIF %d, cannot add mroute.", mroute.inbound);
-			return;
-		}
+	iface = iface_find_by_vif(mroute.inbound);
+	if (!iface) {
+		smclog(LOG_WARNING, "No matching interface for VIF %d, cannot handle IGMP message type %d.",
+		       mroute.inbound, igmpctl->im_msgtype);
+		return;
+	}
 
+	/* check for IGMPMSG_NOCACHE to do (*,G) based routing. */
+	switch (igmpctl->im_msgtype) {
+	case IGMPMSG_NOCACHE:
 		/* Find any matching route for this group on that iif. */
 		result = mroute4_dyn_add(&mroute);
 		if (result) {
@@ -187,6 +190,19 @@ static void handle_nocache4(int sd, void *arg)
 		mrt.version = 4;
 		mrt.u.mroute4 = mroute;
 		script_exec(&mrt);
+		break;
+
+	case IGMPMSG_WRONGVIF:
+		smclog(LOG_WARNING, "Multicast from %s, group %s, coming in on wrong VIF %d, iface %s",
+		       origin, group, mroute.inbound, iface->name);
+		break;
+
+	case IGMPMSG_WHOLEPKT:	/* Only for PIM-SM register tunnels */
+		break;
+
+	default:
+		smclog(LOG_DEBUG, "Unknown IGMP message type from kernel: %d", igmpctl->im_msgtype);
+		break;
 	}
 }
 
