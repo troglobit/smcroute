@@ -198,7 +198,9 @@ static void handle_nocache4(int sd, void *arg)
 		       origin, group, mroute.inbound, iface->name);
 		break;
 
-	case IGMPMSG_WHOLEPKT:	/* Only for PIM-SM register tunnels */
+	case IGMPMSG_WHOLEPKT:
+	case IGMPMSG_WRVIFWHOLE:
+		smclog(LOG_WARNING, "Receiving PIM register data from %s, group %s", origin, group);
 		break;
 
 	default:
@@ -270,6 +272,10 @@ int mroute4_enable(int do_vifs, int table_id, int timeout)
 
 		goto error;
 	}
+
+	/* Enable "PIM" to get WRONGVIF messages */
+	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_PIM, &arg, sizeof(arg)))
+		smclog(LOG_ERR, "Failed enabling PIM IGMPMSG_WRONGVIF on socket, continuing: %s", strerror(errno));
 
 	/* Initialize virtual interface table */
 	memset(&vif_list, 0, sizeof(vif_list));
