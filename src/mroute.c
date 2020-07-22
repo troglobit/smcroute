@@ -199,7 +199,9 @@ static void handle_nocache4(int sd, void *arg)
 		break;
 
 	case IGMPMSG_WHOLEPKT:
+#ifdef IGMPMSG_WRVIFWHOLE
 	case IGMPMSG_WRVIFWHOLE:
+#endif
 		smclog(LOG_WARNING, "Receiving PIM register data from %s, group %s", origin, group);
 		break;
 
