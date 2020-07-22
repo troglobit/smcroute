@@ -112,7 +112,16 @@ static int start(struct timespec *now)
 	memset(&it, 0, sizeof(it));
 	it.it_value.tv_sec  = next->timeout.tv_sec - now->tv_sec;
 	it.it_value.tv_nsec = next->timeout.tv_nsec - now->tv_nsec;
-	timer_settime(timer, 0, &it, NULL);
+	if (it.it_value.tv_nsec < 0) {
+		it.it_value.tv_sec -= 1;
+		it.it_value.tv_nsec = 1000000000 + it.it_value.tv_nsec;
+	}
+	if (it.it_value.tv_sec < 0)
+		it.it_value.tv_sec = 0;
+
+	if (timer_settime(timer, 0, &it, NULL))
+		smclog(LOG_ERR, "Failed starting %d sec period timer, errno %d: %s",
+		       next->timeout.tv_sec - now->tv_sec, errno, strerror(errno));
 
 	return 0;
 }
