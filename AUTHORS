@@ -15,7 +15,7 @@ URL:      http://alioth.debian.org/projects/smcroute
 
 Year:     2011-
 Releases: 1.93.0 -->
-Authors:  Joachim Nilsson <troglobit@gmail.com>,
+Authors:  Joachim Wiberg <troglobit@gmail.com>,
           Todd Hayton <todd.hayton@gmail.com>,
           Micha Lenk <micha@debian.org>, and
           Julien BLACHE <jb@jblache.org>

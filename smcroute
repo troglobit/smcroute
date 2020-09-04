@@ -1,6 +1,6 @@
 #!/bin/sh
 # Compatibility wrapper for users with old startup scripts
-# Written by Joachim Nilsson, placed in the public domain
+# Written by Joachim Wiberg, placed in the public domain
 
 OP=$1
 shift
