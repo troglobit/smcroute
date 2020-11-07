@@ -4,6 +4,7 @@
 
 #include "config.h"
 
+#include <string.h>
 #include <arpa/inet.h>		/* inet_ntop() */
 #include <net/if.h>
 #include <netinet/in.h>
