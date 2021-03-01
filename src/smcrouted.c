@@ -23,11 +23,16 @@
 #include <errno.h>
 #include <getopt.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <signal.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/time.h>		/* gettimeofday() */
 #include <sys/un.h>
+
+#if HAVE_LIBSYSTEMD
+#include <systemd/sd-daemon.h>
+#endif
 
 #include "cap.h"
 #include "ipc.h"
@@ -135,14 +140,33 @@ static void signal_init(void)
 
 static int server_loop(void)
 {
+#if HAVE_LIBSYSTEMD
+	bool need_sd_notify_ready = true;
+#endif
+
 	script_init(script);
 	mrdisc_init(interval);
 
 	while (running) {
 		if (reloading) {
+#if HAVE_LIBSYSTEMD
+			sd_notify(0, "RELOADING=1\n"
+				  "STATUS=Reloading configuration...\n");
+			need_sd_notify_ready = true;
+#endif
+
 			reload();
 			reloading = 0;
 		}
+
+
+#if HAVE_LIBSYSTEMD
+		if (need_sd_notify_ready) {
+			sd_notify(0, "READY=1\n"
+				  "STATUS=Configuration loaded.\n");
+			need_sd_notify_ready = false;
+		}
+#endif
 
 		socket_poll(NULL);
 	}

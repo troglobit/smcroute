@@ -108,6 +108,17 @@ AS_IF([test "x$with_systemd" != "xno"],
      [AC_SUBST([systemddir], [$with_systemd])])
 AM_CONDITIONAL([HAVE_SYSTEMD], [test "x$with_systemd" != "xno"])
 
+have_libsystemd=no
+AS_IF([test "x$with_systemd" != "xno"],
+     [PKG_CHECK_MODULES(LIBSYSTEMD, libsystemd,
+         [AC_DEFINE(HAVE_LIBSYSTEMD, 1, [Enable libsystemd integration])
+         have_libsystemd=yes])]
+)
+AS_IF([test "x$have_libsystemd" = "xyes"],
+     [AC_SUBST([systemd_service_type], [notify])],
+     [AC_SUBST([systemd_service_type], [simple])])
+AM_CONDITIONAL([HAVE_LIBSYSTEMD], [test "x$have_libsystemd" = "xyes"])
+
 # Check if we need -lpthread (building statically) and -lrt (older GLIBC)
 # Unset cached values when retrying with -lpthread and reset LIBS for each API
 need_librt=no

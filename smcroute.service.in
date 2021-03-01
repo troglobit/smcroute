@@ -8,8 +8,9 @@ After=network-online.target
 Requires=network-online.target
 
 [Service]
-Type=simple
+Type=@systemd_service_type@
 ExecStart=@SBINDIR@/smcrouted -n -s
+NotifyAccess=main
 
 # Hardening settings
 NoNewPrivileges=true

@@ -30,3 +30,7 @@ if USE_DOTCONF
 smcrouted_SOURCES      += conf.c conf.h
 endif
 
+if HAVE_LIBSYSTEMD
+smcrouted_CFLAGS      += $(LIBSYSTEMD_CFLAGS)
+smcrouted_LDADD       += $(LIBSYSTEMD_LIBS)
+endif

@@ -24,6 +24,7 @@ addons:
     packages:
       - tree
       - libcap-dev
+      - libsystemd-dev
   coverity_scan:
     project:
       name: "troglobit/smcroute"
