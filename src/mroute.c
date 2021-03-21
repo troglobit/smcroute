@@ -1283,6 +1283,10 @@ static int is_match6(struct mroute6 *rule, struct mroute6 *cand)
 {
 	int result;
 
+	if (rule->inbound != cand->inbound) {
+		return 0;
+	}
+
 	if (rule->len == 128 && cand->len == 128) {
 		result = (0 == memcmp(&rule->group.sin6_addr, &cand->group.sin6_addr, sizeof(struct in6_addr)));
 	}
