@@ -198,7 +198,7 @@ details:
     smcroutectl help
 
 **Note:** Root privileges are required by default for `smcroutectl` due
-  to the IPC socket permissions.
+to the IPC socket permissions.
 
 
 Experimental
@@ -213,7 +213,7 @@ Example `smcroute.conf`:
     phyint eth0 enable mrdisc
     phyint eth1 enable
     phyint eth1 enable
-    
+
     mgroup from eth0 group 225.1.2.3
     mroute from eth0 group 225.1.2.3 to eth1 eth2
 
@@ -233,7 +233,7 @@ out an IGMP message on inbound interfaces¹ to alert switches to open up
 multicast in that direction.  Not many managed switches have support for
 this yet.
 
-____  
+____
 ¹ Notice the `mrdisc` flag to the above `phyint eth0` directive, which
 is missing for `eth1` and `eth2`.
 
@@ -302,7 +302,7 @@ library was added.  It is used to drop full root privileges at startup,
 retaining only `CAP_NET_ADMIN` for managing the multicast routes.
 
 The build system searches for the `libcap` library and header file(s).
-Bith `libcap-dev` and `pkg-config` are required.
+Both `libcap-dev` and `pkg-config` are required.
 
 **Note:** Although support is automatically detected, the build system
           will issue a warning if `libcap` is missing.  This can be
