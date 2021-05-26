@@ -302,7 +302,7 @@ library was added.  It is used to drop full root privileges at startup,
 retaining only `CAP_NET_ADMIN` for managing the multicast routes.
 
 The build system searches for the `libcap` library and header file(s).
-Bith `libcap-dev` and `pkg-config` are required.
+Both `libcap-dev` and `pkg-config` are required.
 
 **Note:** Although support is automatically detected, the build system
           will issue a warning if `libcap` is missing.  This can be
