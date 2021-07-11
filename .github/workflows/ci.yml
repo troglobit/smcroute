@@ -25,6 +25,8 @@ jobs:
           ./autogen.sh
           ./configure --disable-silent-rules --enable-mrdisc --prefix=
           make
+      - name: Install
+        run: |
           DESTDIR=~/tmp make install-strip
           tree ~/tmp
           ldd ~/tmp/sbin/smcrouted
@@ -33,3 +35,7 @@ jobs:
           size ~/tmp/sbin/smcroutectl
           ~/tmp/sbin/smcrouted -h
           ~/tmp/sbin/smcroutectl -h
+      - name: Test
+        run: |
+          make check
+
