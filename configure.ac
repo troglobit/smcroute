@@ -4,7 +4,7 @@
 AC_PREREQ(2.61)
 AC_INIT(SMCRoute, 2.5.0-beta1, https://github.com/troglobit/smcroute/issues, smcroute, http://troglobit.com/smcroute.html)
 AC_CONFIG_AUX_DIR(aux)
-AM_INIT_AUTOMAKE([1.11 foreign dist-xz serial-tests])
+AM_INIT_AUTOMAKE([1.11 foreign dist-xz])
 AM_SILENT_RULES([yes])
 
 AC_CONFIG_SRCDIR([src/smcrouted.c])
