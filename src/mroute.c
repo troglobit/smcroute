@@ -1249,7 +1249,7 @@ static int kern_del6(struct mroute6 *route, int active)
 	struct mf6cctl mc;
 	char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
 
-	if (mroute4_socket < 0) {
+	if (mroute6_socket < 0) {
 		smclog(LOG_DEBUG, "No IPv6 multicast socket");
 		return -1;
 	}
