@@ -350,8 +350,10 @@ static int mroute4_add_vif(struct iface *iface)
 	size_t i;
 	int vif = -1;
 
-	if (mroute4_socket < 0)
+	if (mroute4_socket == -1) {
+		smclog(LOG_DEBUG, "No IPv4 multicast socket");
 		return -1;
+	}
 
 	if ((iface->flags & IFF_MULTICAST) != IFF_MULTICAST) {
 		smclog(LOG_INFO, "Interface %s is not multicast capable, skipping VIF.", iface->name);
@@ -396,6 +398,7 @@ static int mroute4_add_vif(struct iface *iface)
 		return 1;
 	}
 
+	smclog(LOG_DEBUG, "Created VIF %d for iface %s", vif, iface->name);
 	iface->vif = vif;
 	vif_list[vif].iface = iface;
 
@@ -410,8 +413,10 @@ static int mroute4_del_vif(struct iface *iface)
 	int16_t vif = iface->vif;
 	int ret;
 
-	if (mroute4_socket < 0)
+	if (mroute4_socket == -1) {
+		smclog(LOG_DEBUG, "No IPv4 multicast socket");
 		return -1;
+	}
 
 	if (-1 == vif)
 		return 0;	/* No VIF setup for iface, skip */
@@ -441,8 +446,10 @@ static int kern_add4(struct mroute4 *route, int active)
 	struct mfcctl mc;
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 
-	if (mroute4_socket < 0)
+	if (mroute4_socket == -1) {
+		smclog(LOG_DEBUG, "No IPv4 multicast socket");
 		return -1;
+	}
 
 	memset(&mc, 0, sizeof(mc));
 
@@ -480,8 +487,10 @@ static int kern_del4(struct mroute4 *route, int active)
 	struct mfcctl mc;
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 
-	if (mroute4_socket < 0)
+	if (mroute4_socket == -1) {
+		smclog(LOG_DEBUG, "No IPv4 multicast socket");
 		return -1;
+	}
 
 	memset(&mc, 0, sizeof(mc));
 	mc.mfcc_origin = route->source;
@@ -631,8 +640,10 @@ static int get_stats4(struct mroute4 *route, unsigned long *pktcnt, unsigned lon
 {
 	struct sioc_sg_req sg_req;
 
-	if (mroute4_socket < 0)
+	if (mroute4_socket == -1) {
+		smclog(LOG_DEBUG, "No IPv4 multicast socket");
 		return -1;
+	}
 
 	memset(&sg_req, 0, sizeof(sg_req));
 	sg_req.src = route->source;
@@ -1114,8 +1125,10 @@ static int mroute6_add_mif(struct iface *iface)
 	int mif = -1;
 	size_t i;
 
-	if (mroute6_socket == -1)
+	if (mroute6_socket == -1) {
+		smclog(LOG_DEBUG, "No IPv6 multicast socket");
 		return 0;
+	}
 
 	if ((iface->flags & IFF_MULTICAST) != IFF_MULTICAST) {
 		smclog(LOG_INFO, "Interface %s is not multicast capable, skipping MIF.", iface->name);
@@ -1158,6 +1171,7 @@ static int mroute6_add_mif(struct iface *iface)
 		return 1;
 	}
 
+	smclog(LOG_DEBUG, "Created MIF %d for iface %s", mif, iface->name);
 	iface->mif = mif;
 	mif_list[mif].iface = iface;
 
@@ -1168,8 +1182,10 @@ static int mroute6_del_mif(struct iface *iface)
 {
 	int16_t mif = iface->mif;
 
-	if (mroute6_socket == -1)
+	if (mroute6_socket == -1) {
+		smclog(LOG_DEBUG, "No IPv6 multicast socket");
 		return 0;
+	}
 
 	if (-1 == mif)
 		return 0;	/* No MIF setup for iface, skip */
@@ -1191,8 +1207,10 @@ static int kern_add6(struct mroute6 *route, int active)
 	char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
 	size_t i;
 
-	if (mroute6_socket < 0)
+	if (mroute6_socket < 0) {
+		smclog(LOG_DEBUG, "No IPv6 multicast socket");
 		return -1;
+	}
 
 	memset(&mc, 0, sizeof(mc));
 
@@ -1231,8 +1249,10 @@ static int kern_del6(struct mroute6 *route, int active)
 	struct mf6cctl mc;
 	char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
 
-	if (mroute4_socket < 0)
+	if (mroute4_socket < 0) {
+		smclog(LOG_DEBUG, "No IPv6 multicast socket");
 		return -1;
+	}
 
 	memset(&mc, 0, sizeof(mc));
 
@@ -1579,6 +1599,7 @@ int mroute_add_vif(char *ifname, uint8_t mrdisc, uint8_t threshold)
 	smclog(LOG_DEBUG, "Adding %s to list of multicast routing interfaces", ifname);
 	iface_match_init(&state);
 	while ((iface = iface_match_by_name(ifname, &state))) {
+		smclog(LOG_DEBUG, "Creating multicast VIF for %s", iface->name);
 		iface->mrdisc    = mrdisc;
 		iface->threshold = threshold;
 		ret += mroute4_add_vif(iface);
@@ -1587,6 +1608,7 @@ int mroute_add_vif(char *ifname, uint8_t mrdisc, uint8_t threshold)
 #endif
 	}
 
+	smclog(LOG_DEBUG, "Created count %d VIFs, ret: %d", state.match_count, ret);
 	if (!state.match_count)
 		return 1;
 

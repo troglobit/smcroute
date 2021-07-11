@@ -303,7 +303,9 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 		int vif;
 
 		iface_match_init(&state_in);
+		DEBUG("mroute: checking for input iface %s ...", ifname);
 		while ((vif = iface_match_vif_by_name(ifname, &state_in, NULL)) >= 0) {
+			DEBUG("mroute: input iface %s has vif %d", ifname, vif);
 			memset(&mroute, 0, sizeof(mroute));
 			mroute.inbound = vif;
 
@@ -344,6 +346,8 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 			total = 0;
 			for (i = 0; i < num; i++) {
 				iface_match_init(&state_out);
+
+				DEBUG("mroute: checking for %s ...", outbound[i]);
 				while ((vif = iface_match_vif_by_name(outbound[i], &state_out, &iface)) >= 0) {
 					if (vif == mroute.inbound) {
 						/* In case of wildcard match in==out is normal, so don't complain */
