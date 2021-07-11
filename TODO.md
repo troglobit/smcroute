@@ -1,3 +1,16 @@
+Possibly Exit with Error if Multicast Socket is Busy
+----------------------------------------------------
+
+Currently we only log this state and then continue.  Not sure what is
+the best approach, but everything read from a .conf will fail so not
+much point really continuing?
+
+    smcroute[2359]: IPv4 multicast routing API already in use: Address in use
+
+Proposal: exit with error if either mrouting socket is busy.
+          We need to consider this a configuration error.
+
+
 Support for reloading smcroute.conf without disturbing existing flows
 ---------------------------------------------------------------------
 
