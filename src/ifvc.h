@@ -110,6 +110,14 @@ static inline const char *convert_address(inet_addr_t *ss, char *buf, size_t len
 	return inet_ntop(AF_INET, &sin->sin_addr, buf, len);
 }
 
+static inline int iface_exist(char *ifname)
+{
+	struct ifmatch ifm;
+
+	iface_match_init(&ifm);
+	return iface_match_by_name(ifname, &ifm) != NULL;
+}
+
 #endif /* SMCROUTE_IFVC_H_ */
 
 /**
