@@ -18,8 +18,20 @@ Basic Routing
 Verifies routing between two interfaces b1 and b2.  Multicast is
 injected on a1 and tcpdump verifies function on a2.
 
-                          .----- routing -----.
-    MC ----->            /                     \           ------> MC
-             a1        b1                      b2        a2
-              `--------'                        `--------'
+                                 SMCRoute
+                          .------ router -----.
+                         /                     \
+         MC -----> dummy0                      dummy1 ------> MC
 
+VLAN Interfaces
+---------------
+
+Similar to the basic routing test, except that VLAN interfaces are
+created on top of the base interfaces, and routing takes place there.
+												 
+                                 SMCRoute
+                          .------ router -----.
+                         /                     \
+        MC -----> dummy0.110              dummy1.110 ------> MC
+                        |                       |
+                   dummy0                       dummy1

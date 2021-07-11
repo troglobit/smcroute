@@ -4,3 +4,4 @@ TEST_EXTENSIONS    = .sh
 #TESTS_ENVIRONMENT  = $(top_srcdir)/test/docky.sh $(top_srcdir)
 
 TESTS              = basic.sh
+TESTS             += vlan.sh
