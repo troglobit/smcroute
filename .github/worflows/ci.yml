@@ -12,14 +12,14 @@ jobs:
     # Verify we can build on latest Ubuntu with both gcc and clang
     name: ${{ matrix.compiler }}
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/troglobit/misc
+      options: --cap-add=NET_ADMIN
     strategy:
       matrix:
         compiler: [gcc, clang]
     steps:
       - uses: actions/checkout@v2
-      - name: Installing dependencies
-        run: |
-          sudo apt-get install -y tree libcap-dev
       - name: Configure & Build
         run: |
           ./autogen.sh
