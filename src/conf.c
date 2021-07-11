@@ -486,6 +486,11 @@ static int conf_parse(const char *file, int do_vifs)
 			}
 		}
 
+		if (ifname !iface_find_by_name(ifname)) {
+			WARN("Unknown interface %s, skipping.", ifname);
+			continue;
+		}
+
 		if (op == MGROUP) {
 			rc += join_mgroup(lineno, ifname, source, group);
 		} else if (op == MROUTE) {
