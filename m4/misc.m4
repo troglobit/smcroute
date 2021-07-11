@@ -28,9 +28,10 @@ AC_DEFUN([AC_CHECK_SIN_LEN],[
 		AC_MSG_RESULT(no)])
 	])
 
-AC_DEFUN([AC_CHECK_IN_DOCKER],[
-	AC_MSG_CHECKING(if running in Docker)
-	AS_IF([grep -q docker /proc/self/cgroup],[in_docker=yes],[in_docker="no"])
-	AC_MSG_RESULT($in_docker)
-	AM_CONDITIONAL([IN_DOCKER], [test "$in_docker" = "yes"])
+AC_DEFUN([AC_CHECK_NET_ADMIN],[
+	AC_MSG_CHECKING(for CAP_NET_ADMIN to run unit tests)
+	AS_IF([capsh --print |grep 'Current:' | grep -q cap_net_admin],
+		[have_net_admin=yes],[have_net_admin=no])
+	AC_MSG_RESULT($have_net_admin)
+	AM_CONDITIONAL([HAVE_NET_ADMIN], [test "$have_net_admin" = "yes"])
 	])

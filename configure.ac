@@ -42,8 +42,8 @@ AC_CONFIG_LIBOBJ_DIR([lib])
 AC_CHECK_SUN_LEN()
 AC_CHECK_SIN_LEN()
 
-# Check if we're running in Docker, in which case we can also run unit tests
-AC_CHECK_IN_DOCKER()
+# Check if we have the correct capabilities to run unit tests
+AC_CHECK_NET_ADMIN()
 
 # Check user options
 AC_ARG_ENABLE([mrdisc],
@@ -235,7 +235,7 @@ cat <<EOF
   Sysconfdir.....: $SYSCONFDIR
   Runstatedir....: $RUNSTATEDIR
   C Compiler.....: $CC $CFLAGS $CPPFLAGS $LDFLAGS $LIBS
-  Unit tests.....: $in_docker
+  Unit tests.....: $have_net_admin
 
  Optional features:
   IPv6...........: $enable_ipv6
