@@ -1,6 +1,5 @@
 ## SMCRoute - A static multicast routing tool             -*-Makefile-*-
-ACLOCAL_AMFLAGS           = -I m4
-DISTCHECK_CONFIGURE_FLAGS = --with-systemd=$$dc_install_base/$(systemd)
+ACLOCAL_AMFLAGS         = -I m4
 
 SUBDIRS                 = src
 DISTCLEANFILES		= *~ DEADJOE semantic.cache *.gdb *.elf core core.* *.d
@@ -9,6 +8,10 @@ dist_man8_MANS		= smcroute.8
 SYMLINKS                = smcrouted.8 smcroutectl.8
 doc_DATA		= README.md COPYING smcroute.conf
 EXTRA_DIST		= README.md AUTHORS ChangeLog.md autogen.sh smcroute.conf smcroute.default smcroute.init
+
+if IN_DOCKER
+SUBDIRS                += test
+endif
 
 if HAVE_SYSTEMD
 systemd_DATA            = smcroute.service
@@ -62,3 +65,6 @@ release: distcheck release-hook md5-dist
 		printf "$$file    \tDistribution tarball\n";				\
 		printf "$$file.md5\t"; cat ../$$file.md5 | cut -f1 -d' ';		\
 	done
+
+# Workaround for systemd unit file duing distcheck
+DISTCHECK_CONFIGURE_FLAGS = --with-systemd=$$dc_install_base/$(systemd)

@@ -28,3 +28,9 @@ AC_DEFUN([AC_CHECK_SIN_LEN],[
 		AC_MSG_RESULT(no)])
 	])
 
+AC_DEFUN([AC_CHECK_IN_DOCKER],[
+	AC_MSG_CHECKING(if running in Docker)
+	AS_IF([grep -q docker /proc/self/cgroup],[in_docker=yes],[in_docker="no"])
+	AC_MSG_RESULT($in_docker)
+	AM_CONDITIONAL([IN_DOCKER], [test "$in_docker" = "yes"])
+	])

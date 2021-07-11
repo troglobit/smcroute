@@ -4,12 +4,12 @@
 AC_PREREQ(2.61)
 AC_INIT(SMCRoute, 2.5.0-beta1, https://github.com/troglobit/smcroute/issues, smcroute, http://troglobit.com/smcroute.html)
 AC_CONFIG_AUX_DIR(aux)
-AM_INIT_AUTOMAKE([1.11 foreign dist-xz])
+AM_INIT_AUTOMAKE([1.11 foreign dist-xz serial-tests])
 AM_SILENT_RULES([yes])
 
 AC_CONFIG_SRCDIR([src/smcrouted.c])
 AC_CONFIG_HEADER([config.h])
-AC_CONFIG_FILES([Makefile src/Makefile smcroute.service])
+AC_CONFIG_FILES([Makefile src/Makefile test/Makefile smcroute.service])
 
 # Older versions of autoconf (<2.58) do not have AC_CONFIG_MACRO_DIR()
 m4_include([m4/misc.m4])
@@ -41,6 +41,9 @@ AC_CONFIG_LIBOBJ_DIR([lib])
 # These are used on *BSD UNIX and don't exist on Linux
 AC_CHECK_SUN_LEN()
 AC_CHECK_SIN_LEN()
+
+# Check if we're running in Docker, in which case we can also run unit tests
+AC_CHECK_IN_DOCKER()
 
 # Check user options
 AC_ARG_ENABLE([mrdisc],
@@ -232,6 +235,7 @@ cat <<EOF
   Sysconfdir.....: $SYSCONFDIR
   Runstatedir....: $RUNSTATEDIR
   C Compiler.....: $CC $CFLAGS $CPPFLAGS $LDFLAGS $LIBS
+  Unit tests.....: $in_docker
 
  Optional features:
   IPv6...........: $enable_ipv6

@@ -78,12 +78,6 @@ routes.  Adding support for IPv6 as well is quite straight forward,
 but requires someone with IPv6 knowledge.
 
 
-Add unit tests
---------------
-
-    ./configure --enable-maintainer-mode
-    make test
-
 [igmpproxy]: https://github.com/pali/igmpproxy
 [mcproxy]:   https://github.com/mcproxy/mcproxy
 [RFC4605]:   https://www.ietf.org/rfc/rfc4605.txt
