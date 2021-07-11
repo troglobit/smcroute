@@ -33,11 +33,11 @@
 #define MAX_LINE_LEN 512
 
 #define DEBUG(fmt, args...)						\
-	smclog(LOG_DEBUG, "%s: L%02d: " fmt, conf, lineno, ##args)
+	smclog(LOG_DEBUG, "%s:%02d: " fmt, conf, lineno, ##args)
 #define INFO(fmt, args...)						\
-	smclog(LOG_INFO, "%s: L%02d: " fmt, conf, lineno, ##args)
+	smclog(LOG_INFO, "%s:%02d: " fmt, conf, lineno, ##args)
 #define WARN(fmt, args...) {						\
-		smclog(LOG_WARNING, "%s: L%02d: " fmt, conf,		\
+		smclog(LOG_WARNING, "%s:%02d: " fmt, conf,		\
 		       lineno, ##args);					\
 		if (conf_vrfy)						\
 			return 1;					\
