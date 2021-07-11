@@ -1127,7 +1127,7 @@ static int mroute6_add_mif(struct iface *iface)
 
 	if (mroute6_socket == -1) {
 		smclog(LOG_DEBUG, "No IPv6 multicast socket");
-		return 0;
+		return -1;
 	}
 
 	if ((iface->flags & IFF_MULTICAST) != IFF_MULTICAST) {
