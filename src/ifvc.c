@@ -292,7 +292,9 @@ struct iface *iface_match_by_name(const char *ifname, struct ifmatch *state)
 
 	for (; state->iter < num_ifaces; state->iter++) {
 		iface = &iface_list[state->iter];
+		smclog(LOG_DEBUG, "Check if %s matches %s ...", ifname, iface->name);
 		if (!strncmp(ifname, iface->name, match_len)) {
+			smclog(LOG_DEBUG, "Found match for %s", ifname);
 			state->iter++;
 			state->match_count++;
 
@@ -300,6 +302,7 @@ struct iface *iface_match_by_name(const char *ifname, struct ifmatch *state)
 		}
 	}
 
+	smclog(LOG_DEBUG, "No matches for %s!", ifname);
 	return NULL;
 }
 
