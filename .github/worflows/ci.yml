@@ -1,0 +1,35 @@
+name: Bob the Builder
+
+on:
+  push:
+    branches: [master]
+env:
+  # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
+  MAKEFLAGS: -j2
+
+jobs:
+  build:
+    # Verify we can build on latest Ubuntu with both gcc and clang
+    name: ${{ matrix.compiler }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        compiler: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Installing dependencies
+        run: |
+          sudo apt-get install -y tree libcap-dev
+      - name: Configure & Build
+        run: |
+          ./autogen.sh
+          ./configure --disable-silent-rules --enable-mrdisc --prefix=
+          make
+          DESTDIR=~/tmp make install-strip
+          tree ~/tmp
+          ldd ~/tmp/sbin/smcrouted
+          size ~/tmp/sbin/smcrouted
+          ldd ~/tmp/sbin/smcroutectl
+          size ~/tmp/sbin/smcroutectl
+          ~/tmp/sbin/smcrouted -h
+          ~/tmp/sbin/smcroutectl -h
