@@ -478,10 +478,10 @@ static int conf_parse(const char *file, int do_vifs)
 			} else if (match("ttl-threshold", token)) {
 				token = pop_token(&line);
 				if (token) {
-					int num = atoi(token);
+					int ttl = atoi(token);
 
-					if (num >= 1 || num <= 255)
-						threshold = num;
+					if (ttl >= 1 && ttl <= 255)
+						threshold = ttl;
 				}
 			}
 		}
