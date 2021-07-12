@@ -1,0 +1,4 @@
+*.trs
+*.result
+*.pcap
+*.conf
