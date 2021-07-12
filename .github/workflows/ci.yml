@@ -18,6 +18,7 @@ jobs:
     strategy:
       matrix:
         compiler: [gcc, clang]
+      fail-fast: false
     steps:
       - uses: actions/checkout@v2
       - name: Configure & Build
@@ -38,6 +39,8 @@ jobs:
       - name: Run Unit Tests
         run: |
           make check
+          cat test/vlan.log
+          cat test/bridge.log
       - name: Upload Test Results
         uses: actions/upload-artifact@v2
         with:
