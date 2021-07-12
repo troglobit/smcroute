@@ -25,7 +25,7 @@ jobs:
           ./autogen.sh
           ./configure --disable-silent-rules --enable-mrdisc --prefix=
           make
-      - name: Install
+      - name: Install to ~/tmp and Inspect
         run: |
           DESTDIR=~/tmp make install-strip
           tree ~/tmp
@@ -35,7 +35,12 @@ jobs:
           size ~/tmp/sbin/smcroutectl
           ~/tmp/sbin/smcrouted -h
           ~/tmp/sbin/smcroutectl -h
-      - name: Test
+      - name: Run Unit Tests
         run: |
           make check
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v2
+        with:
+          name: smcroute-test-${{ matrix.compiler }}
+          path: test/*
 
