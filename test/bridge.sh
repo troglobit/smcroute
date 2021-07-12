@@ -29,10 +29,20 @@ bridge vlan add vid 1 dev br0 self
 bridge vlan add vid 2 dev br0 self
 
 # IP World
-ip addr add 10.0.0.10/24 dev a1
 ip addr add 10.0.0.1/24 dev vlan1
-ip addr add 20.0.0.10/24 dev a2
 ip addr add 20.0.0.1/24 dev vlan2
+
+ip netns add a1
+ip link set a1 netns a1
+ip netns exec a2 ip link set lo up
+ip netns exec a1 ip link set a1 up
+ip netns exec a1 ip addr add 10.0.0.10/24 dev a1
+
+ip netns add a2
+ip link set a2 netns a2
+ip netns exec a2 ip link set lo up
+ip netns exec a2 ip link set a2 up
+ip netns exec a2 ip addr add 20.0.0.10/24 dev a2
 
 echo "Creating config ..."
 cat <<EOF > bridge.conf
@@ -47,16 +57,18 @@ echo "Starting smcrouted ..."
 ../src/smcrouted -f bridge.conf -n -N -P /tmp/smcrouted.pid &
 
 echo "Starting collector ..."
-tcpdump -c 2 -lni a2 -w bridge.pcap icmp and dst 225.1.2.3 &
+ip netns exec a2 tcpdump -c 2 -lni a2 -w bridge.pcap icmp and dst 225.1.2.3 &
 sleep 1
 
 echo "Starting emitter ..."
-ping -c 3 -W 1 -I a1 -t 2 225.1.2.3
+ip netns exec a1 ping -c 3 -W 1 -I a1 -t 2 225.1.2.3
 
 echo "Cleaning up ..."
 killall smcrouted
 ip link del br0
+ip netns exec a1 ip link set a1 netns 1
 ip link del a1
+ip netns exec a2 ip link set a2 netns 1
 ip link del a2
 
 echo "Analyzing ..."

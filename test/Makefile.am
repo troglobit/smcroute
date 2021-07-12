@@ -5,3 +5,4 @@ TEST_EXTENSIONS    = .sh
 
 TESTS              = basic.sh
 TESTS             += vlan.sh
+TESTS             += bridge.sh
