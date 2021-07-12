@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/troglobit/misc
-      options: --cap-add=NET_ADMIN
+      options: --cap-add=NET_ADMIN --privileged
     strategy:
       matrix:
         compiler: [gcc, clang]
