@@ -20,7 +20,7 @@ EOF
 cat basic.conf
 
 echo "Starting smcrouted ..."
-../src/smcrouted -f basic.conf -n -N &
+../src/smcrouted -f basic.conf -n -N -P /tmp/smcrouted.pid &
 
 echo "Starting collector ..."
 tcpdump -c 2 -lni a2 -w basic.pcap icmp and dst 225.1.2.3 &
