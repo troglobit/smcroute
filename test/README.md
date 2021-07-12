@@ -35,3 +35,18 @@ created on top of the base interfaces, and routing takes place there.
         MC -----> dummy0.110              dummy1.110 ------> MC
                         |                       |
                    dummy0                       dummy1
+
+Bridge VLANs
+------------
+
+Slightly more advanced test case, a bridge with two VLAN interfaces on
+top and two VETH pairs acting as VLAN trunks attached to the bridge.
+
+                             SMCRoute
+                          .-- router --.
+                         /              \
+                       vlan1         vlan2
+                            \       /
+                             bridge0
+          MC -----> a1       /     \        a2 -----> MC
+                     '------'       '------'
