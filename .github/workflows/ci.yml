@@ -11,7 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/troglobit/misc
-      #  --privileged
       options: --cap-add=NET_ADMIN
     strategy:
       matrix:
@@ -36,9 +35,11 @@ jobs:
           ~/tmp/sbin/smcrouted -h
           ~/tmp/sbin/smcroutectl -h
       - name: Run Unit Tests
+        # Need to run tests in serial, they use same interface names and
+        # we also cannot be sure if we run on a kernel with support for
+        # multicast policy routing, hence only one smcroute at a time
         run: |
-          make check || cat test/vlan.log test/bridge.log
-          exit 0
+          make check
       - name: Upload Test Results
         uses: actions/upload-artifact@v2
         with:
