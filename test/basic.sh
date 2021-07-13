@@ -1,4 +1,6 @@
 #!/bin/sh
+# Verifies IPv4 (S,G) and (*,G) rules by injecting frames on one
+# interface and verifying reception on another.
 set -x
 
 echo "Creating world ..."
@@ -15,6 +17,7 @@ cat <<EOF > basic.conf
 # basic (*,G) multicast routing
 phyint a1 enable
 phyint a2 enable
+mroute from a1 source 10.0.0.10 group 225.3.2.1 to a2
 mroute from a1 group 225.1.2.3 to a2
 EOF
 cat basic.conf
@@ -24,10 +27,11 @@ echo "Starting smcrouted ..."
 sleep 1
 
 echo "Starting collector ..."
-tcpdump -c 2 -lni a2 -w basic.pcap icmp and dst 225.1.2.3 &
+tcpdump -c 5 -lni a2 -w basic.pcap icmp and dst 225.1.2.3 &
 sleep 1
 
 echo "Starting emitter ..."
+ping -c 3 -W 1 -I a1 -t 2 225.3.2.1
 ping -c 3 -W 1 -I a1 -t 2 225.1.2.3
 
 echo "Cleaning up ..."
@@ -37,10 +41,13 @@ ip link del a1
 ip link del a2
 
 echo "Analyzing ..."
-lines=$(tcpdump -r basic.pcap | grep 225.1.2.3 | tee basic.result | wc -l)
+lines1=$(tcpdump -r basic.pcap | grep 225.1.2.3 | tee basic.result    | wc -l)
+lines2=$(tcpdump -r basic.pcap | grep 225.3.2.1 | tee -a basic.result | wc -l)
 cat basic.result
-echo "=> num routes frames $lines"
+echo "Routed frames for group 225.1.2.3 => $lines1"
+echo "Routed frames for group 225.3.2.1 => $lines2"
 
-# one frame lost due to initial (*,G) -> (S,G) setup
-[ "$lines" != "2" ] && exit 1
+# one frame lost due to initial (*,G) -> (S,G) route setup
+# no frames lost in pure (S,G) route
+[ "$lines1" != "2" || "$lines2" != "3" ] && exit 1
 exit 0
