@@ -3,9 +3,6 @@ name: Bob the Builder
 on:
   push:
     branches: [master]
-env:
-  # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
-  MAKEFLAGS: -j2
 
 jobs:
   build:
@@ -23,10 +20,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Configure & Build
+        # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
         run: |
           ./autogen.sh
           ./configure --disable-silent-rules --enable-mrdisc --prefix=
-          make
+          make -j3
       - name: Install to ~/tmp and Inspect
         run: |
           DESTDIR=~/tmp make install-strip
