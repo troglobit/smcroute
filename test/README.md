@@ -16,7 +16,7 @@ You need to have `CAP_NET_ADMIN`, which you need to be root to set up,
 or e.g., run the tests in a Docker container:
 
     ~$ docker pull ghcr.io/troglobit/misc:latest
-	~$ docker run --cap-add=NET_ADMIN -it ghcr.io/troglobit/misc:latest
+    ~$ docker run --cap-add=NET_ADMIN -v`pwd`:`pwd` -w `pwd` -it ghcr.io/troglobit/misc:latest
 
 To manually run select tests, it is also possible to `cd test/` followed
 by `sudo ./testname.sh`.  Each test is standalone.  However, it is still
