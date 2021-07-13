@@ -1,5 +1,5 @@
 #!/bin/sh
-#set -x
+set -x
 
 echo "Creating world ..."
 for iface in a1 a2; do
@@ -28,6 +28,7 @@ cat vlan.conf
 
 echo "Starting smcrouted ..."
 ../src/smcrouted -f vlan.conf -n -N -P /tmp/smcrouted.pid &
+sleep 1
 
 echo "Starting collector ..."
 tcpdump -c 2 -lni a2.110 -w vlan.pcap icmp and dst 225.1.2.3 &
@@ -38,6 +39,7 @@ ping -c 3 -W 1 -I a1.110 -t 2 225.1.2.3
 
 echo "Cleaning up ..."
 killall smcrouted
+sleep 1
 ip link del a1
 ip link del a2
 

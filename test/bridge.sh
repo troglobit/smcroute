@@ -55,6 +55,7 @@ cat bridge.conf
 
 echo "Starting smcrouted ..."
 ../src/smcrouted -f bridge.conf -n -N -P /tmp/smcrouted.pid &
+sleep 1
 
 echo "Starting collector ..."
 ip netns exec a2 tcpdump -c 2 -lni a2 -w bridge.pcap icmp and dst 225.1.2.3 &
@@ -65,6 +66,7 @@ ip netns exec a1 ping -c 3 -W 1 -I a1 -t 2 225.1.2.3
 
 echo "Cleaning up ..."
 killall smcrouted
+sleep 1
 ip link del br0
 ip netns exec a1 ip link set a1 netns 1
 ip link del a1
