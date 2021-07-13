@@ -1,16 +1,27 @@
 Module Tests
 ============
 
-These tests verify fundamental functionality of SMCRoute.
+These following tests verify fundamental functionality of SMCRoute.  The
+`configure` script enables running them only if it finds the required
+capabilities.
 
-Required tools: `iproute2` (`ip` and `bridge`), `ping`, `tcpdump`, and
-[nemesis][], to be installed and available in `$PATH`.
+Required tools to be installed and available in `$PATH`:
+
+  - `iproute2` (`ip` and `bridge`)
+  - `ping`
+  - `tcpdump`
+  - [nemesis][]
 
 You need to have `CAP_NET_ADMIN`, which you need to be root to set up,
-or e.g., run the tests in a Docker container.
+or e.g., run the tests in a Docker container:
 
     ~$ docker pull ghcr.io/troglobit/misc:latest
 	~$ docker run --cap-add=NET_ADMIN -it ghcr.io/troglobit/misc:latest
+
+To manually run select tests, it is also possible to `cd test/` followed
+by `sudo ./testname.sh`.  Each test is standalone.  However, it is still
+highly recommended to use a container to protect against side effects
+from the host system.
 
 `ping`/`nemesis` and `tcpdump` are used to create and listen to
 multicast streams "routed by" SMCRoute.
