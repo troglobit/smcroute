@@ -1309,7 +1309,7 @@ static int is_match6(struct mroute6 *rule, struct mroute6 *cand)
 		result = (0 == memcmp(&rule->group.sin6_addr, &cand->group.sin6_addr, sizeof(struct in6_addr)));
 	}
 	else {
-		// TODO: Match based on prefix length
+		/* TODO: Match based on prefix length */
 		result = 1;
 	}
 

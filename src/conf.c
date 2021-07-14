@@ -222,9 +222,8 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 					return 1;
 				}
 
-				if ((len = is_range(source)) != 0) {
+				if ((len = is_range(source)) != 0)
 					WARN("mroute: Unsupported source prefix length: %d", len);
-				}
 
 				mroute.src_len = 128;
 			}
@@ -232,32 +231,27 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 			if (!group) {
 				WARN("mroute: Invalid IPv6 multicast group: %s", group);
 				return 1;
+			}
+
+			mroute.len = is_range(group);
+			if (mroute.len < 0 || mroute.len > 128) {
+				WARN("mroute: Invalid IPv6 multicast group prefix length: %d", mroute.len);
+				return 1;
+			}
+
+			if (mroute.len != 0) {
+				/* TODO: see mroute.c:is_match6() */
+				WARN("mroute: Unsupported IPv6 multicast group prefix length: %d", mroute.len);
+				mroute.len = 128;
 			} else {
-				if (inet_pton(AF_INET6, group, &mroute.group.sin6_addr) <= 0 ||
-				    !IN6_IS_ADDR_MULTICAST(&mroute.group.sin6_addr)) {
-					WARN("mroute: Invalid IPv6 multicast group: %s", group);
-					return 1;
-				}
+				/* Assume missing prefix for specified address as 128 */
+				mroute.len = 128;
+			}
 
-				mroute.len = is_range(group);
-
-				if (mroute.len < 0 || mroute.len > 128)
-				{
-					WARN("mroute: Invalid IPv6 multicast group prefix length: %d", mroute.len);
-					return 1;
-				}
-
-				if (mroute.len != 0)
-				{
-					// TODO: see mroute.c:is_match6()
-					WARN("mroute: Unsupported IPv6 multicast group prefix length: %d", mroute.len);
-					mroute.len = 128;
-				}
-				else
-				{
-					// Assume missing prefix for specified address as 128
-					mroute.len = 128;
-				}
+			if (inet_pton(AF_INET6, group, &mroute.group.sin6_addr) <= 0 ||
+			    !IN6_IS_ADDR_MULTICAST(&mroute.group.sin6_addr)) {
+				WARN("mroute: Invalid IPv6 multicast group: %s", group);
+				return 1;
 			}
 
 			total = 0;
@@ -323,19 +317,18 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 			if (!group) {
 				WARN("mroute: Invalid IPv4 multicast group: %s", group);
 				return 1;
-			} else {
-				mroute.len = is_range(group);
+			}
 
-				if (mroute.len < 0 || mroute.len > 32) {
-					WARN("mroute: Invalid IPv4 multicast group prefix length, %d", mroute.len);
-					return 1;
-				}
+			mroute.len = is_range(group);
+			if (mroute.len < 0 || mroute.len > 32) {
+				WARN("mroute: Invalid IPv4 multicast group prefix length, %d", mroute.len);
+				return 1;
+			}
 
-				if (inet_pton(AF_INET, group, &mroute.group) <= 0 ||
-						!IN_MULTICAST(ntohl(mroute.group.s_addr))) {
-					WARN("mroute: Invalid IPv4 multicast group: %s", group);
-					return 1;
-				}
+			if (inet_pton(AF_INET, group, &mroute.group) <= 0 ||
+			    !IN_MULTICAST(ntohl(mroute.group.s_addr))) {
+				WARN("mroute: Invalid IPv4 multicast group: %s", group);
+				return 1;
 			}
 
 			total = 0;
