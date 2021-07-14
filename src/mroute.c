@@ -398,7 +398,6 @@ static int mroute4_add_vif(struct iface *iface)
 		return 1;
 	}
 
-	smclog(LOG_DEBUG, "Created VIF %d for iface %s", vif, iface->name);
 	iface->vif = vif;
 	vif_list[vif].iface = iface;
 
@@ -1171,7 +1170,6 @@ static int mroute6_add_mif(struct iface *iface)
 		return 1;
 	}
 
-	smclog(LOG_DEBUG, "Created MIF %d for iface %s", mif, iface->name);
 	iface->mif = mif;
 	mif_list[mif].iface = iface;
 
@@ -1607,7 +1605,6 @@ int mroute_add_vif(char *ifname, uint8_t mrdisc, uint8_t threshold)
 #endif
 	}
 
-	smclog(LOG_DEBUG, "Created count %d VIFs, ret: %d", state.match_count, ret);
 	if (!state.match_count)
 		return 1;
 
