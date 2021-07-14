@@ -1324,8 +1324,7 @@ static int is_match6(struct mroute6 *rule, struct mroute6 *cand)
 
 static int is_mroute6_static(struct mroute6 *route)
 {
-	return (0 != memcmp(&route->source.sin6_addr, &in6addr_any, sizeof(struct in6_addr))) &&
-		route->src_len == 0 && route->len == 0;
+	return memcmp(&route->source.sin6_addr, &in6addr_any, sizeof(struct in6_addr));
 }
 
 static int is_active6(struct mroute6 *route)
