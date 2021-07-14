@@ -223,7 +223,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 				}
 
 				if ((len = is_range(source)) != 0) {
-					WARN("mroute: Ignore source prefix length: %d", len);
+					WARN("mroute: Unsupported source prefix length: %d", len);
 				}
 
 				mroute.src_len = 128;
@@ -250,7 +250,8 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 
 				if (mroute.len != 0)
 				{
-					WARN("mroute: Ignore IPv6 multicast group prefix length: %d", mroute.len);
+					// TODO: see mroute.c:is_match6()
+					WARN("mroute: Unsupported IPv6 multicast group prefix length: %d", mroute.len);
 					mroute.len = 128;
 				}
 				else
