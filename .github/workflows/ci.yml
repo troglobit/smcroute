@@ -26,7 +26,7 @@ jobs:
         # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
         run: |
           ./autogen.sh
-          ./configure --disable-silent-rules --enable-mrdisc --prefix=
+          ./configure --prefix= --disable-silent-rules --enable-mrdisc CC=${{ matrix.compiler }}
           make -j3
       - name: Install to ~/tmp and Inspect
         run: |
