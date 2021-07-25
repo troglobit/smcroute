@@ -27,7 +27,7 @@ echo "Starting smcrouted ..."
 sleep 1
 
 echo "Starting collector ..."
-tcpdump -c 5 -lni a2 -w basic.pcap 'dst 225.3.2.1 or dst 225.1.2.3' &
+tshark -c 5 -lni a2 -w basic.pcap 'dst 225.3.2.1 or dst 225.1.2.3' &
 sleep 1
 
 echo "Starting emitter ..."
@@ -45,8 +45,8 @@ ip link del a1
 ip link del a2
 
 echo "Analyzing ..."
-lines1=$(tcpdump -r basic.pcap | grep 225.1.2.3 | tee basic.result    | wc -l)
-lines2=$(tcpdump -r basic.pcap | grep 225.3.2.1 | tee -a basic.result | wc -l)
+lines1=$(tshark -r basic.pcap | grep 225.1.2.3 | tee basic.result    | wc -l)
+lines2=$(tshark -r basic.pcap | grep 225.3.2.1 | tee -a basic.result | wc -l)
 cat basic.result
 echo "Routed frames for group 225.1.2.3 => $lines1"
 echo "Routed frames for group 225.3.2.1 => $lines2"

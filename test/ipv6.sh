@@ -45,7 +45,7 @@ exit 1
 
 ################################ FUTURE ################################
 echo "Starting collector ..."
-tcpdump -c 5 -lni a2 -w ipv6.pcap 'dst ff01::114 or dst ff2e::42' &
+tshark -c 5 -lni a2 -w ipv6.pcap 'dst ff01::114 or dst ff2e::42' &
 sleep 1
 
 echo "Starting emitter ..."
@@ -63,8 +63,8 @@ ip link del a1
 ip link del a2
 
 echo "Analyzing ..."
-lines1=$(tcpdump -r ipv6.pcap | grep ff01::114 | tee ipv6.result    | wc -l)
-lines2=$(tcpdump -r ipv6.pcap | grep ff2e::42  | tee -a ipv6.result | wc -l)
+lines1=$(tshark -r ipv6.pcap | grep ff01::114 | tee    ipv6.result | wc -l)
+lines2=$(tshark -r ipv6.pcap | grep ff2e::42  | tee -a ipv6.result | wc -l)
 cat ipv6.result
 echo "Routed frames for group ff01::114 => $lines1"
 echo "Routed frames for group ff2e::42  => $lines2"

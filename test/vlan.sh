@@ -32,7 +32,7 @@ echo "Starting smcrouted ..."
 sleep 1
 
 echo "Starting collector ..."
-tcpdump -c 2 -lni a2.110 -w vlan.pcap icmp and dst 225.1.2.3 &
+tshark -c 2 -lni a2.110 -w vlan.pcap icmp and dst 225.1.2.3 &
 sleep 1
 
 echo "Starting emitter ..."
@@ -49,7 +49,7 @@ ip link del a1
 ip link del a2
 
 echo "Analyzing ..."
-lines=$(tcpdump -r vlan.pcap | grep 225.1.2.3 | tee vlan.result | wc -l)
+lines=$(tshark -r vlan.pcap | grep 225.1.2.3 | tee vlan.result | wc -l)
 cat vlan.result
 echo "Routed frames for group 225.1.2.3 => $lines"
 

@@ -9,7 +9,7 @@ Required tools to be installed and available in `$PATH`:
 
   - `iproute2` (`ip` and `bridge`)
   - `ping`
-  - `tcpdump`
+  - `tshark` (because `tcpdump -w foo.pcap` doesn't work in an unshare)
   - [nemesis][]
 
 You need to have `CAP_NET_ADMIN`, which you need to be root to set up,
