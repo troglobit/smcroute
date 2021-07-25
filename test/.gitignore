@@ -1,4 +1,5 @@
+*.conf
+*.ip
 *.trs
 *.result
 *.pcap
-*.conf
