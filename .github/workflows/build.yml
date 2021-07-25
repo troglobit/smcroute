@@ -12,11 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     container:
       # We use an Alpine Linux container with some preselect tools and
-      # tweaks to facilitate building, but also testing SMCRoute.  Only
-      # in docker is it allowed to create network interfaes and set up
-      # routing, no IPv6 addresses available yet though.
+      # tweaks to facilitate building, but also testing SMCRoute.  We
+      # cannot run with --cap-add=NET_ADMIN anymore because the tests
+      # use `unshare -mrun foo`, which require privileged mode.
       image: ghcr.io/troglobit/misc
-      options: --cap-add=NET_ADMIN
+      options: --privileged
     strategy:
       matrix:
         compiler: [gcc, clang]
