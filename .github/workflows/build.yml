@@ -23,11 +23,13 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v2
-      - name: Configure & Build
-        # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
+      - name: Configure
         run: |
           ./autogen.sh
-          ./configure --prefix= --disable-silent-rules --enable-mrdisc CC=${{ matrix.compiler }}
+          ./configure --prefix= --enable-mrdisc --enable-test CC=${{ matrix.compiler }}
+      - name: Build
+        # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
+        run: |
           make -j3
       - name: Install to ~/tmp and Inspect
         run: |
