@@ -112,6 +112,24 @@ topo_dummy_vlan()
     done
 }
 
+topo_isolated()
+{
+    echo 1 > "$1"
+    echo 2 > "$2"
+    PID=$$
+
+    unshare --net="$1" ip link set lo up
+    nsenter --net="$1" ip link add eth0 type veth peer "$1"
+    nsenter --net="$1" ip link set "$1" netns $PID
+    nsenter --net="$1" ip link set eth0 up
+    ip link set "$1" up
+
+    unshare --net="$2" ip link set lo up
+    nsenter --net="$2" ip link add eth0 type veth peer "$2"
+    nsenter --net="$2" ip link set "$2" netns $PID
+    nsenter --net="$2" ip link set eth0 up
+    ip link set "$2" up
+}
 
 topo_teardown()
 {
@@ -137,10 +155,12 @@ topo()
     fi
     t=$1
     shift
+
     case "$t" in
 	bridge)
 	    topo_bridge
 	    ;;
+
 	dummy)
 	    topo_dummy
 	    num=$?
@@ -151,6 +171,11 @@ topo()
 		    ;;
 	    esac
 	    ;;
+
+	isolated)
+	    topo_isolated "$@"
+	    ;;
+
 	teardown)
 	    topo_teardown
 	    ;;

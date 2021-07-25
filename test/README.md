@@ -89,6 +89,20 @@ created on which routing takes place.
 >           interface `a2` and `vlan2` are in the same VLAN (VID 2).
 
 
+### Isolated
+
+Similar to Basic, but with two VETH pairs with the outer end of each in
+an isolated network namespace.  Purpose is to emulate true end devices.
+
+                            SMCRoute
+     netns: left         .-- router --.        netns: right
+    .-----------.       /              \      .-----------.
+    |           |     b1                b2    |           |
+    | MC --> a1-|-----'                  `----|-a2 --> MC |
+    |           |                             |           |
+    '-----------'     VETH pairs: aN//brN     '-----------'
+
+
 Tests
 -----
 
@@ -134,3 +148,17 @@ the latest GIT version of [nemesis][1], because it needs to inject IPv6
 UDP frames on interface `a1`.
 
 **Topology:** Bridged w/ VLANs
+
+
+### Isolated (*,G) Forwarding
+
+This test is currently very similar to the Basic test, but can easily be
+extended with IPv6 support as well.  The trick here is to use the nested
+network namespace support, introduced in the new Isolated topology.
+
+The Isolated topology allows setting interface addresses, both IPv4 and
+IPv6 (!), regardless of the environment (and as long as the underlying
+Linux kernel supports it).  This means a standard tool like `ping` can
+be used to send multicast.  Lowering the barrier of entry to run tests.
+
+**Topology:** Isolated
