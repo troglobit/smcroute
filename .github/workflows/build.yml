@@ -2,7 +2,8 @@ name: Bob the Builder
 
 on:
   push:
-    branches: [master]
+    branches:
+      - '*'
 
 jobs:
   build:
@@ -39,9 +40,9 @@ jobs:
           ~/tmp/sbin/smcrouted -h
           ~/tmp/sbin/smcroutectl -h
       - name: Run Unit Tests
-        # Need to run tests in serial, they use same interface names and
-        # we also cannot be sure if we run on a kernel with support for
-        # multicast policy routing, hence only one smcroute at a time
+        # Each unit test runs in an unshare and need a custom build of
+        # nemesis to support IPv6 UDP injection (hence the container).
+        # Note: for some reason we need to run with make -j1 ...
         run: |
           make check
       - name: Upload Test Results
@@ -49,4 +50,3 @@ jobs:
         with:
           name: smcroute-test-${{ matrix.compiler }}
           path: test/*
-
