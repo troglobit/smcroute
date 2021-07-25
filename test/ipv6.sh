@@ -23,11 +23,11 @@ EOF
 cat ipv6.conf
 
 echo "Starting smcrouted ..."
-../src/smcrouted -f ipv6.conf -n -N -P /tmp/smcrouted.pid -l debug &
+../src/smcrouted -f ipv6.conf -n -N -P /tmp/ipv6.pid -l debug &
 sleep 1
 
 echo "Starting collector ..."
-tshark -c 5 -lni a2 -w ipv6.pcap 'dst ff04::114 or dst ff2e::42' &
+tshark -c 5 -lni a2 -w ipv6.pcap 'dst ff04::114 or dst ff2e::42' 2>/dev/null &
 sleep 1
 
 echo "Starting emitter ..."
@@ -39,18 +39,14 @@ cat /proc/net/ip6_mr_cache
 ip -6 mroute
 
 echo "Cleaning up ..."
-killall smcrouted
-sleep 1
-ip link del br0
-ip link del a1
-ip link del a2
+topo teardown
 
 echo "Analyzing ..."
-lines1=$(tshark -r ipv6.pcap | grep ff04::114 | tee    ipv6.result | wc -l)
-lines2=$(tshark -r ipv6.pcap | grep ff2e::42  | tee -a ipv6.result | wc -l)
+lines1=$(tshark -r ipv6.pcap 2>/dev/null | grep ff04::114 | tee    ipv6.result | wc -l)
+lines2=$(tshark -r ipv6.pcap 2>/dev/null | grep ff2e::42  | tee -a ipv6.result | wc -l)
 cat ipv6.result
-echo "Routed frames for group ff04::114 => $lines1"
-echo "Routed frames for group ff2e::42  => $lines2"
+echo " => $lines1 for group ff04::114, expected => 3"
+echo " => $lines2 for group ff2e::42,  expected => 2"
 
 # one frame lost due to initial (*,G) -> (S,G) route setup
 # no frames lost in pure (S,G) route
