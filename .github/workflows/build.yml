@@ -7,7 +7,7 @@ on:
 
 # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
 env:
-  MAKEFLAGS: -j3
+  MAKEFLAGS: -j1
 
 jobs:
   build:
@@ -49,6 +49,7 @@ jobs:
         # nemesis to support IPv6 UDP injection (hence the container).
         run: |
           make check || cat test/test-suite.log
+          cat test/isolated.log
       - name: Upload Test Results
         uses: actions/upload-artifact@v2
         with:
