@@ -5,7 +5,7 @@ NM=$(basename "$0" .sh)
 # Print heading for test phases
 print()
 {
-    printf "\e[7m>> %-72s\e[0m\n" "$1"
+    printf "\e[7m>> %-80s\e[0m\n" "$1"
 }
 
 show_mroute()

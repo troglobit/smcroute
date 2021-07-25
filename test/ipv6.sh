@@ -5,14 +5,14 @@
 # shellcheck source=/dev/null
 . "$(dirname "$0")/lib.sh"
 
-echo "Creating world ..."
+print "Creating world ..."
 topo bridge
 
 # IP world ...
 ip addr add 2001:1::1/64 dev vlan1
 ip addr add 2001:2::1/64 dev vlan2
 
-echo "Creating config ..."
+print "Creating config ..."
 cat <<EOF > ipv6.conf
 # ipv6 (*,G) multicast routing
 phyint vlan1 enable
@@ -22,15 +22,15 @@ mroute from vlan1                group ff2e::42             to vlan2
 EOF
 cat ipv6.conf
 
-echo "Starting smcrouted ..."
+print "Starting smcrouted ..."
 ../src/smcrouted -f ipv6.conf -n -N -P /tmp/ipv6.pid -l debug &
 sleep 1
 
-echo "Starting collector ..."
+print "Starting collector ..."
 tshark -c 5 -lni a2 -w ipv6.pcap 'dst ff04::114 or dst ff2e::42' 2>/dev/null &
 sleep 1
 
-echo "Starting emitter ..."
+print "Starting emitter ..."
 nemesis udp -6 -c 3 -d a1 -T 3 -S fc00::1                -D ff04::114 -M 33:33:00:00:01:14
 nemesis udp -6 -c 3 -d a1 -T 3 -S fdd1:9ac8:e35b:4e2d::1 -D ff2e::42  -M 33:33:00:00:00:42
 
@@ -38,10 +38,10 @@ nemesis udp -6 -c 3 -d a1 -T 3 -S fdd1:9ac8:e35b:4e2d::1 -D ff2e::42  -M 33:33:0
 cat /proc/net/ip6_mr_cache
 ip -6 mroute
 
-echo "Cleaning up ..."
+print "Cleaning up ..."
 topo teardown
 
-echo "Analyzing ..."
+print "Analyzing ..."
 lines1=$(tshark -r ipv6.pcap 2>/dev/null | grep ff04::114 | tee    ipv6.result | wc -l)
 lines2=$(tshark -r ipv6.pcap 2>/dev/null | grep ff2e::42  | tee -a ipv6.result | wc -l)
 cat ipv6.result

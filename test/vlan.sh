@@ -5,7 +5,7 @@
 # shellcheck source=/dev/null
 . "$(dirname "$0")/lib.sh"
 
-echo "Creating world ..."
+print "Creating world ..."
 topo dummy vlan 100 110
 ip addr add 10.100.0.1/24 dev a1.100
 ip addr add 10.110.0.1/24 dev a1.110
@@ -13,7 +13,7 @@ ip addr add 20.100.0.1/24 dev a2.100
 ip addr add 20.110.0.1/24 dev a2.110
 ip -br a
 
-echo "Creating config ..."
+print "Creating config ..."
 cat <<EOF > vlan.conf
 # vlan (*,G) multicast routing
 phyint a1.110 enable
@@ -22,22 +22,22 @@ mroute from a1.110 group 225.1.2.3 to a2.110
 EOF
 cat vlan.conf
 
-echo "Starting smcrouted ..."
+print "Starting smcrouted ..."
 ../src/smcrouted -f vlan.conf -n -N -P /tmp/vlan.pid &
 sleep 1
 
-echo "Starting collector ..."
+print "Starting collector ..."
 tshark -c 2 -lni a2.110 -w vlan.pcap icmp and dst 225.1.2.3 2>/dev/null &
 sleep 1
 
-echo "Starting emitter ..."
+print "Starting emitter ..."
 ping -c 3 -W 1 -I a1.110 -t 2 225.1.2.3 2>/dev/null
 show_mroute
 
-echo "Cleaning up ..."
+print "Cleaning up ..."
 topo teardown
 
-echo "Analyzing ..."
+print "Analyzing ..."
 lines=$(tshark -r vlan.pcap 2>/dev/null | grep 225.1.2.3 | tee vlan.result | wc -l)
 cat vlan.result
 echo " => $lines for 225.1.2.3, expected => 2"

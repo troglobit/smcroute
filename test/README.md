@@ -24,11 +24,13 @@ To run the tests:
 	~/src/smcroute$ make -j9
 	~/src/smcroute$ make check
 
-To manually run select tests, it is also possible to `cd test/` followed
-by `unshare -mrun ./testname.sh`.  Each test is standalone.
+Each unit test is standalone.  To manually run select tests:
 
-`ping`/`nemesis` and `tshark` are used to create and listen to multicast
-streams "routed by" SMCRoute.
+    ~/src/smcroute$ cd test/
+	~/src/smcroute/test$ unshare -mrun ./testname.sh
+
+The tools `ping`/`nemesis` and `tshark` are used to create and listen to
+multicast streams "routed by" SMCRoute.
 
 > **Note:** these tests must be run in sequence, not in parallel,
 >   because they use the same interface names *and*, most importantly,
@@ -117,7 +119,7 @@ multicast frames on a1.  The because of limitations in the networking
 stack of Linux, having two interfaces in the same IP network (a1 and
 vlan1) does not work, so a1 (and a2) need to be in separate network
 namespaces.  However, since the tests run in an `unshare` we cannot
-create seprate netns' for the end devices (a1 and a2).  Instead we use
+create separate netns' for the end devices (a1 and a2).  Instead we use
 nemesis.  The socat tool could also be used, but injecting directly on
 a1 requires composing the packet from the Ethernet header and up, and
 nemesis is so much better at that.

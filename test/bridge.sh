@@ -7,13 +7,13 @@
 # shellcheck source=/dev/null
 . "$(dirname "$0")/lib.sh"
 
-echo "Creating world ..."
+print "Creating world ..."
 topo bridge
 ip addr add 10.0.0.1/24 dev vlan1
 ip addr add 20.0.0.1/24 dev vlan2
 ip -br a
 
-echo "Creating config ..."
+print "Creating config ..."
 cat <<EOF > bridge.conf
 # vlan (*,G) multicast routing
 phyint vlan1 enable
@@ -22,22 +22,22 @@ mroute from vlan1 group 225.1.2.3 to vlan2
 EOF
 cat bridge.conf
 
-echo "Starting smcrouted ..."
+print "Starting smcrouted ..."
 ../src/smcrouted -f bridge.conf -n -N -P /tmp/bridge.pid &
 sleep 1
 
-echo "Starting collector ..."
+print "Starting collector ..."
 tshark -c 2 -lni a2 -w bridge.pcap dst 225.1.2.3 2>/dev/null &
 sleep 1
 
-echo "Starting emitter ..."
+print "Starting emitter ..."
 nemesis udp -c 3 -S 10.0.0.10 -D 225.1.2.3 -T 3 -M 01:00:5e:01:02:03 -d a1
 show_mroute
 
-echo "Cleaning up ..."
+print "Cleaning up ..."
 topo teardown
 
-echo "Analyzing ..."
+print "Analyzing ..."
 lines=$(tshark -r bridge.pcap 2>/dev/null | grep 225.1.2.3 | tee bridge.result | wc -l)
 cat bridge.result
 echo " => $lines for 225.1.2.3, expected => 2"
