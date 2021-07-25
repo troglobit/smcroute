@@ -45,6 +45,10 @@ AC_CHECK_SIN_LEN()
 # Check user options
 AC_ARG_ENABLE([mrdisc],
 	AS_HELP_STRING([--enable-mrdisc], [enable IPv4 multicast router discovery]))
+AC_ARG_ENABLE(test,
+        [AS_HELP_STRING([--enable-test], [enable tests, requries unshare, tshark + nemesis.git])],
+        [ac_enable_test="$enableval"],
+	[ac_enable_test="no"])
 AC_ARG_ENABLE([ipv6],
 	AS_HELP_STRING([--disable-ipv6], [disable IPv6 support]))
 AC_ARG_ENABLE([client],
@@ -160,6 +164,8 @@ AS_IF([test "x$with_libcap" != "xno" -a "x$ac_cv_header_sys_capability_h" = "xye
 	AC_DEFINE([ENABLE_LIBCAP], [], [Define to enable support for libcap.])])
 AM_CONDITIONAL(USE_LIBCAP, [test "x$with_libcap" != "xno" -a "x$ac_cv_header_sys_capability_h" = "xyes"])
 
+AM_CONDITIONAL([ENABLE_TEST], [test "x$ac_enable_test" != "xno"])
+
 # Mac OS does not (yet) support SOCK_CLOEXEC
 AC_CACHE_CHECK([for SOCK_CLOEXEC support], [ac_cv_sock_cloexec],
 	[AC_TRY_RUN([
@@ -232,7 +238,6 @@ cat <<EOF
   Sysconfdir.....: $SYSCONFDIR
   Runstatedir....: $RUNSTATEDIR
   C Compiler.....: $CC $CFLAGS $CPPFLAGS $LDFLAGS $LIBS
-  Unit tests.....: $have_net_admin
 
  Optional features:
   IPv6...........: $enable_ipv6
@@ -242,6 +247,7 @@ cat <<EOF
   libcap.........: $with_libcap
   systemd........: $with_systemd
   libsystemd.....: $with_libsystemd
+  Unit tests.....: $ac_enable_test
 
 ------------- Compiler version --------------
 $($CC --version || true)
