@@ -23,7 +23,7 @@ EOF
 cat vlan.conf
 
 print "Starting smcrouted ..."
-../src/smcrouted -f vlan.conf -n -N -P /tmp/vlan.pid &
+../src/smcrouted -f vlan.conf -n -N -P /tmp/vlan.pid -l debug &
 sleep 1
 
 print "Starting collector ..."
