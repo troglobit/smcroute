@@ -5,6 +5,10 @@ on:
     branches:
       - '*'
 
+# https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
+env:
+  MAKEFLAGS: -j3
+
 jobs:
   build:
     # Verify we can build on latest Ubuntu with both gcc and clang
@@ -28,9 +32,8 @@ jobs:
           ./autogen.sh
           ./configure --prefix= --enable-mrdisc --enable-test CC=${{ matrix.compiler }}
       - name: Build
-        # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
         run: |
-          make -j3
+          make
       - name: Install to ~/tmp and Inspect
         run: |
           DESTDIR=~/tmp make install-strip
@@ -44,7 +47,6 @@ jobs:
       - name: Run Unit Tests
         # Each unit test runs in an unshare and need a custom build of
         # nemesis to support IPv6 UDP injection (hence the container).
-        # Note: for some reason we need to run with make -j1 ...
         run: |
           make check
       - name: Upload Test Results
