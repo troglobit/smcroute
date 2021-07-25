@@ -3,12 +3,11 @@
 # interface and verifying reception on another.
 set -x
 
+# shellcheck source=/dev/null
+. "$(dirname "$0")/lib.sh"
+
 echo "Creating world ..."
-for iface in a1 a2; do
-    ip link add $iface type dummy
-    ip link set $iface up
-    ip link set $iface multicast on
-done
+topo dummy
 ip addr add 10.0.0.1/24 dev a1
 ip addr add 20.0.0.1/24 dev a2
 

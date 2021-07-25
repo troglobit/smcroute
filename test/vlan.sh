@@ -2,21 +2,15 @@
 # Verify IPv4 (*,G) routing on top of VLAN interfaces
 set -x
 
-echo "Creating world ..."
-for iface in a1 a2; do
-    base=10
-    [ "$iface" = "a2" ] && base=20
+# shellcheck source=/dev/null
+. "$(dirname "$0")/lib.sh"
 
-    ip link add $iface type dummy
-    ip link set $iface up
-    ip link set $iface multicast on
-    for vid in 100 110; do
-	ip link add link $iface $iface.$vid type vlan id $vid
-	ip link set $iface.$vid up
-	ip link set $iface.$vid multicast on
-	ip addr add $base.$vid.0.1/24 dev $iface.$vid
-    done
-done
+echo "Creating world ..."
+topo dummy vlan 100 110
+ip addr add 10.100.0.1/24 dev a1.100
+ip addr add 10.110.0.1/24 dev a1.110
+ip addr add 20.100.0.1/24 dev a2.100
+ip addr add 20.110.0.1/24 dev a2.110
 
 echo "Creating config ..."
 cat <<EOF > vlan.conf

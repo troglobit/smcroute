@@ -1,4 +1,4 @@
-EXTRA_DIST         = basic.sh bridge.sh docky.sh ipv6.sh vlan.sh
+EXTRA_DIST         = basic.sh bridge.sh docky.sh ipv6.sh lib.sh vlan.sh
 CLEANFILES         = *~ *.trs *.log
 TEST_EXTENSIONS    = .sh
 #TESTS_ENVIRONMENT  = $(top_srcdir)/test/docky.sh $(top_srcdir)
