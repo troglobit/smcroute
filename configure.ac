@@ -42,9 +42,6 @@ AC_CONFIG_LIBOBJ_DIR([lib])
 AC_CHECK_SUN_LEN()
 AC_CHECK_SIN_LEN()
 
-# Check if we have the correct capabilities to run unit tests
-AC_CHECK_NET_ADMIN()
-
 # Check user options
 AC_ARG_ENABLE([mrdisc],
 	AS_HELP_STRING([--enable-mrdisc], [enable IPv4 multicast router discovery]))
