@@ -31,17 +31,19 @@ jobs:
                -O cov-analysis-linux64.tar.gz
           mkdir cov-analysis-linux64
           tar xzf cov-analysis-linux64.tar.gz --strip 1 -C cov-analysis-linux64
-      - name: Install dependencies ...
+      - name: Install dependencies
         run: |
           sudo apt-get -y update
           sudo apt-get -y install pkg-config libsystemd-dev libcap-dev
-      - name: Build
+      - name: Configure
         run: |
           ./autogen.sh
-          ./configure --prefix=
+          ./configure --prefix= --enable-mrdisc
+      - name: Build
+        run: |
           export PATH=`pwd`/cov-analysis-linux64/bin:$PATH
           cov-build --dir cov-int make
-      - name: Submit result to Coverity Scan
+      - name: Submit results to Coverity
         env:
           TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
         run: |
@@ -54,3 +56,8 @@ jobs:
             --form version=trunk \
             --form description="${PROJECT_NAME} $(git rev-parse HEAD)" \
             https://scan.coverity.com/builds?project=${COVERITY_PROJ}
+      - name: Upload build.log
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverity-build.log
+          path: cov-int/build-log.txt
