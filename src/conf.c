@@ -37,11 +37,10 @@
 #define INFO(fmt, args...)						\
 	smclog(LOG_INFO, "%s:%02d: " fmt, conf, lineno, ##args)
 #define WARN(fmt, args...) {						\
-		smclog(LOG_WARNING, "%s:%02d: " fmt, conf,		\
-		       lineno, ##args);					\
-		if (conf_vrfy)						\
-			return 1;					\
-	}
+	smclog(LOG_WARNING, "%s:%02d: " fmt, conf, lineno, ##args);	\
+	if (conf_vrfy)							\
+		rc++;							\
+}
 
 /* Tokens */
 #define MGROUP 1
