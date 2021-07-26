@@ -1,5 +1,7 @@
 #!/bin/sh
 # Helper functions for testing SMCRoute
+
+# Test name, used everywhere as /tmp/$NM/foo
 NM=$(basename "$0" .sh)
 
 # Print heading for test phases
@@ -114,41 +116,55 @@ topo_dummy_vlan()
 
 topo_isolated()
 {
-    echo 1 > "$1"
-    echo 2 > "$2"
+    left="$1"
+    right="$2"
+    lif=$(basename "$left")
+    rif=$(basename "$right")
+
+    touch "$left" "$right"
     PID=$$
 
-    unshare --net="$1" ip link set lo up
-    nsenter --net="$1" ip link add eth0 type veth peer "$1"
-    nsenter --net="$1" ip link set "$1" netns $PID
-    nsenter --net="$1" ip link set eth0 up
-    ip link set "$1" up
+    echo "$left"   > "/tmp/$NM/mounts"
+    echo "$right" >> "/tmp/$NM/mounts"
 
-    unshare --net="$2" ip link set lo up
-    nsenter --net="$2" ip link add eth0 type veth peer "$2"
-    nsenter --net="$2" ip link set "$2" netns $PID
-    nsenter --net="$2" ip link set eth0 up
-    ip link set "$2" up
+    unshare --net="$left" -- ip link set lo up
+    nsenter --net="$left" -- ip link add eth0 type veth peer "$lif"
+    nsenter --net="$left" -- ip link set "$lif" netns $PID
+    nsenter --net="$left" -- ip link set eth0 up
+    ip link set "$lif" up
+
+    unshare --net="$right" -- ip link set lo up
+    nsenter --net="$right" -- ip link add eth0 type veth peer "$rif"
+    nsenter --net="$right" -- ip link set "$rif" netns $PID
+    nsenter --net="$right" -- ip link set eth0 up
+    ip link set "$rif" up
 }
 
 topo_teardown()
 {
-    echo "Killing /tmp/$NM.pid"
-    pkill "/tmp/$NM.pid"
-    umount left      2>/dev/null
-    umount right     2>/dev/null
-    rm -f left right 2>/dev/null
+    if [ -z "$NM" ]; then
+	echo "NM variable unset, skippnig teardown"
+	exit 1
+    fi
+
+    PID=$(cat "/tmp/$NM/pid")
+    kill -9 "$PID"
+
+    # shellcheck disable=SC2162
+    while read ln; do umount "$ln"; rm "$ln"; done < "/tmp/$NM/mounts"
+
     ip link del br0  2>/dev/null
     ip link del a1   2>/dev/null
     ip link del a2   2>/dev/null
     ip link del b1   2>/dev/null
     ip link del b2   2>/dev/null
 
-    rm -f "$NM"      2>/dev/null
+    rm -rf "/tmp/$NM"
 }
 
 topo()
 {
+    mkdir "/tmp/$NM"
     if [ $# -lt 1 ]; then
 	print "Too few arguments to topo()"
 	exit 1
