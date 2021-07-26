@@ -158,7 +158,7 @@ static int do_mroute4(struct ipc_msg *msg)
 		}
 
 		if (inet_pton(AF_INET, msg->argv[pos++], &src) <= 0) {
-			smclog(LOG_DEBUG, "Invalid IPv4 source or group address");
+			smclog(LOG_DEBUG, "Invalid IPv4 source address");
 			return 1;
 		}
 

@@ -433,7 +433,7 @@ static int conf_parse(const char *file, int do_vifs)
 		/* Strip any line end character(s) */
 		chomp(line);
 
-		DEBUG("'%s'", line);
+		DEBUG("%s", line);
 		while ((token = pop_token(&line))) {
 			/* Strip comments. */
 			if (match("#", token))
