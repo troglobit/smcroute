@@ -104,7 +104,7 @@ static size_t group_req(int sd, int cmd, struct mcgroup *mcg)
 		}
 	}
 
-	if (addr) {
+	if (addr && mcg->group.ss_family == AF_INET) {
 		struct sockaddr_in *sin;
 
 		sin = (struct sockaddr_in *)&mcg->group;
