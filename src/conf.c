@@ -118,7 +118,7 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 			}
 
 			if (inet_pton(AF_INET6, source, &src.sin6_addr) <= 0) {
-				WARN("join: Invalid IPv6 multicast source: %s", group);
+				WARN("join: Invalid IPv6 multicast source: %s", source);
 				return 1;
 			}
 		}
