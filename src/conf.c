@@ -401,10 +401,10 @@ static char *chomp(char *str)
  */
 static int conf_parse(const char *file, int do_vifs)
 {
-	FILE *fp;
 	char *linebuf, *line;
 	int lineno = 1;
 	int rc = 0;
+	FILE *fp;
 
 	fp = fopen(file, "r");
 	if (!fp)
