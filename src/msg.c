@@ -142,7 +142,6 @@ static int do_mroute4(struct ipc_msg *msg)
 	while (1) {
 		struct mroute4 mroute = { 0 };
 		struct ifmatch state_out;
-		struct in_addr src, grp;
 		char *ifname_in;
 		int len, src_len, pos = 0, vif;
 
@@ -157,14 +156,14 @@ static int do_mroute4(struct ipc_msg *msg)
 			return 1;
 		}
 
-		if (inet_pton(AF_INET, msg->argv[pos++], &src) <= 0) {
+		if (inet_str2addr(msg->argv[pos++], &mroute.source)) {
 			smclog(LOG_DEBUG, "Invalid IPv4 source address");
 			return 1;
 		}
 
-		if (!IN_MULTICAST(ntohl(src.s_addr))) {
+		if (!is_multicast(&mroute.source)) {
 			len = is_range(msg->argv[pos]);
-			if (inet_pton(AF_INET, msg->argv[pos++], &grp) <= 0 || !IN_MULTICAST(ntohl(grp.s_addr))) {
+			if (inet_str2addr(msg->argv[pos++], &mroute.group) || !is_multicast(&mroute.group)) {
 				smclog(LOG_DEBUG, "Invalid IPv4 group address");
 				return 1;
 			}
@@ -174,17 +173,16 @@ static int do_mroute4(struct ipc_msg *msg)
 				return 1;
 			}
 		} else {
-			grp = src;
+			/* missing source arg, was actually the group, swaparoo */
+			mroute.group = mroute.source;
+			inet_str2addr("0.0.0.0", &mroute.source);
 			len = src_len;
 			src_len = 0;
-			src.s_addr = htonl(INADDR_ANY);
 		}
 
 		mroute.inbound = vif;
 		mroute.src_len = src_len;
-		mroute.source  = src;
 		mroute.len     = len;
-		mroute.group   = grp;
 
 		/*
 		 * Scan output interfaces for the 'add' command only, just

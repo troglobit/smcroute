@@ -103,21 +103,21 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 #if !defined(HAVE_IPV6_MULTICAST_HOST) || !defined(HAVE_IPV6_MULTICAST_ROUTING)
 		WARN("Ignoring join %s on %s, IPv6 disabled.", group, ifname);
 #else
-		struct sockaddr_in6 src, grp;
+		inet_addr_t src, grp;
 		int len = 0;
 
 		memset(&src, 0, sizeof(src));
 		memset(&grp, 0, sizeof(grp));
 
-		src.sin6_family = AF_INET6;
-		grp.sin6_family = AF_INET6;
+		src.ss_family = AF_INET6;
+		grp.ss_family = AF_INET6;
 
 		if (source) {
 			len = is_range(source);
 			if (len != 0)
 				WARN("join: ignoring source perfix len: %d", len);
 
-			if (inet_pton(AF_INET6, source, &src.sin6_addr) <= 0) {
+			if (inet_str2addr(source, &src)) {
 				WARN("join: Invalid IPv6 multicast source: %s", source);
 				return 1;
 			}
@@ -132,8 +132,7 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 			if (!len)
 				len = 128;
 
-			if (inet_pton(AF_INET6, group, &grp.sin6_addr) <= 0 ||
-					!IN6_IS_ADDR_MULTICAST(&grp.sin6_addr)) {
+			if (inet_str2addr(group, &grp) || !is_multicast(&grp)) {
 				WARN("join: Invalid IPv6 multicast group: %s", group);
 				return 1;
 			}
@@ -143,23 +142,23 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 		}
 
 		/* XXX: Add support for GROUP/LEN to IPv6 */
-		rc = mcgroup_action('j', ifname, (inet_addr_t *)&src, (inet_addr_t *)&grp, len);
+		rc = mcgroup_action('j', ifname, &src, &grp, len);
 #endif
 	} else {
-		struct sockaddr_in src, grp;
+		inet_addr_t src, grp;
 		int len = 0;
 
 		memset(&src, 0, sizeof(src));
 		memset(&grp, 0, sizeof(grp));
 
-		src.sin_family = AF_INET;
-		grp.sin_family = AF_INET;
+		src.ss_family = AF_INET;
+		grp.ss_family = AF_INET;
 
 		if (source) {
 			if ((len = is_range(source)) > 0)
 				WARN("join: ignoring source perfix len: %d", len);
 
-			if (inet_pton(AF_INET, source, &src.sin_addr) <= 0) {
+			if (inet_str2addr(source, &src)) {
 				WARN("join: Invalid IPv4 multicast source: %s", source);
 				return 1;
 			}
@@ -174,14 +173,13 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 			if (!len)
 				len = 32;
 
-			if (inet_pton(AF_INET, group, &grp.sin_addr) <= 0 ||
-					!IN_MULTICAST(ntohl(grp.sin_addr.s_addr))) {
+			if (inet_str2addr(group, &grp) || !is_multicast(&grp)) {
 				WARN("join: Invalid IPv4 multicast group: %s", group);
 				return 1;
 			}
 		}
 
-		rc = mcgroup_action('j', ifname, (inet_addr_t *)&src, (inet_addr_t *)&grp, len);
+		rc = mcgroup_action('j', ifname, &src, &grp, len);
 	}
 
 	return rc;
@@ -219,7 +217,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 			} else {
 				int len;
 
-				if (inet_pton(AF_INET6, source, &mroute.source.sin6_addr) <= 0) {
+				if (inet_str2addr(source, (inet_addr_t *)&mroute.source)) {
 					WARN("mroute: Invalid source IPv6 address: %s", source);
 					return 1;
 				}
@@ -251,8 +249,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 				mroute.len = 128;
 			}
 
-			if (inet_pton(AF_INET6, group, &mroute.group.sin6_addr) <= 0 ||
-			    !IN6_IS_ADDR_MULTICAST(&mroute.group.sin6_addr)) {
+			if (inet_str2addr(group, (inet_addr_t *)&mroute.group) || !is_multicast((inet_addr_t *)&mroute.group)) {
 				WARN("mroute: Invalid IPv6 multicast group: %s", group);
 				return 1;
 			}
@@ -304,7 +301,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 			mroute.inbound = vif;
 
 			if (!source) {
-				mroute.source.s_addr = htonl(INADDR_ANY);
+				inet_str2addr("0.0.0.0", &mroute.source);
 				mroute.src_len = 0;
 			} else {
 				mroute.src_len = is_range(source);
@@ -313,7 +310,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 					return 1;
 				}
 
-				if (inet_pton(AF_INET, source, &mroute.source) <= 0) {
+				if (inet_str2addr(source, (inet_addr_t *)&mroute.source)) {
 					WARN("mroute: Invalid source IPv4 address: %s", source);
 					return 1;
 				}
@@ -330,9 +327,12 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 				return 1;
 			}
 
-			if (inet_pton(AF_INET, group, &mroute.group) <= 0 ||
-			    !IN_MULTICAST(ntohl(mroute.group.s_addr))) {
-				WARN("mroute: Invalid IPv4 multicast group: %s", group);
+			if (inet_str2addr(group, (inet_addr_t *)&mroute.group) || !is_multicast((inet_addr_t *)&mroute.group)) {
+				char str[INET_ADDRSTR_LEN];
+
+				inet_addr2str((inet_addr_t *)&mroute.group, str, sizeof(str));
+				WARN("mroute: Invalid IPv4 multicast group: %s", str);
+
 				return 1;
 			}
 

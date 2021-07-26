@@ -50,6 +50,8 @@
 #define IN6_IS_ADDR_MULTICAST(a) (((__const uint8_t *) (a))[0] == 0xff)
 #endif
 
+#include "ifvc.h"
+
 /*
  * IPv4 multicast route
  */
@@ -62,8 +64,8 @@
 struct mroute4 {
 	LIST_ENTRY(mroute4) link;
 
-	struct in_addr source;
-	struct in_addr group;           /* multicast group */
+	inet_addr_t    source;
+	inet_addr_t    group;           /* multicast group */
 	short          len;		/* prefix len, or 0:disabled */
 	short          src_len;         /* source prefix len, or 0:disabled */
 
