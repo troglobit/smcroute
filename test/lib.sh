@@ -151,7 +151,9 @@ topo_teardown()
     kill -9 "$PID"
 
     # shellcheck disable=SC2162
-    while read ln; do umount "$ln"; rm "$ln"; done < "/tmp/$NM/mounts"
+    if [ -f "/tmp/$NM/mounts" ]; then
+        while read ln; do umount "$ln"; rm "$ln"; done < "/tmp/$NM/mounts"
+    fi
 
     ip link del br0  2>/dev/null
     ip link del a1   2>/dev/null
