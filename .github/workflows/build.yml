@@ -43,7 +43,7 @@ jobs:
           mkdir -p .build/dir
           cd .build/dir
           ../../configure --cache-file=/tmp/config.cache --prefix= --enable-mrdisc --enable-test
-          chmod -R a+w
+          chmod -R a+w .
       - name: Build
         run: |
           make
