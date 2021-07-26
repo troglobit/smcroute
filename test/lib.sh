@@ -164,7 +164,7 @@ topo_teardown()
 
 topo()
 {
-    mkdir "/tmp/$NM"
+    mkdir -p "/tmp/$NM"
     if [ $# -lt 1 ]; then
 	print "Too few arguments to topo()"
 	exit 1
