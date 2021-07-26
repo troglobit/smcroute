@@ -264,11 +264,11 @@ static int usage(int code)
 	       "  -e CMD          Script or command to call on startup/reload when all routes\n"
 	       "                  have been installed, or when a (*,G) is installed\n"
 #ifdef ENABLE_DOTCONF
-	       "  -f FILE         Alternate .conf file, default uses ident NAME: %s\n"
-	       "  -F FILE         Check .conf file syntax, use -l to increase verbosity\n"
+	       "  -f FILE         Configuration file, default use ident NAME: %s\n"
+	       "  -F FILE         Check configuration file syntax, use -l to increase verbosity\n"
 #endif
 	       "  -h              This help text\n"
-	       "  -I NAME         Identity for .conf, PID file, and syslog, default: %s\n"
+	       "  -I NAME         Identity for .conf/.pid/.sock file, and syslog, default: %s\n"
 	       "  -l LVL          Set log level: none, err, notice*, info, debug\n"
 #ifdef ENABLE_MRDISC
 	       "  -m SEC          Multicast router discovery, 4-180, default: 20 sec\n"
@@ -282,7 +282,7 @@ static int usage(int code)
 	       "  -p USER[:GROUP] After initialization set UID and GID to USER and GROUP\n"
 #endif
 	       "  -P FILE         Set daemon PID file name, with optional path.\n"
-	       "                  Default uses ident NAME: %s\n"
+	       "                  Default use ident NAME: %s\n"
 	       "  -s              Use syslog, default unless running in foreground, -n\n"
 	       "  -t ID           Set multicast routing table ID, default: 0\n"
 	       "  -v              Show program version\n"
