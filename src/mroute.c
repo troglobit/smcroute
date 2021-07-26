@@ -564,8 +564,8 @@ static int is_match4(struct mroute4 *rule, struct mroute4 *cand)
 	addr1->sin_addr.s_addr &= mask;
 	addr2->sin_addr.s_addr &= mask;
 
-	if (inet_addr_cmp(&a, &b) || is_anyaddr(&rule->source))
-		return 1;
+	if (is_anyaddr(&rule->source))
+		return !inet_addr_cmp(&a, &b);
 
 	if (rule->src_len > 0)
 		mask = 0xFFFFFFFFu << (32 - rule->src_len);
