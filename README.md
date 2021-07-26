@@ -2,7 +2,7 @@ SMCRoute - A static multicast routing daemon
 ============================================
 <a href="https://repology.org/project/smcroute/versions"><img align="right" alt="Packaging status"
    src="https://repology.org/badge/vertical-allrepos/smcroute.svg"></a>
-[![License Badge][]][License] [![Travis Status][]][Travis] [![Coverity Status][]][Coverity Scan]
+[![License Badge][]][License] [![GitHub Status][]][GitHub] [![Coverity Status][]][Coverity Scan]
 
 Table of Contents
 -----------------
@@ -356,7 +356,7 @@ author.
 [Carsten Schill]:  http://www.cschill.de/smcroute/
 [License]:         https://en.wikipedia.org/wiki/GPL_license
 [License Badge]:   https://img.shields.io/badge/License-GPL%20v2-blue.svg
-[Travis]:          https://travis-ci.org/troglobit/smcroute
-[Travis Status]:   https://travis-ci.org/troglobit/smcroute.png?branch=master
+[GitHub]:          https://github.com/troglobit/smcroute/actions/workflows/build.yml/
+[GitHub Status]:   https://github.com/troglobit/smcroute/actions/workflows/build.yml/badge.svg
 [Coverity Scan]:   https://scan.coverity.com/projects/3061
 [Coverity Status]: https://scan.coverity.com/projects/3061/badge.svg
