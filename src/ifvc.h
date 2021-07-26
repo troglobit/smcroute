@@ -49,10 +49,12 @@ static inline int inet_addr_cmp(inet_addr_t *a, inet_addr_t *b)
 	}
 
 #ifdef  HAVE_IPV6_MULTICAST_HOST
-	struct sockaddr_in6 *sa = (struct sockaddr_in6 *)a;
-	struct sockaddr_in6 *sb = (struct sockaddr_in6 *)b;
+	if (a->ss_family == AF_INET6) {
+		struct sockaddr_in6 *sa = (struct sockaddr_in6 *)a;
+		struct sockaddr_in6 *sb = (struct sockaddr_in6 *)b;
 
-	return memcmp(sa, sb, sizeof(*sa));
+		return memcmp(sa, sb, sizeof(*sa));
+	}
 #endif
 
 	errno = EAFNOSUPPORT;
