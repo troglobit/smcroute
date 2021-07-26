@@ -41,7 +41,7 @@ static inline int inet_addr_cmp(inet_addr_t *a, inet_addr_t *b)
 		return 1;
 	}
 
-	if (a->ss_family == AF_INET) {
+	if (a->ss_family == AF_INET && b->ss_family == AF_INET) {
 		struct sockaddr_in *sa = (struct sockaddr_in *)a;
 		struct sockaddr_in *sb = (struct sockaddr_in *)b;
 
@@ -49,7 +49,7 @@ static inline int inet_addr_cmp(inet_addr_t *a, inet_addr_t *b)
 	}
 
 #ifdef  HAVE_IPV6_MULTICAST_HOST
-	if (a->ss_family == AF_INET6) {
+	if (a->ss_family == AF_INET6 && b->ss_family == AF_INET6) {
 		struct sockaddr_in6 *sa = (struct sockaddr_in6 *)a;
 		struct sockaddr_in6 *sb = (struct sockaddr_in6 *)b;
 
