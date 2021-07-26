@@ -4,6 +4,7 @@
 
 #include "config.h"
 
+#include <errno.h>
 #include <string.h>
 #include <arpa/inet.h>		/* inet_ntop() */
 #include <net/if.h>
@@ -61,6 +62,49 @@ static inline int inet_addr_cmp(inet_addr_t *a, inet_addr_t *b)
 	return 1;
 }
 
+static inline int inet_str2addr(const char *str, inet_addr_t *ss)
+{
+	struct sockaddr_in *sin = (struct sockaddr_in *)ss;
+	int rc;
+
+	if (!str || !ss) {
+		errno = EINVAL;
+		return -1;
+	}
+
+#ifdef HAVE_IPV6_MULTICAST_HOST
+	if (strchr(str, ':')) {
+		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)ss;
+
+		ss->ss_family = AF_INET6;
+		rc = inet_pton(AF_INET6, str, &sin6->sin6_addr);
+	} else
+#endif
+	{
+		ss->ss_family = AF_INET;
+		rc = inet_pton(AF_INET, str, &sin->sin_addr);
+	}
+
+	if (rc == 0 || rc == -1)
+		return 1;
+
+	return 0;
+}
+
+static inline int is_multicast(inet_addr_t *ss)
+{
+	struct sockaddr_in *sin = (struct sockaddr_in *)ss;
+
+#ifdef HAVE_IPV6_MULTICAST_HOST
+	if (ss->ss_family == AF_INET6) {
+		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)ss;
+		return IN6_IS_ADDR_MULTICAST(&sin6->sin6_addr);
+	}
+#endif
+
+	return IN_MULTICAST(ntohl(sin->sin_addr.s_addr));
+}
+
 void          iface_init              (void);
 void          iface_exit              (void);
 
@@ -92,7 +136,6 @@ static inline int is_anyaddr(inet_addr_t *ss)
 		return !memcmp(&sin6->sin6_addr, &in6addr_any, sizeof(in6addr_any));
 	}
 #endif
-
 	sin = (struct sockaddr_in *)ss;
 	return sin->sin_addr.s_addr == htonl(INADDR_ANY);
 }
