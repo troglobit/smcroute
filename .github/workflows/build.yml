@@ -7,7 +7,7 @@ on:
 
 # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
 env:
-  MAKEFLAGS: -j1
+  MAKEFLAGS: -j3
 
 jobs:
   build:
@@ -28,9 +28,24 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Configure
+        # Build in a sub-directory so we can safely set a+w on all
+        # directories.  Needed for `make check` since it runs with
+        # root dropped and wants to write .trs and .log files.
         run: |
+          set -x
           ./autogen.sh
-          ./configure --prefix= --enable-mrdisc --enable-test CC=${{ matrix.compiler }}
+          ./configure --cache-file=/tmp/config.cache
+          make dist
+          archive=$(ls -rt | tail -1)
+          if [ -f "$archive" ]; then
+            dir=$(echo "$archive" |rev |cut -f3- -d. |rev)
+            tar xf "$archive"
+            cd "$dir"
+          fi
+          mkdir -p .build/dir
+          cd .build/dir
+          ../../configure --cache-file=/tmp/config.cache --prefix= --enable-mrdisc --enable-test CC=${{ matrix.compiler }}
+          chmod -R a+w
       - name: Build
         run: |
           make
@@ -49,7 +64,6 @@ jobs:
         # nemesis to support IPv6 UDP injection (hence the container).
         run: |
           make check || cat test/test-suite.log
-          cat test/isolated.log
       - name: Upload Test Results
         uses: actions/upload-artifact@v2
         with:
