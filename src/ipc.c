@@ -34,6 +34,7 @@
 #include "ipc.h"
 #include "log.h"
 #include "msg.h"
+#include "util.h"
 #include "socket.h"
 #include "mroute.h"
 
@@ -84,11 +85,12 @@ static void ipc_accept(int sd, void *arg)
 
 /**
  * ipc_init - Initialise an IPC server socket
+ * @path: Path to UNIX domain socket
  *
  * Returns:
  * The socket descriptor, or -1 on error with @errno set.
  */
-int ipc_init(void)
+int ipc_init(char *path)
 {
 	int sd;
 	socklen_t len;
@@ -108,7 +110,7 @@ int ipc_init(void)
 	sun.sun_len = 0;	/* <- correct length is set by the OS */
 #endif
 	sun.sun_family = AF_UNIX;
-	snprintf(sun.sun_path, sizeof(sun.sun_path), "%s/%s.sock", RUNSTATEDIR, ident);
+	strlcpy(sun.sun_path, path, sizeof(sun.sun_path));
 
 	unlink(sun.sun_path);
 	smclog(LOG_DEBUG, "Binding IPC socket to %s", sun.sun_path);

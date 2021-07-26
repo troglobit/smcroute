@@ -5,7 +5,7 @@
 #include "config.h"
 
 #ifdef ENABLE_CLIENT
-int   ipc_init    (void);
+int   ipc_init    (char *path);
 void  ipc_exit    (void);
 
 int   ipc_send    (int sd, char *buf, size_t len);

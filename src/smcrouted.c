@@ -57,6 +57,7 @@ char *ident     = PACKAGE;
 char *prognm    = NULL;
 char *pid_file  = NULL;
 char *conf_file = NULL;
+char *sock_file = NULL;
 int   conf_vrfy = 0;
 
 static uid_t uid = 0;
@@ -202,7 +203,7 @@ static int start_server(void)
 
 	atexit(clean);
 	signal_init();
-	ipc_init();
+	ipc_init(sock_file);
 
 	conf_read(conf_file, do_vifs);
 
@@ -228,6 +229,18 @@ static int compose_paths(void)
 		}
 
 		snprintf(conf_file, len, "%s/%s.conf", SYSCONFDIR, ident);
+	}
+
+	if (!sock_file) {
+		size_t len = strlen(RUNSTATEDIR) + strlen(ident) + 7;
+
+		sock_file = malloc(len);
+		if (!conf_file) {
+			smclog(LOG_ERR, "Failed allocating memory, exiting: %s", strerror(errno));
+			exit(1);
+		}
+
+		snprintf(sock_file, len, "%s/%s.sock", RUNSTATEDIR, ident);
 	}
 
 	/* Default is to let pidfile() API construct PID file from ident */
@@ -284,6 +297,8 @@ static int usage(int code)
 	       "  -P FILE         Set daemon PID file name, with optional path.\n"
 	       "                  Default use ident NAME: %s\n"
 	       "  -s              Use syslog, default unless running in foreground, -n\n"
+	       "  -S FILE         UNIX domain socket path, for use with smcroutectl.\n"
+	       "                  Default use ident NAME: %s\n"
 	       "  -t ID           Set multicast routing table ID, default: 0\n"
 	       "  -v              Show program version\n"
 	       "\n"
@@ -291,7 +306,7 @@ static int usage(int code)
 #ifdef ENABLE_DOTCONF
 	       ident,
 #endif
-	       pidfn, PACKAGE_BUGREPORT);
+	       pidfn, sock_file, PACKAGE_BUGREPORT);
 #ifdef PACKAGE_URL
 	printf("Project homepage:   %s\n", PACKAGE_URL);
 #endif
@@ -329,7 +344,7 @@ int main(int argc, char *argv[])
 	int c, new_log_level = -1;
 
 	prognm = progname(argv[0]);
-	while ((c = getopt(argc, argv, "c:d:e:f:F:hI:l:m:nNp:P:st:v")) != EOF) {
+	while ((c = getopt(argc, argv, "c:d:e:f:F:hI:l:m:nNp:P:sS:t:v")) != EOF) {
 		switch (c) {
 		case 'c':	/* cache timeout */
 			cache_tmo = atoi(optarg);
@@ -402,6 +417,10 @@ int main(int argc, char *argv[])
 
 		case 's':	/* Force syslog even though in foreground */
 			do_syslog++;
+			break;
+
+		case 'S':
+			sock_file = optarg;
 			break;
 
 		case 't':

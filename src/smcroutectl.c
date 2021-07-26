@@ -37,6 +37,11 @@
 #include "msg.h"
 #include "util.h"
 
+static char *ident = PACKAGE;
+static char *sock_file = NULL;
+static char *prognm = NULL;
+static int   heading = 1;
+
 struct arg {
 	char *name;
 	int   min_args;		/* 0: command takes no arguments */
@@ -48,6 +53,7 @@ struct arg {
 } args[] = {
 	{ NULL,      0, 'd', NULL,   "Detailed output in show command", NULL, 0 },
 	{ NULL,      1, 'I', "NAME", "Identity of routing daemon instance, default: " PACKAGE, "foo", 0 },
+	{ NULL,      1, 'S', "FILE", "UNIX domain socket for daemon, default: " RUNSTATEDIR "/" PACKAGE ".sock", "/tmp/foo.sock", 0 },
 	{ NULL,      0, 't', NULL,   "Skip table heading in show command", NULL, 0 },
 	{ "help",    0, 'h', NULL,   "Show help text", NULL, 0 },
 	{ "version", 0, 'v', NULL,   "Show program version", NULL, 0 },
@@ -62,10 +68,6 @@ struct arg {
 	{ "leave",   2, 'l', NULL,   "Leave joined multicast group",         "eth0 225.1.2.3", 0 },
 	{ NULL, 0, 0, NULL, NULL, NULL, 0 }
 };
-
-static int heading = 1;
-static char *ident = PACKAGE;
-static char *prognm = NULL;
 
 
 /*
@@ -178,7 +180,7 @@ static void table_heading(char cmd, int detail)
 /*
  * Connects to the IPC socket of the server
  */
-static int ipc_connect(void)
+static int ipc_connect(char *path)
 {
 	struct sockaddr_un sa;
 	socklen_t len;
@@ -192,7 +194,10 @@ static int ipc_connect(void)
 	sa.sun_len = 0;	/* <- correct length is set by the OS */
 #endif
 	sa.sun_family = AF_UNIX;
-	snprintf(sa.sun_path, sizeof(sa.sun_path), "%s/%s.sock", RUNSTATEDIR, ident);
+	if (!path)
+		snprintf(sa.sun_path, sizeof(sa.sun_path), "%s/%s.sock", RUNSTATEDIR, ident);
+	else
+		snprintf(sa.sun_path, sizeof(sa.sun_path), "%s", path);
 
 	len = offsetof(struct sockaddr_un, sun_path) + strlen(sa.sun_path);
 	if (connect(sd, (struct sockaddr *)&sa, len) < 0) {
@@ -225,7 +230,7 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 		return 1;
 	}
 
-	while ((sd = ipc_connect()) < 0) {
+	while ((sd = ipc_connect(sock_file)) < 0) {
 		switch (errno) {
 		case EACCES:
 			warnx("Need root privileges to connect to daemon");
@@ -383,7 +388,7 @@ int main(int argc, char *argv[])
 	struct arg *cmd = NULL;
 
 	prognm = progname(argv[0]);
-	while ((c = getopt(argc, argv, "dhI:tv")) != EOF) {
+	while ((c = getopt(argc, argv, "dhI:S:tv")) != EOF) {
 		switch (c) {
 		case 'd':
 			detail++;
@@ -395,6 +400,10 @@ int main(int argc, char *argv[])
 
 		case 'I':
 			ident = optarg;
+			break;
+
+		case 'S':
+			sock_file = optarg;
 			break;
 
 		case 't':

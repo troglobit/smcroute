@@ -15,6 +15,7 @@
 .Op Fl l Ar LVL
 .Op Fl p Ar USER:GROUP
 .Op Fl P Ar FILE
+.Op Fl S Ar FILE
 .Op Fl t Ar ID
 .Nm smcroutectl
 .Op Fl dtv
@@ -162,6 +163,19 @@ Regardless, setting this option overrides all others, but it is
 recommended to use the ident option instead.
 .It Fl s
 Let daemon log to syslog, default unless running in foreground.
+.It Fl S Ar FILE
+UNIX domain socket path, used for the IPC between
+.Nm
+and
+.Nm smcroutectl .
+Use this to override the default socket path, derived from the daemon
+identity,
+.Fl I Ar NAME .
+This option can be useful when overriding the identity is not
+sufficient, e.g. for testing.  The default depends on how
+.Nm
+is configured at build time, see
+.Sx FILES .
 .It Fl t Ar ID
 Set multicast routing table ID.  Remember to also create routing rules
 directing packets to the table.  This example uses routing table ID 123:
@@ -527,7 +541,11 @@ IPC socket created by
 for use by
 .Nm smcroutectl .
 Same caveats apply to this file as the previous two, command line
-options to the daemon can change the file names.
+options
+.Fl I Ar NAME
+and
+.Fl S Ar NAME
+to the daemon can be used to change the socket file name.
 .It Pa /proc/net/ip_mr_cache
 Holds active IPv4 multicast routes.
 .It Pa /proc/net/ip_mr_vif
