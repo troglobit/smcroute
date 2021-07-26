@@ -94,7 +94,7 @@ static inline int is_anyaddr(inet_addr_t *ss)
 #endif
 
 	sin = (struct sockaddr_in *)ss;
-	return sin->sin_addr.s_addr == INADDR_ANY;
+	return sin->sin_addr.s_addr == htonl(INADDR_ANY);
 }
 
 static inline const char *convert_address(inet_addr_t *ss, char *buf, size_t len)
