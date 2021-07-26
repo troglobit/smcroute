@@ -93,7 +93,7 @@ static int match(char *keyword, char *token)
 
 static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 {
-	int rc = 0, len = 0;
+	int rc = 0;
 
 	if (!ifname || !group) {
 		errno = EINVAL;
@@ -105,6 +105,7 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 		WARN("Ignoring join %s on %s, IPv6 disabled.", group, ifname);
 #else
 		struct sockaddr_in6 src, grp;
+		int len = 0;
 
 		memset(&src, 0, sizeof(src));
 		memset(&grp, 0, sizeof(grp));
@@ -113,7 +114,8 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 		grp.sin6_family = AF_INET6;
 
 		if (source) {
-			if ((len = is_range(source)) > 0)
+			len = is_range(source);
+			if (len != 0)
 				WARN("join: ignoring source perfix len: %d", len);
 
 			if (inet_pton(AF_INET6, source, &src.sin6_addr) <= 0) {
@@ -136,8 +138,7 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 				WARN("join: Invalid IPv6 multicast group: %s", group);
 				return 1;
 			}
-		}
-		else {
+		} else {
 			WARN("join: missing IPv6 multicast group");
 			return 1;
 		}
@@ -191,7 +192,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 {
 	struct ifmatch state_in, state_out;
 	struct iface *iface;
-	int i = 0, len = 0, rc = 0, total;
+	int rc = 0;
 
 	if (!ifname || !group || !outbound || !num) {
 		errno = EINVAL;
@@ -208,6 +209,8 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 
 		iface_match_init(&state_in);
 		while ((mif = iface_match_mif_by_name(ifname, &state_in, NULL)) >= 0) {
+			int i, total;
+
 			memset(&mroute, 0, sizeof(mroute));
 			mroute.inbound = mif;
 
@@ -215,12 +218,15 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 				mroute.source.sin6_addr = in6addr_any;
 				mroute.src_len = 0;
 			} else {
+				int len;
+
 				if (inet_pton(AF_INET6, source, &mroute.source.sin6_addr) <= 0) {
 					WARN("mroute: Invalid source IPv6 address: %s", source);
 					return 1;
 				}
 
-				if ((len = is_range(source)) != 0)
+				len = is_range(source);
+				if (len != 0)
 					WARN("mroute: Unsupported source prefix length: %d", len);
 
 				mroute.src_len = 128;
@@ -267,7 +273,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 					total++;
 				}
 				if (!state_out.match_count)
-					WARN("mroute: Invalid outbound IPv6 interface: %s", outbound[i]);
+					WARN("mroute: Invalid outbound IPv6 interface, skipping %s", outbound[i]);
 			}
 
 			if (!total) {
@@ -292,6 +298,8 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 		iface_match_init(&state_in);
 		DEBUG("mroute: checking for input iface %s ...", ifname);
 		while ((vif = iface_match_vif_by_name(ifname, &state_in, NULL)) >= 0) {
+			int i, total;
+
 			DEBUG("mroute: input iface %s has vif %d", ifname, vif);
 			memset(&mroute, 0, sizeof(mroute));
 			mroute.inbound = vif;
@@ -346,7 +354,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 					total++;
 				}
 				if (!state_out.match_count)
-					WARN("mroute: Invalid outbound IPv4 interface: %s", outbound[i]);
+					WARN("mroute: Invalid outbound IPv4 interface, skipping %s", outbound[i]);
 			}
 
 			if (!total) {

@@ -39,7 +39,7 @@ static size_t group_req(int sd, int cmd, struct mcgroup *mcg)
 	struct group_source_req gsr;
 	struct sockaddr_in group;
 	struct group_req gr;
-	uint32_t addr = 0, addr_max = 0, mask;
+	uint32_t addr = 0, addr_max = 0;
 	size_t len;
 	void *arg;
 	int op, proto;
@@ -53,6 +53,8 @@ static size_t group_req(int sd, int cmd, struct mcgroup *mcg)
 		proto = IPPROTO_IP;
 
 	if (mcg->group.ss_family == AF_INET) {
+		int mask;
+
 		group = *(struct sockaddr_in *)&mcg->group;
 
 		if (mcg->len > 0)
