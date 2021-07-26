@@ -120,8 +120,8 @@ static int start(struct timespec *now)
 		it.it_value.tv_sec = 0;
 
 	if (timer_settime(timer, 0, &it, NULL))
-		smclog(LOG_ERR, "Failed starting %d sec period timer, errno %d: %s",
-		       next->timeout.tv_sec - now->tv_sec, errno, strerror(errno));
+		smclog(LOG_ERR, "Failed starting %.1f sec period timer, errno %d: %s",
+		       difftime(next->timeout.tv_sec, now->tv_sec), errno, strerror(errno));
 
 	return 0;
 }
