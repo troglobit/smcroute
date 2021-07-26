@@ -264,11 +264,11 @@ static int usage(int code)
 	       "  -e CMD          Script or command to call on startup/reload when all routes\n"
 	       "                  have been installed, or when a (*,G) is installed\n"
 #ifdef ENABLE_DOTCONF
-	       "  -f FILE         Set configuration file, default uses ident NAME: %s\n"
-	       "  -F FILE         Check configuration file syntax, use -l to increase verbosity\n"
+	       "  -f FILE         Alternate .conf file, default uses ident NAME: %s\n"
+	       "  -F FILE         Check .conf file syntax, use -l to increase verbosity\n"
 #endif
 	       "  -h              This help text\n"
-	       "  -I NAME         Identity for config, PID file, and syslog, default: %s\n"
+	       "  -I NAME         Identity for .conf, PID file, and syslog, default: %s\n"
 	       "  -l LVL          Set log level: none, err, notice*, info, debug\n"
 #ifdef ENABLE_MRDISC
 	       "  -m SEC          Multicast router discovery, 4-180, default: 20 sec\n"
