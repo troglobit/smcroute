@@ -13,21 +13,21 @@ ip addr add 2001:1::1/64 dev vlan1
 ip addr add 2001:2::1/64 dev vlan2
 
 print "Creating config ..."
-cat <<EOF > ipv6.conf
+cat <<EOF > "/tmp/$NM/conf"
 # ipv6 (*,G) multicast routing
 phyint vlan1 enable
 phyint vlan2 enable
 mroute from vlan1 source fc00::1 group ff04:0:0:0:0:0:0:114 to vlan2
 mroute from vlan1                group ff2e::42             to vlan2
 EOF
-cat ipv6.conf
+cat "/tmp/$NM/conf"
 
 print "Starting smcrouted ..."
-../src/smcrouted -f ipv6.conf -n -N -P /tmp/ipv6.pid -l debug &
+../src/smcrouted -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug &
 sleep 1
 
 print "Starting collector ..."
-tshark -c 5 -lni a2 -w ipv6.pcap 'dst ff04::114 or dst ff2e::42' 2>/dev/null &
+tshark -c 5 -lni a2 -w "/tmp/$NM/pcap" 'dst ff04::114 or dst ff2e::42' 2>/dev/null &
 sleep 1
 
 print "Starting emitter ..."
@@ -38,15 +38,15 @@ nemesis udp -6 -c 3 -d a1 -T 3 -S fdd1:9ac8:e35b:4e2d::1 -D ff2e::42  -M 33:33:0
 cat /proc/net/ip6_mr_cache
 ip -6 mroute
 
-print "Cleaning up ..."
-topo teardown
-
 print "Analyzing ..."
-lines1=$(tshark -r ipv6.pcap 2>/dev/null | grep ff04::114 | tee    ipv6.result | wc -l)
-lines2=$(tshark -r ipv6.pcap 2>/dev/null | grep ff2e::42  | tee -a ipv6.result | wc -l)
-cat ipv6.result
+lines1=$(tshark -r "/tmp/$NM/pcap" 2>/dev/null | grep ff04::114 | tee    "/tmp/$NM/result" | wc -l)
+lines2=$(tshark -r "/tmp/$NM/pcap" 2>/dev/null | grep ff2e::42  | tee -a "/tmp/$NM/result" | wc -l)
+cat "/tmp/$NM/result"
 echo " => $lines1 for group ff04::114, expected => 3"
 echo " => $lines2 for group ff2e::42,  expected => 2"
+
+print "Cleaning up ..."
+topo teardown
 
 # one frame lost due to initial (*,G) -> (S,G) route setup
 # no frames lost in pure (S,G) route
