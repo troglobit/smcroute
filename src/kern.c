@@ -172,8 +172,8 @@ int kern_join_leave(int sd, int cmd, struct mcgroup *mcg)
 		int len;
 
 		if (!is_anyaddr(&mcg->source))
-			convert_address(&mcg->source, source, sizeof(source));
-		convert_address(&mcg->group, group, sizeof(group));
+			inet_addr2str(&mcg->source, source, sizeof(source));
+		inet_addr2str(&mcg->group, group, sizeof(group));
 		len = mcg->len == 0 ? 32 : mcg->len;
 
 		smclog(LOG_ERR, "Failed %s group (%s,%s/%d) on sd %d ... %d: %s",

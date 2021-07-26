@@ -274,8 +274,8 @@ int mcgroup_show(int sd, int detail)
 			continue;
 
 		if (!is_anyaddr(&entry->source))
-			convert_address(&entry->source, src, sizeof(src));
-		convert_address(&entry->group, grp, sizeof(grp));
+			inet_addr2str(&entry->source, src, sizeof(src));
+		inet_addr2str(&entry->group, grp, sizeof(grp));
 
 		if (entry->len > 0)
 			snprintf(sg, sizeof(sg), "(%s, %s/%d)", src, grp, entry->len);
