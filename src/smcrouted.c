@@ -431,7 +431,7 @@ int main(int argc, char *argv[])
 	if (conf_vrfy) {
 		smclog(LOG_INFO, "Verifying configuration file %s ...", conf_file);
 		c = conf_read(conf_file, do_vifs);
-		smclog(LOG_INFO, "Configuration file %s.", c ? "has unrecoverable errors" : "is OK");
+		smclog(LOG_INFO, "Configuration file %s %s.", conf_file, c ? "has unrecoverable errors" : "is OK");
 
 		return c;
 	}
