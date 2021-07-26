@@ -62,6 +62,20 @@ static inline int inet_addr_cmp(inet_addr_t *a, inet_addr_t *b)
 	return 1;
 }
 
+static inline const char *inet_addr2str(inet_addr_t *ss, char *buf, size_t len)
+{
+	struct sockaddr_in *sin = (struct sockaddr_in *)ss;
+
+#ifdef HAVE_IPV6_MULTICAST_HOST
+	if (ss->ss_family == AF_INET6) {
+		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)ss;
+		return inet_ntop(AF_INET6, &sin6->sin6_addr, buf, len);
+	}
+#endif
+
+	return inet_ntop(AF_INET, &sin->sin_addr, buf, len);
+}
+
 static inline int inet_str2addr(const char *str, inet_addr_t *ss)
 {
 	struct sockaddr_in *sin = (struct sockaddr_in *)ss;
@@ -105,6 +119,20 @@ static inline int is_multicast(inet_addr_t *ss)
 	return IN_MULTICAST(ntohl(sin->sin_addr.s_addr));
 }
 
+static inline int is_anyaddr(inet_addr_t *ss)
+{
+	struct sockaddr_in *sin = (struct sockaddr_in *)ss;
+
+#ifdef HAVE_IPV6_MULTICAST_HOST
+	if (ss->ss_family == AF_INET6) {
+		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)ss;
+		return !memcmp(&sin6->sin6_addr, &in6addr_any, sizeof(in6addr_any));
+	}
+#endif
+
+	return sin->sin_addr.s_addr == htonl(INADDR_ANY);
+}
+
 void          iface_init              (void);
 void          iface_exit              (void);
 
@@ -125,35 +153,6 @@ int           iface_match_vif_by_name (const char *ifname, struct ifmatch *state
 int           iface_match_mif_by_name (const char *ifname, struct ifmatch *state, struct iface **found);
 
 int           iface_show              (int sd, int detail);
-
-static inline int is_anyaddr(inet_addr_t *ss)
-{
-	struct sockaddr_in *sin;
-
-#ifdef HAVE_IPV6_MULTICAST_HOST
-	if (ss->ss_family == AF_INET6) {
-		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)ss;
-		return !memcmp(&sin6->sin6_addr, &in6addr_any, sizeof(in6addr_any));
-	}
-#endif
-	sin = (struct sockaddr_in *)ss;
-	return sin->sin_addr.s_addr == htonl(INADDR_ANY);
-}
-
-static inline const char *inet_addr2str(inet_addr_t *ss, char *buf, size_t len)
-{
-	struct sockaddr_in *sin;
-
-#ifdef HAVE_IPV6_MULTICAST_HOST
-	if (ss->ss_family == AF_INET6) {
-		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)ss;
-		return inet_ntop(AF_INET6, &sin6->sin6_addr, buf, len);
-	}
-#endif
-
-	sin = (struct sockaddr_in *)ss;
-	return inet_ntop(AF_INET, &sin->sin_addr, buf, len);
-}
 
 static inline int iface_exist(char *ifname)
 {
