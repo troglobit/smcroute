@@ -35,11 +35,10 @@ jobs:
           set -x
           ./autogen.sh
           ./configure --cache-file=/tmp/config.cache
-          make dist
-          archive=$(ls -rt | tail -1)
-          if [ -f "$archive" ]; then
-            dir=$(echo "$archive" |rev |cut -f3- -d. |rev)
+          make dist && archive=$(ls *.tar.gz)
+          if [ -n "$archive" -a -f "$archive" ]; then
             tar xf "$archive"
+            dir=$(echo "$archive" |rev |cut -f3- -d. |rev)
             cd "$dir"
           fi
           mkdir -p .build/dir
