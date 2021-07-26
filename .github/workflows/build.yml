@@ -32,8 +32,9 @@ jobs:
         # root dropped and wants to write .trs and .log files.
         run: |
           set -x
+          OPTS="--cache-file=/tmp/config.cache --prefix= --enable-mrdisc --enable-test"
           ./autogen.sh
-          ./configure --cache-file=/tmp/config.cache
+          ./configure $OPTS
           make dist && archive=$(ls *.tar.gz)
           if [ -n "$archive" -a -f "$archive" ]; then
             tar xf "$archive"
@@ -42,7 +43,7 @@ jobs:
           fi
           mkdir -p .build/dir
           cd .build/dir
-          ../../configure --cache-file=/tmp/config.cache --prefix= --enable-mrdisc --enable-test
+          ../../configure $OPTS
           chmod -R a+w .
       - name: Build
         run: |
