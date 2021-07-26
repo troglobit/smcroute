@@ -55,21 +55,19 @@ int is_range(char *arg)
 
 static int do_mgroup4(struct ipc_msg *msg)
 {
-	struct sockaddr_in src =  { 0 };
-	struct sockaddr_in grp =  { 0 };
 	char *ifname = msg->argv[0];
+	inet_addr_t src;
+	inet_addr_t grp;
 	char group[20];
-	int len, rc = 0;
-
-	src.sin_family = AF_INET;
-	grp.sin_family = AF_INET;
+	int rc = 0;
+	int len;
 
 	if (msg->count == 3) {
+		rc += inet_str2addr(msg->argv[1], &src);
 		strlcpy(group, msg->argv[2], sizeof(group));
-		rc += inet_pton(AF_INET, msg->argv[1], &src.sin_addr);
 	} else {
+		rc += inet_str2addr("0.0.0.0",    &src);
 		strlcpy(group, msg->argv[1], sizeof(group));
-		rc += inet_pton(AF_INET, "0.0.0.0", &src.sin_addr);
 	}
 
 	len = is_range(group);
@@ -80,13 +78,13 @@ static int do_mgroup4(struct ipc_msg *msg)
 	if (!len)
 		len = 32;
 
-	rc += inet_pton(AF_INET, group, &grp.sin_addr);
-	if (rc < 2 || !IN_MULTICAST(ntohl(grp.sin_addr.s_addr))) {
+	rc += inet_str2addr(group, &grp);
+	if (rc < 2 || !is_multicast(&grp)) {
 		smclog(LOG_DEBUG, "Invalid IPv4 source or group address.");
 		return 1;
 	}
 
-	return mcgroup_action(msg->cmd, ifname, (inet_addr_t *)&src, (inet_addr_t *)&grp, len);
+	return mcgroup_action(msg->cmd, ifname, &src, &grp, len);
 }
 
 static int do_mgroup6(struct ipc_msg *msg)
