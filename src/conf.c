@@ -113,9 +113,8 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 		grp.sin6_family = AF_INET6;
 
 		if (source) {
-			if ((len = is_range(source)) > 0) {
-				WARN("join: Ignore source perfix len: %d", len);
-			}
+			if ((len = is_range(source)) > 0)
+				WARN("join: ignoring source perfix len: %d", len);
 
 			if (inet_pton(AF_INET6, source, &src.sin6_addr) <= 0) {
 				WARN("join: Invalid IPv6 multicast source: %s", source);
@@ -157,9 +156,8 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 		grp.sin_family = AF_INET;
 
 		if (source) {
-			if ((len = is_range(source)) > 0) {
-				WARN("join: Ignore source perfix len: %d", len);
-			}
+			if ((len = is_range(source)) > 0)
+				WARN("join: ignoring source perfix len: %d", len);
 
 			if (inet_pton(AF_INET, source, &src.sin_addr) <= 0) {
 				WARN("join: Invalid IPv4 multicast source: %s", source);
