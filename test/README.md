@@ -75,12 +75,12 @@ Interfaces `a1` and `a2` are Linux dummy type interfaces with VLAN
 interfaces created on top.  The topology sets up two VLAN interfaces
 per dummy interface, VID 100 and 110.
 
-                         SMCRoute
-                  .------ router -----.
-                 /                     \
-    MC -----> a1.110                  a2.110 ------> MC
-                |                       |
-               a1                      a2
+                            SMCRoute
+                  .------.== router ==.------.
+                 /      /              \      \
+    MC --> a1.100    a1.110          a2.100  a2.110 --> MC
+                 \  /                    \  /
+                  a1                      a2
 
 
 ### Bridged w/ VLANs
@@ -154,7 +154,8 @@ injected on a1 and tcpdump verifies function on a2.
 ### VLAN Interfaces
 
 Similar to the basic routing test, except VLAN interfaces are created on
-top of the base interfaces, and routing takes place there.
+top of the base interfaces, and routing takes place there.  This test is
+based on [troglobit/smcroute#161][issue-161].
 
 **Topology:** Basic w/ VLANs
 
@@ -188,3 +189,6 @@ Linux kernel supports it).  This means a standard tool like `ping` can
 be used to send multicast.  Lowering the barrier of entry to run tests.
 
 **Topology:** Isolated
+
+
+[issue-161]: https://github.com/troglobit/smcroute/issues/161

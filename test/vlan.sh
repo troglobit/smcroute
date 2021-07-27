@@ -16,9 +16,11 @@ ip -br a
 print "Creating config ..."
 cat <<EOF > "/tmp/$NM/conf"
 # vlan (*,G) multicast routing
+phyint a1.100 enable
 phyint a1.110 enable
 phyint a2.110 enable
-mroute from a1.110 group 225.1.2.3 to a2.110
+mroute from a1.100 group 225.1.2.3 to a1.110 a2.110
+mroute from a2.110 group 225.3.2.1 to a1.110 a1.100
 EOF
 cat "/tmp/$NM/conf"
 
@@ -26,22 +28,33 @@ print "Starting smcrouted ..."
 ../src/smcrouted -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug &
 sleep 1
 
-print "Starting collector ..."
-tshark -c 2 -lni a2.110 -w "/tmp/$NM/pcap" icmp and dst 225.1.2.3 2>/dev/null &
+print "Starting collectors ..."
+tshark -c 6 -lni a1.110 -w "/tmp/$NM/pcap1" 'icmp and (dst 225.1.2.3 or dst 225.3.2.1)' 2>/dev/null &
+tshark -c 3 -lni a2.110 -w "/tmp/$NM/pcap2" 'icmp and dst 225.1.2.3' 2>/dev/null &
+tshark -c 3 -lni a1.100 -w "/tmp/$NM/pcap3" 'icmp and dst 225.3.2.1' 2>/dev/null &
 sleep 1
 
-print "Starting emitter ..."
-ping -c 3 -W 1 -I a1.110 -t 2 225.1.2.3 2>/dev/null
+print "Starting emitters ..."
+ping -c 3 -W 1 -I a1.100 -t 2 225.1.2.3 >/dev/null
+ping -c 3 -W 1 -I a2.110 -t 2 225.3.2.1 >/dev/null
 show_mroute
 
 print "Analyzing ..."
-lines=$(tshark -r "/tmp/$NM/pcap" 2>/dev/null | grep 225.1.2.3 | tee "/tmp/$NM/result" | wc -l)
-cat "/tmp/$NM/result"
-echo " => $lines for 225.1.2.3, expected => 2"
+lines1=$(tshark -r "/tmp/$NM/pcap1" 2>/dev/null | grep 225.1.2.3 | tee    "/tmp/$NM/result1" | wc -l)
+lines2=$(tshark -r "/tmp/$NM/pcap1" 2>/dev/null | grep 225.3.2.1 | tee -a "/tmp/$NM/result1" | wc -l)
+lines3=$(tshark -r "/tmp/$NM/pcap2" 2>/dev/null | grep 225.1.2.3 | tee    "/tmp/$NM/result2" | wc -l)
+lines4=$(tshark -r "/tmp/$NM/pcap3" 2>/dev/null | grep 225.3.2.1 | tee    "/tmp/$NM/result3" | wc -l)
+echo "Receieved on a1.110, expected >=2 pkt of 225.1.2.3 and >=2 pkt 225.3.2.1:"
+cat "/tmp/$NM/result1"
+echo "Receieved on a2.110, expected >=2 pkt of 225.1.2.3:"
+cat "/tmp/$NM/result2"
+echo "Receieved on a1.100, expected >=2 pkt of 225.3.2.1:"
+cat "/tmp/$NM/result3"
 
 print "Cleaning up ..."
 topo teardown
 
 # one frame lost due to initial (*,G) -> (S,G) setup
-[ "$lines" = "2" ] && exit 0
+# shellcheck disable=SC2086 disable=SC2166
+[ $lines1 -ge 2 -a $lines2 -ge 2 -a $lines3 -ge 2 -a $lines4 -ge 2 ] && exit 0
 exit 1
