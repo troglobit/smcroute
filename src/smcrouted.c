@@ -235,7 +235,7 @@ static int compose_paths(void)
 		size_t len = strlen(RUNSTATEDIR) + strlen(ident) + 7;
 
 		sock_file = malloc(len);
-		if (!conf_file) {
+		if (!sock_file) {
 			smclog(LOG_ERR, "Failed allocating memory, exiting: %s", strerror(errno));
 			exit(1);
 		}
