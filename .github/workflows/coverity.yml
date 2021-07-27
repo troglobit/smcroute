@@ -36,7 +36,6 @@ jobs:
             ${{ runner.os }}-coverity-${{ steps.var.outputs.md5 }}
             ${{ runner.os }}-coverity-
             ${{ runner.os }}-coverity
-            
       - name: Download Coverity Scan
         env:
           TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
@@ -45,6 +44,9 @@ jobs:
             wget -q https://scan.coverity.com/download/cxx/linux64   \
                  --post-data "token=$TOKEN&project=${COVERITY_PROJ}" \
                  -O coverity-latest.tar.gz
+          else
+            echo "Latest Coverity Scan available from cache :-)"
+            md5sum coverity-latest.tar.gz
           fi
           mkdir coverity
           tar xzf coverity-latest.tar.gz --strip 1 -C coverity
