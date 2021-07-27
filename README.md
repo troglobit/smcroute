@@ -339,7 +339,7 @@ need to generated these files using `./autogen.sh`.
 Origin & References
 -------------------
 
-SMCRoute is maintained collaboratively at [GitHub][].  Bug reports,
+SMCRoute is maintained collaboratively at [GitHub][Home].  Bug reports,
 feature requests, patches/pull requests, and documentation fixes are
 most welcome.  The project was previously hosted and maintained by
 Debian at [Alioth][] and before that by [Carsten Schill][], the original
@@ -351,7 +351,7 @@ author.
 [pimd]:            https://github.com/troglobit/pimd
 [mrdisc]:          https://github.com/troglobit/mrdisc
 [RFC4286]:         https://tools.ietf.org/html/rfc4286
-[GitHub]:          https://github.com/troglobit/smcroute
+[Home]:            https://github.com/troglobit/smcroute
 [Alioth]:          https://alioth.debian.org/projects/smcroute
 [Carsten Schill]:  http://www.cschill.de/smcroute/
 [License]:         https://en.wikipedia.org/wiki/GPL_license
