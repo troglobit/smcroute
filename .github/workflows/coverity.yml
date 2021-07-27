@@ -51,3 +51,33 @@ jobs:
           mkdir coverity
           tar xzf coverity-latest.tar.gz --strip 1 -C coverity
           ls coverity/
+      - name: Install dependencies
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install pkg-config libsystemd-dev libcap-dev
+      - name: Configure
+        run: |
+          ./autogen.sh
+          ./configure --prefix= --enable-mrdisc
+      - name: Build
+        run: |
+          export PATH=`pwd`/coverity/bin:$PATH
+          cov-build --dir cov-int make
+      - name: Submit results to Coverity Scan
+        env:
+          TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
+        run: |
+          tar czvf ${PROJECT_NAME}.tgz cov-int
+          curl \
+            --form project=${COVERITY_NAME} \
+            --form token=$TOKEN \
+            --form email=${CONTACT_EMAIL} \
+            --form file=@${PROJECT_NAME}.tgz \
+            --form version=trunk \
+            --form description="${PROJECT_NAME} $(git rev-parse HEAD)" \
+            https://scan.coverity.com/builds?project=${COVERITY_PROJ}
+      - name: Upload build.log
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverity-build.log
+          path: cov-int/build-log.txt
