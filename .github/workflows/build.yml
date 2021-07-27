@@ -16,13 +16,6 @@ jobs:
     # Verify we can build on latest Ubuntu with both gcc and clang
     name: ${{ matrix.compiler }}
     runs-on: ubuntu-latest
-    container:
-      # We use an Alpine Linux container with some preselect tools and
-      # tweaks to facilitate building, but also testing SMCRoute.  We
-      # cannot run with --cap-add=NET_ADMIN anymore because the tests
-      # use `unshare -mrun foo`, which require privileged mode.
-      image: ghcr.io/troglobit/misc
-      options: --privileged
     strategy:
       matrix:
         compiler: [gcc, clang]
@@ -31,6 +24,10 @@ jobs:
       MAKEFLAGS: -j3
       CC: ${{ matrix.compiler }}
     steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install pkg-config libsystemd-dev libcap-dev tshark
       - uses: actions/checkout@v2
       - name: Configure
         # Build in a sub-directory so we can safely set a+w on all
