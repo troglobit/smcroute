@@ -301,15 +301,11 @@ static int usage(int code)
 	       "                  Default use ident NAME: %s\n"
 	       "  -t ID           Set multicast routing table ID, default: 0\n"
 	       "  -v              Show program version\n"
-	       "\n"
-	       "Bug report address: %s\n", prognm, conf_file,
+	       "\n", prognm, conf_file,
 #ifdef ENABLE_DOTCONF
 	       ident,
 #endif
-	       pidfn, sock_file, PACKAGE_BUGREPORT);
-#ifdef PACKAGE_URL
-	printf("Project homepage:   %s\n", PACKAGE_URL);
-#endif
+	       pidfn, sock_file);
 
 	return code;
 }
@@ -434,7 +430,12 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'v':	/* version */
-			fprintf(stderr, "%s\n", version_info);
+			puts(version_info);
+			printf("\n"
+			       "Bug report address: %s\n", PACKAGE_BUGREPORT);
+#ifdef PACKAGE_URL
+			printf("Project homepage:   %s\n", PACKAGE_URL);
+#endif
 			return 0;
 
 		default:	/* unknown option */

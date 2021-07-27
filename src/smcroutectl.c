@@ -37,6 +37,8 @@
 #include "msg.h"
 #include "util.h"
 
+static const char version_info[] = PACKAGE_NAME " v" PACKAGE_VERSION;
+
 static char *ident = PACKAGE;
 static char *sock_file = NULL;
 static char *prognm = NULL;
@@ -353,18 +355,19 @@ static int usage(int code)
 	       "\n"
 	       "NOTE: IFNAME is either an interface name or wildcard.  E.g., `eth+` matches\n"
 	       "      eth0, eth15, etc.  Wildcards are available for inbound interfaces.\n"
-	       "\n"
-	       "Bug report address: %s\n", PACKAGE_BUGREPORT);
-#ifdef PACKAGE_URL
-	printf("Project homepage:   %s\n", PACKAGE_URL);
-#endif
+	       "\n");
 
 	return code;
 }
 
 static int version(void)
 {
-	puts(PACKAGE_VERSION);
+	puts(version_info);
+	printf("\n"
+	       "Bug report address: %s\n", PACKAGE_BUGREPORT);
+#ifdef PACKAGE_URL
+	printf("Project homepage:   %s\n", PACKAGE_URL);
+#endif
 	return 0;
 }
 
