@@ -101,7 +101,7 @@ int inet_open(char *ifname)
 	mreq.imr_multiaddr.s_addr = inet_addr(MC_ALL_SNOOPERS);
 	mreq.imr_ifindex = if_nametoindex(ifname);
         if (setsockopt(sd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq))) {
-		smclog(LOG_ERR, "Failed joining group %s: %s", MC_ALL_SNOOPERS);
+		smclog(LOG_ERR, "Failed joining group %s: %s", MC_ALL_SNOOPERS, strerror(errno));
 		return -1;
 	}
 
@@ -109,7 +109,7 @@ int inet_open(char *ifname)
 	mreq.imr_multiaddr.s_addr = inet_addr(MC_ALL_ROUTERS);
 	mreq.imr_ifindex = if_nametoindex(ifname);
         if (setsockopt(sd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq))) {
-		smclog(LOG_ERR, "Failed joining group %s: %s", MC_ALL_SNOOPERS);
+		smclog(LOG_ERR, "Failed joining group %s: %s", MC_ALL_ROUTERS, strerror(errno));
 		return -1;
 	}
 
