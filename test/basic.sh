@@ -27,10 +27,11 @@ print "Starting smcrouted ..."
 sleep 1
 
 print "Starting collector ..."
-tshark -Qc 10 -lni a2 -w "/tmp/$NM/pcap" 'dst 225.3.2.1 or dst 225.1.2.3 or dst 225.1.2.4 or 225.1.2.5' 2>/dev/null &
+tshark -Qc 12 -lni a2 -w "/tmp/$NM/pcap" 'dst 225.3.2.1 or dst 225.1.2.3 or dst 225.1.2.4 or 225.1.2.5' 2>/dev/null &
 
 ../src/smcroutectl -S "/tmp/$NM/sock" add a1 225.1.2.4 a2
 ../src/smcroutectl -S "/tmp/$NM/sock" add a1 10.0.0.1 225.1.2.5 a2
+show_mroute
 
 print "Starting emitter ..."
 ping -c 3 -W 1 -I a1 -t 2 225.3.2.1 >/dev/null
