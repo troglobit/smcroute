@@ -76,7 +76,7 @@ EOF
 # Set up a basic dummy interface topology,
 #
 # No IP address assignment is done in topo files, only topology setup.
-topo_dummy()
+topo_basic()
 {
     cat << EOF > "$NM-topo.ip"
 link add a1 type dummy
@@ -94,7 +94,7 @@ EOF
     return 2
 }
 
-# Same as dummy topology, but with multiple inbound interfaces.
+# Same as basic topology, but with multiple inbound interfaces.
 #
 # No IP address assignment is done in topo files, only topology setup.
 topo_multi()
@@ -139,7 +139,7 @@ EOF
 
 # Set up VLAN interfaces on top of dummy interfaces
 # shellcheck disable=SC2048
-topo_dummy_vlan()
+topo_basic_vlan()
 {
     num=$1
     shift
@@ -222,13 +222,13 @@ topo()
 	    topo_bridge
 	    ;;
 
-	dummy)
-	    topo_dummy
+	basic)
+	    topo_basic
 	    num=$?
 	    case "$1" in
 		vlan)
 		    shift
-		    topo_dummy_vlan $num "$@"
+		    topo_basic_vlan $num "$@"
 		    ;;
 	    esac
 	    ;;

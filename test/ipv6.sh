@@ -6,7 +6,7 @@
 . "$(dirname "$0")/lib.sh"
 
 print "Creating world ..."
-topo dummy
+topo basic
 
 # IP world ...
 ip addr add 2001:1::1/64 dev a1
