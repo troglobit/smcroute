@@ -6,19 +6,21 @@
 . "$(dirname "$0")/lib.sh"
 
 print "Creating world ..."
-topo bridge
+topo dummy
 
 # IP world ...
-ip addr add 2001:1::1/64 dev vlan1
-ip addr add 2001:2::1/64 dev vlan2
+ip addr add 2001:1::1/64 dev a1
+ip addr add   fc00::1/64 dev a1
+ip addr add 2001:2::1/64 dev a2
+ip -br a
 
 print "Creating config ..."
 cat <<EOF > "/tmp/$NM/conf"
 # ipv6 (*,G) multicast routing
-phyint vlan1 enable
-phyint vlan2 enable
-mroute from vlan1 source fc00::1 group ff04:0:0:0:0:0:0:114 to vlan2
-mroute from vlan1                group ff2e::42             to vlan2
+phyint a1 enable
+phyint a2 enable
+mroute from a1 source fc00::1 group ff04:0:0:0:0:0:0:114 to a2
+mroute from a1                group ff2e::42             to a2
 EOF
 cat "/tmp/$NM/conf"
 
@@ -31,8 +33,8 @@ tshark -c 5 -lni a2 -w "/tmp/$NM/pcap" 'dst ff04::114 or dst ff2e::42' 2>/dev/nu
 sleep 1
 
 print "Starting emitter ..."
-nemesis udp -6 -c 3 -d a1 -T 3 -S fc00::1                -D ff04::114 -M 33:33:00:00:01:14
-nemesis udp -6 -c 3 -d a1 -T 3 -S fdd1:9ac8:e35b:4e2d::1 -D ff2e::42  -M 33:33:00:00:00:42
+ping -6 -c 3 -I fc00::1 -t 3 -W 1 ff04::114
+ping -6 -c 3 -I a1 -t 3 -W 1 ff2e::42
 
 # Show active routes (and counters)
 cat /proc/net/ip6_mr_cache
