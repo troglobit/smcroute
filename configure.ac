@@ -46,7 +46,7 @@ AC_CHECK_SIN_LEN()
 AC_ARG_ENABLE([mrdisc],
 	AS_HELP_STRING([--enable-mrdisc], [enable IPv4 multicast router discovery]))
 AC_ARG_ENABLE(test,
-        [AS_HELP_STRING([--enable-test], [enable tests, requries unshare, tshark + nemesis.git])],
+        [AS_HELP_STRING([--enable-test], [enable tests, requries unshare, tshark, etc.])],
         [ac_enable_test="$enableval"],
 	[ac_enable_test="no"])
 AC_ARG_ENABLE([ipv6],
