@@ -56,6 +56,20 @@ Interfaces `a1` and `a2` are Linux dummy type interfaces.
     MC -----> a1                       a2 ------> MC
 
 
+### Multi
+
+Same as Basic, but with multiple output interfaces, useful for testing
+wildcard interface matching.
+
+                        SMCRoute
+                 .====== router =====.
+                ////               \\\\
+     MC ----> a1///                 \\\b1 ------> MC 
+     MC ----> a2//                   \\b2 ------> MC 
+     MC ----> a3/                     \b3 ------> MC 
+     MC ----> a4                       b4 ------> MC 
+
+
 ### Basic w/ VLANs
 
 Interfaces `a1` and `a2` are Linux dummy type interfaces with VLAN
@@ -85,6 +99,8 @@ created on which routing takes place.
     MC -----> a1       /     \        a2 -----> MC
                '------'       '------'
 
+Both bridge ports, `a1` and `a2`, are untagged members of each VLAN.
+
 > **Note:** interface `a1` and `vlan1` are in the same VLAN (VID 1), and
 >           interface `a2` and `vlan2` are in the same VLAN (VID 2).
 
@@ -101,7 +117,7 @@ an isolated network namespace.  Purpose is to emulate true end devices.
     | MC --> a1-|-----'                  `----|-a2 --> MC |
     |           |                             |           |
     '-----------'     VETH pairs: aN//brN     '-----------'
-
+                        In netns: eth0
 
 Tests
 -----

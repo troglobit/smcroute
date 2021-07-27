@@ -94,6 +94,49 @@ EOF
     return 2
 }
 
+# Same as dummy topology, but with multiple inbound interfaces.
+#
+# No IP address assignment is done in topo files, only topology setup.
+topo_multi()
+{
+    cat << EOF > "$NM-topo.ip"
+link add a1 type dummy
+link set a1 up
+link set a1 multicast on
+
+link add a2 type dummy
+link set a2 up
+link set a2 multicast on
+
+link add a3 type dummy
+link set a3 up
+link set a3 multicast on
+
+link add a4 type dummy
+link set a4 up
+link set a4 multicast on
+
+link add b1 type dummy
+link set b1 up
+link set b1 multicast on
+
+link add b2 type dummy
+link set b2 up
+link set b2 multicast on
+
+link add b3 type dummy
+link set b3 up
+link set b3 multicast on
+
+link add b4 type dummy
+link set b4 up
+link set b4 multicast on
+EOF
+
+    ip -force -batch "$NM-topo.ip"
+    rm -f "$NM-topo.ip"
+}
+
 # Set up VLAN interfaces on top of dummy interfaces
 # shellcheck disable=SC2048
 topo_dummy_vlan()
@@ -192,6 +235,10 @@ topo()
 
 	isolated)
 	    topo_isolated "$@"
+	    ;;
+
+	multi)
+	    topo_multi
 	    ;;
 
 	teardown)
