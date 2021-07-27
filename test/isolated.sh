@@ -33,7 +33,7 @@ EOF
 cat "/tmp/$NM/conf"
 
 print "Starting smcrouted ..."
-../src/smcrouted -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug &
+../src/smcrouted -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug -S "/tmp/$NM/sock" &
 sleep 1
 
 print "Starting collector ..."
@@ -43,6 +43,7 @@ sleep 1
 print "Starting emitter ..."
 nsenter --net="$LEFT" -- ping -c 3 -W 1 -I eth0 -t 3 225.1.2.3
 show_mroute
+../src/smcroutectl -S "/tmp/$NM/sock"
 
 print "Analyzing ..."
 lines=$(tshark -r "/tmp/$NM/pcap" 2>/dev/null | grep 225.1.2.3 | tee "/tmp/$NM/result" | wc -l)
