@@ -183,6 +183,42 @@ topo_isolated()
     ip link set "$rif" up
 }
 
+# Same as bridge topology, but with the VETH endpoints constructed
+# by the isolated topology.  We just rename the main namespace's
+# bridge ports to match.
+topo_isolated_bridge()
+{
+    left="$1"
+    right="$2"
+    lif=$(basename "$left")
+    rif=$(basename "$right")
+
+    topo_isolated "$@"
+
+    # This will fail to create the VETH pairs, but that's OK since
+    # we've set up the b1 and b2 interfaces here to be enslaved in
+    # the bridge instead.
+    #topo_bridge
+    echo "Creating br0, adding $lif and $rif as bridge ports"
+    ip link add br0 type bridge vlan_filtering 1 mcast_snooping 0
+    ip link set "$lif" master br0
+    ip link set "$rif" master br0
+
+    ip link set br0 up
+
+    ip link add link br0 vlan1 type vlan id 1
+    ip link add link br0 vlan2 type vlan id 2
+
+    ip link set vlan1 up
+    ip link set vlan2 up
+
+    bridge vlan add vid 2 dev "$rif" pvid untagged
+    bridge vlan del vid 1 dev "$rif"
+
+    bridge vlan add vid 1 dev br0 self
+    bridge vlan add vid 2 dev br0 self
+}
+
 topo_teardown()
 {
     if [ -z "$NM" ]; then
@@ -234,7 +270,15 @@ topo()
 	    ;;
 
 	isolated)
-	    topo_isolated "$@"
+	    case "$1" in
+		bridge)
+		    shift
+		    topo_isolated_bridge "$@"
+		    ;;
+		*)
+	    	    topo_isolated "$@"
+		    ;;
+	    esac
 	    ;;
 
 	multi)

@@ -105,6 +105,28 @@ Both bridge ports, `a1` and `a2`, are untagged members of each VLAN.
 >           interface `a2` and `vlan2` are in the same VLAN (VID 2).
 
 
+### Isolated Endpoints Bridged w/ VLANs
+
+Like the default bridge, but each endpoint is in an isolated network
+namespace.  This allows setting both IPv4 & IPv6 addresses on all
+interfaces and using ping6 for emitters instead of requiring nemesis.
+
+                            SMCRoute
+                         .-- router --.
+                        /              \
+      netnst: left    vlan1         vlan2    netns: right
+     .-------------.       \       /        .-------------.
+     |             |        bridge0         |             |
+     | MC --> eth0 |        /     \         | eth0 --> MC |
+     |            `--------'       '--------'             |
+     '-------------'                        '-------------'
+
+Both bridge ports, `a1` and `a2`, are untagged members of each VLAN.
+
+> **Note:** interface `a1` and `vlan1` are in the same VLAN (VID 1), and
+>           interface `a2` and `vlan2` are in the same VLAN (VID 2).
+
+
 ### Isolated
 
 Similar to Basic, but with two VETH pairs with the outer end of each in
