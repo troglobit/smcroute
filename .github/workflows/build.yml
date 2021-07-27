@@ -65,10 +65,8 @@ jobs:
           ~/tmp/sbin/smcrouted -h
           ~/tmp/sbin/smcroutectl -h
       - name: Run Unit Tests
-        # Each unit test runs in an unshare and need a custom build of
-        # nemesis to support IPv6 UDP injection (hence the container).
         run: |
-          make check || cat test/test-suite.log
+          make check || (cat test/test-suite.log; false)
       - name: Upload Test Results
         uses: actions/upload-artifact@v2
         with:
