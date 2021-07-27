@@ -28,6 +28,7 @@ sleep 1
 
 print "Starting collector ..."
 tshark -Qc 12 -lni a2 -w "/tmp/$NM/pcap" 'dst 225.3.2.1 or dst 225.1.2.3 or dst 225.1.2.4 or 225.1.2.5' 2>/dev/null &
+sleep 1
 
 ../src/smcroutectl -S "/tmp/$NM/sock" add a1 225.1.2.4 a2
 ../src/smcroutectl -S "/tmp/$NM/sock" add a1 10.0.0.1 225.1.2.5 a2
@@ -54,8 +55,8 @@ echo " => $lines4 for 225.1.2.5, expected => 3"
 print "Cleaning up ..."
 topo teardown
 
-# one frame lost due to initial (*,G) -> (S,G) route setup
-# no frames lost in pure (S,G) route
-# shellcheck disable=SC2166
-[ "$lines1" = "2" -a "$lines2" = "3" -a "$lines3" = "2" -a "$lines4" = "3" ] && exit 0
+# Expect one frame lost due to initial (*,G) -> (S,G) route setup, while
+# we don't expect any frame loss in pure (S,G) routes
+# shellcheck disable=SC2166 disable=SC2086
+[ $lines1 -ge 2 -a $lines2 -eq 3 -a $lines3 -ge 2 -a $lines4 -eq 3 ] && exit 0
 exit 1
