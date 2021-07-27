@@ -50,7 +50,6 @@ jobs:
           fi
           mkdir coverity
           tar xzf coverity-latest.tar.gz --strip 1 -C coverity
-          ls coverity/
       - name: Install dependencies
         run: |
           sudo apt-get -y update
