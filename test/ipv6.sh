@@ -31,10 +31,11 @@ sleep 1
 print "Starting collector ..."
 tshark -c 5 -lni a2 -w "/tmp/$NM/pcap" 'dst ff04::114 or dst ff2e::42' 2>/dev/null &
 sleep 1
+show_mroute
 
 print "Starting emitter ..."
-ping -6 -c 3 -I fc00::1 -t 3 -W 1 ff04::114
-ping -6 -c 3 -I a1 -t 3 -W 1 ff2e::42
+ping -6 -c 3 -W 1 -I fc00::1   -t 3 ff04::114 >/dev/null
+ping -6 -c 3 -W 1 -I 2001:1::1 -t 3 ff2e::42  >/dev/null
 
 # Show active routes (and counters)
 cat /proc/net/ip6_mr_cache
