@@ -163,7 +163,7 @@ Similar to the Bridged VLAN test, only with IPv6.  This test requires
 the latest GIT version of [nemesis][1], because it needs to inject IPv6
 UDP frames on interface `a1`.
 
-**Topology:** Bridged w/ VLANs
+**Topology:** Basic
 
 
 ### Isolated (*,G) Forwarding
