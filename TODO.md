@@ -1,3 +1,11 @@
+Split man page in three
+-----------------------
+
+It's confusing that the same manual page is for smcrouted, smcroutectl
+and smcroute.conf ... describing commands and options get messed up and
+smcroutectl doesn't even have an options section.
+
+
 Possibly Exit with Error if Multicast Socket is Busy
 ----------------------------------------------------
 
