@@ -43,6 +43,7 @@ static char *ident = PACKAGE;
 static char *sock_file = NULL;
 static char *prognm = NULL;
 static int   heading = 1;
+static int   plain = 0;
 
 struct arg {
 	char *name;
@@ -55,6 +56,7 @@ struct arg {
 } args[] = {
 	{ NULL,      0, 'd', NULL,   "Detailed output in show command", NULL, 0 },
 	{ NULL,      1, 'I', "NAME", "Identity of routing daemon instance, default: " PACKAGE, "foo", 0 },
+	{ NULL,      0, 'p', NULL,   "Use plain table headings, no ctrl chars", NULL, 0 },
 	{ NULL,      1, 'S', "FILE", "UNIX domain socket for daemon, default: " RUNSTATEDIR "/" PACKAGE ".sock", "/tmp/foo.sock", 0 },
 	{ NULL,      0, 't', NULL,   "Skip table heading in show command", NULL, 0 },
 	{ "help",    0, 'h', NULL,   "Show help text", NULL, 0 },
@@ -141,13 +143,15 @@ static int get_width(void)
 
 static void table_heading(char cmd, int detail)
 {
-	int len;
-	char line[120];
-	const char *g = "GROUP (S,G)", *i = "INBOUND";
 	const char *r = "ROUTE (S,G)", *o = "OUTBOUND", *p = "PACKETS", *b = "BYTES";
+	const char *g = "GROUP (S,G)", *i = "INBOUND";
+	char line[120];
+
+	if (!heading)
+		return;
 
 	/* Skip heading also if user redirects output to a file */
-	if (!heading || !isatty(STDOUT_FILENO))
+	if (!plain && !isatty(STDOUT_FILENO))
 		return;
 
 	if (detail)
@@ -155,28 +159,40 @@ static void table_heading(char cmd, int detail)
 
 	switch (cmd) {
 	case 'G':
-		snprintf(line, sizeof(line), "\e[7m%-46s %-16s", g, i);
+		snprintf(line, sizeof(line), "%-46s %-16s", g, i);
 		break;
 
 	case 'R':
-		snprintf(line, sizeof(line), "\e[7m%-46s %-16s %10s %10s  %-8s", r, i, p, b, o);
+		snprintf(line, sizeof(line), "%-46s %-16s %10s %10s  %-8s", r, i, p, b, o);
 		break;
 
 	case 'r':
-		snprintf(line, sizeof(line), "\e[7m%-46s %-16s %-8s", r, i, o);
+		snprintf(line, sizeof(line), "%-46s %-16s %-8s", r, i, o);
 		break;
 
 	case 'i':
 	case 'I':
-		snprintf(line, sizeof(line), "\e[7mPHYINT           IFINDEX  VIF  MIF");
+		snprintf(line, sizeof(line), "PHYINT           IFINDEX  VIF  MIF");
 		break;
 
 	default:
 		return;
 	}
 
-	len = get_width() - (int)strlen(line) + 4;
-	fprintf(stderr, "%s%*s\n\e[0m", line, len < 0 ? 0 : len, "");
+	if (!plain) {
+		int len;
+
+		len = get_width() - (int)strlen(line);
+		fprintf(stderr, "\e[7m%s%*s\n\e[0m", line, len < 0 ? 0 : len, "");
+	} else {
+		size_t j, len;
+
+		fprintf(stderr, "%s\n", line);
+		len = strlen(line);
+		for (j = 0; j < len; j++)
+			fputc('=', stderr);
+		fputc('\n', stderr);
+	}
 }
 
 /*
@@ -391,7 +407,7 @@ int main(int argc, char *argv[])
 	struct arg *cmd = NULL;
 
 	prognm = progname(argv[0]);
-	while ((c = getopt(argc, argv, "dhI:S:tv")) != EOF) {
+	while ((c = getopt(argc, argv, "dhI:pS:tv")) != EOF) {
 		switch (c) {
 		case 'd':
 			detail++;
@@ -403,6 +419,10 @@ int main(int argc, char *argv[])
 
 		case 'I':
 			ident = optarg;
+			break;
+
+		case 'p':
+			plain = 1;
 			break;
 
 		case 'S':

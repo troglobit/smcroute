@@ -1,4 +1,4 @@
-.Dd $Mdocdate: May 6 2017 $
+.Dd $Mdocdate: Jul 28 2021 $
 .Dt SMCROUTE 8 SMM
 .Os
 .Sh NAME
@@ -18,8 +18,9 @@
 .Op Fl S Ar FILE
 .Op Fl t Ar ID
 .Nm smcroutectl
-.Op Fl dtv
+.Op Fl dptv
 .Op Fl I Ar NAME
+.Op Fl S Ar FILE
 .Op Ar COMMAND
 .Pp
 .Nm smcroutectl
@@ -68,7 +69,7 @@ going through other routers.
 .Sh OPTIONS
 The following
 .Nm smcrouted
-commands are available:
+options are available:
 .Bl -tag -width Ds
 .It Fl n
 Run daemon in foreground, do not detach from controlling terminal
