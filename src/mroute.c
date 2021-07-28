@@ -1102,6 +1102,10 @@ int mroute6_enable(int do_vifs, int table_id)
 			mroute6_add_mif(iface);
 	}
 
+	LIST_INIT(&mroute6_conf_list);
+	LIST_INIT(&mroute6_dyn_list);
+	LIST_INIT(&mroute6_static_list);
+
 	return 0;
 error:
 	socket_close(mroute6_socket);
