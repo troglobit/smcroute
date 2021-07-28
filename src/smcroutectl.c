@@ -475,7 +475,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (!cmd)
-		return ipc_command('s', NULL, 0);
+		return ipc_command(detail ? 'S' : 's', NULL, 0);
 
 	c = cmd->val;
 	if (detail && cmd->has_detail)
