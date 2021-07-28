@@ -19,7 +19,7 @@ show_mroute()
     ip mroute
     ip -6 mroute
     echo "-----------------------------------------------------------------------------------"
-    ../src/smcroutectl -d -S "/tmp/$NM/sock"
+    ../src/smcroutectl -pd -S "/tmp/$NM/sock"
 }
 
 # Set up a basic bridge topology, two VETH pairs with one end in the
