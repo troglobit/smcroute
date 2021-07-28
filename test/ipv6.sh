@@ -41,7 +41,7 @@ ping -6 -c 3 -W 1 -I 2001:1::1 -t 3 ff2e::42  >/dev/null
 cat /proc/net/ip6_mr_cache
 ip -6 mroute
 
-../src/smcroutectl -S "/tmp/$NM/sock"
+../src/smcroutectl -d -S "/tmp/$NM/sock"
 
 print "Analyzing ..."
 lines1=$(tshark -r "/tmp/$NM/pcap" 2>/dev/null | grep ff04::114 | tee    "/tmp/$NM/result" | wc -l)
