@@ -478,7 +478,7 @@ int main(int argc, char *argv[])
 		return ipc_command('s', NULL, 0);
 
 	c = cmd->val;
-	if (cmd->has_detail)
+	if (detail && cmd->has_detail)
 		c -= 0x20;
 
 	return ipc_command(c, &argv[pos], argc - pos);
