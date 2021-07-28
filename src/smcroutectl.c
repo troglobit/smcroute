@@ -421,13 +421,11 @@ int main(int argc, char *argv[])
 		}
 	}
 
-
 	pos = optind;
 	while (pos < argc && !cmd) {
 		char *arg = argv[pos];
 
 		for (i = 0; args[i].val; i++) {
-			int       c = args[i].val;
 			char    *nm = args[i].name;
 			size_t  len;
 
@@ -438,6 +436,7 @@ int main(int argc, char *argv[])
 			if (strncmp(arg, nm, len))
 				continue;
 
+			c = args[i].val;
 			switch (c) {
 			case 'h':
 				help++;
