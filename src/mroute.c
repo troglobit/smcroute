@@ -1414,6 +1414,37 @@ int mroute6_dyn_add(struct mroute6 *route)
 	return 0;
 }
 
+static int get_stats6(struct mroute6 *route, unsigned long *pktcnt, unsigned long *bytecnt, unsigned long *wrong_if)
+{
+	struct sockaddr_in6 *src = &route->source;
+	struct sockaddr_in6 *grp = &route->group;
+	struct sioc_sg_req6 sg_req;
+
+	if (mroute6_socket == -1) {
+		smclog(LOG_DEBUG, "No IPv6 multicast socket");
+		return -1;
+	}
+
+	memset(&sg_req, 0, sizeof(sg_req));
+	sg_req.src = *src;
+	sg_req.grp = *grp;
+
+	if (ioctl(mroute6_socket, SIOCGETSGCNT_IN6, &sg_req) < 0) {
+		if (wrong_if)
+			smclog(LOG_WARNING, "Failed getting MFC stats: %s", strerror(errno));
+		return errno;
+	}
+
+	if (pktcnt)
+		*pktcnt = sg_req.pktcnt;
+	if (bytecnt)
+		*bytecnt = sg_req.bytecnt;
+	if (wrong_if)
+		*wrong_if = sg_req.wrong_if;
+
+	return 0;
+}
+
 static int mroute6_exists(struct mroute6 *route)
 {
 	struct mroute6 *entry;
@@ -1710,10 +1741,70 @@ static int show_mroute(int sd, struct mroute4 *r, int detail)
 	return 0;
 }
 
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
+static int show_mroute6(int sd, struct mroute6 *r, int detail)
+{
+	struct iface *i;
+	char src[INET_ADDRSTRLEN] = "*";
+	char src_len[5] = "";
+	char grp[INET_ADDRSTRLEN];
+	char grp_len[5] = "";
+	char sg[(INET_ADDRSTRLEN+3) * 2 + 5];
+	char buf[MAX_MC_VIFS * 17 + 80];
+	int mif;
+
+	/* XXX: fix when mroute6 -> mroute refactor is complete */
+	if (memcmp(&r->source, &in6addr_any, sizeof(in6addr_any))) {
+		inet_ntop(AF_INET6, &r->source.sin6_addr, src, INET6_ADDRSTRLEN);
+		if (r->src_len)
+			snprintf(src_len, sizeof(src_len), "/%u", r->src_len);
+	}
+
+	inet_ntop(AF_INET6, &r->group.sin6_addr,  grp, INET6_ADDRSTRLEN);
+	if (r->len)
+		snprintf(grp_len, sizeof(grp_len), "/%u", r->len);
+
+	i = iface_find_by_vif(r->inbound);
+	snprintf(sg, sizeof(sg), "(%s%s, %s%s)", src, src_len, grp, grp_len);
+	snprintf(buf, sizeof(buf), "%-46s %-16s", sg, i->name);
+	if (detail) {
+		unsigned long p = 0, b = 0;
+		char stats[30];
+
+		get_stats6(r, &p, &b, NULL);
+		snprintf(stats, sizeof(stats), " %10lu %10lu ", p, b);
+		strlcat(buf, stats, sizeof(buf));
+	}
+
+	for (mif = 0; mif < MAX_MC_MIFS; mif++) {
+		char tmp[22];
+
+		if (r->ttl[mif] == 0)
+			continue;
+
+		i = iface_find_by_vif(mif);
+		if (!i)
+			continue;
+
+		snprintf(tmp, sizeof(tmp), " %s", i->name);
+		strlcat(buf, tmp, sizeof(buf));
+	}
+	strlcat(buf, "\n", sizeof(buf));
+
+	if (ipc_send(sd, buf, strlen(buf)) < 0) {
+		smclog(LOG_ERR, "Failed sending reply to client: %s", strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+#endif
+
 /* Write all (*,G) routes to client socket */
 int mroute_show(int sd, int detail)
 {
 	struct mroute4 *r;
+	struct mroute6 *r6;
 
 	LIST_FOREACH(r, &mroute4_conf_list, link) {
 		if (show_mroute(sd, r, detail) < 0)
@@ -1729,6 +1820,23 @@ int mroute_show(int sd, int detail)
 		if (show_mroute(sd, r, detail) < 0)
 			return 1;
 	}
+
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
+	LIST_FOREACH(r6, &mroute6_conf_list, link) {
+		if (show_mroute6(sd, r6, detail) < 0)
+			return 1;
+	}
+
+	LIST_FOREACH(r6, &mroute6_dyn_list, link) {
+		if (show_mroute6(sd, r6, detail) < 0)
+			return 1;
+	}
+
+	LIST_FOREACH(r6, &mroute6_static_list, link) {
+		if (show_mroute6(sd, r6, detail) < 0)
+			return 1;
+	}
+#endif
 
 	return 0;
 }
