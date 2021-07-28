@@ -36,12 +36,7 @@ show_mroute
 print "Starting emitter ..."
 ping -6 -c 3 -W 1 -I fc00::1   -t 3 ff04::114 >/dev/null
 ping -6 -c 3 -W 1 -I 2001:1::1 -t 3 ff2e::42  >/dev/null
-
-# Show active routes (and counters)
-cat /proc/net/ip6_mr_cache
-ip -6 mroute
-
-../src/smcroutectl -d -S "/tmp/$NM/sock"
+show_mroute
 
 print "Analyzing ..."
 lines1=$(tshark -r "/tmp/$NM/pcap" 2>/dev/null | grep ff04::114 | tee    "/tmp/$NM/result" | wc -l)

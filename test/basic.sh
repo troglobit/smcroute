@@ -40,7 +40,6 @@ ping -c 3 -W 1 -I a1 -t 2 225.1.2.3 >/dev/null
 ping -c 3 -W 1 -I a1 -t 2 225.1.2.4 >/dev/null
 ping -c 3 -W 1 -I a1 -t 2 225.1.2.5 >/dev/null
 show_mroute
-../src/smcroutectl -d -S "/tmp/$NM/sock"
 
 print "Analyzing ..."
 lines1=$(tshark -r "/tmp/$NM/pcap" 2>/dev/null | grep 225.1.2.3 | tee    "/tmp/$NM/result" | wc -l)

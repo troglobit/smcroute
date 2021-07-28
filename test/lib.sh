@@ -14,8 +14,12 @@ show_mroute()
 {
     # Show active routes (and counters)
     cat /proc/net/ip_mr_cache
+    cat /proc/net/ip6_mr_cache
     echo "-----------------------------------------------------------------------------------"
     ip mroute
+    ip -6 mroute
+    echo "-----------------------------------------------------------------------------------"
+    ../src/smcroutectl -d -S "/tmp/$NM/sock"
 }
 
 # Set up a basic bridge topology, two VETH pairs with one end in the
