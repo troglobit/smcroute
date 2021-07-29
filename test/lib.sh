@@ -230,8 +230,10 @@ topo_teardown()
 	exit 1
     fi
 
-    PID=$(cat "/tmp/$NM/pid")
-    kill -9 "$PID"
+    if [ -f "/tmp/$NM/pid" ]; then
+	PID=$(cat "/tmp/$NM/pid")
+	kill -9 "$PID"
+    fi
 
     # shellcheck disable=SC2162
     if [ -f "/tmp/$NM/mounts" ]; then
@@ -247,9 +249,21 @@ topo_teardown()
     rm -rf "/tmp/$NM"
 }
 
+signal()
+{
+    echo
+    print "Got signal, cleaning up"
+    topo_teardown
+    exit 1
+}
+
 topo()
 {
-    mkdir -p "/tmp/$NM"
+    if [ ! -d "/tmp/$NM" ]; then
+	mkdir "/tmp/$NM"
+	trap signal INT TERM QUIT
+    fi
+
     if [ $# -lt 1 ]; then
 	print "Too few arguments to topo()"
 	exit 1
