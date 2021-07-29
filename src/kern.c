@@ -15,6 +15,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include "config.h"
+
 #include <errno.h>
 #include <string.h>
 
@@ -34,7 +36,7 @@
  * the old struct ip_mreq API.
  */
 #ifdef HAVE_STRUCT_GROUP_REQ	/* Prefer RFC 3678 */
-static size_t group_req(int sd, int cmd, struct mcgroup *mcg)
+static int group_req(int sd, int cmd, struct mcgroup *mcg)
 {
 	struct group_source_req gsr;
 	struct sockaddr_in group;
@@ -116,43 +118,51 @@ static size_t group_req(int sd, int cmd, struct mcgroup *mcg)
 
 #else  /* Assume we have old style struct ip_mreq */
 
-static size_t group_req(int sd, int cmd, struct mcgroup *mcg, void *arg)
+static int group_req(int sd, int cmd, struct mcgroup *mcg)
 {
-	struct ip_mreq_source mreqsrc;
+	char group[INET_ADDRSTR_LEN];
 #ifdef HAVE_IPV6_MULTICAST_HOST
 	struct ipv6_mreq ipv6mr;
 #endif
+#ifdef __linux__
+	struct ip_mreqn ipmr;
+#else
 	struct ip_mreq ipmr;
+#endif
+	int op, proto;
 	size_t len;
 	void *arg;
-	int op, proto;
 
 #ifdef HAVE_IPV6_MULTICAST_HOST
 	if (mcg->group.ss_family == AF_INET6) {
 		struct sockaddr_in6 *sin6;
 
-		sin6 = (struct sockaddr_in6 *)&mcg->group;
+		sin6 = inet_addr6_get(&mcg->group);
 		ipv6mr.ipv6mr_multiaddr = sin6->sin6_addr;
 		ipv6mr.ipv6mr_interface = mcg->iface->ifindex;
+
 		proto = IPPROTO_IPV6;
+		op    = cmd == 'j' ? IPV6_ADD_MEMBERSHIP : IPV6_DROP_MEMBERSHIP;
+		arg   = &ipv6mr;
+		len   = sizeof(ipv6mr);
 	} else
 #endif
 	{
-		struct sockaddr_in *sin;
-
-		sin = (struct sockaddr_in *)&mcg->group;
-		ipmr.imr_multiaddr = sin->sin_addr;
+		ipmr.imr_multiaddr = *inet_addr_get(&mcg->group);
+#ifdef __linux__
+		ipmr.imr_ifindex   = mcg->iface->ifindex;
+#else
 		ipmr.imr_interface = mcg->iface->inaddr;
+#endif
+
 		proto = IPPROTO_IP;
+		op    = cmd == 'j' ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP;
+		arg   = &ipmr;
+		len   = sizeof(ipmr);
 	}
 
-	if (is_anyaddr(&mcg->source)) {
-		if (cmd == 'j')	op = IP_ADD_MEMBERSHIP;
-		else		op = IP_DROP_MEMBERSHIP;
-	} else {
-		if (cmd == 'j')	op = IP_ADD_SOURCE_MEMBERSHIP;
-		else		op = IP_DROP_SOURCE_MEMBERSHIP;
-	}
+	smclog(LOG_DEBUG, "%s group (*,%s) on ifindex %d ...", cmd == 'j' ? "Join" : "Leave",
+	       inet_addr2str(&mcg->group, group, sizeof(group)), mcg->iface->ifindex);
 
 	return setsockopt(sd, proto, op, arg, len);
 }
