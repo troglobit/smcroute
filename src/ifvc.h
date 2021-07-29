@@ -4,6 +4,7 @@
 
 #include "config.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <string.h>
 #include <arpa/inet.h>		/* inet_ntop() */
@@ -34,6 +35,64 @@ struct ifmatch {
 	unsigned int iter;
 	unsigned int match_count;
 };
+
+static inline void inet_addr4_set(inet_addr_t *dst, const struct in_addr *src)
+{
+	struct sockaddr_in *sin = (struct sockaddr_in *)dst;
+
+	assert(dst && src);
+	sin->sin_family = AF_INET;
+	sin->sin_addr = *src;
+}
+
+static inline struct sockaddr_in *inet_addr4_get(inet_addr_t *addr)
+{
+	struct sockaddr_in *sin = (struct sockaddr_in *)addr;
+
+	assert(addr);
+	assert(sin->sin_family == AF_INET);
+
+	return sin;
+}
+
+#ifdef  HAVE_IPV6_MULTICAST_HOST
+static inline void inet_addr6_set(inet_addr_t *dst, const struct in6_addr *src)
+{
+	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)dst;
+
+	assert(dst && src);
+	sin6->sin6_family = AF_INET6;
+	sin6->sin6_addr = *src;
+}
+
+static inline struct sockaddr_in6 *inet_addr6_get(inet_addr_t *addr)
+{
+	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)addr;
+
+	assert(addr);
+	assert(sin6->sin6_family == AF_INET6);
+
+	return sin6;
+}
+#endif
+
+static inline void inet_anyaddr(sa_family_t family, inet_addr_t *ss)
+{
+	struct sockaddr_in *sin = (struct sockaddr_in *)ss;
+
+#ifdef HAVE_IPV6_MULTICAST_HOST
+	if (family == AF_INET6) {
+		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)ss;
+
+		sin6->sin6_family = AF_INET6;
+		memcpy(&sin6->sin6_addr, &in6addr_any, sizeof(in6addr_any));
+		return;
+	}
+#endif
+
+	sin->sin_family = AF_INET;
+	sin->sin_addr.s_addr = htonl(INADDR_ANY);
+}
 
 static inline int inet_addr_cmp(inet_addr_t *a, inet_addr_t *b)
 {
