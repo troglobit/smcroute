@@ -159,6 +159,7 @@ static void table_heading(char cmd, int detail)
 
 	switch (cmd) {
 	case 'G':
+	case 'g':
 		snprintf(line, sizeof(line), "%-46s %-16s", g, i);
 		break;
 
