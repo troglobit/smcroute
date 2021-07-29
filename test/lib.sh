@@ -22,6 +22,14 @@ show_mroute()
     ../src/smcroutectl -pd -S "/tmp/$NM/sock"
 }
 
+collect()
+{
+    print "Starting collector ..."
+    tshark -w "/tmp/$NM/pcap" -lni "$@" 2>/dev/null &
+    echo $! >> "/tmp/$NM/PIDs"
+    sleep 1
+}
+
 # Set up a basic bridge topology, two VETH pairs with one end in the
 # bridge and the other free.  Each pair is also in a separate VLAN.
 #
@@ -240,6 +248,11 @@ topo_teardown()
         while read ln; do umount "$ln"; rm "$ln"; done < "/tmp/$NM/mounts"
     fi
 
+    # shellcheck disable=SC2162
+    if [ -f "/tmp/$NM/PIDs" ]; then
+	while read ln; do kill "$ln" 2>/dev/null; done < "/tmp/$NM/PIDs"
+    fi
+
     ip link del br0  2>/dev/null
     ip link del a1   2>/dev/null
     ip link del a2   2>/dev/null
@@ -261,6 +274,7 @@ topo()
 {
     if [ ! -d "/tmp/$NM" ]; then
 	mkdir "/tmp/$NM"
+	touch "/tmp/$NM/PIDs"
 	trap signal INT TERM QUIT
     fi
 

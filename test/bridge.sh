@@ -39,6 +39,7 @@ sleep 1
 
 print "Starting collector ..."
 nsenter --net="$RIGHT" -- tshark -c 2 -lni eth0 -w "/tmp/$NM/pcap" 'dst 225.1.2.3' 2>/dev/null &
+echo $! >> "/tmp/$NM/PIDs"
 sleep 1
 
 print "Starting emitter ..."

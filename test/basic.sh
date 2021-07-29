@@ -39,9 +39,7 @@ cat /proc/net/mcfilter
 echo "-----------------------------------------------------------------------------------"
 ../src/smcroutectl -pS "/tmp/$NM/sock" show groups
 
-print "Starting collector ..."
-tshark -Qc 12 -lni a2 -w "/tmp/$NM/pcap" 'dst 225.3.2.1 or dst 225.1.2.3 or dst 225.1.2.4 or 225.1.2.5' 2>/dev/null &
-sleep 1
+collect a2 -c12 'dst 225.3.2.1 or dst 225.1.2.3 or dst 225.1.2.4 or 225.1.2.5'
 
 ../src/smcroutectl -S "/tmp/$NM/sock" add a1 225.1.2.4 a2
 ../src/smcroutectl -S "/tmp/$NM/sock" add a1 10.0.0.1 225.1.2.5 a2

@@ -42,9 +42,7 @@ cat /proc/net/mcfilter6
 echo "-----------------------------------------------------------------------------------"
 ../src/smcroutectl -pS "/tmp/$NM/sock" show groups
 
-print "Starting collector ..."
-tshark -c 12 -lni a2 -w "/tmp/$NM/pcap" 'dst ff04::114 or dst ff2e::42 or dst ff2e::43 or dst ff2e::44' 2>/dev/null &
-sleep 1
+collect a2 -c12 'dst ff04::114 or dst ff2e::42 or dst ff2e::43 or dst ff2e::44'
 
 ../src/smcroutectl -S "/tmp/$NM/sock" add a1         ff2e::43 a2
 ../src/smcroutectl -S "/tmp/$NM/sock" add a1 fc00::1 ff2e::44 a2

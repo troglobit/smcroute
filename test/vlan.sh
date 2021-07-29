@@ -30,8 +30,11 @@ sleep 1
 
 print "Starting collectors ..."
 tshark -c 6 -lni a1.110 -w "/tmp/$NM/pcap1" 'icmp and (dst 225.1.2.3 or dst 225.3.2.1)' 2>/dev/null &
+echo $! >> "/tmp/$NM/PIDs"
 tshark -c 3 -lni a2.110 -w "/tmp/$NM/pcap2" 'icmp and dst 225.1.2.3' 2>/dev/null &
+echo $! >> "/tmp/$NM/PIDs"
 tshark -c 3 -lni a1.100 -w "/tmp/$NM/pcap3" 'icmp and dst 225.3.2.1' 2>/dev/null &
+echo $! >> "/tmp/$NM/PIDs"
 sleep 1
 
 print "Starting emitters ..."
