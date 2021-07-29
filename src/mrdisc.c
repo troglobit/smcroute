@@ -53,7 +53,7 @@ struct ifsock {
 	size_t refcnt;
 
 	int    sd;
-	char  ifname[IFNAMSIZ + 1];
+	char   ifname[IFNAMSIZ];
 };
 
 static uint8_t interval       = 20;

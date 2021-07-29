@@ -17,7 +17,7 @@ struct mgroup {
 struct mcgroup {
 	LIST_ENTRY(mcgroup) link;
 
-	char           ifname[IFNAMSIZ + 1];
+	char           ifname[IFNAMSIZ];
 	struct iface  *iface;
 	inet_addr_t    source;
 	inet_addr_t    group;

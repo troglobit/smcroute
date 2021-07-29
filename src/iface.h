@@ -11,7 +11,7 @@
 #define DEFAULT_THRESHOLD 1		/* Packet TTL must be at least 1 to pass */
 
 struct iface {
-	char name[IFNAMSIZ + 1];
+	char name[IFNAMSIZ];
 	struct in_addr inaddr;		/* == 0 for non IP interfaces */
 	int   ifindex;			/* Physical interface index   */
 	short flags;
