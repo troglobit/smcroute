@@ -212,12 +212,12 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 			mroute.inbound = mif;
 
 			if (!source) {
-				mroute.source.sin6_addr = in6addr_any;
+				inet_anyaddr(AF_INET6, &mroute.source);
 				mroute.src_len = 0;
 			} else {
 				int len;
 
-				if (inet_str2addr(source, (inet_addr_t *)&mroute.source)) {
+				if (inet_str2addr(source, &mroute.source)) {
 					WARN("mroute: Invalid source IPv6 address: %s", source);
 					return 1;
 				}
@@ -249,7 +249,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 				mroute.len = 128;
 			}
 
-			if (inet_str2addr(group, (inet_addr_t *)&mroute.group) || !is_multicast((inet_addr_t *)&mroute.group)) {
+			if (inet_str2addr(group, &mroute.group) || !is_multicast(&mroute.group)) {
 				WARN("mroute: Invalid IPv6 multicast group: %s", group);
 				return 1;
 			}
@@ -276,6 +276,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 				WARN("mroute: No valid outbound interfaces, skipping multicast route.");
 				rc += 1;
 			} else {
+				DEBUG("mroute: Adding IPv6 route ...");
 				rc += mroute6_add(&mroute);
 			}
 		}
@@ -301,7 +302,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 			mroute.inbound = vif;
 
 			if (!source) {
-				inet_str2addr("0.0.0.0", &mroute.source);
+				inet_anyaddr(AF_INET, &mroute.source);
 				mroute.src_len = 0;
 			} else {
 				mroute.src_len = is_range(source);

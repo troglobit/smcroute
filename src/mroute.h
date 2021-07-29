@@ -90,8 +90,8 @@ struct mroute4 {
 
 struct mroute6 {
 	LIST_ENTRY(mroute6) link;
-	struct sockaddr_in6 source;
-	struct sockaddr_in6 group;            /* multicast group */
+	inet_addr_t         source;
+	inet_addr_t         group;            /* multicast group */
 	short               src_len;          /* source prefix len, or 0:disabled */
 	short               len;		      /* prefix len, or 0:disabled */
 	short               inbound;          /* incoming MIF    */

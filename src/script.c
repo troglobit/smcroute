@@ -94,8 +94,8 @@ int script_exec(struct mroute *mroute)
 			inet_addr2str(&mroute->u.mroute4.source, source, sizeof(source));
 			inet_addr2str(&mroute->u.mroute4.group, group, sizeof(group));
 		} else {
-			inet_ntop(AF_INET6, &mroute->u.mroute6.source.sin6_addr, source, INET_ADDRSTRLEN);
-			inet_ntop(AF_INET6, &mroute->u.mroute6.group.sin6_addr, group, INET_ADDRSTRLEN);
+			inet_addr2str(&mroute->u.mroute6.source, source, sizeof(source));
+			inet_addr2str(&mroute->u.mroute6.group, group, sizeof(group));
 		}
 
 		setenv("source", source, 1);

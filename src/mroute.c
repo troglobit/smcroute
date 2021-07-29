@@ -976,7 +976,7 @@ static void handle_nocache6(int sd, void *arg)
 	mrtctl = (struct mrt6msg *)tmp;
 
 	if (mrtctl->im6_msgtype == MRT6MSG_NOCACHE) {
-		char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
+		char origin[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
 		struct mroute6 *mroute;
 		struct iface *iface;
 		struct mroute mrt;
@@ -986,14 +986,14 @@ static void handle_nocache6(int sd, void *arg)
 		mrt.version = 6;
 		mroute = &mrt.u.mroute6;
 
-		mroute->group.sin6_addr  = mrtctl->im6_dst;
-		mroute->source.sin6_addr = mrtctl->im6_src;
-		mroute->inbound          = mrtctl->im6_mif;
-		mroute->len              = 128;
-		mroute->src_len          = 128;
+		inet_addr6_set(&mroute->group, &mrtctl->im6_dst);
+		inet_addr6_set(&mroute->source, &mrtctl->im6_src);
+		mroute->inbound = mrtctl->im6_mif;
+		mroute->len     = 128;
+		mroute->src_len = 128;
 
-		inet_ntop(AF_INET6, &mroute->group.sin6_addr,  group,  INET6_ADDRSTRLEN);
-		inet_ntop(AF_INET6, &mroute->source.sin6_addr, origin, INET6_ADDRSTRLEN);
+		inet_addr2str(&mroute->group, group, sizeof(group));
+		inet_addr2str(&mroute->source, origin, sizeof(origin));
 		smclog(LOG_DEBUG, "New multicast data from %s to group %s on MIF %d", origin, group, mroute->inbound);
 
 		iface = iface_find_by_vif(mroute->inbound);
@@ -1222,7 +1222,7 @@ static int mroute6_del_mif(struct iface *iface)
 static int kern_add6(struct mroute6 *route, int active)
 {
 	struct mf6cctl mc;
-	char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
+	char origin[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
 	size_t i;
 
 	if (mroute6_socket < 0) {
@@ -1231,9 +1231,8 @@ static int kern_add6(struct mroute6 *route, int active)
 	}
 
 	memset(&mc, 0, sizeof(mc));
-
-	mc.mf6cc_origin   = route->source;
-	mc.mf6cc_mcastgrp = route->group;
+	mc.mf6cc_origin   = *inet_addr6_get(&route->source);
+	mc.mf6cc_mcastgrp = *inet_addr6_get(&route->group);
 	mc.mf6cc_parent   = route->inbound;
 
 	IF_ZERO(&mc.mf6cc_ifset);
@@ -1250,8 +1249,8 @@ static int kern_add6(struct mroute6 *route, int active)
 
 	if (active) {
 		smclog(LOG_DEBUG, "Add %s -> %s from MIF %d",
-		       inet_ntop(AF_INET6, &mc.mf6cc_origin.sin6_addr, origin, INET6_ADDRSTRLEN),
-		       inet_ntop(AF_INET6, &mc.mf6cc_mcastgrp.sin6_addr, group, INET6_ADDRSTRLEN),
+		       inet_addr2str(&route->source, origin, INET_ADDRSTR_LEN),
+		       inet_addr2str(&route->group, group, INET_ADDRSTR_LEN),
 		       mc.mf6cc_parent);
 
 		/* Only enable mrdisc for active routes, i.e. with outbound */
@@ -1265,7 +1264,7 @@ static int kern_add6(struct mroute6 *route, int active)
 static int kern_del6(struct mroute6 *route, int active)
 {
 	struct mf6cctl mc;
-	char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
+	char origin[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
 
 	if (mroute6_socket < 0) {
 		smclog(LOG_DEBUG, "No IPv6 multicast socket");
@@ -1273,9 +1272,9 @@ static int kern_del6(struct mroute6 *route, int active)
 	}
 
 	memset(&mc, 0, sizeof(mc));
+	mc.mf6cc_origin   = *inet_addr6_get(&route->source);
+	mc.mf6cc_mcastgrp = *inet_addr6_get(&route->group);
 
-	mc.mf6cc_origin   = route->source;
-	mc.mf6cc_mcastgrp = route->group;
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_DEL_MFC, &mc, sizeof(mc))) {
 		if (ENOENT == errno)
 			smclog(LOG_DEBUG, "failed removing IPv6 multicast route, does not exist.");
@@ -1286,8 +1285,8 @@ static int kern_del6(struct mroute6 *route, int active)
 
 	if (active) {
 		smclog(LOG_DEBUG, "Del %s -> %s",
-		       inet_ntop(AF_INET6, &mc.mf6cc_origin.sin6_addr,  origin, INET6_ADDRSTRLEN),
-		       inet_ntop(AF_INET6, &mc.mf6cc_mcastgrp.sin6_addr, group, INET6_ADDRSTRLEN));
+		       inet_addr2str(&route->source, origin, INET_ADDRSTR_LEN),
+		       inet_addr2str(&route->group, group, INET_ADDRSTR_LEN));
 
 		/* Only disable mrdisc for active routes. */
 		mrdisc_disable(route->inbound);
@@ -1303,8 +1302,8 @@ static int is_exact_match6(struct mroute6 *rule, struct mroute6 *cand)
 {
 	int result;
 
-	result =  (0 == memcmp(&rule->group.sin6_addr,  &cand->group.sin6_addr,  sizeof(struct in6_addr)));
-	result &= (0 == memcmp(&rule->source.sin6_addr, &cand->source.sin6_addr, sizeof(struct in6_addr)));
+	result =  !inet_addr_cmp(&rule->group, &cand->group);
+	result &= !inet_addr_cmp(&rule->source, &cand->source);
 
 	return result;
 }
@@ -1321,28 +1320,24 @@ static int is_match6(struct mroute6 *rule, struct mroute6 *cand)
 {
 	int result;
 
-	if (rule->inbound != cand->inbound) {
+	if (rule->inbound != cand->inbound)
 		return 0;
-	}
 
-	if (rule->len == 128 && cand->len == 128) {
-		result = (0 == memcmp(&rule->group.sin6_addr, &cand->group.sin6_addr, sizeof(struct in6_addr)));
-	}
-	else {
+	if (rule->len == 128 && cand->len == 128)
+		result = !inet_addr_cmp(&rule->group, &cand->group);
+	else
 		/* TODO: Match based on prefix length */
 		result = 1;
-	}
 
-	if (rule->src_len == 128 && cand->src_len == 128) {
-		result &= (0 == memcmp(&rule->source.sin6_addr, &cand->source.sin6_addr, sizeof(struct in6_addr)));
-	}
+	if (rule->src_len == 128 && cand->src_len == 128)
+		result &= !inet_addr_cmp(&rule->source, &cand->source);
 
 	return result;
 }
 
 static int is_mroute6_static(struct mroute6 *route)
 {
-	return memcmp(&route->source.sin6_addr, &in6addr_any, sizeof(struct in6_addr));
+	return !is_anyaddr(&route->source);
 }
 
 static int is_active6(struct mroute6 *route)
@@ -1416,8 +1411,6 @@ int mroute6_dyn_add(struct mroute6 *route)
 
 static int get_stats6(struct mroute6 *route, unsigned long *pktcnt, unsigned long *bytecnt, unsigned long *wrong_if)
 {
-	struct sockaddr_in6 *src = &route->source;
-	struct sockaddr_in6 *grp = &route->group;
 	struct sioc_sg_req6 sg_req;
 
 	if (mroute6_socket == -1) {
@@ -1426,8 +1419,8 @@ static int get_stats6(struct mroute6 *route, unsigned long *pktcnt, unsigned lon
 	}
 
 	memset(&sg_req, 0, sizeof(sg_req));
-	sg_req.src = *src;
-	sg_req.grp = *grp;
+	sg_req.src = *inet_addr6_get(&route->source);
+	sg_req.grp = *inet_addr6_get(&route->group);
 
 	if (ioctl(mroute6_socket, SIOCGETSGCNT_IN6, &sg_req) < 0) {
 		if (wrong_if)
@@ -1471,10 +1464,10 @@ static struct mroute6 *mroute6_similar(struct mroute6 *route)
 	struct mroute6 *entry;
 
 	LIST_FOREACH(entry, &mroute6_static_list, link) {
-		if (0 == memcmp(&entry->source.sin6_addr, &route->source.sin6_addr, sizeof(struct in6_addr)) &&
-		    0 == memcmp(&entry->group.sin6_addr, &route->group.sin6_addr, sizeof(struct in6_addr))   &&
-		    entry->len           == route->len &&
-		    entry->src_len       == route->src_len)
+		if (!inet_addr_cmp(&entry->source, &route->source) &&
+		    !inet_addr_cmp(&entry->group, &route->group)   &&
+		    entry->len     == route->len &&
+		    entry->src_len == route->src_len)
 			return entry;
 	}
 
@@ -1524,10 +1517,10 @@ int mroute6_add(struct mroute6 *route)
 		/* Also, immediately expire any currently blocked traffic */
 		LIST_FOREACH_SAFE(dyn, &mroute6_dyn_list, link, tmp) {
 			if (!is_active6(dyn) && is_match6(entry, dyn)) {
-				char origin[INET6_ADDRSTRLEN], group[INET6_ADDRSTRLEN];
+				char origin[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
 
-				inet_ntop(AF_INET6, &dyn->group,  group,  INET6_ADDRSTRLEN);
-				inet_ntop(AF_INET6, &dyn->source, origin, INET6_ADDRSTRLEN);
+				inet_addr2str(&dyn->group,  group, sizeof(group));
+				inet_addr2str(&dyn->source, origin, sizeof(origin));
 				smclog(LOG_DEBUG, "Flushing (%s,%s) on MIF %d, new matching (*,G) rule ...",
 				       origin, group, dyn->inbound);
 
@@ -1753,14 +1746,13 @@ static int show_mroute6(int sd, struct mroute6 *r, int detail)
 	char buf[MAX_MC_VIFS * 17 + 80];
 	int mif;
 
-	/* XXX: fix when mroute6 -> mroute refactor is complete */
-	if (memcmp(&r->source, &in6addr_any, sizeof(in6addr_any))) {
-		inet_ntop(AF_INET6, &r->source.sin6_addr, src, INET6_ADDRSTRLEN);
+	if (!is_anyaddr(&r->source)) {
+		inet_addr2str(&r->source, src, sizeof(src));
 		if (r->src_len)
 			snprintf(src_len, sizeof(src_len), "/%u", r->src_len);
 	}
 
-	inet_ntop(AF_INET6, &r->group.sin6_addr,  grp, INET6_ADDRSTRLEN);
+	inet_addr2str(&r->group, grp, sizeof(grp));
 	if (r->len)
 		snprintf(grp_len, sizeof(grp_len), "/%u", r->len);
 

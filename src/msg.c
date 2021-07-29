@@ -138,6 +138,7 @@ static int do_mroute4(struct ipc_msg *msg)
 
 	iface_match_init(&state_in);
 	while (1) {
+		char src[INET_ADDRSTR_LEN], grp[INET_ADDRSTR_LEN];
 		struct mroute4 mroute = { 0 };
 		struct ifmatch state_out;
 		char *ifname_in;
@@ -173,7 +174,7 @@ static int do_mroute4(struct ipc_msg *msg)
 		} else {
 			/* missing source arg, was actually the group, swaparoo */
 			mroute.group = mroute.source;
-			inet_str2addr("0.0.0.0", &mroute.source);
+			inet_anyaddr(AF_INET, &mroute.source);
 			len = src_len;
 			src_len = 0;
 		}
@@ -216,9 +217,15 @@ static int do_mroute4(struct ipc_msg *msg)
 					smclog(LOG_DEBUG, "No valid output interfaces");
 				result += 1;
 			} else {
+				smclog(LOG_DEBUG, "Adding IPv4 multicast route (%s/%u,%s/%u)",
+				       inet_addr2str(&mroute.source, src, sizeof(src)), mroute.src_len,
+				       inet_addr2str(&mroute.group, grp, sizeof(grp)), mroute.len);
 				result += mroute4_add(&mroute);
 			}
 		} else {
+			smclog(LOG_DEBUG, "Deleting IPv4 multicast route (%s/%u,%s/%u)",
+			       inet_addr2str(&mroute.source, src, sizeof(src)), mroute.src_len,
+			       inet_addr2str(&mroute.group, grp, sizeof(grp)), mroute.len);
 			result += mroute4_del(&mroute);
 		}
 	}
@@ -245,6 +252,7 @@ static int do_mroute6(struct ipc_msg *msg)
 
 	iface_match_init(&state_in);
 	while (1) {
+		char src[INET_ADDRSTR_LEN], grp[INET_ADDRSTR_LEN];
 		struct mroute6 mroute = { 0 };
 		struct ifmatch state_out;
 		char *ifname_in;
@@ -255,18 +263,26 @@ static int do_mroute6(struct ipc_msg *msg)
 		if (mif < 0)
 			break;
 
-		if (inet_pton(AF_INET6, msg->argv[pos++], &mroute.source.sin6_addr) <= 0) {
+		if (inet_str2addr(msg->argv[pos++], &mroute.source)) {
 			smclog(LOG_DEBUG, "Invalid IPv6 source address");
 			return 1;
 		}
 
-		if (inet_pton(AF_INET6, msg->argv[pos++], &mroute.group.sin6_addr) <= 0 ||
-		    !IN6_IS_ADDR_MULTICAST(&mroute.group.sin6_addr)) {
-			smclog(LOG_DEBUG, "Invalid IPv6 group address");
-			return 1;
+		if (!is_multicast(&mroute.source)) {
+			if (inet_str2addr(msg->argv[pos++], &mroute.group) || !is_multicast(&mroute.group)) {
+				smclog(LOG_DEBUG, "Invalid IPv6 group address");
+				return 1;
+			}
+			mroute.src_len = 128;
+		} else {
+			/* missing source arg, was actually the group, swaparoo */
+			mroute.group = mroute.source;
+			inet_anyaddr(AF_INET6, &mroute.source);
+			mroute.src_len = 0;
 		}
 
 		mroute.inbound = mif;
+		mroute.len = 128;
 
 		/*
 		 * Scan output interfaces for the 'add' command only, just ignore it
@@ -302,9 +318,15 @@ static int do_mroute6(struct ipc_msg *msg)
 					smclog(LOG_DEBUG, "No valid output interfaces");
 				result += 1;
 			} else {
+				smclog(LOG_DEBUG, "Adding IPv6 multicast route (%s/%u,%s/%u)",
+				       inet_addr2str(&mroute.source, src, sizeof(src)), mroute.src_len,
+				       inet_addr2str(&mroute.group, grp, sizeof(grp)), mroute.len);
 				result += mroute6_add(&mroute);
 			}
 		} else {
+			smclog(LOG_DEBUG, "Deleting IPv6 multicast route (%s/%u,%s/%u)",
+			       inet_addr2str(&mroute.source, src, sizeof(src)), mroute.src_len,
+			       inet_addr2str(&mroute.group, grp, sizeof(grp)), mroute.len);
 			result += mroute6_del(&mroute);
 		}
 	}
