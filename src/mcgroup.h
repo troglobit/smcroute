@@ -2,7 +2,7 @@
 #ifndef SMCROUTE_MCGROUP_H_
 #define SMCROUTE_MCGROUP_H_
 
-#include "iface.h"
+#include "inet.h"
 #include "queue.h"
 
 struct mgroup {
