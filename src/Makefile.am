@@ -3,7 +3,7 @@ AUTOMAKE_OPTIONS        = subdir-objects
 sbin_PROGRAMS		= smcrouted
 smcrouted_SOURCES	= smcrouted.c mroute.c mroute.h iface.c iface.h mcgroup.c mcgroup.h  \
 			  notify.c notify.h script.c script.h util.h log.c log.h pidfile.c \
-			  kern.c socket.c socket.h timer.c timer.h queue.h
+			  inet.c inet.h kern.c socket.c socket.h timer.c timer.h queue.h
 smcrouted_CFLAGS        = -W -Wall -Wextra -Wno-deprecated-declarations
 smcrouted_CPPFLAGS	= -D_ATFILE_SOURCE -D_INCOMPLETE_XOPEN_C063
 smcrouted_CPPFLAGS     += -DSYSCONFDIR=\"@sysconfdir@\" -DRUNSTATEDIR=\"@runstatedir@\"
@@ -19,7 +19,7 @@ smcrouted_LDADD        += $(libsystemd_LIBS)
 endif
 
 if USE_MRDISC
-smcrouted_SOURCES      += mrdisc.c mrdisc.h inet.c inet.h
+smcrouted_SOURCES      += mrdisc.c mrdisc.h
 endif
 
 if HAVE_CLIENT
