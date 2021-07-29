@@ -20,14 +20,27 @@ cat <<EOF > "/tmp/$NM/conf"
 # ipv6 (*,G) multicast routing
 phyint a1 enable
 phyint a2 enable
+
+mgroup from a1 source fc00::1 group ff04:0:0:0:0:0:0:114
 mroute from a1 source fc00::1 group ff04:0:0:0:0:0:0:114 to a2
-mroute from a1                group ff2e::42             to a2
+
+mgroup from a1 group ff2e::42
+mroute from a1 group ff2e::42 to a2
 EOF
 cat "/tmp/$NM/conf"
 
 print "Starting smcrouted ..."
 ../src/smcrouted -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug -S "/tmp/$NM/sock" &
 sleep 1
+
+echo "-----------------------------------------------------------------------------------"
+../src/smcroutectl -pS "/tmp/$NM/sock" show interfaces
+echo "-----------------------------------------------------------------------------------"
+ip -6 maddress
+echo "-----------------------------------------------------------------------------------"
+cat /proc/net/mcfilter6
+echo "-----------------------------------------------------------------------------------"
+../src/smcroutectl -pS "/tmp/$NM/sock" show groups
 
 print "Starting collector ..."
 tshark -c 12 -lni a2 -w "/tmp/$NM/pcap" 'dst ff04::114 or dst ff2e::42 or dst ff2e::43 or dst ff2e::44' 2>/dev/null &

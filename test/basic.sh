@@ -17,7 +17,11 @@ cat <<EOF > "/tmp/$NM/conf"
 # basic (*,G) multicast routing
 phyint a1 enable
 phyint a2 enable
+
+mgroup from a1 source 10.0.0.1 group 225.3.2.1
 mroute from a1 source 10.0.0.1 group 225.3.2.1 to a2
+
+mgroup from a1 group 225.1.2.3
 mroute from a1 group 225.1.2.3 to a2
 EOF
 cat "/tmp/$NM/conf"
@@ -25,6 +29,15 @@ cat "/tmp/$NM/conf"
 print "Starting smcrouted ..."
 ../src/smcrouted -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug -S "/tmp/$NM/sock" &
 sleep 1
+
+echo "-----------------------------------------------------------------------------------"
+../src/smcroutectl -pS "/tmp/$NM/sock" show interfaces
+echo "-----------------------------------------------------------------------------------"
+ip maddress
+echo "-----------------------------------------------------------------------------------"
+cat /proc/net/mcfilter
+echo "-----------------------------------------------------------------------------------"
+../src/smcroutectl -pS "/tmp/$NM/sock" show groups
 
 print "Starting collector ..."
 tshark -Qc 12 -lni a2 -w "/tmp/$NM/pcap" 'dst 225.3.2.1 or dst 225.1.2.3 or dst 225.1.2.4 or 225.1.2.5' 2>/dev/null &
