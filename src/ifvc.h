@@ -36,7 +36,7 @@ struct ifmatch {
 	unsigned int match_count;
 };
 
-static inline void inet_addr4_set(inet_addr_t *dst, const struct in_addr *src)
+static inline void inet_addr_set(inet_addr_t *dst, const struct in_addr *src)
 {
 	struct sockaddr_in *sin = (struct sockaddr_in *)dst;
 
@@ -45,14 +45,14 @@ static inline void inet_addr4_set(inet_addr_t *dst, const struct in_addr *src)
 	sin->sin_addr = *src;
 }
 
-static inline struct sockaddr_in *inet_addr4_get(inet_addr_t *addr)
+static inline struct in_addr *inet_addr_get(inet_addr_t *addr)
 {
 	struct sockaddr_in *sin = (struct sockaddr_in *)addr;
 
 	assert(addr);
 	assert(sin->sin_family == AF_INET);
 
-	return sin;
+	return &sin->sin_addr;
 }
 
 #ifdef  HAVE_IPV6_MULTICAST_HOST

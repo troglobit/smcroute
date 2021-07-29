@@ -140,15 +140,15 @@ static void handle_nocache4(int sd, void *arg)
 	if (ip->ip_p != 0)
 		return;
 
-	mroute.source.ss_family = AF_INET;
-	inet_str2addr(inet_ntoa(igmpctl->im_src), &mroute.source);
-	inet_addr2str(&mroute.source, origin, sizeof(origin));
+	inet_addr_set(&mroute.source, &igmpctl->im_src);
+	inet_addr_set(&mroute.group, &igmpctl->im_dst);
+	mroute.inbound = igmpctl->im_vif;
+	mroute.len     = 0;
+	mroute.src_len = 0;
 
-	mroute.group.ss_family = AF_INET;
-	inet_str2addr(inet_ntoa(igmpctl->im_dst), &mroute.group);
+	inet_addr2str(&mroute.source, origin, sizeof(origin));
 	inet_addr2str(&mroute.group, group, sizeof(group));
 
-	mroute.inbound = igmpctl->im_vif;
 	iface = iface_find_by_vif(mroute.inbound);
 	if (!iface) {
 		smclog(LOG_WARNING, "No matching interface for VIF %d, cannot handle IGMP message %d.",
@@ -160,7 +160,8 @@ static void handle_nocache4(int sd, void *arg)
 	switch (igmpctl->im_msgtype) {
 	case IGMPMSG_NOCACHE:
 		/* Find any matching route for this group on that iif. */
-		smclog(LOG_DEBUG, "New multicast data from %s to group %s on VIF %d", origin, group, mroute.inbound);
+		smclog(LOG_DEBUG, "New multicast data from %s to group %s on VIF %d",
+		       origin, group, mroute.inbound);
 
 		result = mroute4_dyn_add(&mroute);
 		if (result) {
@@ -428,8 +429,6 @@ static int mroute4_del_vif(struct iface *iface)
 /* Actually set in kernel - called by mroute4_add() and mroute4_check_add() */
 static int kern_add4(struct mroute *route, int active)
 {
-	struct sockaddr_in *src = (struct sockaddr_in *)&route->source;
-	struct sockaddr_in *grp = (struct sockaddr_in *)&route->group;
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	struct mfcctl mc;
 
@@ -439,9 +438,12 @@ static int kern_add4(struct mroute *route, int active)
 	}
 
 	memset(&mc, 0, sizeof(mc));
-	mc.mfcc_origin   = src->sin_addr;
-	mc.mfcc_mcastgrp = grp->sin_addr;
+	mc.mfcc_origin   = *inet_addr_get(&route->source);
+	mc.mfcc_mcastgrp = *inet_addr_get(&route->group);
 	mc.mfcc_parent   = route->inbound;
+
+	inet_addr2str(&route->source, origin, sizeof(origin));
+	inet_addr2str(&route->group, group, sizeof(group));
 
 	/* copy the TTL vector */
 	if (sizeof(mc.mfcc_ttls[0]) != sizeof(route->ttl[0]) || NELEMS(mc.mfcc_ttls) != NELEMS(route->ttl)) {
@@ -451,14 +453,13 @@ static int kern_add4(struct mroute *route, int active)
 
 	memcpy(mc.mfcc_ttls, route->ttl, NELEMS(mc.mfcc_ttls) * sizeof(mc.mfcc_ttls[0]));
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_MFC, &mc, sizeof(mc))) {
-		smclog(LOG_WARNING, "failed adding IPv4 multicast route: %s", strerror(errno));
+		smclog(LOG_WARNING, "failed adding IPv4 multicast route (%s,%s): %s",
+		       origin, group, strerror(errno));
 		return 1;
 	}
 
 	if (active) {
-		smclog(LOG_DEBUG, "Add %s -> %s from VIF %d",
-		       inet_ntop(AF_INET, &mc.mfcc_origin,   origin, INET_ADDRSTRLEN),
-		       inet_ntop(AF_INET, &mc.mfcc_mcastgrp, group,  INET_ADDRSTRLEN), mc.mfcc_parent);
+		smclog(LOG_DEBUG, "Add %s -> %s from VIF %d", origin, group, route->inbound);
 
 		/* Only enable mrdisc for active routes, i.e. with outbound */
 		mrdisc_enable(route->inbound);
@@ -470,8 +471,6 @@ static int kern_add4(struct mroute *route, int active)
 /* Actually remove from kernel - called by mroute4_del() */
 static int kern_del4(struct mroute *route, int active)
 {
-	struct sockaddr_in *src = (struct sockaddr_in *)&route->source;
-	struct sockaddr_in *grp = (struct sockaddr_in *)&route->group;
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	struct mfcctl mc;
 
@@ -481,20 +480,24 @@ static int kern_del4(struct mroute *route, int active)
 	}
 
 	memset(&mc, 0, sizeof(mc));
-	mc.mfcc_origin   = src->sin_addr;
-	mc.mfcc_mcastgrp = grp->sin_addr;
+	mc.mfcc_origin   = *inet_addr_get(&route->source);
+	mc.mfcc_mcastgrp = *inet_addr_get(&route->group);
+
+	inet_addr2str(&route->source, origin, sizeof(origin));
+	inet_addr2str(&route->group, group, sizeof(group));
+
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_DEL_MFC, &mc, sizeof(mc))) {
 		if (ENOENT == errno)
-			smclog(LOG_DEBUG, "failed removing multicast route, does not exist.");
+			smclog(LOG_DEBUG, "failed removing multicast route (%s,%s), does not exist.",
+				origin, group);
 		else
-			smclog(LOG_DEBUG, "failed removing IPv4 multicast route: %s", strerror(errno));
+			smclog(LOG_DEBUG, "failed removing IPv4 multicast route (%s,%s): %s",
+			       origin, group, strerror(errno));
 		return 1;
 	}
 
 	if (active) {
-		smclog(LOG_DEBUG, "Del %s -> %s",
-		       inet_ntop(AF_INET, &mc.mfcc_origin,  origin, INET_ADDRSTRLEN),
-		       inet_ntop(AF_INET, &mc.mfcc_mcastgrp, group, INET_ADDRSTRLEN));
+		smclog(LOG_DEBUG, "Del %s -> %s", origin, group);
 
 		/* Only disable mrdisc for active routes. */
 		mrdisc_disable(route->inbound);
@@ -527,7 +530,7 @@ static int is_exact_match4(struct mroute *a, struct mroute *b)
  */
 static int is_match4(struct mroute *rule, struct mroute *cand)
 {
-	struct sockaddr_in *addr1, *addr2;
+	struct in_addr *addr1, *addr2;
 	inet_addr_t a, b;
 	uint32_t mask;
 
@@ -543,10 +546,10 @@ static int is_match4(struct mroute *rule, struct mroute *cand)
 	a = rule->group;
 	b = cand->group;
 
-	addr1 = (struct sockaddr_in *)&a;
-	addr2 = (struct sockaddr_in *)&b;
-	addr1->sin_addr.s_addr &= mask;
-	addr2->sin_addr.s_addr &= mask;
+	addr1 = inet_addr_get(&a);
+	addr2 = inet_addr_get(&b);
+	addr1->s_addr &= mask;
+	addr2->s_addr &= mask;
 
 	if (is_anyaddr(&rule->source))
 		return !inet_addr_cmp(&a, &b);
@@ -560,10 +563,10 @@ static int is_match4(struct mroute *rule, struct mroute *cand)
 	a = rule->source;
 	b = cand->source;
 
-	addr1 = (struct sockaddr_in *)&a;
-	addr2 = (struct sockaddr_in *)&b;
-	addr1->sin_addr.s_addr &= mask;
-	addr2->sin_addr.s_addr &= mask;
+	addr1 = inet_addr_get(&a);
+	addr2 = inet_addr_get(&b);
+	addr1->s_addr &= mask;
+	addr2->s_addr &= mask;
 
 	return !inet_addr_cmp(&a, &b);
 }
@@ -635,8 +638,6 @@ int mroute4_dyn_add(struct mroute *route)
  */
 static int get_stats4(struct mroute *route, unsigned long *pktcnt, unsigned long *bytecnt, unsigned long *wrong_if)
 {
-	struct sockaddr_in *src = (struct sockaddr_in *)&route->source;
-	struct sockaddr_in *grp = (struct sockaddr_in *)&route->group;
 	struct sioc_sg_req sg_req;
 
 	if (mroute4_socket == -1) {
@@ -645,8 +646,8 @@ static int get_stats4(struct mroute *route, unsigned long *pktcnt, unsigned long
 	}
 
 	memset(&sg_req, 0, sizeof(sg_req));
-	sg_req.src = src->sin_addr;
-	sg_req.grp = grp->sin_addr;
+	sg_req.src = *inet_addr_get(&route->source);
+	sg_req.grp = *inet_addr_get(&route->group);
 
 	if (ioctl(mroute4_socket, SIOCGETSGCNT, &sg_req) < 0) {
 		if (wrong_if)
@@ -702,8 +703,8 @@ static unsigned long get_valid_pkt4(struct mroute *route)
  */
 void mroute4_dyn_expire(int max_idle)
 {
-	struct timespec now;
 	struct mroute *entry, *tmp;
+	struct timespec now;
 
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
@@ -820,8 +821,8 @@ int mroute4_add(struct mroute *route)
 			if (!is_active4(dyn) && is_match4(entry, dyn)) {
 				char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 
-				inet_ntop(AF_INET, &dyn->group,  group,  INET_ADDRSTRLEN);
-				inet_ntop(AF_INET, &dyn->source, origin, INET_ADDRSTRLEN);
+				inet_addr2str(&dyn->group, group, sizeof(group));
+				inet_addr2str(&dyn->source, origin, sizeof(origin));
 				smclog(LOG_DEBUG, "Flushing (%s,%s) on VIF %d, new matching (*,G) rule ...",
 				       origin, group, dyn->inbound);
 
@@ -1217,8 +1218,8 @@ static int mroute6_del_mif(struct iface *iface)
 /* Actually set in kernel - called by mroute6_add() and mroute6_check_add() */
 static int kern_add6(struct mroute *route, int active)
 {
-	struct mf6cctl mc;
 	char origin[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
+	struct mf6cctl mc;
 	size_t i;
 
 	if (mroute6_socket < 0) {
@@ -1231,6 +1232,9 @@ static int kern_add6(struct mroute *route, int active)
 	mc.mf6cc_mcastgrp = *inet_addr6_get(&route->group);
 	mc.mf6cc_parent   = route->inbound;
 
+	inet_addr2str(&route->source, origin, INET_ADDRSTR_LEN);
+	inet_addr2str(&route->group, group, INET_ADDRSTR_LEN);
+
 	IF_ZERO(&mc.mf6cc_ifset);
 	for (i = 0; i < NELEMS(route->ttl); i++) {
 		if (route->ttl[i]) {
@@ -1239,15 +1243,13 @@ static int kern_add6(struct mroute *route, int active)
 	}
 
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MFC, &mc, sizeof(mc))) {
-		smclog(LOG_WARNING, "failed adding IPv6 multicast route: %s", strerror(errno));
+		smclog(LOG_WARNING, "failed adding IPv6 multicast route (%s,%s): %s",
+		       origin, group, strerror(errno));
 		return 1;
 	}
 
 	if (active) {
-		smclog(LOG_DEBUG, "Add %s -> %s from MIF %d",
-		       inet_addr2str(&route->source, origin, INET_ADDRSTR_LEN),
-		       inet_addr2str(&route->group, group, INET_ADDRSTR_LEN),
-		       mc.mf6cc_parent);
+		smclog(LOG_DEBUG, "Add %s -> %s from MIF %d", origin, group, mc.mf6cc_parent);
 
 		/* Only enable mrdisc for active routes, i.e. with outbound */
 		mrdisc_enable(route->inbound);
@@ -1259,8 +1261,8 @@ static int kern_add6(struct mroute *route, int active)
 /* Actually remove from kernel - called by mroute6_del() */
 static int kern_del6(struct mroute *route, int active)
 {
-	struct mf6cctl mc;
 	char origin[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
+	struct mf6cctl mc;
 
 	if (mroute6_socket < 0) {
 		smclog(LOG_DEBUG, "No IPv6 multicast socket");
@@ -1271,18 +1273,21 @@ static int kern_del6(struct mroute *route, int active)
 	mc.mf6cc_origin   = *inet_addr6_get(&route->source);
 	mc.mf6cc_mcastgrp = *inet_addr6_get(&route->group);
 
+	inet_addr2str(&route->source, origin, INET_ADDRSTR_LEN);
+	inet_addr2str(&route->group, group, INET_ADDRSTR_LEN);
+
 	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_DEL_MFC, &mc, sizeof(mc))) {
 		if (ENOENT == errno)
-			smclog(LOG_DEBUG, "failed removing IPv6 multicast route, does not exist.");
+			smclog(LOG_DEBUG, "failed removing IPv6 multicast route (%s,%s), does not exist.",
+				origin, group);
 		else
-			smclog(LOG_DEBUG, "failed removing IPv6 multicast route: %s", strerror(errno));
+			smclog(LOG_DEBUG, "failed removing IPv6 multicast route (%s,%s): %s",
+			       origin, group, strerror(errno));
 		return 1;
 	}
 
 	if (active) {
-		smclog(LOG_DEBUG, "Del %s -> %s",
-		       inet_addr2str(&route->source, origin, INET_ADDRSTR_LEN),
-		       inet_addr2str(&route->group, group, INET_ADDRSTR_LEN));
+		smclog(LOG_DEBUG, "Del %s -> %s", origin, group);
 
 		/* Only disable mrdisc for active routes. */
 		mrdisc_disable(route->inbound);
@@ -1678,10 +1683,10 @@ static int show_mroute(int sd, struct mroute *r, int detail)
 {
 	struct iface *i;
 	char src[INET_ADDRSTRLEN] = "*";
-	char src_len[4] = "";
+	char src_len[5] = "";
 	char grp[INET_ADDRSTRLEN];
-	char grp_len[4] = "";
-	char sg[(INET_ADDRSTRLEN+3) * 2 + 5];
+	char grp_len[5] = "";
+	char sg[(INET_ADDRSTRLEN + 3) * 2 + 5];
 	char buf[MAXVIFS * 17 + 80];
 	int vif;
 
@@ -1702,6 +1707,11 @@ static int show_mroute(int sd, struct mroute *r, int detail)
 		unsigned long p = 0, b = 0;
 		char stats[30];
 
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
+		if (r->group.ss_family == AF_INET6)
+			get_stats6(r, &p, &b, NULL);
+		else
+#endif
 		get_stats4(r, &p, &b, NULL);
 		snprintf(stats, sizeof(stats), " %10lu %10lu ", p, b);
 		strlcat(buf, stats, sizeof(buf));
@@ -1730,64 +1740,6 @@ static int show_mroute(int sd, struct mroute *r, int detail)
 	return 0;
 }
 
-#ifdef HAVE_IPV6_MULTICAST_ROUTING
-static int show_mroute6(int sd, struct mroute *r, int detail)
-{
-	struct iface *i;
-	char src[INET_ADDRSTRLEN] = "*";
-	char src_len[5] = "";
-	char grp[INET_ADDRSTRLEN];
-	char grp_len[5] = "";
-	char sg[(INET_ADDRSTRLEN+3) * 2 + 5];
-	char buf[MAXVIFS * 17 + 80];
-	int mif;
-
-	if (!is_anyaddr(&r->source)) {
-		inet_addr2str(&r->source, src, sizeof(src));
-		if (r->src_len)
-			snprintf(src_len, sizeof(src_len), "/%u", r->src_len);
-	}
-
-	inet_addr2str(&r->group, grp, sizeof(grp));
-	if (r->len)
-		snprintf(grp_len, sizeof(grp_len), "/%u", r->len);
-
-	i = iface_find_by_vif(r->inbound);
-	snprintf(sg, sizeof(sg), "(%s%s, %s%s)", src, src_len, grp, grp_len);
-	snprintf(buf, sizeof(buf), "%-46s %-16s", sg, i->name);
-	if (detail) {
-		unsigned long p = 0, b = 0;
-		char stats[30];
-
-		get_stats6(r, &p, &b, NULL);
-		snprintf(stats, sizeof(stats), " %10lu %10lu ", p, b);
-		strlcat(buf, stats, sizeof(buf));
-	}
-
-	for (mif = 0; mif < MAXVIFS; mif++) {
-		char tmp[22];
-
-		if (r->ttl[mif] == 0)
-			continue;
-
-		i = iface_find_by_vif(mif);
-		if (!i)
-			continue;
-
-		snprintf(tmp, sizeof(tmp), " %s", i->name);
-		strlcat(buf, tmp, sizeof(buf));
-	}
-	strlcat(buf, "\n", sizeof(buf));
-
-	if (ipc_send(sd, buf, strlen(buf)) < 0) {
-		smclog(LOG_ERR, "Failed sending reply to client: %s", strerror(errno));
-		return -1;
-	}
-
-	return 0;
-}
-#endif
-
 /* Write all (*,G) routes to client socket */
 int mroute_show(int sd, int detail)
 {
@@ -1811,24 +1763,24 @@ int mroute_show(int sd, int detail)
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 	LIST_FOREACH(r6, &mroute6_conf_list, link) {
-		if (show_mroute6(sd, r6, detail) < 0)
+		if (show_mroute(sd, r6, detail) < 0)
 			return 1;
 	}
 
 	LIST_FOREACH(r6, &mroute6_dyn_list, link) {
-		if (show_mroute6(sd, r6, detail) < 0)
+		if (show_mroute(sd, r6, detail) < 0)
 			return 1;
 	}
 
 	LIST_FOREACH(r6, &mroute6_static_list, link) {
-		if (show_mroute6(sd, r6, detail) < 0)
+		if (show_mroute(sd, r6, detail) < 0)
 			return 1;
 	}
 #endif
 
 	return 0;
 }
-#endif
+#endif /* ENABLE_CLIENT */
 
 /**
  * Local Variables:
