@@ -50,7 +50,7 @@
 #define IN6_IS_ADDR_MULTICAST(a) (((__const uint8_t *) (a))[0] == 0xff)
 #endif
 
-#include "ifvc.h"
+#include "iface.h"
 
 /*
  * IPv4 multicast route

@@ -25,7 +25,7 @@
 
 #include "log.h"
 #include "conf.h"
-#include "ifvc.h"
+#include "iface.h"
 #include "script.h"
 #include "mcgroup.h"
 #include "util.h"

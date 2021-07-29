@@ -34,7 +34,7 @@
 #include "log.h"
 #include "msg.h"
 #include "conf.h"
-#include "ifvc.h"
+#include "iface.h"
 #include "util.h"
 #include "timer.h"
 #include "notify.h"

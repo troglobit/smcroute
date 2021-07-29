@@ -1,6 +1,6 @@
 /* Physical and virtual interface API */
-#ifndef SMCROUTE_IFVC_H_
-#define SMCROUTE_IFVC_H_
+#ifndef SMCROUTE_IFACE_H_
+#define SMCROUTE_IFACE_H_
 
 #include "config.h"
 
@@ -221,7 +221,7 @@ static inline int iface_exist(char *ifname)
 	return iface_match_by_name(ifname, &ifm) != NULL;
 }
 
-#endif /* SMCROUTE_IFVC_H_ */
+#endif /* SMCROUTE_IFACE_H_ */
 
 /**
  * Local Variables:

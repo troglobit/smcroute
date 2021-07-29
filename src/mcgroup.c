@@ -36,7 +36,7 @@
 #include "log.h"
 #include "ipc.h"
 #include "util.h"
-#include "ifvc.h"
+#include "iface.h"
 #include "socket.h"
 #include "mcgroup.h"
 

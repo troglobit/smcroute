@@ -26,7 +26,7 @@
 #include <sys/socket.h>		/* AF_INET, AF_INET6 */
 
 #include "log.h"
-#include "ifvc.h"
+#include "iface.h"
 #include "script.h"
 
 static char *exec   = NULL;

@@ -37,7 +37,7 @@
 #include <sys/ioctl.h>
 
 #include "log.h"
-#include "ifvc.h"
+#include "iface.h"
 #include "ipc.h"
 #include "script.h"
 #include "socket.h"

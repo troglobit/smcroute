@@ -1,7 +1,7 @@
 AUTOMAKE_OPTIONS        = subdir-objects
 
 sbin_PROGRAMS		= smcrouted
-smcrouted_SOURCES	= smcrouted.c mroute.c mroute.h ifvc.c ifvc.h mcgroup.c mcgroup.h  \
+smcrouted_SOURCES	= smcrouted.c mroute.c mroute.h iface.c iface.h mcgroup.c mcgroup.h  \
 			  notify.c notify.h script.c script.h util.h log.c log.h pidfile.c \
 			  kern.c socket.c socket.h timer.c timer.h queue.h
 smcrouted_CFLAGS        = -W -Wall -Wextra -Wno-deprecated-declarations
