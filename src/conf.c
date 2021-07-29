@@ -201,7 +201,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 		WARN("Ignoring mroute for %s from %s, IPv6 disabled.", group, ifname);
 		return 0;
 #else
-		struct mroute6 mroute;
+		struct mroute mroute;
 		int mif;
 
 		iface_match_init(&state_in);
@@ -289,7 +289,7 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 		return rc;
 #endif
 	} else {
-		struct mroute4 mroute;
+		struct mroute mroute;
 		int vif;
 
 		iface_match_init(&state_in);

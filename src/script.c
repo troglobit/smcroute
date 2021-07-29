@@ -90,13 +90,8 @@ int script_exec(struct mroute *mroute)
 	if (mroute) {
 		char source[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
 
-		if (mroute->version == 4) {
-			inet_addr2str(&mroute->u.mroute4.source, source, sizeof(source));
-			inet_addr2str(&mroute->u.mroute4.group, group, sizeof(group));
-		} else {
-			inet_addr2str(&mroute->u.mroute6.source, source, sizeof(source));
-			inet_addr2str(&mroute->u.mroute6.group, group, sizeof(group));
-		}
+		inet_addr2str(&mroute->source, source, sizeof(source));
+		inet_addr2str(&mroute->group, group, sizeof(group));
 
 		setenv("source", source, 1);
 		setenv("group", group, 1);

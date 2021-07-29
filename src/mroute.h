@@ -59,66 +59,43 @@
 #define MAXVIFS 32
 #endif
 
-#define MAX_MC_VIFS MAXVIFS		/* from linux/mroute.h */
+struct mroute {
+	LIST_ENTRY(mroute) link;
 
-struct mroute4 {
-	LIST_ENTRY(mroute4) link;
+	inet_addr_t        source;	/* originating host, may be inet_anyaddr() */
+	short              src_len;     /* source prefix len, or 0:disabled */
 
-	inet_addr_t    source;
-	inet_addr_t    group;           /* multicast group */
-	short          len;		/* prefix len, or 0:disabled */
-	short          src_len;         /* source prefix len, or 0:disabled */
+	inet_addr_t        group;       /* multicast group */
+	short              len;		/* prefix len, or 0:disabled */
 
-	short          inbound;         /* incoming VIF    */
-	uint8_t        ttl[MAX_MC_VIFS];/* outgoing VIFs   */
-	unsigned long  valid_pkt;       /* packet counter at last mroute4_dyn_expire() */
-	time_t         last_use;        /* timestamp of last forwarded packet */
+	short              inbound;     /* incoming VIF    */
+	uint8_t            ttl[MAXVIFS];/* outgoing VIFs   */
+
+	unsigned long      valid_pkt;   /* packet counter at last mroute4_dyn_expire() */
+	time_t             last_use;    /* timestamp of last forwarded packet */
 };
 
 /*
  * IPv6 multicast route
  */
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
-#ifndef MAXMIFS
-#define MAXMIFS 32
+# ifndef MAXMIFS
+# define MAXMIFS MAXVIFS
+# endif
+
+# if MAXMIFS != MAXVIFS
+# error "IPv6 MAXMIFS constants does not match IPv4 MAXVIFS, mroute.h or mroute6.h needs to be fixed!"
+# endif
 #endif
 
-#define MAX_MC_MIFS MAXMIFS		/* from linux/mroute6.h */
-#else
-#define MAX_MC_MIFS 1			/* Dummy value for builds w/o IPv6 routing */
-#endif
-
-struct mroute6 {
-	LIST_ENTRY(mroute6) link;
-	inet_addr_t         source;
-	inet_addr_t         group;            /* multicast group */
-	short               src_len;          /* source prefix len, or 0:disabled */
-	short               len;		      /* prefix len, or 0:disabled */
-	short               inbound;          /* incoming MIF    */
-	uint8_t             ttl[MAX_MC_MIFS]; /* outgoing MIFs   */
-	unsigned long       valid_pkt;        /* packet counter at last mroute6_dyn_expire() */
-	time_t              last_use;         /* timestamp of last forwarded packet */
-};
-
-/*
- * Generic multicast route (wrapper for IPv4/IPv6 mroute)
- */
-struct mroute {
-	int version;		/* 4 or 6 */
-	union {
-		struct mroute4 mroute4;
-		struct mroute6 mroute6;
-	} u;
-};
-
-int  mroute4_dyn_add   (struct mroute4 *mroute);
+int  mroute4_dyn_add   (struct mroute *mroute);
 void mroute4_dyn_expire(int max_idle);
-int  mroute4_add       (struct mroute4 *mroute);
-int  mroute4_del       (struct mroute4 *mroute);
+int  mroute4_add       (struct mroute *mroute);
+int  mroute4_del       (struct mroute *mroute);
 
-int  mroute6_dyn_add   (struct mroute6 *mroute);
-int  mroute6_add       (struct mroute6 *mroute);
-int  mroute6_del       (struct mroute6 *mroute);
+int  mroute6_dyn_add   (struct mroute *mroute);
+int  mroute6_add       (struct mroute *mroute);
+int  mroute6_del       (struct mroute *mroute);
 
 int  mroute_add_vif    (char *ifname, uint8_t mrdisc, uint8_t threshold);
 int  mroute_del_vif    (char *ifname);

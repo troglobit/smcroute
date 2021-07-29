@@ -139,7 +139,7 @@ static int do_mroute4(struct ipc_msg *msg)
 	iface_match_init(&state_in);
 	while (1) {
 		char src[INET_ADDRSTR_LEN], grp[INET_ADDRSTR_LEN];
-		struct mroute4 mroute = { 0 };
+		struct mroute mroute = { 0 };
 		struct ifmatch state_out;
 		char *ifname_in;
 		int len, src_len, pos = 0, vif;
@@ -253,7 +253,7 @@ static int do_mroute6(struct ipc_msg *msg)
 	iface_match_init(&state_in);
 	while (1) {
 		char src[INET_ADDRSTR_LEN], grp[INET_ADDRSTR_LEN];
-		struct mroute6 mroute = { 0 };
+		struct mroute mroute = { 0 };
 		struct ifmatch state_out;
 		char *ifname_in;
 		int pos = 0, mif;
