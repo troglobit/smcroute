@@ -68,7 +68,7 @@ struct mroute {
 	inet_addr_t        group;       /* multicast group */
 	short              len;		/* prefix len, or 0:disabled */
 
-	short              inbound;     /* incoming VIF    */
+	uint16_t           inbound;     /* incoming VIF    */
 	uint8_t            ttl[MAXVIFS];/* outgoing VIFs   */
 
 	unsigned long      valid_pkt;   /* packet counter at last mroute4_dyn_expire() */
