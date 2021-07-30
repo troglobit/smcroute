@@ -81,7 +81,7 @@ static int group_req(int sd, int cmd, struct mcgroup *mcg)
 			if (cmd == 'j')	op = MCAST_JOIN_GROUP;
 			else		op = MCAST_LEAVE_GROUP;
 
-			gr.gr_interface    = mcg->iface->ifindex;;
+			gr.gr_interface    = mcg->iface->ifindex;
 			gr.gr_group        = mcg->group;
 
 			arg                = &gr;
@@ -90,7 +90,7 @@ static int group_req(int sd, int cmd, struct mcgroup *mcg)
 			if (cmd == 'j')	op = MCAST_JOIN_SOURCE_GROUP;
 			else		op = MCAST_LEAVE_SOURCE_GROUP;
 
-			gsr.gsr_interface  = mcg->iface->ifindex;;
+			gsr.gsr_interface  = mcg->iface->ifindex;
 			gsr.gsr_source     = mcg->source;
 			gsr.gsr_group      = mcg->group;
 
