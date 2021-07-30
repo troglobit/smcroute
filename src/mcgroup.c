@@ -240,7 +240,7 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, inet_addr_t
 
 		mcg = calloc(1, sizeof(*mcg));
 		if (!mcg) {
-			smclog(LOG_ERR, "Out of memory in op '%c' for (%s,%s) on %s", src, grp, ifname);
+			smclog(LOG_ERR, "Out of memory in op '%c' for (%s,%s) on %s", cmd, src, grp, ifname);
 			return 1;
 		}
 
