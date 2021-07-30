@@ -8,3 +8,4 @@ TESTS             += vlan.sh
 TESTS             += bridge.sh
 TESTS             += ipv6.sh
 TESTS             += isolated.sh
+TESTS             += join.sh
