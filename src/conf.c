@@ -109,9 +109,6 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 		memset(&src, 0, sizeof(src));
 		memset(&grp, 0, sizeof(grp));
 
-		src.ss_family = AF_INET6;
-		grp.ss_family = AF_INET6;
-
 		if (source) {
 			len = is_range(source);
 			if (len != 0)
@@ -150,9 +147,6 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 
 		memset(&src, 0, sizeof(src));
 		memset(&grp, 0, sizeof(grp));
-
-		src.ss_family = AF_INET;
-		grp.ss_family = AF_INET;
 
 		if (source) {
 			if ((len = is_range(source)) > 0)
