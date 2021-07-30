@@ -120,7 +120,7 @@ static void handle_nocache4(int sd, void *arg)
 {
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	struct mroute mroute = { 0 };
-	struct igmpmsg *igmpctl;
+	struct igmpmsg *im;
 	struct iface *iface;
 	struct ip *ip;
 	char tmp[128];
@@ -134,15 +134,19 @@ static void handle_nocache4(int sd, void *arg)
 	}
 
 	ip = (struct ip *)tmp;
-	igmpctl = (struct igmpmsg *)tmp;
+
+	/* Basic validation, filter out non igmpmsg */
+	im = (struct igmpmsg *)tmp;
+	if (im->im_mbz != 0 || im->im_msgtype == 0)
+		return;
 
 	/* packets sent up from kernel to daemon have ip->ip_p = 0 */
 	if (ip->ip_p != 0)
 		return;
 
-	inet_addr_set(&mroute.source, &igmpctl->im_src);
-	inet_addr_set(&mroute.group, &igmpctl->im_dst);
-	mroute.inbound = igmpctl->im_vif;
+	inet_addr_set(&mroute.source, &im->im_src);
+	inet_addr_set(&mroute.group, &im->im_dst);
+	mroute.inbound = im->im_vif;
 	mroute.len     = 0;
 	mroute.src_len = 0;
 
@@ -151,16 +155,16 @@ static void handle_nocache4(int sd, void *arg)
 
 	iface = iface_find_by_vif(mroute.inbound);
 	if (!iface) {
-		smclog(LOG_WARNING, "No matching interface for VIF %d, cannot handle IGMP message %d.",
-		       mroute.inbound, igmpctl->im_msgtype);
+		smclog(LOG_WARNING, "No matching interface for VIF %u, cannot handle IGMP message %d.",
+		       mroute.inbound, im->im_msgtype);
 		return;
 	}
 
 	/* check for IGMPMSG_NOCACHE to do (*,G) based routing. */
-	switch (igmpctl->im_msgtype) {
+	switch (im->im_msgtype) {
 	case IGMPMSG_NOCACHE:
 		/* Find any matching route for this group on that iif. */
-		smclog(LOG_DEBUG, "New multicast data from %s to group %s on VIF %d",
+		smclog(LOG_DEBUG, "New multicast data from %s to group %s on VIF %u",
 		       origin, group, mroute.inbound);
 
 		result = mroute4_dyn_add(&mroute);
@@ -181,7 +185,7 @@ static void handle_nocache4(int sd, void *arg)
 		break;
 
 	case IGMPMSG_WRONGVIF:
-		smclog(LOG_WARNING, "Multicast from %s, group %s, coming in on wrong VIF %d, iface %s",
+		smclog(LOG_WARNING, "Multicast from %s, group %s, coming in on wrong VIF %u, iface %s",
 		       origin, group, mroute.inbound, iface->name);
 		break;
 
@@ -193,7 +197,7 @@ static void handle_nocache4(int sd, void *arg)
 		break;
 
 	default:
-		smclog(LOG_DEBUG, "Unknown IGMP message %d from kernel", igmpctl->im_msgtype);
+		smclog(LOG_DEBUG, "Unknown IGMP message %d from kernel", im->im_msgtype);
 		break;
 	}
 }
@@ -951,7 +955,7 @@ static void handle_nocache6(int sd, void *arg)
 {
 	char origin[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
 	struct mroute mroute = { 0 };
-	struct mrt6msg *mrtctl;
+	struct mrt6msg *im6;
 	struct iface *iface;
 	char tmp[128];
 	int result;
@@ -963,27 +967,38 @@ static void handle_nocache6(int sd, void *arg)
 		return;
 	}
 
-	mrtctl = (struct mrt6msg *)tmp;
+	/*
+	 * Basic input validation, filter out all non-mrt messages (e.g.
+	 * our join for each group).  The mrt6msg struct is overlayed on
+	 * the MLD header, so the im6_mbz field (must-be-zero) is the
+	 * MLD type, e.g. 143, and im6_msgtype is the MLD code for an
+	 * MLDv2 Join.
+	 */
+	im6 = (struct mrt6msg *)tmp;
+	if (im6->im6_mbz != 0 || im6->im6_msgtype == 0)
+		return;
 
-	inet_addr6_set(&mroute.group, &mrtctl->im6_dst);
-	inet_addr6_set(&mroute.source, &mrtctl->im6_src);
-	mroute.inbound = mrtctl->im6_mif;
+	inet_addr6_set(&mroute.source, &im6->im6_src);
+	inet_addr6_set(&mroute.group, &im6->im6_dst);
+	mroute.inbound = im6->im6_mif;
 	mroute.len     = 128;
 	mroute.src_len = 128;
 
-	inet_addr2str(&mroute.group, group, sizeof(group));
 	inet_addr2str(&mroute.source, origin, sizeof(origin));
+	inet_addr2str(&mroute.group, group, sizeof(group));
 
 	iface = iface_find_by_vif(mroute.inbound);
 	if (!iface) {
-		smclog(LOG_WARNING, "No matching interface for MIF %d, cannot handle MRT6MSG %d.",
-		       mroute.inbound, mrtctl->im6_msgtype);
+		smclog(LOG_WARNING, "No matching interface for MIF %u, cannot handle MRT6MSG %u:%u. "
+		       "Multicast source %s, dest %s", mroute.inbound, im6->im6_mbz, im6->im6_msgtype,
+		       origin, group);
 		return;
 	}
 
-	switch (mrtctl->im6_msgtype) {
+	switch (im6->im6_msgtype) {
 	case MRT6MSG_NOCACHE:
-		smclog(LOG_DEBUG, "New multicast data from %s to group %s on MIF %d", origin, group, mroute.inbound);
+		smclog(LOG_DEBUG, "New multicast data from %s to group %s on MIF %u",
+		       origin, group, mroute.inbound);
 
 		/* Find any matching route for this group on that iif. */
 		result = mroute6_dyn_add(&mroute);
@@ -1004,7 +1019,7 @@ static void handle_nocache6(int sd, void *arg)
 		break;
 
 	case MRT6MSG_WRONGMIF:
-		smclog(LOG_WARNING, "Multicast from %s, group %s, coming in on wrong MIF %d, iface %s",
+		smclog(LOG_WARNING, "Multicast from %s, group %s, coming in on wrong MIF %u, iface %s",
 		       origin, group, mroute.inbound, iface->name);
 		break;
 
@@ -1013,7 +1028,7 @@ static void handle_nocache6(int sd, void *arg)
 		break;
 
 	default:
-		smclog(LOG_DEBUG, "Unknown MRT6MSG %d from kernel", mrtctl->im6_msgtype);
+		smclog(LOG_DEBUG, "Unknown MRT6MSG %u from kernel", im6->im6_msgtype);
 		break;
 	}
 }
