@@ -191,4 +191,14 @@ be used to send multicast.  Lowering the barrier of entry to run tests.
 **Topology:** Isolated
 
 
+### Join/Leave ASM/SSM
+
+Verify ASM & SSM join and leave for IPv4 & IPv6.  Since ASM and SSM
+cannot be mixed on the same interface (fallback to ASM occurs), we
+use different interfaces and verify operation by inspecting the Linux
+`ip maddr` and `/proc/net/mcfilter` output.
+
+**Topology:** Basic
+
+
 [issue-161]: https://github.com/troglobit/smcroute/issues/161
