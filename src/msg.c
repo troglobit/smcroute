@@ -62,11 +62,14 @@ static int do_mgroup4(struct ipc_msg *msg)
 	int rc = 0;
 	int len;
 
+	memset(&src, 0, sizeof(src));
+	memset(&grp, 0, sizeof(grp));
+
 	if (msg->count == 3) {
 		rc += inet_str2addr(msg->argv[1], &src);
 		strlcpy(group, msg->argv[2], sizeof(group));
 	} else {
-		inet_anyaddr(AF_INET6, &src);
+		inet_anyaddr(AF_INET, &src);
 		strlcpy(group, msg->argv[1], sizeof(group));
 	}
 
@@ -79,7 +82,7 @@ static int do_mgroup4(struct ipc_msg *msg)
 		len = 32;
 
 	rc += inet_str2addr(group, &grp);
-	if (rc < 2 || !is_multicast(&grp)) {
+	if (rc != 0 || !is_multicast(&grp)) {
 		smclog(LOG_DEBUG, "Invalid IPv4 source or group address.");
 		return 1;
 	}
@@ -101,6 +104,9 @@ static int do_mgroup6(struct ipc_msg *msg)
 	int rc = 0;
 	int len;
 
+	memset(&src, 0, sizeof(src));
+	memset(&grp, 0, sizeof(grp));
+
 	if (msg->count == 3) {
 		rc += inet_str2addr(msg->argv[1], &src);
 		strlcpy(group, msg->argv[2], sizeof(group));
@@ -118,7 +124,7 @@ static int do_mgroup6(struct ipc_msg *msg)
 		len = 128;
 
 	rc += inet_str2addr(group, &grp);
-	if (rc < 2 || !is_multicast(&grp)) {
+	if (rc != 0 || !is_multicast(&grp)) {
 		smclog(LOG_DEBUG, "Invalid IPv6 source or group address.");
 		return 1;
 	}

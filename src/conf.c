@@ -118,7 +118,8 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 				WARN("join: Invalid IPv6 multicast source: %s", source);
 				return 1;
 			}
-		}
+		} else
+			inet_anyaddr(AF_INET6, &src);
 
 		if (group) {
 			len = is_range(group);
@@ -156,7 +157,8 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 				WARN("join: Invalid IPv4 multicast source: %s", source);
 				return 1;
 			}
-		}
+		} else
+			inet_anyaddr(AF_INET, &src);
 
 		if (group) {
 			len = is_range(group);
