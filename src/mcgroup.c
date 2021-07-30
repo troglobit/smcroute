@@ -177,15 +177,33 @@ void mcgroup_exit(void)
 
 static struct mcgroup *find_conf(const char *ifname, inet_addr_t *source, inet_addr_t *group, int len)
 {
+	char src[INET_ADDRSTR_LEN], grp[INET_ADDRSTR_LEN];
 	struct mcgroup *entry, *tmp;
 
 	LIST_FOREACH_SAFE(entry, &mcgroup_conf_list, link, tmp) {
-		if (strcmp(entry->ifname, ifname))
+		if (is_anyaddr(&entry->source))
+			strcpy(src, "*");
+		else
+			inet_addr2str(&entry->source, src, sizeof(src));
+		inet_addr2str(&entry->group, grp, sizeof(grp));
+		smclog(LOG_DEBUG, " ... checking against known (%s,%s/%u) on %s", src, grp, entry->len, entry->ifname);
+
+		if (strcmp(entry->ifname, ifname)) {
+			smclog(LOG_DEBUG, "  => wrong ifname (%s vs %s)", entry->ifname, ifname);
 			continue;
-		if (inet_addr_cmp(&entry->source, source))
+		}
+		if (inet_addr_cmp(&entry->source, source)) {
+			smclog(LOG_DEBUG, "  => wrong source");
 			continue;
-		if (inet_addr_cmp(&entry->group, group) || entry->len != len)
+		}
+		errno = 0;
+		if (inet_addr_cmp(&entry->group, group) || entry->len != len) {
+			if (entry->len != len)
+				smclog(LOG_DEBUG, "  => wrong group prefix len");
+			else
+				smclog(LOG_DEBUG, "  => wrong group, errno: %d", errno);
 			continue;
+		}
 
 		return entry;
 	}
@@ -195,26 +213,36 @@ static struct mcgroup *find_conf(const char *ifname, inet_addr_t *source, inet_a
 
 int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, inet_addr_t *group, int len)
 {
+	char src[INET_ADDRSTR_LEN] = "*", grp[INET_ADDRSTR_LEN];
 	struct mcgroup *mcg;
 	struct ifmatch state;
 	int rc = 0;
 	int sd;
 
+	if (!is_anyaddr(source))
+		inet_addr2str(source, src, sizeof(src));
+	inet_addr2str(group, grp, sizeof(grp));
+	smclog(LOG_DEBUG, "Find configured (%s,%s/%d) on %s ...", src, grp, len, ifname);
+
 	mcg = find_conf(ifname, source, group, len);
 	if (mcg) {
 		if (cmd == 'j') {
+			smclog(LOG_INFO, "Already joined (%s,%s) on %s", src, grp, ifname);
 			errno = EALREADY;
 			return 1;
 		}
 	} else {
 		if (cmd != 'j') {
+			smclog(LOG_INFO, "No group (%s,%s) on %s to leave", src, grp, ifname);
 			errno = ENOENT;
 			return 1;
 		}
 
 		mcg = calloc(1, sizeof(*mcg));
-		if (!mcg)
+		if (!mcg) {
+			smclog(LOG_ERR, "Out of memory in op '%c' for (%s,%s) on %s", src, grp, ifname);
 			return 1;
+		}
 
 		strlcpy(mcg->ifname, ifname, sizeof(mcg->ifname));
 		mcg->source  = *source;
