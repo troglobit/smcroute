@@ -38,10 +38,10 @@
 #ifdef HAVE_STRUCT_GROUP_REQ	/* Prefer RFC 3678 */
 static int group_req(int sd, int cmd, struct mcgroup *mcg)
 {
-	struct group_source_req gsr;
-	struct sockaddr_in group;
-	struct group_req gr;
 	uint32_t addr = 0, addr_max = 0;
+	struct group_source_req gsr;
+	struct in_addr orig, next;
+	struct group_req gr;
 	size_t len;
 	void *arg;
 	int op, proto;
@@ -57,23 +57,20 @@ static int group_req(int sd, int cmd, struct mcgroup *mcg)
 	if (mcg->group.ss_family == AF_INET) {
 		int mask;
 
-		group = *(struct sockaddr_in *)&mcg->group;
-
 		if (mcg->len > 0)
 			mask = 0xFFFFFFFFu << (32 - mcg->len);
 		else
 			mask = 0xFFFFFFFFu;
 
-		addr = ntohl(group.sin_addr.s_addr) & mask;
+		orig = *inet_addr_get(&mcg->group);
+		addr = ntohl(orig.s_addr) & mask;
 		addr_max = addr | ~mask;
 	}
 
 	while (addr <= addr_max) {
 		if (addr) {
-			struct sockaddr_in *sin;
-
-			sin = (struct sockaddr_in *)&mcg->group;
-			sin->sin_addr.s_addr = htonl(addr);
+			next.s_addr = htonl(addr);
+			inet_addr_set(&mcg->group, &next);
 		}
 		addr++;
 
@@ -106,12 +103,8 @@ static int group_req(int sd, int cmd, struct mcgroup *mcg)
 		}
 	}
 
-	if (addr && mcg->group.ss_family == AF_INET) {
-		struct sockaddr_in *sin;
-
-		sin = (struct sockaddr_in *)&mcg->group;
-		*sin = group;
-	}
+	if (addr && mcg->group.ss_family == AF_INET)
+		inet_addr_set(&mcg->group, &orig);
 
 	return rc;
 }
