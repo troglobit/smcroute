@@ -38,6 +38,7 @@
 #ifdef HAVE_STRUCT_GROUP_REQ	/* Prefer RFC 3678 */
 static int group_req(int sd, int cmd, struct mcgroup *mcg)
 {
+	char source[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
 	uint32_t addr = 0, addr_max = 0;
 	struct group_source_req gsr;
 	struct in_addr orig, next;
@@ -81,6 +82,9 @@ static int group_req(int sd, int cmd, struct mcgroup *mcg)
 			gr.gr_interface    = mcg->iface->ifindex;
 			gr.gr_group        = mcg->group;
 
+			strncpy(source, "*", sizeof(source));
+			inet_addr2str(&gr.gr_group, group, sizeof(group));
+
 			arg                = &gr;
 			len                = sizeof(gr);
 		} else {
@@ -91,9 +95,15 @@ static int group_req(int sd, int cmd, struct mcgroup *mcg)
 			gsr.gsr_source     = mcg->source;
 			gsr.gsr_group      = mcg->group;
 
+			inet_addr2str(&gsr.gsr_source, source, sizeof(source));
+			inet_addr2str(&gsr.gsr_group, group, sizeof(group));
+
 			arg                = &gsr;
 			len                = sizeof(gsr);
 		}
+
+		smclog(LOG_DEBUG, "%s group (%s,%s) on ifindex %d ...", cmd == 'j' ? "Join" : "Leave",
+		       source, group, mcg->iface->ifindex);
 
 		rc = setsockopt(sd, proto, op, arg, len);
 		if (rc) {
