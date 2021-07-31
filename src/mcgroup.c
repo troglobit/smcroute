@@ -116,6 +116,8 @@ static void list_rem(struct iface *iface, inet_addr_t *source, inet_addr_t *grou
 
 static void mcgroup_init(void)
 {
+	int val;
+
 	if (mcgroup4_socket < 0) {
 		mcgroup4_socket = socket_create(AF_INET, SOCK_DGRAM, 0, NULL, NULL);
 		if (mcgroup4_socket < 0) {
@@ -126,6 +128,11 @@ static void mcgroup_init(void)
 #ifdef HAVE_LINUX_FILTER_H
 		if (setsockopt(mcgroup4_socket, SOL_SOCKET, SO_ATTACH_FILTER, &fprog, sizeof(fprog)) < 0)
 			smclog(LOG_WARNING, "failed setting IPv4 socket filter, continuing anyway");
+#endif
+#ifdef IP_MULTICAST_ALL
+		val = 0;
+		if (setsockopt(mcgroup4_socket, SOL_SOCKET, IP_MULTICAST_ALL, &val, sizeof(val)))
+			smclog(LOG_WARNING, "failed disabling IP_MULTICAST_ALL: %s", strerror(errno));
 #endif
 	}
 
@@ -140,6 +147,11 @@ static void mcgroup_init(void)
 #ifdef HAVE_LINUX_FILTER_H
 		if (setsockopt(mcgroup6_socket, SOL_SOCKET, SO_ATTACH_FILTER, &fprog, sizeof(fprog)) < 0)
 			smclog(LOG_WARNING, "failed setting IPv6 socket filter, continuing anyway");
+#endif
+#ifdef IPV6_MULTICAST_ALL
+		val = 0;
+		if (setsockopt(mcgroup6_socket, SOL_SOCKET, IPV6_MULTICAST_ALL, &val, sizeof(val)))
+			smclog(LOG_WARNING, "failed disabling IPV6_MULTICAST_ALL: %s", strerror(errno));
 #endif
 	}
 #endif
