@@ -39,14 +39,11 @@
 static int group_req(int sd, int cmd, struct mcgroup *mcg)
 {
 	char source[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
-	uint32_t addr = 0, addr_max = 0;
 	struct group_source_req gsr;
-	struct in_addr orig, next;
 	struct group_req gr;
 	size_t len;
 	void *arg;
 	int op, proto;
-	int rc = 0;
 
 #ifdef HAVE_IPV6_MULTICAST_HOST
 	if (mcg->group.ss_family == AF_INET6)
@@ -55,68 +52,37 @@ static int group_req(int sd, int cmd, struct mcgroup *mcg)
 #endif
 		proto = IPPROTO_IP;
 
-	if (mcg->group.ss_family == AF_INET) {
-		int mask;
+	if (is_anyaddr(&mcg->source)) {
+		if (cmd == 'j')	op = MCAST_JOIN_GROUP;
+		else		op = MCAST_LEAVE_GROUP;
 
-		if (mcg->len > 0)
-			mask = 0xFFFFFFFFu << (32 - mcg->len);
-		else
-			mask = 0xFFFFFFFFu;
+		gr.gr_interface    = mcg->iface->ifindex;
+		gr.gr_group        = mcg->group;
 
-		orig = *inet_addr_get(&mcg->group);
-		addr = ntohl(orig.s_addr) & mask;
-		addr_max = addr | ~mask;
+		strncpy(source, "*", sizeof(source));
+		inet_addr2str(&gr.gr_group, group, sizeof(group));
+
+		arg                = &gr;
+		len                = sizeof(gr);
+	} else {
+		if (cmd == 'j')	op = MCAST_JOIN_SOURCE_GROUP;
+		else		op = MCAST_LEAVE_SOURCE_GROUP;
+
+		gsr.gsr_interface  = mcg->iface->ifindex;
+		gsr.gsr_source     = mcg->source;
+		gsr.gsr_group      = mcg->group;
+
+		inet_addr2str(&gsr.gsr_source, source, sizeof(source));
+		inet_addr2str(&gsr.gsr_group, group, sizeof(group));
+
+		arg                = &gsr;
+		len                = sizeof(gsr);
 	}
 
-	while (addr <= addr_max) {
-		if (addr) {
-			next.s_addr = htonl(addr);
-			inet_addr_set(&mcg->group, &next);
-		}
-		addr++;
+	smclog(LOG_DEBUG, "%s group (%s,%s) on ifindex %d and socket %d ...",
+	       cmd == 'j' ? "Join" : "Leave", source, group, mcg->iface->ifindex, sd);
 
-		if (is_anyaddr(&mcg->source)) {
-			if (cmd == 'j')	op = MCAST_JOIN_GROUP;
-			else		op = MCAST_LEAVE_GROUP;
-
-			gr.gr_interface    = mcg->iface->ifindex;
-			gr.gr_group        = mcg->group;
-
-			strncpy(source, "*", sizeof(source));
-			inet_addr2str(&gr.gr_group, group, sizeof(group));
-
-			arg                = &gr;
-			len                = sizeof(gr);
-		} else {
-			if (cmd == 'j')	op = MCAST_JOIN_SOURCE_GROUP;
-			else		op = MCAST_LEAVE_SOURCE_GROUP;
-
-			gsr.gsr_interface  = mcg->iface->ifindex;
-			gsr.gsr_source     = mcg->source;
-			gsr.gsr_group      = mcg->group;
-
-			inet_addr2str(&gsr.gsr_source, source, sizeof(source));
-			inet_addr2str(&gsr.gsr_group, group, sizeof(group));
-
-			arg                = &gsr;
-			len                = sizeof(gsr);
-		}
-
-		smclog(LOG_DEBUG, "%s group (%s,%s) on ifindex %d ...", cmd == 'j' ? "Join" : "Leave",
-		       source, group, mcg->iface->ifindex);
-
-		rc = setsockopt(sd, proto, op, arg, len);
-		if (rc) {
-			if (cmd == 'j' && errno == EADDRINUSE)
-				continue; /* Already joined, ignore */
-			break;
-		}
-	}
-
-	if (addr && mcg->group.ss_family == AF_INET)
-		inet_addr_set(&mcg->group, &orig);
-
-	return rc;
+	return setsockopt(sd, proto, op, arg, len);
 }
 
 #else  /* Assume we have old style struct ip_mreq */

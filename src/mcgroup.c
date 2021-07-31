@@ -45,11 +45,8 @@ extern int kern_join_leave(int sd, int cmd, struct mcgroup *mcg);
 /*
  * Track IGMP join, any-source and source specific
  */
-LIST_HEAD(, mgroup) mgroup_static_list = LIST_HEAD_INITIALIZER();
-LIST_HEAD(, mcgroup) mcgroup_conf_list = LIST_HEAD_INITIALIZER();
-
-static int mcgroup4_socket = -1;
-static int mcgroup6_socket = -1;
+LIST_HEAD(, mcgroup) kern_list = LIST_HEAD_INITIALIZER();
+LIST_HEAD(, mcgroup) conf_list = LIST_HEAD_INITIALIZER();
 
 #ifdef HAVE_LINUX_FILTER_H
 /*
@@ -66,6 +63,90 @@ static struct sock_fprog fprog = {
 };
 #endif /* HAVE_LINUX_FILTER_H */
 
+/* Linux net.ipv4.igmp_max_memberships defaults to 20 */
+#define MAX_GROUPS 20
+
+struct mc_sock {
+	LIST_ENTRY(mc_sock) link;
+
+	int family;			/* address family */
+	int sd;				/* socket for join/leave ops */
+	int cnt;			/* max 20 on linux */
+};
+
+LIST_HEAD(, mc_sock) mc_sock_list= LIST_HEAD_INITIALIZER();
+
+static int alloc_mc_sock(int family)
+{
+	struct mc_sock *entry;
+
+	LIST_FOREACH(entry, &mc_sock_list, link) {
+		if (entry->cnt < MAX_GROUPS && entry->family == family)
+			break;
+	}
+
+	if (!entry) {
+		int val = 0;
+
+		entry = malloc(sizeof(struct mc_sock));
+		if (!entry) {
+			smclog(LOG_ERR, "Out of memory in %s()", __func__);
+			return -1;
+		}
+
+		entry->family = family;
+		entry->cnt = 0;
+		entry->sd = socket_create(family, SOCK_DGRAM, 0, NULL, NULL);
+		if (entry->sd == -1) {
+			smclog(LOG_ERR, "Failed creating mc socket: %s", strerror(errno));
+			free(entry);
+			return -1;
+		}
+
+#ifdef HAVE_LINUX_FILTER_H
+		if (setsockopt(entry->sd, SOL_SOCKET, SO_ATTACH_FILTER, &fprog, sizeof(fprog)) < 0)
+			smclog(LOG_WARNING, "failed setting IPv4 socket filter, continuing anyway");
+#endif
+
+#ifdef HAVE_IPV6_MULTICAST_HOST
+		if (family == AF_INET6) {
+#ifdef IPV6_MULTICAST_ALL
+			if (setsockopt(entry->sd, SOL_SOCKET, IPV6_MULTICAST_ALL, &val, sizeof(val)))
+				smclog(LOG_WARNING, "failed disabling IPV6_MULTICAST_ALL: %s", strerror(errno));
+#endif
+		} else
+#endif
+
+#ifdef IP_MULTICAST_ALL
+		if (setsockopt(entry->sd, SOL_SOCKET, IP_MULTICAST_ALL, &val, sizeof(val)))
+			smclog(LOG_WARNING, "failed disabling IP_MULTICAST_ALL: %s", strerror(errno));
+#endif
+
+		LIST_INSERT_HEAD(&mc_sock_list, entry, link);
+	}
+
+	entry->cnt++;
+
+	return entry->sd;
+}
+
+static void free_mc_sock(int sd)
+{
+	struct mc_sock *entry, *tmp;
+
+	LIST_FOREACH_SAFE(entry, &mc_sock_list, link, tmp) {
+		if (entry->sd == sd)
+			break;
+	}
+
+	if (entry) {
+		if (--entry->cnt == 0) {
+			LIST_REMOVE(entry, link);
+			socket_close(entry->sd);
+			free(entry);
+		}
+	}
+}
 
 static struct iface *match_valid_iface(const char *ifname, struct ifmatch *state)
 {
@@ -77,9 +158,9 @@ static struct iface *match_valid_iface(const char *ifname, struct ifmatch *state
 	return iface;
 }
 
-static void list_add(struct iface *iface, inet_addr_t *source, inet_addr_t *group, int len)
+static void list_add(int sd, struct mcgroup *mcg)
 {
-	struct mgroup *entry;
+	struct mcgroup *entry;
 
 	entry = malloc(sizeof(*entry));
 	if (!entry) {
@@ -87,74 +168,36 @@ static void list_add(struct iface *iface, inet_addr_t *source, inet_addr_t *grou
 		return;
 	}
 
-	memset(entry, 0, sizeof(*entry));
+	*entry = *mcg;
+#if 0
+	strlcpy(entry->ifname, iface->name, sizeof(entry->ifname));
 	entry->iface   = iface;
 	entry->source  = *source;
 	entry->group   = *group;
 	entry->len     = len;
+#endif
+	entry->sd      = sd;
 
-	LIST_INSERT_HEAD(&mgroup_static_list, entry, link);
+	LIST_INSERT_HEAD(&kern_list, entry, link);
 }
 
-static void list_rem(struct iface *iface, inet_addr_t *source, inet_addr_t *group, int len)
+static void list_rem(int sd, struct mcgroup *mcg)
 {
-	struct mgroup *entry, *tmp;
+	struct mcgroup *entry, *tmp;
 
-	LIST_FOREACH_SAFE(entry, &mgroup_static_list, link, tmp) {
-		if (entry->iface->ifindex != iface->ifindex)
+	(void)sd;
+	LIST_FOREACH_SAFE(entry, &kern_list, link, tmp) {
+		if (entry->iface->ifindex != mcg->iface->ifindex)
 			continue;
 
-		if (inet_addr_cmp(&entry->source, source) ||
-		    inet_addr_cmp(&entry->group, group)   ||
-		    entry->len != len)
+		if (inet_addr_cmp(&entry->source, &mcg->source) ||
+		    inet_addr_cmp(&entry->group, &mcg->group))
 			continue;
 
 		LIST_REMOVE(entry, link);
+		free_mc_sock(entry->sd);
 		free(entry);
 	}
-}
-
-static void mcgroup_init(void)
-{
-	int val;
-
-	if (mcgroup4_socket < 0) {
-		mcgroup4_socket = socket_create(AF_INET, SOCK_DGRAM, 0, NULL, NULL);
-		if (mcgroup4_socket < 0) {
-			smclog(LOG_ERR, "failed creating IPv4 mcgroup socket: %s", strerror(errno));
-			exit(255);
-		}
-
-#ifdef HAVE_LINUX_FILTER_H
-		if (setsockopt(mcgroup4_socket, SOL_SOCKET, SO_ATTACH_FILTER, &fprog, sizeof(fprog)) < 0)
-			smclog(LOG_WARNING, "failed setting IPv4 socket filter, continuing anyway");
-#endif
-#ifdef IP_MULTICAST_ALL
-		val = 0;
-		if (setsockopt(mcgroup4_socket, SOL_SOCKET, IP_MULTICAST_ALL, &val, sizeof(val)))
-			smclog(LOG_WARNING, "failed disabling IP_MULTICAST_ALL: %s", strerror(errno));
-#endif
-	}
-
-#ifdef HAVE_IPV6_MULTICAST_HOST
-	if (mcgroup6_socket < 0) {
-		mcgroup6_socket = socket_create(AF_INET6, SOCK_DGRAM, IPPROTO_UDP, NULL, NULL);
-		if (mcgroup6_socket < 0) {
-			smclog(LOG_WARNING, "failed creating IPv6 mcgroup socket: %s", strerror(errno));
-			return;
-		}
-
-#ifdef HAVE_LINUX_FILTER_H
-		if (setsockopt(mcgroup6_socket, SOL_SOCKET, SO_ATTACH_FILTER, &fprog, sizeof(fprog)) < 0)
-			smclog(LOG_WARNING, "failed setting IPv6 socket filter, continuing anyway");
-#endif
-#ifdef IPV6_MULTICAST_ALL
-		val = 0;
-		if (setsockopt(mcgroup6_socket, SOL_SOCKET, IPV6_MULTICAST_ALL, &val, sizeof(val)))
-			smclog(LOG_WARNING, "failed disabling IPV6_MULTICAST_ALL: %s", strerror(errno));
-#endif
-	}
-#endif
 }
 
 /*
@@ -162,6 +205,7 @@ static void mcgroup_init(void)
  */
 void mcgroup_exit(void)
 {
+#if 0
 	struct mcgroup *centry, *ctmp;
 	struct mgroup *entry, *tmp;
 
@@ -177,45 +221,46 @@ void mcgroup_exit(void)
 	}
 #endif
 
-	LIST_FOREACH_SAFE(centry, &mcgroup_conf_list, link, ctmp) {
+	LIST_FOREACH_SAFE(centry, &conf_list, link, ctmp) {
 		LIST_REMOVE(centry, link);
 		free(centry);
 	}
-	LIST_FOREACH_SAFE(entry, &mgroup_static_list, link, tmp) {
+	LIST_FOREACH_SAFE(entry, &kern_list, link, tmp) {
 		LIST_REMOVE(entry, link);
 		free(entry);
 	}
+#endif
 }
 
 static struct mcgroup *find_conf(const char *ifname, inet_addr_t *source, inet_addr_t *group, int len)
 {
-	char src[INET_ADDRSTR_LEN], grp[INET_ADDRSTR_LEN];
-	struct mcgroup *entry, *tmp;
+	struct mcgroup *entry;
 
-	LIST_FOREACH_SAFE(entry, &mcgroup_conf_list, link, tmp) {
-		if (is_anyaddr(&entry->source))
-			strcpy(src, "*");
-		else
-			inet_addr2str(&entry->source, src, sizeof(src));
-		inet_addr2str(&entry->group, grp, sizeof(grp));
-		smclog(LOG_DEBUG, " ... checking against known (%s,%s/%u) on %s", src, grp, entry->len, entry->ifname);
+	LIST_FOREACH(entry, &conf_list, link) {
+		if (strcmp(entry->ifname, ifname))
+			continue;
+		if (inet_addr_cmp(&entry->source, source))
+			continue;
+		if (inet_addr_cmp(&entry->group, group) || entry->len != len)
+			continue;
 
-		if (strcmp(entry->ifname, ifname)) {
-			smclog(LOG_DEBUG, "  => wrong ifname (%s vs %s)", entry->ifname, ifname);
+		return entry;
+	}
+
+	return NULL;
+}
+
+static struct mcgroup *find_kern(struct mcgroup *mcg)
+{
+	struct mcgroup *entry;
+
+	LIST_FOREACH(entry, &kern_list, link) {
+		if (strcmp(entry->ifname, mcg->ifname))
 			continue;
-		}
-		if (inet_addr_cmp(&entry->source, source)) {
-			smclog(LOG_DEBUG, "  => wrong source");
+		if (inet_addr_cmp(&entry->source, &mcg->source))
 			continue;
-		}
-		errno = 0;
-		if (inet_addr_cmp(&entry->group, group) || entry->len != len) {
-			if (entry->len != len)
-				smclog(LOG_DEBUG, "  => wrong group prefix len");
-			else
-				smclog(LOG_DEBUG, "  => wrong group, errno: %d", errno);
+		if (inet_addr_cmp(&entry->group, &mcg->group))
 			continue;
-		}
 
 		return entry;
 	}
@@ -234,7 +279,6 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, inet_addr_t
 	if (!is_anyaddr(source))
 		inet_addr2str(source, src, sizeof(src));
 	inet_addr2str(group, grp, sizeof(grp));
-	smclog(LOG_DEBUG, "Find configured (%s,%s/%d) on %s ...", src, grp, len, ifname);
 
 	mcg = find_conf(ifname, source, group, len);
 	if (mcg) {
@@ -261,28 +305,61 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, inet_addr_t
 		mcg->group   = *group;
 		mcg->len     = len;
 
-		LIST_INSERT_HEAD(&mcgroup_conf_list, mcg, link);
+		LIST_INSERT_HEAD(&conf_list, mcg, link);
 	}
-
-	mcgroup_init();
-#ifdef HAVE_IPV6_MULTICAST_HOST
-	if (group->ss_family == AF_INET6)
-		sd = mcgroup6_socket;
-	else
-#endif
-		sd = mcgroup4_socket;
 
 	iface_match_init(&state);
 	while ((mcg->iface = match_valid_iface(ifname, &state))) {
-		if (kern_join_leave(sd, cmd, mcg)) {
-			rc++;
-			continue;
+		uint32_t addr = 0, addr_max = 0;
+		struct in_addr orig, next;
+
+		if (mcg->group.ss_family == AF_INET) {
+			int mask;
+
+			if (mcg->len > 0)
+				mask = 0xFFFFFFFFu << (32 - mcg->len);
+			else
+				mask = 0xFFFFFFFFu;
+
+			orig = *inet_addr_get(&mcg->group);
+			addr = ntohl(orig.s_addr) & mask;
+			addr_max = addr | ~mask;
 		}
 
-		if (cmd == 'j')
-			list_add(mcg->iface, source, group, len);
-		else
-			list_rem(mcg->iface, source, group, len);
+		while (addr <= addr_max) {
+			if (addr) {
+				next.s_addr = htonl(addr);
+				inet_addr_set(&mcg->group, &next);
+			}
+			addr++;
+
+			if (cmd != 'j') {
+				struct mcgroup *kmcg;
+
+				kmcg = find_kern(mcg);
+				if (!kmcg)
+					continue;
+
+				sd = kmcg->sd;
+			} else
+				sd = alloc_mc_sock(group->ss_family);
+
+			if (kern_join_leave(sd, cmd, mcg)) {
+				if (cmd == 'j' && errno == EADDRINUSE)
+					continue; /* Already joined, ignore */
+
+				rc++;
+				break;
+			}
+
+			if (cmd == 'j')
+				list_add(sd, mcg);
+			else
+				list_rem(sd, mcg);
+		}
+
+		if (addr && mcg->group.ss_family == AF_INET)
+			inet_addr_set(&mcg->group, &orig);
 	}
 
 	if (cmd != 'j') {
@@ -304,7 +381,7 @@ int mcgroup_show(int sd, int detail)
 	char buf[256];
 	char sg[INET_ADDRSTR_LEN * 2 + 5 + 3];
  
-	LIST_FOREACH(entry, &mcgroup_conf_list, link) {
+	LIST_FOREACH(entry, &conf_list, link) {
 		struct iface *iface;
 		char src[INET_ADDRSTR_LEN] = "*";
 		char grp[INET_ADDRSTR_LEN];
@@ -330,7 +407,7 @@ int mcgroup_show(int sd, int detail)
 	}
 
 	if (detail) {
-		/* XXX: Show all from mgroup_static_list as well */
+		/* XXX: Show all from kern_list as well */
 	}
 
 	return 0;
