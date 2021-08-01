@@ -63,6 +63,20 @@
 #define MAXVIFS 32
 #endif
 
+/*
+ * IPv6 multicast route
+ */
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
+# ifndef MAXMIFS
+# define MAXMIFS MAXVIFS
+# endif
+
+# if MAXMIFS > MAXVIFS
+# undef  MAXVIFS
+# define MAXVIFS MAXMIFS
+# endif
+#endif
+
 struct mroute {
 	LIST_ENTRY(mroute) link;
 
@@ -78,19 +92,6 @@ struct mroute {
 	unsigned long      valid_pkt;   /* packet counter at last mroute4_dyn_expire() */
 	time_t             last_use;    /* timestamp of last forwarded packet */
 };
-
-/*
- * IPv6 multicast route
- */
-#ifdef HAVE_IPV6_MULTICAST_ROUTING
-# ifndef MAXMIFS
-# define MAXMIFS MAXVIFS
-# endif
-
-# if MAXMIFS != MAXVIFS
-# error "IPv6 MAXMIFS constants does not match IPv4 MAXVIFS, mroute.h or mroute6.h needs to be fixed!"
-# endif
-#endif
 
 int  mroute4_dyn_add   (struct mroute *mroute);
 void mroute4_dyn_expire(int max_idle);
