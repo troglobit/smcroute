@@ -451,13 +451,7 @@ static int kern_add4(struct mroute *route, int active)
 	inet_addr2str(&route->source, origin, sizeof(origin));
 	inet_addr2str(&route->group, group, sizeof(group));
 
-	/* copy the TTL vector */
-	if (sizeof(mc.mfcc_ttls[0]) != sizeof(route->ttl[0]) || NELEMS(mc.mfcc_ttls) != NELEMS(route->ttl)) {
-		smclog(LOG_ERR, "Critical data type validation error in %s!", __FILE__);
-		exit(255);
-	}
-
-	/* copy as many outbound interfaces as we can */
+	/* copy the TTL vector, as many as the kernel supports */
 	for (i = 0; i < NELEMS(mc.mfcc_ttls); i++)
 		mc.mfcc_ttls[i] = route->ttl[i];
 
