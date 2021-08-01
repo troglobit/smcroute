@@ -26,6 +26,8 @@
 #include <errno.h>
 #include <string.h>
 #include <arpa/inet.h>		/* inet_ntop() */
+#include <netinet/in.h>
+#include <sys/socket.h>
 
 #ifdef  HAVE_IPV6_MULTICAST_HOST
 #define INET_ADDRSTR_LEN  INET6_ADDRSTRLEN

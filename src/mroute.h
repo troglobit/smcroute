@@ -5,9 +5,13 @@
 #include "config.h"
 #include <stdint.h>
 #include <stdlib.h>
+#include <net/if.h>
 #include <netinet/in.h>
 #include <sys/types.h>
-
+#include <sys/socket.h>
+#ifdef HAVE_NETINET_IN_VAR_H
+#include <netinet/in_var.h>
+#endif
 #include "queue.h"		/* Needed by netinet/ip_mroute.h on FreeBSD */
 
 
