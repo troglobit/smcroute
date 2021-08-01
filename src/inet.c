@@ -25,6 +25,9 @@ void inet_addr_set(inet_addr_t *addr, const struct in_addr *ina)
 
 	assert(addr && ina);
 	sin->sin_family = AF_INET;
+#ifdef HAVE_SOCKADDR_IN_SIN_LEN
+	sin->sin_len = sizeof(struct sockaddr_in);
+#endif
 	sin->sin_addr = *ina;
 }
 
@@ -45,6 +48,9 @@ void inet_addr6_set(inet_addr_t *addr, const struct in6_addr *ina)
 
 	assert(addr && ina);
 	sin6->sin6_family = AF_INET6;
+#ifdef HAVE_SOCKADDR_IN_SIN_LEN
+	sin6->sin6_len = sizeof(struct sockaddr_in6);
+#endif
 	sin6->sin6_addr = *ina;
 }
 
@@ -68,12 +74,18 @@ void inet_anyaddr(sa_family_t family, inet_addr_t *addr)
 		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)addr;
 
 		sin6->sin6_family = AF_INET6;
+#ifdef HAVE_SOCKADDR_IN_SIN_LEN
+		sin6->sin6_len = sizeof(struct sockaddr_in6);
+#endif
 		memcpy(&sin6->sin6_addr, &in6addr_any, sizeof(in6addr_any));
 		return;
 	}
 #endif
 
 	sin->sin_family = AF_INET;
+#ifdef HAVE_SOCKADDR_IN_SIN_LEN
+	sin->sin_len = sizeof(struct sockaddr_in);
+#endif
 	sin->sin_addr.s_addr = htonl(INADDR_ANY);
 }
 
@@ -132,12 +144,18 @@ int inet_str2addr(const char *str, inet_addr_t *addr)
 	if (strchr(str, ':')) {
 		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)addr;
 
-		addr->ss_family = AF_INET6;
+		sin6->sin6_family = AF_INET6;
+#ifdef HAVE_SOCKADDR_IN_SIN_LEN
+		sin6->sin6_len = sizeof(struct sockaddr_in6);
+#endif
 		rc = inet_pton(AF_INET6, str, &sin6->sin6_addr);
 	} else
 #endif
 	{
-		addr->ss_family = AF_INET;
+		sin->sin_family = AF_INET;
+#ifdef HAVE_SOCKADDR_IN_SIN_LEN
+		sin->sin_len = sizeof(struct sockaddr_in);
+#endif
 		rc = inet_pton(AF_INET, str, &sin->sin_addr);
 	}
 
