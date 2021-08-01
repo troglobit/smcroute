@@ -93,7 +93,7 @@ static int group_req(int sd, int cmd, struct mcgroup *mcg)
 #ifdef HAVE_IPV6_MULTICAST_HOST
 	struct ipv6_mreq ipv6mr;
 #endif
-#ifdef __linux__
+#ifdef HAVE_STRUCT_IP_MREQN
 	struct ip_mreqn ipmr;
 #else
 	struct ip_mreq ipmr;
@@ -118,7 +118,7 @@ static int group_req(int sd, int cmd, struct mcgroup *mcg)
 #endif
 	{
 		ipmr.imr_multiaddr = *inet_addr_get(&mcg->group);
-#ifdef __linux__
+#ifdef HAVE_STRUCT_IP_MREQN
 		ipmr.imr_ifindex   = mcg->iface->ifindex;
 #else
 		ipmr.imr_interface = mcg->iface->inaddr;
