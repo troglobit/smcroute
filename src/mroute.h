@@ -68,29 +68,32 @@
  */
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 # ifndef MAXMIFS
-# define MAXMIFS MAXVIFS
+#  define MAXMIFS MAXVIFS
 # endif
 
 # if MAXMIFS > MAXVIFS
-# undef  MAXVIFS
-# define MAXVIFS MAXMIFS
+#  define MAX_MC_VIFS MAXMIFS
+# else
+#  define MAX_MC_VIFS MAXVIFS
 # endif
+#else
+#define MAX_MC_VIFS MAXVIFS
 #endif
 
 struct mroute {
 	LIST_ENTRY(mroute) link;
 
-	inet_addr_t        source;	/* originating host, may be inet_anyaddr() */
-	short              src_len;     /* source prefix len, or 0:disabled */
+	inet_addr_t    source;		/* originating host, may be inet_anyaddr() */
+	short	       src_len;		/* source prefix len, or 0:disabled */
 
-	inet_addr_t        group;       /* multicast group */
-	short              len;		/* prefix len, or 0:disabled */
+	inet_addr_t    group;		/* multicast group */
+	short	       len;		/* prefix len, or 0:disabled */
 
-	uint16_t           inbound;     /* incoming VIF    */
-	uint8_t            ttl[MAXVIFS];/* outgoing VIFs   */
+	uint16_t       inbound;		/* incoming VIF	   */
+	uint8_t	       ttl[MAX_MC_VIFS];/* outgoing VIFs   */
 
-	unsigned long      valid_pkt;   /* packet counter at last mroute4_dyn_expire() */
-	time_t             last_use;    /* timestamp of last forwarded packet */
+	unsigned long  valid_pkt;	/* packet counter at last mroute4_dyn_expire() */
+	time_t	       last_use;	/* timestamp of last forwarded packet */
 };
 
 int  mroute4_dyn_add   (struct mroute *mroute);

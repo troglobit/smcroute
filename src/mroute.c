@@ -102,7 +102,7 @@ LIST_HEAD(, mroute) mroute6_static_list = LIST_HEAD_INITIALIZER();
 /* IPv4 internal virtual interfaces (VIF) descriptor vector */
 static struct {
 	struct iface *iface;
-} vif_list[MAXVIFS];
+} vif_list[MAX_MC_VIFS];
 
 static int mroute4_add_vif(struct iface *iface);
 
@@ -363,7 +363,8 @@ static int mroute4_add_vif(struct iface *iface)
 	/* no more space */
 	if (vif == -1) {
 		errno = ENOMEM;
-		smclog(LOG_WARNING, "Kernel MAXVIFS (%d) too small for number of interfaces: %s", MAXVIFS, strerror(errno));
+		smclog(LOG_WARNING, "Kernel MAXVIFS (%d) too small for number of interfaces: %s",
+		       MAXVIFS, strerror(errno));
 		return 1;
 	}
 
@@ -435,6 +436,7 @@ static int kern_add4(struct mroute *route, int active)
 {
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	struct mfcctl mc;
+	size_t i;
 
 	if (mroute4_socket == -1) {
 		smclog(LOG_DEBUG, "No IPv4 multicast socket");
@@ -455,7 +457,10 @@ static int kern_add4(struct mroute *route, int active)
 		exit(255);
 	}
 
-	memcpy(mc.mfcc_ttls, route->ttl, NELEMS(mc.mfcc_ttls) * sizeof(mc.mfcc_ttls[0]));
+	/* copy as many outbound interfaces as we can */
+	for (i = 0; i < NELEMS(mc.mfcc_ttls); i++)
+		mc.mfcc_ttls[i] = route->ttl[i];
+
 	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_MFC, &mc, sizeof(mc))) {
 		smclog(LOG_WARNING, "failed adding IPv4 multicast route (%s,%s): %s",
 		       origin, group, strerror(errno));
@@ -1702,7 +1707,7 @@ static int show_mroute(int sd, struct mroute *r, int detail)
 	char grp[INET_ADDRSTRLEN];
 	char grp_len[5] = "";
 	char sg[(INET_ADDRSTRLEN + 3) * 2 + 5];
-	char buf[MAXVIFS * 17 + 80];
+	char buf[MAX_MC_VIFS * 17 + 80];
 	int vif;
 
 	if (!is_anyaddr(&r->source)) {
@@ -1732,7 +1737,7 @@ static int show_mroute(int sd, struct mroute *r, int detail)
 		strlcat(buf, stats, sizeof(buf));
 	}
 
-	for (vif = 0; vif < MAXVIFS; vif++) {
+	for (vif = 0; vif < MAX_MC_VIFS; vif++) {
 		char tmp[22];
 
 		if (r->ttl[vif] == 0)
