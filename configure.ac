@@ -66,12 +66,18 @@ AC_ARG_WITH([systemd],
 
 # Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h netinet/in_var.h		\
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h net/if.h netinet/in.h netinet/in_var.h	\
                   sys/ioctl.h sys/prctl.h sys/socket.h sys/types.h syslog.h	\
                   unistd.h net/route.h sys/param.h sys/stat.h sys/time.h	\
 		  sys/capability.h ifaddrs.h linux/sockios.h termios.h], [], [],[
 	#ifdef HAVE_SYS_SOCKET_H
 	# include <sys/socket.h>
+	#endif
+	#ifdef HAVE_NET_IF_H
+	# include <net/if.h>
+	#endif
+	#ifdef HAVE_NETINET_IN_H
+	# include <netinet/in.h>
 	#endif
 ])
 
