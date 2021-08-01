@@ -111,7 +111,7 @@ static int group_req(int sd, int cmd, struct mcgroup *mcg)
 		ipv6mr.ipv6mr_interface = mcg->iface->ifindex;
 
 		proto = IPPROTO_IPV6;
-		op    = cmd == 'j' ? IPV6_ADD_MEMBERSHIP : IPV6_DROP_MEMBERSHIP;
+		op    = cmd == 'j' ? IPV6_JOIN_GROUP : IPV6_LEAVE_GROUP;
 		arg   = &ipv6mr;
 		len   = sizeof(ipv6mr);
 	} else
