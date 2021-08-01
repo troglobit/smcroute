@@ -17,6 +17,17 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
+#ifndef __linux__
+/* We use SO_BINDTODEVICE to be able to send MRDISC on interfaces that
+ * may not have an IP address yet.  I have not found any way of doing
+ * this on FreeBSD.  Best I could find was an aging patch for IP_SENDIF
+ * https://forums.freebsd.org/threads/so_bindtodevice-undeclared-on-freebsd-12.73731/
+ * that never got merged.  It's possible there are other ways to do the
+ * same, but now you know as much as I do.
+ */
+#error Currently only works on Linux, patches for FreeBSD are most welcome.
+#endif
+
 #include "config.h"
 
 #include <errno.h>

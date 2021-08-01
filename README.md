@@ -233,6 +233,8 @@ out an IGMP message on inbound interfaces¹ to alert switches to open up
 multicast in that direction.  Not many managed switches have support for
 this yet.
 
+> **Note:** [mrdisc][] only works on Linux due to `SO_BINDTODEVICE`.
+
 ____  
 ¹ Notice the `mrdisc` flag to the above `phyint eth0` directive, which
 is missing for `eth1` and `eth2`.
