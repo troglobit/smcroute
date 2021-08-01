@@ -86,8 +86,9 @@ static int alloc_mc_sock(int family)
 	}
 
 	if (!entry) {
+#ifdef IP_MULTICAST_ALL
 		int val = 0;
-
+#endif
 		entry = malloc(sizeof(struct mc_sock));
 		if (!entry) {
 			smclog(LOG_ERR, "Out of memory in %s()", __func__);
