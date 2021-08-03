@@ -534,7 +534,7 @@ int mroute4_dyn_add(struct mroute *route)
 		memset(route->ttl, 0, NELEMS(route->ttl) * sizeof(route->ttl[0]));
 	}
 
-	ret = kern_add_mroute4(mroute4_socket, route, entry ? 1 : 0);
+	ret = kern_mroute4(mroute4_socket, 'a', route, entry ? 1 : 0);
 	if (ret)
 		return ret;
 
@@ -653,7 +653,7 @@ void mroute4_dyn_expire(int max_idle)
 			}
 
 			/* Not used, expire */
-			kern_del_mroute4(mroute4_socket, entry, is_active4(entry));
+			kern_mroute4(mroute4_socket, 'r', entry, is_active4(entry));
 			LIST_REMOVE(entry, link);
 			free(entry);
 		}
@@ -720,7 +720,7 @@ int mroute4_add(struct mroute *route)
 	/* ... (S,G) matches and inbound differs, then replace route */
 	entry = mroute4_similar(route);
 	if (entry) {
-		kern_del_mroute4(mroute4_socket, entry, is_active4(entry));
+		kern_mroute4(mroute4_socket, 'r', entry, is_active4(entry));
 		LIST_REMOVE(entry, link);
 		free(entry);
 	}
@@ -752,7 +752,7 @@ int mroute4_add(struct mroute *route)
 				smclog(LOG_DEBUG, "Flushing (%s,%s) on VIF %d, new matching (*,G) rule ...",
 				       origin, group, dyn->inbound);
 
-				kern_del_mroute4(mroute4_socket, dyn, 0);
+				kern_mroute4(mroute4_socket, 'r', dyn, 0);
 				LIST_REMOVE(dyn, link);
 				free(dyn);
 			}
@@ -762,7 +762,7 @@ int mroute4_add(struct mroute *route)
 	}
 
 	LIST_INSERT_HEAD(&mroute4_static_list, entry, link);
-	return kern_add_mroute4(mroute4_socket, route, 1);
+	return kern_mroute4(mroute4_socket, 'a', route, 1);
 }
 
 /* Remove from kernel and linked list */
@@ -770,7 +770,7 @@ static int do_mroute4_del(struct mroute *entry)
 {
 	int ret;
 
-	ret = kern_del_mroute4(mroute4_socket, entry, is_active4(entry));
+	ret = kern_mroute4(mroute4_socket, 'r', entry, is_active4(entry));
 	if (ret && ENOENT != errno)
 		return ret;
 
@@ -1241,7 +1241,7 @@ int mroute6_dyn_add(struct mroute *route)
 		memset(route->ttl, 0, NELEMS(route->ttl) * sizeof(route->ttl[0]));
 	}
 
-	ret = kern_add_mroute6(mroute6_socket, route, entry ? 1 : 0);
+	ret = kern_mroute6(mroute6_socket, 'a', route);
 	if (ret)
 		return ret;
 
@@ -1353,7 +1353,7 @@ int mroute6_add(struct mroute *route)
 	/* ... (S,G) matches and inbound differs, then replace route */
 	entry = mroute6_similar(route);
 	if (entry) {
-		kern_del_mroute6(mroute6_socket, entry, is_active6(entry));
+		kern_mroute6(mroute6_socket, 'r', entry);
 		LIST_REMOVE(entry, link);
 		free(entry);
 	}
@@ -1381,7 +1381,7 @@ int mroute6_add(struct mroute *route)
 				smclog(LOG_DEBUG, "Flushing (%s,%s) on MIF %d, new matching (*,G) rule ...",
 				       origin, group, dyn->inbound);
 
-				kern_del_mroute6(mroute6_socket, dyn, 0);
+				kern_mroute6(mroute6_socket, 'r', dyn);
 				LIST_REMOVE(dyn, link);
 				free(dyn);
 			}
@@ -1391,7 +1391,7 @@ int mroute6_add(struct mroute *route)
 	}
 
 	LIST_INSERT_HEAD(&mroute6_static_list, entry, link);
-	return kern_add_mroute6(mroute6_socket, route, 1);
+	return kern_mroute6(mroute6_socket, 'a', route);
 }
 
 /* Remove from kernel and linked list */
@@ -1399,7 +1399,7 @@ static int do_mroute6_del(struct mroute *entry)
 {
 	int ret;
 
-	ret = kern_del_mroute6(mroute6_socket, entry, is_active6(entry));
+	ret = kern_mroute6(mroute6_socket, 'r', entry);
 	if (ret && ENOENT != errno)
 		return ret;
 
