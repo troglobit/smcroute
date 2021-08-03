@@ -39,8 +39,7 @@
 #include "iface.h"
 #include "socket.h"
 #include "mcgroup.h"
-
-extern int kern_join_leave(int sd, int cmd, struct mcgroup *mcg);
+#include "kern.h"
 
 /*
  * Track IGMP join, any-source and source specific

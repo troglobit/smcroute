@@ -20,9 +20,11 @@
 #include <errno.h>
 #include <string.h>
 
-#include "log.h"
 #include "iface.h"
-#include "mcgroup.h"
+#include "kern.h"
+#include "log.h"
+#include "mrdisc.h"
+#include "util.h"
 
 
 /*
@@ -160,6 +162,165 @@ int kern_join_leave(int sd, int cmd, struct mcgroup *mcg)
 		       source, group, len, sd,
 		       errno, strerror(errno));
 		return 1;
+	}
+
+	return 0;
+}
+
+/* Actually set in kernel - called by mroute4_add() and mroute4_check_add() */
+int kern_add_mroute4(int sd, struct mroute *route, int active)
+{
+	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
+	struct mfcctl mc;
+	size_t i;
+
+	if (sd == -1) {
+		smclog(LOG_DEBUG, "No IPv4 multicast socket");
+		return -1;
+	}
+
+	memset(&mc, 0, sizeof(mc));
+	mc.mfcc_origin   = *inet_addr_get(&route->source);
+	mc.mfcc_mcastgrp = *inet_addr_get(&route->group);
+	mc.mfcc_parent   = route->inbound;
+
+	inet_addr2str(&route->source, origin, sizeof(origin));
+	inet_addr2str(&route->group, group, sizeof(group));
+
+	/* copy the TTL vector, as many as the kernel supports */
+	for (i = 0; i < NELEMS(mc.mfcc_ttls); i++)
+		mc.mfcc_ttls[i] = route->ttl[i];
+
+	if (setsockopt(sd, IPPROTO_IP, MRT_ADD_MFC, &mc, sizeof(mc))) {
+		smclog(LOG_WARNING, "failed adding IPv4 multicast route (%s,%s): %s",
+		       origin, group, strerror(errno));
+		return 1;
+	}
+
+	if (active) {
+		smclog(LOG_DEBUG, "Add %s -> %s from VIF %d", origin, group, route->inbound);
+
+		/* Only enable mrdisc for active routes, i.e. with outbound */
+		mrdisc_enable(route->inbound);
+	}
+
+	return 0;
+}
+
+/* Actually remove from kernel - called by mroute4_del() */
+int kern_del_mroute4(int sd, struct mroute *route, int active)
+{
+	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
+	struct mfcctl mc;
+
+	if (sd == -1) {
+		smclog(LOG_DEBUG, "No IPv4 multicast socket");
+		return -1;
+	}
+
+	memset(&mc, 0, sizeof(mc));
+	mc.mfcc_origin   = *inet_addr_get(&route->source);
+	mc.mfcc_mcastgrp = *inet_addr_get(&route->group);
+
+	inet_addr2str(&route->source, origin, sizeof(origin));
+	inet_addr2str(&route->group, group, sizeof(group));
+
+	if (setsockopt(sd, IPPROTO_IP, MRT_DEL_MFC, &mc, sizeof(mc))) {
+		if (ENOENT == errno)
+			smclog(LOG_DEBUG, "failed removing multicast route (%s,%s), does not exist.",
+				origin, group);
+		else
+			smclog(LOG_DEBUG, "failed removing IPv4 multicast route (%s,%s): %s",
+			       origin, group, strerror(errno));
+		return 1;
+	}
+
+	if (active) {
+		smclog(LOG_DEBUG, "Del %s -> %s", origin, group);
+
+		/* Only disable mrdisc for active routes. */
+		mrdisc_disable(route->inbound);
+	}
+
+	return 0;
+}
+
+/* Actually set in kernel - called by mroute6_add() and mroute6_check_add() */
+int kern_add_mroute6(int sd, struct mroute *route, int active)
+{
+	char origin[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
+	struct mf6cctl mc;
+	size_t i;
+
+	if (sd < 0) {
+		smclog(LOG_DEBUG, "No IPv6 multicast socket");
+		return -1;
+	}
+
+	memset(&mc, 0, sizeof(mc));
+	mc.mf6cc_origin   = *inet_addr6_get(&route->source);
+	mc.mf6cc_mcastgrp = *inet_addr6_get(&route->group);
+	mc.mf6cc_parent   = route->inbound;
+
+	inet_addr2str(&route->source, origin, INET_ADDRSTR_LEN);
+	inet_addr2str(&route->group, group, INET_ADDRSTR_LEN);
+
+	IF_ZERO(&mc.mf6cc_ifset);
+	for (i = 0; i < NELEMS(route->ttl); i++) {
+		if (route->ttl[i]) {
+			IF_SET(i, &mc.mf6cc_ifset);
+		}
+	}
+
+	if (setsockopt(sd, IPPROTO_IPV6, MRT6_ADD_MFC, &mc, sizeof(mc))) {
+		smclog(LOG_WARNING, "failed adding IPv6 multicast route (%s,%s): %s",
+		       origin, group, strerror(errno));
+		return 1;
+	}
+
+	if (active) {
+		smclog(LOG_DEBUG, "Add %s -> %s from MIF %d", origin, group, mc.mf6cc_parent);
+
+		/* Only enable mrdisc for active routes, i.e. with outbound */
+		mrdisc_enable(route->inbound);
+	}
+
+	return 0;
+}
+
+/* Actually remove from kernel - called by mroute6_del() */
+int kern_del_mroute6(int sd, struct mroute *route, int active)
+{
+	char origin[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
+	struct mf6cctl mc;
+
+	if (sd < 0) {
+		smclog(LOG_DEBUG, "No IPv6 multicast socket");
+		return -1;
+	}
+
+	memset(&mc, 0, sizeof(mc));
+	mc.mf6cc_origin   = *inet_addr6_get(&route->source);
+	mc.mf6cc_mcastgrp = *inet_addr6_get(&route->group);
+
+	inet_addr2str(&route->source, origin, INET_ADDRSTR_LEN);
+	inet_addr2str(&route->group, group, INET_ADDRSTR_LEN);
+
+	if (setsockopt(sd, IPPROTO_IPV6, MRT6_DEL_MFC, &mc, sizeof(mc))) {
+		if (ENOENT == errno)
+			smclog(LOG_DEBUG, "failed removing IPv6 multicast route (%s,%s), does not exist.",
+				origin, group);
+		else
+			smclog(LOG_DEBUG, "failed removing IPv6 multicast route (%s,%s): %s",
+			       origin, group, strerror(errno));
+		return 1;
+	}
+
+	if (active) {
+		smclog(LOG_DEBUG, "Del %s -> %s", origin, group);
+
+		/* Only disable mrdisc for active routes. */
+		mrdisc_disable(route->inbound);
 	}
 
 	return 0;

@@ -43,6 +43,7 @@
 #include "socket.h"
 #include "mrdisc.h"
 #include "mroute.h"
+#include "kern.h"
 #include "timer.h"
 #include "util.h"
 
@@ -431,84 +432,6 @@ static int mroute4_del_vif(struct iface *iface)
 	return 0;
 }
 
-/* Actually set in kernel - called by mroute4_add() and mroute4_check_add() */
-static int kern_add4(struct mroute *route, int active)
-{
-	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
-	struct mfcctl mc;
-	size_t i;
-
-	if (mroute4_socket == -1) {
-		smclog(LOG_DEBUG, "No IPv4 multicast socket");
-		return -1;
-	}
-
-	memset(&mc, 0, sizeof(mc));
-	mc.mfcc_origin   = *inet_addr_get(&route->source);
-	mc.mfcc_mcastgrp = *inet_addr_get(&route->group);
-	mc.mfcc_parent   = route->inbound;
-
-	inet_addr2str(&route->source, origin, sizeof(origin));
-	inet_addr2str(&route->group, group, sizeof(group));
-
-	/* copy the TTL vector, as many as the kernel supports */
-	for (i = 0; i < NELEMS(mc.mfcc_ttls); i++)
-		mc.mfcc_ttls[i] = route->ttl[i];
-
-	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_ADD_MFC, &mc, sizeof(mc))) {
-		smclog(LOG_WARNING, "failed adding IPv4 multicast route (%s,%s): %s",
-		       origin, group, strerror(errno));
-		return 1;
-	}
-
-	if (active) {
-		smclog(LOG_DEBUG, "Add %s -> %s from VIF %d", origin, group, route->inbound);
-
-		/* Only enable mrdisc for active routes, i.e. with outbound */
-		mrdisc_enable(route->inbound);
-	}
-
-	return 0;
-}
-
-/* Actually remove from kernel - called by mroute4_del() */
-static int kern_del4(struct mroute *route, int active)
-{
-	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
-	struct mfcctl mc;
-
-	if (mroute4_socket == -1) {
-		smclog(LOG_DEBUG, "No IPv4 multicast socket");
-		return -1;
-	}
-
-	memset(&mc, 0, sizeof(mc));
-	mc.mfcc_origin   = *inet_addr_get(&route->source);
-	mc.mfcc_mcastgrp = *inet_addr_get(&route->group);
-
-	inet_addr2str(&route->source, origin, sizeof(origin));
-	inet_addr2str(&route->group, group, sizeof(group));
-
-	if (setsockopt(mroute4_socket, IPPROTO_IP, MRT_DEL_MFC, &mc, sizeof(mc))) {
-		if (ENOENT == errno)
-			smclog(LOG_DEBUG, "failed removing multicast route (%s,%s), does not exist.",
-				origin, group);
-		else
-			smclog(LOG_DEBUG, "failed removing IPv4 multicast route (%s,%s): %s",
-			       origin, group, strerror(errno));
-		return 1;
-	}
-
-	if (active) {
-		smclog(LOG_DEBUG, "Del %s -> %s", origin, group);
-
-		/* Only disable mrdisc for active routes. */
-		mrdisc_disable(route->inbound);
-	}
-
-	return 0;
-}
-
 /*
  * Used for exact (S,G) matching
  */
@@ -611,7 +534,7 @@ int mroute4_dyn_add(struct mroute *route)
 		memset(route->ttl, 0, NELEMS(route->ttl) * sizeof(route->ttl[0]));
 	}
 
-	ret = kern_add4(route, entry ? 1 : 0);
+	ret = kern_add_mroute4(mroute4_socket, route, entry ? 1 : 0);
 	if (ret)
 		return ret;
 
@@ -730,7 +653,7 @@ void mroute4_dyn_expire(int max_idle)
 			}
 
 			/* Not used, expire */
-			kern_del4(entry, is_active4(entry));
+			kern_del_mroute4(mroute4_socket, entry, is_active4(entry));
 			LIST_REMOVE(entry, link);
 			free(entry);
 		}
@@ -797,7 +720,7 @@ int mroute4_add(struct mroute *route)
 	/* ... (S,G) matches and inbound differs, then replace route */
 	entry = mroute4_similar(route);
 	if (entry) {
-		kern_del4(entry, is_active4(entry));
+		kern_del_mroute4(mroute4_socket, entry, is_active4(entry));
 		LIST_REMOVE(entry, link);
 		free(entry);
 	}
@@ -829,7 +752,7 @@ int mroute4_add(struct mroute *route)
 				smclog(LOG_DEBUG, "Flushing (%s,%s) on VIF %d, new matching (*,G) rule ...",
 				       origin, group, dyn->inbound);
 
-				kern_del4(dyn, 0);
+				kern_del_mroute4(mroute4_socket, dyn, 0);
 				LIST_REMOVE(dyn, link);
 				free(dyn);
 			}
@@ -839,7 +762,7 @@ int mroute4_add(struct mroute *route)
 	}
 
 	LIST_INSERT_HEAD(&mroute4_static_list, entry, link);
-	return kern_add4(route, 1);
+	return kern_add_mroute4(mroute4_socket, route, 1);
 }
 
 /* Remove from kernel and linked list */
@@ -847,7 +770,7 @@ static int do_mroute4_del(struct mroute *entry)
 {
 	int ret;
 
-	ret = kern_del4(entry, is_active4(entry));
+	ret = kern_del_mroute4(mroute4_socket, entry, is_active4(entry));
 	if (ret && ENOENT != errno)
 		return ret;
 
@@ -1229,87 +1152,6 @@ static int mroute6_del_mif(struct iface *iface)
 	return 0;
 }
 
-/* Actually set in kernel - called by mroute6_add() and mroute6_check_add() */
-static int kern_add6(struct mroute *route, int active)
-{
-	char origin[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
-	struct mf6cctl mc;
-	size_t i;
-
-	if (mroute6_socket < 0) {
-		smclog(LOG_DEBUG, "No IPv6 multicast socket");
-		return -1;
-	}
-
-	memset(&mc, 0, sizeof(mc));
-	mc.mf6cc_origin   = *inet_addr6_get(&route->source);
-	mc.mf6cc_mcastgrp = *inet_addr6_get(&route->group);
-	mc.mf6cc_parent   = route->inbound;
-
-	inet_addr2str(&route->source, origin, INET_ADDRSTR_LEN);
-	inet_addr2str(&route->group, group, INET_ADDRSTR_LEN);
-
-	IF_ZERO(&mc.mf6cc_ifset);
-	for (i = 0; i < NELEMS(route->ttl); i++) {
-		if (route->ttl[i]) {
-			IF_SET(i, &mc.mf6cc_ifset);
-		}
-	}
-
-	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_ADD_MFC, &mc, sizeof(mc))) {
-		smclog(LOG_WARNING, "failed adding IPv6 multicast route (%s,%s): %s",
-		       origin, group, strerror(errno));
-		return 1;
-	}
-
-	if (active) {
-		smclog(LOG_DEBUG, "Add %s -> %s from MIF %d", origin, group, mc.mf6cc_parent);
-
-		/* Only enable mrdisc for active routes, i.e. with outbound */
-		mrdisc_enable(route->inbound);
-	}
-
-	return 0;
-}
-
-/* Actually remove from kernel - called by mroute6_del() */
-static int kern_del6(struct mroute *route, int active)
-{
-	char origin[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
-	struct mf6cctl mc;
-
-	if (mroute6_socket < 0) {
-		smclog(LOG_DEBUG, "No IPv6 multicast socket");
-		return -1;
-	}
-
-	memset(&mc, 0, sizeof(mc));
-	mc.mf6cc_origin   = *inet_addr6_get(&route->source);
-	mc.mf6cc_mcastgrp = *inet_addr6_get(&route->group);
-
-	inet_addr2str(&route->source, origin, INET_ADDRSTR_LEN);
-	inet_addr2str(&route->group, group, INET_ADDRSTR_LEN);
-
-	if (setsockopt(mroute6_socket, IPPROTO_IPV6, MRT6_DEL_MFC, &mc, sizeof(mc))) {
-		if (ENOENT == errno)
-			smclog(LOG_DEBUG, "failed removing IPv6 multicast route (%s,%s), does not exist.",
-				origin, group);
-		else
-			smclog(LOG_DEBUG, "failed removing IPv6 multicast route (%s,%s): %s",
-			       origin, group, strerror(errno));
-		return 1;
-	}
-
-	if (active) {
-		smclog(LOG_DEBUG, "Del %s -> %s", origin, group);
-
-		/* Only disable mrdisc for active routes. */
-		mrdisc_disable(route->inbound);
-	}
-
-	return 0;
-}
-
 /*
  * Used for exact (S,G) matching
  */
@@ -1399,7 +1241,7 @@ int mroute6_dyn_add(struct mroute *route)
 		memset(route->ttl, 0, NELEMS(route->ttl) * sizeof(route->ttl[0]));
 	}
 
-	ret = kern_add6(route, entry ? 1 : 0);
+	ret = kern_add_mroute6(mroute6_socket, route, entry ? 1 : 0);
 	if (ret)
 		return ret;
 
@@ -1511,7 +1353,7 @@ int mroute6_add(struct mroute *route)
 	/* ... (S,G) matches and inbound differs, then replace route */
 	entry = mroute6_similar(route);
 	if (entry) {
-		kern_del6(entry, is_active6(entry));
+		kern_del_mroute6(mroute6_socket, entry, is_active6(entry));
 		LIST_REMOVE(entry, link);
 		free(entry);
 	}
@@ -1539,7 +1381,7 @@ int mroute6_add(struct mroute *route)
 				smclog(LOG_DEBUG, "Flushing (%s,%s) on MIF %d, new matching (*,G) rule ...",
 				       origin, group, dyn->inbound);
 
-				kern_del6(dyn, 0);
+				kern_del_mroute6(mroute6_socket, dyn, 0);
 				LIST_REMOVE(dyn, link);
 				free(dyn);
 			}
@@ -1549,7 +1391,7 @@ int mroute6_add(struct mroute *route)
 	}
 
 	LIST_INSERT_HEAD(&mroute6_static_list, entry, link);
-	return kern_add6(route, 1);
+	return kern_add_mroute6(mroute6_socket, route, 1);
 }
 
 /* Remove from kernel and linked list */
@@ -1557,7 +1399,7 @@ static int do_mroute6_del(struct mroute *entry)
 {
 	int ret;
 
-	ret = kern_del6(entry, is_active6(entry));
+	ret = kern_del_mroute6(mroute6_socket, entry, is_active6(entry));
 	if (ret && ENOENT != errno)
 		return ret;
 
