@@ -310,7 +310,7 @@ int kern_del_vif(struct iface *iface)
 		return errno = EAGAIN;
 	if (!iface)
 		return errno = EINVAL;
-	if (iface->vif == -1)
+	if (iface->vif == NO_VIF)
 		return errno = ENOENT;
 
 	smclog(LOG_DEBUG, "Removing  %-16s => VIF %-2d", iface->name, iface->vif);
@@ -547,7 +547,7 @@ int kern_del_mif(struct iface *iface)
 		return errno = EAGAIN;
 	if (!iface)
 		return errno = EINVAL;
-	if (iface->vif == -1)
+	if (iface->vif == NO_VIF)
 		return errno = ENOENT;
 
 	smclog(LOG_DEBUG, "Removing  %-16s => MIF %-2d", iface->name, iface->mif);

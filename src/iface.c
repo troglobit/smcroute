@@ -112,8 +112,8 @@ static int iface_update(int refresh)
 			iface->inaddr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
 		iface->flags = ifa->ifa_flags;
 		iface->ifindex = if_nametoindex(iface->name);
-		iface->vif = -1;
-		iface->mif = -1;
+		iface->vif = ALL_VIFS;
+		iface->mif = ALL_MIFS;
 		iface->mrdisc = 0;
 		iface->threshold = DEFAULT_THRESHOLD;
 	}
@@ -210,7 +210,7 @@ struct iface *iface_find_by_name(const char *ifname)
 	for (i = 0; i < num_ifaces; i++) {
 		iface = &iface_list[i];
 		if (!strcmp(nm, iface->name)) {
-			if (iface->vif >= 0) {
+			if (iface->vif != NO_VIF) {
 				free(nm);
 				return iface;
 			}
@@ -232,14 +232,36 @@ struct iface *iface_find_by_name(const char *ifname)
  * Pointer to a @struct iface of the requested interface, or %NULL if no
  * interface matching @vif exists.
  */
-struct iface *iface_find_by_vif(int vif)
+struct iface *iface_find_by_vif(vifi_t vif)
 {
 	size_t i;
 
 	for (i = 0; i < num_ifaces; i++) {
 		struct iface *iface = &iface_list[i];
 
-		if (iface->vif >= 0 && iface->vif == vif)
+		if (iface->vif != NO_VIF && iface->vif == vif)
+			return iface;
+	}
+
+	return NULL;
+}
+
+/**
+ * iface_find_by_mif - Find by virtual interface index
+ * @mif: Virtual multicast interface index
+ *
+ * Returns:
+ * Pointer to a @struct iface of the requested interface, or %NULL if no
+ * interface matching @mif exists.
+ */
+struct iface *iface_find_by_mif(mifi_t mif)
+{
+	size_t i;
+
+	for (i = 0; i < num_ifaces; i++) {
+		struct iface *iface = &iface_list[i];
+
+		if (iface->mif != NO_VIF && iface->mif == mif)
 			return iface;
 	}
 
@@ -332,10 +354,10 @@ struct iface *iface_iterator(int first)
  * The virtual interface index if the interface is known and registered
  * with the kernel, or -1 if no virtual interface exists.
  */
-int iface_get_vif(struct iface *iface)
+vifi_t iface_get_vif(struct iface *iface)
 {
 	if (!iface)
-		return -1;
+		return NO_VIF;
 
 	return iface->vif;
 }
@@ -348,13 +370,14 @@ int iface_get_vif(struct iface *iface)
  * The virtual interface index if the interface is known and registered
  * with the kernel, or -1 if no virtual interface exists.
  */
-int iface_get_mif(struct iface *iface __attribute__ ((unused)))
+mifi_t iface_get_mif(struct iface *iface)
 {
 #ifndef HAVE_IPV6_MULTICAST_ROUTING
-	return -1;
+	(void)iface;
+	return NO_VIF;
 #else
 	if (!iface)
-		return -1;
+		return NO_VIF;
 
 	return iface->mif;
 #endif
@@ -369,26 +392,26 @@ int iface_get_mif(struct iface *iface __attribute__ ((unused)))
  * The virtual interface index if the interface matches and is registered
  * with the kernel, or -1 if no (more) matching virtual interfaces are found.
  */
-int iface_match_vif_by_name(const char *ifname, struct ifmatch *state, struct iface **found)
+vifi_t iface_match_vif_by_name(const char *ifname, struct ifmatch *state, struct iface **found)
 {
 	struct iface *iface;
-	int vif;
+	vifi_t vif = NO_VIF;
 
 	while ((iface = iface_match_by_name(ifname, state))) {
 		vif = iface_get_vif(iface);
-		if (vif >= 0) {
+		if (vif != NO_VIF) {
 			if (found)
 				*found = iface;
 
 			smclog(LOG_DEBUG, "  %s has VIF %d", iface->name, vif);
-			return vif;
+			break;
 		}
 
 		smclog(LOG_DEBUG, "  No VIF for %s", iface->name);
 		state->match_count--;
 	}
 
-	return -1;
+	return vif;
 }
 
 /**
@@ -400,24 +423,25 @@ int iface_match_vif_by_name(const char *ifname, struct ifmatch *state, struct if
  * The virtual interface index if the interface matches and is registered
  * with the kernel, or -1 if no (more) matching virtual interfaces are found.
  */
-int iface_match_mif_by_name(const char *ifname, struct ifmatch *state, struct iface **found)
+mifi_t iface_match_mif_by_name(const char *ifname, struct ifmatch *state, struct iface **found)
 {
 	struct iface *iface;
-	int mif;
+	mifi_t mif;
 
 	while ((iface = iface_match_by_name(ifname, state))) {
 		mif = iface_get_mif(iface);
-		if (mif >= 0) {
+		if (mif != NO_VIF) {
 			if (found)
 				*found = iface;
 
-			return mif;
+			smclog(LOG_DEBUG, "  %s has MIF %d", iface->name, mif);
+			break;
 		}
 
 		state->match_count--;
 	}
 
-	return -1;
+	return mif;
 }
 
 #ifdef ENABLE_CLIENT

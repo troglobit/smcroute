@@ -8,17 +8,20 @@
 #include <net/if.h>			/* IFNAMSIZ */
 #include <netinet/in.h>			/* struct in_addr */
 
+#include "mroute.h"			/* vifit_t + mifi_t */
+
 #define DEFAULT_THRESHOLD 1		/* Packet TTL must be at least 1 to pass */
+#define NO_VIF            ALL_VIFS	/* -1 */
 
 struct iface {
 	char name[IFNAMSIZ];
 	struct in_addr inaddr;		/* == 0 for non IP interfaces */
-	int   ifindex;			/* Physical interface index   */
-	short flags;
-	short vif;
-	short mif;
-	uint8_t mrdisc;			/* Enable multicast router discovery */
-	uint8_t threshold;		/* TTL threshold: 1-255, default: 1 */
+	int      ifindex;		/* Physical interface index   */
+	short    flags;
+	vifi_t   vif;
+	mifi_t   mif;
+	uint8_t  mrdisc;		/* Enable multicast router discovery */
+	uint8_t  threshold;		/* TTL threshold: 1-255, default: 1 */
 };
 
 struct ifmatch {
@@ -33,17 +36,18 @@ struct iface *iface_iterator          (int first);
 
 struct iface *iface_find              (int ifindex);
 struct iface *iface_find_by_name      (const char *ifname);
-struct iface *iface_find_by_vif       (int vif);
+struct iface *iface_find_by_vif       (vifi_t vif);
+struct iface *iface_find_by_mif       (mifi_t mif);
 
 void          iface_match_init        (struct ifmatch *state);
 struct iface *iface_match_by_name     (const char *ifname, struct ifmatch *state);
 int           ifname_is_wildcard      (const char *ifname);
 
-int           iface_get_vif           (struct iface *iface);
-int           iface_get_mif           (struct iface *iface);
+vifi_t        iface_get_vif           (struct iface *iface);
+mifi_t        iface_get_mif           (struct iface *iface);
 
-int           iface_match_vif_by_name (const char *ifname, struct ifmatch *state, struct iface **found);
-int           iface_match_mif_by_name (const char *ifname, struct ifmatch *state, struct iface **found);
+vifi_t        iface_match_vif_by_name (const char *ifname, struct ifmatch *state, struct iface **found);
+mifi_t        iface_match_mif_by_name (const char *ifname, struct ifmatch *state, struct iface **found);
 
 int           iface_show              (int sd, int detail);
 

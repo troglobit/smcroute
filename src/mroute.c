@@ -745,7 +745,7 @@ static void handle_nocache6(int sd, void *arg)
 	inet_addr2str(&mroute.source, origin, sizeof(origin));
 	inet_addr2str(&mroute.group, group, sizeof(group));
 
-	iface = iface_find_by_vif(mroute.inbound);
+	iface = iface_find_by_mif(mroute.inbound);
 	if (!iface) {
 		smclog(LOG_WARNING, "No matching interface for MIF %u, cannot handle MRT6MSG %u:%u. "
 		       "Multicast source %s, dest %s", mroute.inbound, im6->im6_mbz, im6->im6_msgtype,
@@ -1310,7 +1310,7 @@ static int show_mroute(int sd, struct mroute *r, int detail)
 		if (r->ttl[vif] == 0)
 			continue;
 
-		i = iface_find_by_vif(vif);
+		i = iface_find_by_mif(vif);
 		if (!i)
 			continue;
 

@@ -150,7 +150,7 @@ static int do_mroute4(struct ipc_msg *msg)
 
 		ifname_in = msg->argv[pos++];
 		vif = iface_match_vif_by_name(ifname_in, &state_in, NULL);
-		if (vif < 0)
+		if (vif == NO_VIF)
 			break;
 
 		src_len = is_range(msg->argv[pos]);
@@ -202,7 +202,7 @@ static int do_mroute4(struct ipc_msg *msg)
 				char *ifname_out = msg->argv[pos++];
 
 				iface_match_init(&state_out);
-				while ((vif = iface_match_vif_by_name(ifname_out, &state_out, NULL)) >= 0) {
+				while ((vif = iface_match_vif_by_name(ifname_out, &state_out, NULL)) != NO_VIF) {
 					if (vif == mroute.inbound) {
 						/* In case of wildcard match in==out is normal, so don't complain */
 						if (!ifname_is_wildcard(ifname_in) && !ifname_is_wildcard(ifname_out) && !errmsg++)
@@ -264,7 +264,7 @@ static int do_mroute6(struct ipc_msg *msg)
 
 		ifname_in = msg->argv[pos++];
 		mif = iface_match_mif_by_name(ifname_in, &state_in, NULL);
-		if (mif < 0)
+		if (mif == NO_VIF)
 			break;
 
 		if (inet_str2addr(msg->argv[pos++], &mroute.source)) {
@@ -303,7 +303,7 @@ static int do_mroute6(struct ipc_msg *msg)
 				char *ifname_out = msg->argv[pos++];
 
 				iface_match_init(&state_out);
-				while ((mif = iface_match_mif_by_name(ifname_out, &state_out, NULL)) >= 0) {
+				while ((mif = iface_match_mif_by_name(ifname_out, &state_out, NULL)) != NO_VIF) {
 					if (mif == mroute.inbound) {
 						/* In case of wildcard match in==out is normal, so don't complain */
 						if (!ifname_is_wildcard(ifname_in) && !ifname_is_wildcard(ifname_out) && !errmsg++)
