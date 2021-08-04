@@ -143,189 +143,98 @@ done:
 static int add_mroute(int lineno, char *ifname, char *group, char *source, char *outbound[], int num)
 {
 	struct ifmatch state_in, state_out;
+	struct mroute mroute;
 	struct iface *iface;
+	int len_max;
 	int rc = 0;
+	int vif;
 
 	if (!ifname || !group || !outbound || !num) {
 		errno = EINVAL;
 		return 1;
 	}
 
-	if (strchr(group, ':')) {
-#if !defined(HAVE_IPV6_MULTICAST_HOST) || !defined(HAVE_IPV6_MULTICAST_ROUTING)
-		WARN("Ignoring mroute for %s from %s, IPv6 disabled.", group, ifname);
-		return 0;
-#else
-		struct mroute mroute;
-		int mif;
+	iface_match_init(&state_in);
+	DEBUG("mroute: checking for input iface %s ...", ifname);
+	while ((vif = iface_match_vif_by_name(ifname, &state_in, NULL)) != NO_VIF) {
+		int i, total;
 
-		iface_match_init(&state_in);
-		while ((mif = iface_match_mif_by_name(ifname, &state_in, NULL)) != NO_VIF) {
-			int i, total;
+		DEBUG("mroute: input iface %s has vif %d", ifname, vif);
+		memset(&mroute, 0, sizeof(mroute));
+		mroute.inbound = vif;
 
-			memset(&mroute, 0, sizeof(mroute));
-			mroute.inbound = mif;
-
-			if (!source) {
-				inet_anyaddr(AF_INET6, &mroute.source);
-				mroute.src_len = 0;
-			} else {
-				int len;
-
-				if (inet_str2addr(source, &mroute.source)) {
-					WARN("mroute: Invalid source IPv6 address: %s", source);
-					return 1;
-				}
-
-				len = is_range(source);
-				if (len != 0)
-					WARN("mroute: Unsupported source prefix length: %d", len);
-
-				mroute.src_len = 128;
-			}
-
-			if (!group) {
-				WARN("mroute: Invalid IPv6 multicast group: %s", group);
-				return 1;
-			}
-
-			mroute.len = is_range(group);
-			if (mroute.len < 0 || mroute.len > 128) {
-				WARN("mroute: Invalid IPv6 multicast group prefix length: %d", mroute.len);
-				return 1;
-			}
-
-			if (mroute.len != 0) {
-				/* TODO: see mroute.c:is_match6() */
-				WARN("mroute: Unsupported IPv6 multicast group prefix length: %d", mroute.len);
-				mroute.len = 128;
-			} else {
-				/* Assume missing prefix for specified address as 128 */
-				mroute.len = 128;
-			}
-
-			if (inet_str2addr(group, &mroute.group) || !is_multicast(&mroute.group)) {
-				WARN("mroute: Invalid IPv6 multicast group: %s", group);
-				return 1;
-			}
-
-			total = 0;
-			for (i = 0; i < num; i++) {
-				iface_match_init(&state_out);
-				while ((mif = iface_match_mif_by_name(outbound[i], &state_out, &iface)) != NO_VIF) {
-					if (mif == mroute.inbound) {
-						/* In case of wildcard match in==out is normal, so don't complain */
-						if (!ifname_is_wildcard(ifname) && !ifname_is_wildcard(outbound[i]))
-							INFO("mroute: Same outbound IPv6 interface (%s) as inbound (%s) may cause routing loops.", outbound[i], ifname);
-					}
-
-					/* Use a TTL threshold to indicate the list of outbound interfaces. */
-					mroute.ttl[mif] = iface->threshold;
-					total++;
-				}
-				if (!state_out.match_count)
-					WARN("mroute: Invalid outbound IPv6 interface, skipping %s", outbound[i]);
-			}
-
-			if (!total) {
-				WARN("mroute: No valid outbound interfaces, skipping multicast route.");
-				rc += 1;
-			} else {
-				DEBUG("mroute: Adding IPv6 route ...");
-				rc += mroute6_add(&mroute);
-			}
+		mroute.len = is_range(group);
+		if (inet_str2addr(group, &mroute.group) || !is_multicast(&mroute.group)) {
+			WARN("mroute: Invalid multicast group: %s", group);
+			goto done;
 		}
 
-		if (!state_in.match_count) {
-			WARN("mroute: Invalid inbound IPv6 interface: %s", ifname);
-			return 1;
-		}
-
-		return rc;
+#ifdef HAVE_IPV6_MULTICAST_HOST
+		if (mroute.group.ss_family == AF_INET6)
+			len_max = 128;
+		else
 #endif
-	} else {
-		struct mroute mroute;
-		int vif;
-
-		iface_match_init(&state_in);
-		DEBUG("mroute: checking for input iface %s ...", ifname);
-		while ((vif = iface_match_vif_by_name(ifname, &state_in, NULL)) != NO_VIF) {
-			int i, total;
-
-			DEBUG("mroute: input iface %s has vif %d", ifname, vif);
-			memset(&mroute, 0, sizeof(mroute));
-			mroute.inbound = vif;
-
-			if (!source) {
-				inet_anyaddr(AF_INET, &mroute.source);
-				mroute.src_len = 0;
-			} else {
-				mroute.src_len = is_range(source);
-				if (mroute.src_len < 0 || mroute.src_len > 32) {
-					WARN("mroute: invalid prefix length: %d", mroute.src_len);
-					return 1;
-				}
-
-				if (inet_str2addr(source, (inet_addr_t *)&mroute.source)) {
-					WARN("mroute: Invalid source IPv4 address: %s", source);
-					return 1;
-				}
-			}
-
-			if (!group) {
-				WARN("mroute: Invalid IPv4 multicast group: %s", group);
-				return 1;
-			}
-
-			mroute.len = is_range(group);
-			if (mroute.len < 0 || mroute.len > 32) {
-				WARN("mroute: Invalid IPv4 multicast group prefix length, %d", mroute.len);
-				return 1;
-			}
-
-			if (inet_str2addr(group, (inet_addr_t *)&mroute.group) || !is_multicast((inet_addr_t *)&mroute.group)) {
-				char str[INET_ADDRSTR_LEN];
-
-				inet_addr2str((inet_addr_t *)&mroute.group, str, sizeof(str));
-				WARN("mroute: Invalid IPv4 multicast group: %s", str);
-
-				return 1;
-			}
-
-			total = 0;
-			for (i = 0; i < num; i++) {
-				iface_match_init(&state_out);
-
-				DEBUG("mroute: checking for %s ...", outbound[i]);
-				while ((vif = iface_match_vif_by_name(outbound[i], &state_out, &iface))  != NO_VIF) {
-					if (vif == mroute.inbound) {
-						/* In case of wildcard match in==out is normal, so don't complain */
-						if (!ifname_is_wildcard(ifname) && !ifname_is_wildcard(outbound[i]))
-							INFO("mroute: Same outbound IPv4 interface (%s) as inbound (%s) may cause routing loops.", outbound[i], ifname);
-					}
-
-					/* Use a TTL threshold to indicate the list of outbound interfaces. */
-					mroute.ttl[vif] = iface->threshold;
-					total++;
-				}
-				if (!state_out.match_count)
-					WARN("mroute: Invalid outbound IPv4 interface, skipping %s", outbound[i]);
-			}
-
-			if (!total) {
-				WARN("mroute: No valid outbound IPv4 interfaces, skipping multicast route.");
-				rc += 1;
-			} else {
-				rc += mroute4_add(&mroute);
-			}
+		len_max = 32;
+		if (mroute.len < 0 || mroute.len > len_max) {
+			WARN("mroute: Invalid multicast group prefix length, %d", mroute.len);
+			goto done;
 		}
 
-		if (!state_in.match_count) {
-			WARN("mroute: Invalid inbound IPv4 interface: %s", ifname);
-			return 1;
+		if (source) {
+			mroute.src_len = is_range(source);
+			if (mroute.src_len < 0 || mroute.src_len > len_max) {
+				WARN("mroute: invalid prefix length: %d", mroute.src_len);
+				goto done;
+			}
+
+			if (inet_str2addr(source, &mroute.source)) {
+				WARN("mroute: Invalid source address: %s", source);
+				goto done;
+			}
+		} else {
+			inet_anyaddr(mroute.group.ss_family, &mroute.source);
+			mroute.src_len = 0;
+		}
+
+		total = 0;
+		for (i = 0; i < num; i++) {
+			iface_match_init(&state_out);
+
+			DEBUG("mroute: checking for %s ...", outbound[i]);
+			while ((vif = iface_match_vif_by_name(outbound[i], &state_out, &iface))  != NO_VIF) {
+				if (vif == mroute.inbound) {
+					/* In case of wildcard match in==out is normal, so don't complain */
+					if (!ifname_is_wildcard(ifname) && !ifname_is_wildcard(outbound[i]))
+						INFO("mroute: Same outbound interface (%s) as inbound (%s) may cause routing loops.", outbound[i], ifname);
+				}
+
+				/* Use a TTL threshold to indicate the list of outbound interfaces. */
+				mroute.ttl[vif] = iface->threshold;
+				total++;
+			}
+			if (!state_out.match_count)
+				WARN("mroute: Invalid outbound interface, skipping %s", outbound[i]);
+		}
+
+		if (!total) {
+			WARN("mroute: No valid outbound interfaces, skipping multicast route.");
+			rc += 1;
+		} else {
+#ifdef HAVE_IPV6_MULTICAST_HOST
+			if (mroute.group.ss_family == AF_INET6)
+				rc += mroute6_add(&mroute);
+			else
+#endif
+			rc += mroute4_add(&mroute);
 		}
 	}
 
+	if (!state_in.match_count) {
+		WARN("mroute: Invalid inbound interface: %s", ifname);
+		rc++;
+	}
+
+done:
 	return rc;
 }
 
