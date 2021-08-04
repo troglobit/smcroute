@@ -33,18 +33,15 @@ void          iface_init              (void);
 void          iface_exit              (void);
 
 struct iface *iface_iterator          (int first);
+struct iface *iface_outbound_iterator (struct mroute *route, int first);
 
 struct iface *iface_find              (int ifindex);
 struct iface *iface_find_by_name      (const char *ifname);
-struct iface *iface_find_by_vif       (vifi_t vif);
-struct iface *iface_find_by_mif       (mifi_t mif);
+struct iface *iface_find_by_inbound   (struct mroute *route);
 
 void          iface_match_init        (struct ifmatch *state);
 struct iface *iface_match_by_name     (const char *ifname, struct ifmatch *state);
 int           ifname_is_wildcard      (const char *ifname);
-
-vifi_t        iface_get_vif           (struct iface *iface);
-mifi_t        iface_get_mif           (struct iface *iface);
 
 vifi_t        iface_match_vif_by_name (const char *ifname, struct ifmatch *state, struct iface **found);
 mifi_t        iface_match_mif_by_name (const char *ifname, struct ifmatch *state, struct iface **found);

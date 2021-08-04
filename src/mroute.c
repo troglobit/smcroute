@@ -125,7 +125,7 @@ static void handle_nocache4(int sd, void *arg)
 	inet_addr2str(&mroute.source, origin, sizeof(origin));
 	inet_addr2str(&mroute.group, group, sizeof(group));
 
-	iface = iface_find_by_vif(mroute.inbound);
+	iface = iface_find_by_inbound(&mroute);
 	if (!iface) {
 		smclog(LOG_WARNING, "No matching interface for VIF %u, cannot handle IGMP message %d.",
 		       mroute.inbound, im->im_msgtype);
@@ -745,7 +745,7 @@ static void handle_nocache6(int sd, void *arg)
 	inet_addr2str(&mroute.source, origin, sizeof(origin));
 	inet_addr2str(&mroute.group, group, sizeof(group));
 
-	iface = iface_find_by_mif(mroute.inbound);
+	iface = iface_find_by_inbound(&mroute);
 	if (!iface) {
 		smclog(LOG_WARNING, "No matching interface for MIF %u, cannot handle MRT6MSG %u:%u. "
 		       "Multicast source %s, dest %s", mroute.inbound, im6->im6_mbz, im6->im6_msgtype,
@@ -1274,7 +1274,7 @@ static int show_mroute(int sd, struct mroute *r, int detail)
 	if (r->len)
 		snprintf(grp_len, sizeof(grp_len), "/%u", r->len);
 
-	iface = iface_find_by_vif(r->inbound);
+	iface = iface_find_by_inbound(r);
 	snprintf(sg, sizeof(sg), "(%s%s, %s%s)", src, src_len, grp, grp_len);
 	snprintf(buf, sizeof(buf), "%-46s %-16s", sg, iface->name);
 
@@ -1292,18 +1292,14 @@ static int show_mroute(int sd, struct mroute *r, int detail)
 		strlcat(buf, stats, sizeof(buf));
 	}
 
-	for (vif = 0; vif < MAX_MC_VIFS; vif++) {
+	iface = iface_outbound_iterator(r, 1);
+	while (iface) {
 		char tmp[22];
-
-		if (r->ttl[vif] == 0)
-			continue;
-
-		iface = iface_find_by_mif(vif);
-		if (!iface)
-			continue;
 
 		snprintf(tmp, sizeof(tmp), " %s", iface->name);
 		strlcat(buf, tmp, sizeof(buf));
+
+		iface = iface_outbound_iterator(r, 0);
 	}
 	strlcat(buf, "\n", sizeof(buf));
 

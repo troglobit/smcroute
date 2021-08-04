@@ -224,15 +224,7 @@ struct iface *iface_find_by_name(const char *ifname)
 	return candidate;
 }
 
-/**
- * iface_find_by_vif - Find by virtual interface index
- * @vif: Virtual multicast interface index
- *
- * Returns:
- * Pointer to a @struct iface of the requested interface, or %NULL if no
- * interface matching @vif exists.
- */
-struct iface *iface_find_by_vif(vifi_t vif)
+static struct iface *find_by_vif(vifi_t vif)
 {
 	size_t i;
 
@@ -246,15 +238,7 @@ struct iface *iface_find_by_vif(vifi_t vif)
 	return NULL;
 }
 
-/**
- * iface_find_by_mif - Find by virtual interface index
- * @mif: Virtual multicast interface index
- *
- * Returns:
- * Pointer to a @struct iface of the requested interface, or %NULL if no
- * interface matching @mif exists.
- */
-struct iface *iface_find_by_mif(mifi_t mif)
+static struct iface *find_by_mif(mifi_t mif)
 {
 	size_t i;
 
@@ -266,6 +250,24 @@ struct iface *iface_find_by_mif(mifi_t mif)
 	}
 
 	return NULL;
+}
+
+/**
+ * iface_find_by_inbound - Find iface by route's inbound VIF
+ * @route: Route's inbound to use
+ *
+ * Returns:
+ * Pointer to a @struct iface of the requested interface, or %NULL if no
+ * interface matching @mif exists.
+ */
+struct iface *iface_find_by_inbound(struct mroute *route)
+{
+#ifdef  HAVE_IPV6_MULTICAST_HOST
+	if (route->group.ss_family == AF_INET6)
+		return find_by_mif(route->inbound);
+#endif
+
+	return find_by_vif(route->inbound);
 }
 
 /**
@@ -303,7 +305,6 @@ int ifname_is_wildcard(const char *ifname)
  */
 struct iface *iface_match_by_name(const char *ifname, struct ifmatch *state)
 {
-	struct iface *iface;
 	unsigned int match_len = UINT_MAX;
 
 	if (!ifname)
@@ -313,7 +314,8 @@ struct iface *iface_match_by_name(const char *ifname, struct ifmatch *state)
 		match_len = strlen(ifname) - 1;
 
 	for (; state->iter < num_ifaces; state->iter++) {
-		iface = &iface_list[state->iter];
+		struct iface *iface = &iface_list[state->iter];
+
 		if (!strncmp(ifname, iface->name, match_len)) {
 			state->iter++;
 			state->match_count++;
@@ -345,42 +347,33 @@ struct iface *iface_iterator(int first)
 	return &iface_list[i++];
 }
 
-
-/**
- * iface_get_vif - Get virtual interface index for an interface (IPv4)
- * @iface: Pointer to a &struct iface interface
- *
- * Returns:
- * The virtual interface index if the interface is known and registered
- * with the kernel, or -1 if no virtual interface exists.
- */
-vifi_t iface_get_vif(struct iface *iface)
+struct iface *iface_outbound_iterator(struct mroute *route, int first)
 {
-	if (!iface)
-		return NO_VIF;
+	struct iface *iface = NULL;
+	static vifi_t i = 0;
 
-	return iface->vif;
-}
+	if (first)
+		i = 0;
 
-/**
- * iface_get_mif - Get virtual interface index for an interface (IPv6)
- * @iface: Pointer to a &struct iface interface
- *
- * Returns:
- * The virtual interface index if the interface is known and registered
- * with the kernel, or -1 if no virtual interface exists.
- */
-mifi_t iface_get_mif(struct iface *iface)
-{
-#ifndef HAVE_IPV6_MULTICAST_ROUTING
-	(void)iface;
-	return NO_VIF;
-#else
-	if (!iface)
-		return NO_VIF;
+	while (i < MAX_MC_VIFS) {
+		vifi_t vif = i++;
 
-	return iface->mif;
+		if (route->ttl[vif] == 0)
+			continue;
+
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
+		if (route->group.ss_family == AF_INET6)
+			iface = find_by_mif(vif);
+		else
 #endif
+		iface = find_by_vif(vif);
+		if (!iface)
+			continue;
+
+		return iface;
+	}
+
+	return NULL;
 }
 
 /**
@@ -395,23 +388,21 @@ mifi_t iface_get_mif(struct iface *iface)
 vifi_t iface_match_vif_by_name(const char *ifname, struct ifmatch *state, struct iface **found)
 {
 	struct iface *iface;
-	vifi_t vif = NO_VIF;
 
 	while ((iface = iface_match_by_name(ifname, state))) {
-		vif = iface_get_vif(iface);
-		if (vif != NO_VIF) {
+		if (iface->vif != NO_VIF) {
 			if (found)
 				*found = iface;
 
-			smclog(LOG_DEBUG, "  %s has VIF %d", iface->name, vif);
-			break;
+			smclog(LOG_DEBUG, "  %s has VIF %d", iface->name, iface->vif);
+			return iface->vif;
 		}
 
 		smclog(LOG_DEBUG, "  No VIF for %s", iface->name);
 		state->match_count--;
 	}
 
-	return vif;
+	return NO_VIF;
 }
 
 /**
@@ -426,22 +417,20 @@ vifi_t iface_match_vif_by_name(const char *ifname, struct ifmatch *state, struct
 mifi_t iface_match_mif_by_name(const char *ifname, struct ifmatch *state, struct iface **found)
 {
 	struct iface *iface;
-	mifi_t mif;
 
 	while ((iface = iface_match_by_name(ifname, state))) {
-		mif = iface_get_mif(iface);
-		if (mif != NO_VIF) {
+		if (iface->mif != NO_VIF) {
 			if (found)
 				*found = iface;
 
-			smclog(LOG_DEBUG, "  %s has MIF %d", iface->name, mif);
-			break;
+			smclog(LOG_DEBUG, "  %s has MIF %d", iface->name, iface->mif);
+			return iface->mif;
 		}
 
 		state->match_count--;
 	}
 
-	return mif;
+	return NO_VIF;
 }
 
 #ifdef ENABLE_CLIENT
