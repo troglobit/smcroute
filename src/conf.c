@@ -92,6 +92,9 @@ static int match(char *keyword, char *token)
 
 static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 {
+	inet_addr_t src = { 0 }, grp = { 0 };
+	int grp_len = 0;
+	int len_max;
 	int rc = 0;
 
 	if (!ifname || !group) {
@@ -99,85 +102,41 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 		return 1;
 	}
 
-	if (strchr(group, ':')) {
-#if !defined(HAVE_IPV6_MULTICAST_HOST) || !defined(HAVE_IPV6_MULTICAST_ROUTING)
-		WARN("Ignoring join %s on %s, IPv6 disabled.", group, ifname);
-#else
-		inet_addr_t src, grp;
-		int len = 0;
-
-		memset(&src, 0, sizeof(src));
-		memset(&grp, 0, sizeof(grp));
-
-		if (source) {
-			len = is_range(source);
-			if (len != 0)
-				WARN("join: ignoring source perfix len: %d", len);
-
-			if (inet_str2addr(source, &src)) {
-				WARN("join: Invalid IPv6 multicast source: %s", source);
-				return 1;
-			}
-		} else
-			inet_anyaddr(AF_INET6, &src);
-
-		if (group) {
-			len = is_range(group);
-			if (len < 0 || len > 128) {
-				WARN("Invalid IPv6 group prefix length (0-128): %d", len);
-				return 1;
-			}
-			if (!len)
-				len = 128;
-
-			if (inet_str2addr(group, &grp) || !is_multicast(&grp)) {
-				WARN("join: Invalid IPv6 multicast group: %s", group);
-				return 1;
-			}
-		} else {
-			WARN("join: missing IPv6 multicast group");
-			return 1;
-		}
-
-		/* XXX: Add support for GROUP/LEN to IPv6 */
-		rc = mcgroup_action('j', ifname, &src, &grp, len);
-#endif
-	} else {
-		inet_addr_t src, grp;
-		int len = 0;
-
-		memset(&src, 0, sizeof(src));
-		memset(&grp, 0, sizeof(grp));
-
-		if (source) {
-			if ((len = is_range(source)) > 0)
-				WARN("join: ignoring source perfix len: %d", len);
-
-			if (inet_str2addr(source, &src)) {
-				WARN("join: Invalid IPv4 multicast source: %s", source);
-				return 1;
-			}
-		} else
-			inet_anyaddr(AF_INET, &src);
-
-		if (group) {
-			len = is_range(group);
-			if (len < 0 || len > 32) {
-				WARN("join: Invalid IPv4 group s prefix length (0-32): %d", len);
-				return 1;
-			}
-			if (!len)
-				len = 32;
-
-			if (inet_str2addr(group, &grp) || !is_multicast(&grp)) {
-				WARN("join: Invalid IPv4 multicast group: %s", group);
-				return 1;
-			}
-		}
-
-		rc = mcgroup_action('j', ifname, &src, &grp, len);
+	grp_len = is_range(group);
+	if (inet_str2addr(group, &grp) || !is_multicast(&grp)) {
+		WARN("join: Invalid multicast group: %s", group);
+		goto done;
 	}
 
+#ifdef HAVE_IPV6_MULTICAST_HOST
+	if (grp.ss_family == AF_INET6)
+		len_max = 128;
+	else
+#endif
+	len_max = 32;
+	if (grp_len < 0 || grp_len > len_max) {
+		WARN("join: Invalid group prefix length (0-%d): %d", len_max, grp_len);
+		goto done;
+	}
+	if (!grp_len)
+		grp_len = len_max;
+
+	if (source) {
+		int src_len = is_range(source);
+
+		if (src_len > 0)
+			WARN("join: ignoring source prefix len: %d", src_len);
+
+		if (inet_str2addr(source, &src)) {
+			WARN("join: Invalid multicast source: %s", source);
+			goto done;
+		}
+	} else
+		inet_anyaddr(grp.ss_family, &src);
+
+
+	rc += mcgroup_action('j', ifname, &src, &grp, grp_len);
+done:
 	return rc;
 }
 
