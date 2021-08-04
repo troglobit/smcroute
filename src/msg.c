@@ -215,7 +215,8 @@ static int do_mroute(struct ipc_msg *msg)
 							smclog(LOG_WARNING, "Same outbound interface (%s) as inbound (%s) may cause routing loops.",
 							       ifname_out, ifname_in);
 					}
-					mroute.ttl[vif] = 1;	/* Use a TTL threshold */
+					/* Use configured TTL threshold for the output phyint */
+					mroute.ttl[vif] = iface->threshold;
 					total++;
 				}
 
