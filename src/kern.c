@@ -18,13 +18,40 @@
 #include "config.h"
 
 #include <errno.h>
+#ifdef HAVE_FCNTL_H
+#include <fcntl.h>
+#endif
 #include <string.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 #include "iface.h"
 #include "kern.h"
 #include "log.h"
 #include "mrdisc.h"
+#include "socket.h"
 #include "util.h"
+
+/*
+ * Raw IGMP socket used as interface for the IPv4 mrouted API.
+ * Receives IGMP packets and upcall messages from the kernel.
+ */
+static int sd4 = -1;
+/*
+ * Raw ICMPv6 socket used as interface for the IPv6 mrouted API.
+ * Receives MLD packets and upcall messages from the kenrel.
+ */
+static int sd6 = -1;
+
+/* IPv4 internal virtual interfaces (VIF) descriptor vector */
+static struct {
+	struct iface *iface;
+} vif_list[MAX_MC_VIFS];
+
+/* IPv6 internal virtual interfaces (VIF) descriptor vector */
+static struct mif {
+	struct iface *iface;
+} mif_list[MAX_MC_VIFS];
 
 
 /*
@@ -167,14 +194,147 @@ int kern_join_leave(int sd, int cmd, struct mcgroup *mcg)
 	return 0;
 }
 
-int kern_mroute4(int sd, int cmd, struct mroute *route, int active)
+int kern_mroute_init(int table_id, void (*cb)(int, void *), void *arg)
+{
+	int val = 1;
+
+	if (sd4 < 0) {
+		sd4 = socket_create(AF_INET, SOCK_RAW, IPPROTO_IGMP, cb, arg);
+		if (sd4 < 0)
+			return -1;
+	}
+
+#ifdef MRT_TABLE /* Currently only available on Linux  */
+	if (table_id != 0) {
+		smclog(LOG_INFO, "Setting IPv4 multicast routing table id %d", table_id);
+		if (setsockopt(sd4, IPPROTO_IP, MRT_TABLE, &table_id, sizeof(table_id)) < 0) {
+			errno = EPROTONOSUPPORT;
+			goto error;
+		}
+	}
+#else
+	(void)table_id;
+#endif
+
+	if (setsockopt(sd4, IPPROTO_IP, MRT_INIT, &val, sizeof(val)))
+		goto error;
+
+	/* Enable "PIM" to get WRONGVIF messages */
+	if (setsockopt(sd4, IPPROTO_IP, MRT_PIM, &val, sizeof(val)))
+		smclog(LOG_ERR, "Failed enabling PIM IGMPMSG_WRONGVIF, ignoring: %s", strerror(errno));
+
+	/* Initialize virtual interface table */
+	memset(&vif_list, 0, sizeof(vif_list));
+
+	return 0;
+error:
+	socket_close(sd4);
+	sd4 = -1;
+
+	return -1;
+}
+
+int kern_mroute_exit(void)
+{
+	if (sd4 == -1)
+		return errno = EAGAIN;
+
+	/* Drop all kernel routes set by smcroute */
+	if (setsockopt(sd4, IPPROTO_IP, MRT_DONE, NULL, 0))
+		smclog(LOG_WARNING, "Failed shutting down IPv4 multicast routing socket: %s",
+		       strerror(errno));
+#if 0
+	if (close_socket) {
+		socket_close(sd4);
+		sd4 = -1;
+	}
+#endif
+	return 0;
+}
+
+int kern_add_vif(struct iface *iface)
+{
+	struct vifctl vc;
+	size_t i;
+	int vif;
+
+	if (!iface)
+		return errno = EINVAL;
+	if ((iface->flags & IFF_MULTICAST) != IFF_MULTICAST)
+		return errno = ENOPROTOOPT;
+	if (sd4 == -1)
+		return errno = EAGAIN;
+
+	/* find a free vif */
+	for (i = 0, vif = -1; i < NELEMS(vif_list); i++) {
+		if (!vif_list[i].iface) {
+			vif = i;
+			break;
+		}
+	}
+
+	if (vif == -1)
+		return errno = ENOMEM;
+
+	memset(&vc, 0, sizeof(vc));
+	vc.vifc_vifi = vif;
+	vc.vifc_flags = 0;      /* no tunnel, no source routing, register ? */
+	vc.vifc_threshold = iface->threshold;
+	vc.vifc_rate_limit = 0;	/* hopefully no limit */
+#ifdef VIFF_USE_IFINDEX		/* Register VIF using ifindex, not lcl_addr, since Linux 2.6.33 */
+	vc.vifc_flags |= VIFF_USE_IFINDEX;
+	vc.vifc_lcl_ifindex = iface->ifindex;
+#else
+	vc.vifc_lcl_addr.s_addr = iface->inaddr.s_addr;
+#endif
+	vc.vifc_rmt_addr.s_addr = htonl(INADDR_ANY);
+
+	smclog(LOG_DEBUG, "Map iface %-16s => VIF %-2d ifindex %2d flags 0x%04x TTL threshold %u",
+	       iface->name, vc.vifc_vifi, iface->ifindex, vc.vifc_flags, iface->threshold);
+
+	if (setsockopt(sd4, IPPROTO_IP, MRT_ADD_VIF, &vc, sizeof(vc)))
+		return 1;
+
+	iface->vif = vif;
+	vif_list[vif].iface = iface;
+
+	return 0;
+}
+
+int kern_del_vif(struct iface *iface)
+{
+	struct vifctl vifc;
+	int rc;
+
+	if (sd4 == -1)
+		return errno = EAGAIN;
+	if (!iface)
+		return errno = EINVAL;
+	if (iface->vif == -1)
+		return errno = ENOENT;
+
+	smclog(LOG_DEBUG, "Removing  %-16s => VIF %-2d", iface->name, iface->vif);
+
+	vifc.vifc_vifi = iface->vif;
+#ifdef __linux__
+	rc = setsockopt(sd4, IPPROTO_IP, MRT_DEL_VIF, &vifc, sizeof(vifc));
+#else
+	rc = setsockopt(sd4, IPPROTO_IP, MRT_DEL_VIF, &vifc->vifc_vifi, sizeof(vifc->vifc_vifi));
+#endif
+	if (!rc)
+		iface->vif = -1;
+
+	return rc;
+}
+
+int kern_mroute4(int cmd, struct mroute *route, int active)
 {
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	int op = cmd == 'a' ? MRT_ADD_MFC : MRT_DEL_MFC;
 	struct mfcctl mc;
 	size_t i;
 
-	if (sd == -1) {
+	if (sd4 == -1) {
 		smclog(LOG_DEBUG, "No IPv4 multicast socket");
 		return -1;
 	}
@@ -191,7 +351,7 @@ int kern_mroute4(int sd, int cmd, struct mroute *route, int active)
 	for (i = 0; i < NELEMS(mc.mfcc_ttls); i++)
 		mc.mfcc_ttls[i] = route->ttl[i];
 
-	if (setsockopt(sd, IPPROTO_IP, op, &mc, sizeof(mc))) {
+	if (setsockopt(sd4, IPPROTO_IP, op, &mc, sizeof(mc))) {
 		if (ENOENT == errno)
 			smclog(LOG_DEBUG, "failed removing multicast route (%s,%s), does not exist.",
 				origin, group);
@@ -215,17 +375,201 @@ int kern_mroute4(int sd, int cmd, struct mroute *route, int active)
 	return 0;
 }
 
-int kern_mroute6(int sd, int cmd, struct mroute *route)
+/*
+ * Query kernel for route usage statistics
+ */
+int kern_stats4(struct mroute *route, struct mroute_stats *ms)
+{
+	struct sioc_sg_req sg_req;
+
+	if (sd4 == -1)
+		return errno = EAGAIN;
+	if (!route || !ms)
+		return errno = EINVAL;
+
+	memset(&sg_req, 0, sizeof(sg_req));
+	sg_req.src = *inet_addr_get(&route->source);
+	sg_req.grp = *inet_addr_get(&route->group);
+
+	if (ioctl(sd4, SIOCGETSGCNT, &sg_req) < 0) {
+		if (ms->ms_wrong_if)
+			smclog(LOG_WARNING, "Failed getting MFC stats: %s", strerror(errno));
+		return errno;
+	}
+
+	ms->ms_pktcnt =  sg_req.pktcnt;
+	ms->ms_bytecnt  = sg_req.bytecnt;
+	ms->ms_wrong_if = sg_req.wrong_if;
+
+	return 0;
+}
+
+#ifdef __linux__
+#define IPV6_ALL_MC_FORWARD "/proc/sys/net/ipv6/conf/all/mc_forwarding"
+
+static int proc_set_val(char *file, int val)
+{
+	int fd, result = 0;
+
+	fd = open(file, O_WRONLY);
+	if (fd < 0)
+		return 1;
+
+	if (-1 == write(fd, "1", val))
+		result = 1;
+
+	close(fd);
+
+	return result;
+}
+#endif /* Linux only */
+
+int kern_mroute6_init(int table_id, void (*cb)(int, void *), void *arg)
+{
+	int val = 1;
+
+	if (sd6 < 0) {
+		sd6 = socket_create(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6, cb, arg);
+		if (sd6 < 0)
+			return -1;
+	}
+
+#ifdef MRT6_TABLE /* Currently only available on Linux  */
+	if (table_id != 0) {
+		smclog(LOG_INFO, "Setting IPv6 multicast routing table id %d", table_id);
+		if (setsockopt(sd6, IPPROTO_IPV6, MRT6_TABLE, &table_id, sizeof(table_id)) < 0) {
+			errno = EPROTONOSUPPORT;
+			goto error;
+		}
+	}
+#else
+	(void)table_id;
+#endif
+
+	if (setsockopt(sd6, IPPROTO_IPV6, MRT6_INIT, &val, sizeof(val)))
+		goto error;
+
+	/* Initialize virtual interface table */
+	memset(&mif_list, 0, sizeof(mif_list));
+
+#ifdef __linux__
+	/*
+	 * On Linux pre 2.6.29 kernels net.ipv6.conf.all.mc_forwarding
+	 * is not set on MRT6_INIT so we have to do this manually
+	 */
+	if (proc_set_val(IPV6_ALL_MC_FORWARD, 1)) {
+		if (errno != EACCES) {
+			smclog(LOG_ERR, "Failed enabling IPv6 multicast forwarding: %s",
+			       strerror(errno));
+			goto error;
+		}
+	}
+#endif
+
+	return 0;
+error:
+	socket_close(sd6);
+	sd6 = -1;
+
+	return -1;
+}
+
+int kern_mroute6_exit(void)
+{
+	if (sd6 == -1)
+		return errno = EAGAIN;
+
+	if (setsockopt(sd6, IPPROTO_IPV6, MRT6_DONE, NULL, 0))
+		smclog(LOG_WARNING, "Failed shutting down IPv6 multicast routing socket: %s",
+		       strerror(errno));
+#if 0
+	if (close_socket) {
+		socket_close(sd6);
+		sd6 = -1;
+	}
+#endif
+	return 0;
+}
+
+/* Create a virtual interface from @iface so it can be used for IPv6 multicast routing. */
+int kern_add_mif(struct iface *iface)
+{
+	struct mif6ctl mc;
+	int mif = -1;
+	size_t i;
+
+	if (sd6 == -1)
+		return errno = EAGAIN;
+	if (!iface)
+		return errno = EINVAL;
+	if ((iface->flags & IFF_MULTICAST) != IFF_MULTICAST)
+		return errno = ENOPROTOOPT;
+
+	/* find a free mif */
+	for (i = 0; i < NELEMS(mif_list); i++) {
+		if (!mif_list[i].iface) {
+			mif = i;
+			break;
+		}
+	}
+
+	if (mif == -1)
+		return errno = ENOMEM;
+
+	memset(&mc, 0, sizeof(mc));
+	mc.mif6c_mifi = mif;
+	mc.mif6c_flags = 0;             /* no register */
+#ifdef HAVE_MIF6CTL_VIFC_THRESHOLD
+	mc.vifc_threshold = iface->threshold;
+#endif
+	mc.mif6c_pifi = iface->ifindex; /* physical interface index */
+#ifdef HAVE_MIF6CTL_VIFC_RATE_LIMIT
+	mc.vifc_rate_limit = 0;         /* hopefully no limit */
+#endif
+
+	smclog(LOG_DEBUG, "Map iface %-16s => MIF %-2d ifindex %2d flags 0x%04x TTL threshold %u",
+	       iface->name, mc.mif6c_mifi, mc.mif6c_pifi, mc.mif6c_flags, iface->threshold);
+
+	if (setsockopt(sd6, IPPROTO_IPV6, MRT6_ADD_MIF, &mc, sizeof(mc)))
+		return -1;
+
+	iface->mif = mif;
+	mif_list[mif].iface = iface;
+
+	return 0;
+}
+
+int kern_del_mif(struct iface *iface)
+{
+	int rc;
+
+	if (sd6 == -1)
+		return errno = EAGAIN;
+	if (!iface)
+		return errno = EINVAL;
+	if (iface->vif == -1)
+		return errno = ENOENT;
+
+	smclog(LOG_DEBUG, "Removing  %-16s => MIF %-2d", iface->name, iface->mif);
+
+	rc = setsockopt(sd6, IPPROTO_IPV6, MRT6_DEL_MIF, &iface->mif, sizeof(iface->mif));
+	if (!rc)
+		iface->mif = -1;
+
+	return rc;
+}
+
+int kern_mroute6(int cmd, struct mroute *route)
 {
 	char origin[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
 	int op = cmd == 'a' ? MRT6_ADD_MFC : MRT6_DEL_MFC;
 	struct mf6cctl mc;
 	size_t i;
 
-	if (sd < 0) {
-		smclog(LOG_DEBUG, "No IPv6 multicast socket");
-		return -1;
-	}
+	if (sd6 == -1)
+		return errno = EAGAIN;
+	if (!route)
+		return errno = EINVAL;
 
 	memset(&mc, 0, sizeof(mc));
 	mc.mf6cc_origin   = *inet_addr6_get(&route->source);
@@ -242,7 +586,7 @@ int kern_mroute6(int sd, int cmd, struct mroute *route)
 		}
 	}
 
-	if (setsockopt(sd, IPPROTO_IPV6, op, &mc, sizeof(mc))) {
+	if (setsockopt(sd6, IPPROTO_IPV6, op, &mc, sizeof(mc))) {
 		if (ENOENT == errno)
 			smclog(LOG_DEBUG, "failed removing IPv6 multicast route (%s,%s), does not exist.",
 				origin, group);
@@ -251,6 +595,35 @@ int kern_mroute6(int sd, int cmd, struct mroute *route)
 			       cmd == 'a' ? "adding" : "removing", origin, group, strerror(errno));
 		return 1;
 	}
+
+	return 0;
+}
+
+/*
+ * Query kernel for route usage statistics
+ */
+int kern_stats6(struct mroute *route, struct mroute_stats *ms)
+{
+	struct sioc_sg_req6 sg_req;
+
+	if (sd6 == -1)
+		return errno = EAGAIN;
+	if (!route || !ms)
+		return errno = EINVAL;
+
+	memset(&sg_req, 0, sizeof(sg_req));
+	sg_req.src = *inet_addr6_get(&route->source);
+	sg_req.grp = *inet_addr6_get(&route->group);
+
+	if (ioctl(sd6, SIOCGETSGCNT_IN6, &sg_req) < 0) {
+		if (ms->ms_wrong_if)
+			smclog(LOG_WARNING, "Failed getting MFC stats: %s", strerror(errno));
+		return errno;
+	}
+
+	ms->ms_pktcnt   =  sg_req.pktcnt;
+	ms->ms_bytecnt  = sg_req.bytecnt;
+	ms->ms_wrong_if = sg_req.wrong_if;
 
 	return 0;
 }

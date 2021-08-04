@@ -21,8 +21,30 @@
 #include "mcgroup.h"
 #include "mroute.h"
 
-int kern_join_leave (int sd, int cmd, struct mcgroup *mcg);
-int kern_mroute4    (int sd, int cmd, struct mroute *route, int active);
-int kern_mroute6    (int sd, int cmd, struct mroute *route);
+struct mroute_stats {
+	unsigned long ms_pktcnt;
+	unsigned long ms_bytecnt;
+	unsigned long ms_wrong_if;
+};
+
+int kern_join_leave  (int sd, int cmd, struct mcgroup *mcg);
+
+int kern_mroute_init (int table_id, void (*cb)(int, void *), void *arg);
+int kern_mroute_exit (void);
+
+int kern_mroute6_init(int table_id, void (*cb)(int, void *), void *arg);
+int kern_mroute6_exit(void);
+
+int kern_add_vif     (struct iface *iface);
+int kern_del_vif     (struct iface *iface);
+
+int kern_add_mif     (struct iface *iface);
+int kern_del_mif     (struct iface *iface);
+
+int kern_mroute4     (int cmd, struct mroute *route, int active);
+int kern_mroute6     (int cmd, struct mroute *route);
+
+int kern_stats4      (struct mroute *route, struct mroute_stats *ms);
+int kern_stats6      (struct mroute *route, struct mroute_stats *ms);
 
 #endif /* SMCROUTE_KERN_H_ */
