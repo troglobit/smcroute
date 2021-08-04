@@ -252,7 +252,7 @@ int kern_mroute_exit(void)
 	return 0;
 }
 
-int kern_add_vif(struct iface *iface)
+int kern_vif_add(struct iface *iface)
 {
 	struct vifctl vc;
 	size_t i;
@@ -301,7 +301,7 @@ int kern_add_vif(struct iface *iface)
 	return 0;
 }
 
-int kern_del_vif(struct iface *iface)
+int kern_vif_del(struct iface *iface)
 {
 	struct vifctl vifc;
 	int rc;
@@ -327,10 +327,10 @@ int kern_del_vif(struct iface *iface)
 	return rc;
 }
 
-int kern_mroute4(int cmd, struct mroute *route, int active)
+static int kern_mroute4(int cmd, struct mroute *route, int active)
 {
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
-	int op = cmd == 'a' ? MRT_ADD_MFC : MRT_DEL_MFC;
+	int op = cmd ? MRT_ADD_MFC : MRT_DEL_MFC;
 	struct mfcctl mc;
 	size_t i;
 
@@ -357,16 +357,16 @@ int kern_mroute4(int cmd, struct mroute *route, int active)
 				origin, group);
 		else
 			smclog(LOG_DEBUG, "failed %s IPv4 multicast route (%s,%s): %s",
-			       cmd == 'a' ? "adding" : "removing", origin, group, strerror(errno));
+			       cmd ? "adding" : "removing", origin, group, strerror(errno));
 		return 1;
 	}
 
 	if (active) {
-		smclog(LOG_DEBUG, "%s %s -> %s from VIF %d", cmd == 'a' ? "Add" : "Del",
+		smclog(LOG_DEBUG, "%s %s -> %s from VIF %d", cmd ? "Add" : "Del",
 		       origin, group, route->inbound);
 
 		/* Only enable/disable mrdisc for active routes, i.e. with outbound */
-		if (cmd == 'a')
+		if (cmd)
 			mrdisc_enable(route->inbound);
 		else
 			mrdisc_disable(route->inbound);
@@ -375,17 +375,12 @@ int kern_mroute4(int cmd, struct mroute *route, int active)
 	return 0;
 }
 
-/*
- * Query kernel for route usage statistics
- */
-int kern_stats4(struct mroute *route, struct mroute_stats *ms)
+static int kern_stats4(struct mroute *route, struct mroute_stats *ms)
 {
 	struct sioc_sg_req sg_req;
 
 	if (sd4 == -1)
 		return errno = EAGAIN;
-	if (!route || !ms)
-		return errno = EINVAL;
 
 	memset(&sg_req, 0, sizeof(sg_req));
 	sg_req.src = *inet_addr_get(&route->source);
@@ -404,6 +399,7 @@ int kern_stats4(struct mroute *route, struct mroute_stats *ms)
 	return 0;
 }
 
+#ifdef  HAVE_IPV6_MULTICAST_HOST
 #ifdef __linux__
 #define IPV6_ALL_MC_FORWARD "/proc/sys/net/ipv6/conf/all/mc_forwarding"
 
@@ -492,7 +488,7 @@ int kern_mroute6_exit(void)
 }
 
 /* Create a virtual interface from @iface so it can be used for IPv6 multicast routing. */
-int kern_add_mif(struct iface *iface)
+int kern_mif_add(struct iface *iface)
 {
 	struct mif6ctl mc;
 	int mif = -1;
@@ -539,7 +535,7 @@ int kern_add_mif(struct iface *iface)
 	return 0;
 }
 
-int kern_del_mif(struct iface *iface)
+int kern_mif_del(struct iface *iface)
 {
 	int rc;
 
@@ -559,10 +555,10 @@ int kern_del_mif(struct iface *iface)
 	return rc;
 }
 
-int kern_mroute6(int cmd, struct mroute *route)
+static int kern_mroute6(int cmd, struct mroute *route)
 {
 	char origin[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
-	int op = cmd == 'a' ? MRT6_ADD_MFC : MRT6_DEL_MFC;
+	int op = cmd ? MRT6_ADD_MFC : MRT6_DEL_MFC;
 	struct mf6cctl mc;
 	size_t i;
 
@@ -592,26 +588,20 @@ int kern_mroute6(int cmd, struct mroute *route)
 				origin, group);
 		else
 			smclog(LOG_WARNING, "failed %s IPv6 multicast route (%s,%s): %s",
-			       cmd == 'a' ? "adding" : "removing", origin, group, strerror(errno));
+			       cmd ? "adding" : "removing", origin, group, strerror(errno));
 		return 1;
 	}
 
 	return 0;
 }
 
-/*
- * Query kernel for route usage statistics
- */
-int kern_stats6(struct mroute *route, struct mroute_stats *ms)
+static int kern_stats6(struct mroute *route, struct mroute_stats *ms)
 {
-	struct sioc_sg_req6 sg_req;
+	struct sioc_sg_req6 sg_req = { 0 };
 
 	if (sd6 == -1)
 		return errno = EAGAIN;
-	if (!route || !ms)
-		return errno = EINVAL;
 
-	memset(&sg_req, 0, sizeof(sg_req));
 	sg_req.src = *inet_addr6_get(&route->source);
 	sg_req.grp = *inet_addr6_get(&route->group);
 
@@ -621,11 +611,54 @@ int kern_stats6(struct mroute *route, struct mroute_stats *ms)
 		return errno;
 	}
 
-	ms->ms_pktcnt   =  sg_req.pktcnt;
+	ms->ms_pktcnt   = sg_req.pktcnt;
 	ms->ms_bytecnt  = sg_req.bytecnt;
 	ms->ms_wrong_if = sg_req.wrong_if;
 
 	return 0;
+}
+#endif /* HAVE_IPV6_MULTICAST_HOST */
+
+/*
+ * Query kernel for route usage statistics
+ */
+int kern_stats(struct mroute *route, struct mroute_stats *ms)
+{
+	if (!route || !ms)
+		return errno = EINVAL;
+
+#ifdef  HAVE_IPV6_MULTICAST_HOST
+	if (route->group.ss_family == AF_INET6)
+		return kern_stats6(route, ms);
+#endif
+
+	return kern_stats4(route, ms);
+}
+
+int kern_mroute_add(struct mroute *route, int active)
+{
+	if (!route)
+		return errno = EINVAL;
+
+#ifdef  HAVE_IPV6_MULTICAST_HOST
+	if (route->group.ss_family == AF_INET6)
+		return kern_mroute6(1, route);
+#endif
+
+	return kern_mroute4(1, route, active);
+}
+
+int kern_mroute_del(struct mroute *route, int active)
+{
+	if (!route)
+		return errno = EINVAL;
+
+#ifdef  HAVE_IPV6_MULTICAST_HOST
+	if (route->group.ss_family == AF_INET6)
+		return kern_mroute6(0, route);
+#endif
+
+	return kern_mroute4(0, route, active);
 }
 
 /**

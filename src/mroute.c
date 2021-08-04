@@ -277,7 +277,7 @@ void mroute4_disable(int close_socket)
 /* Create a virtual interface from @iface so it can be used for IPv4 multicast routing. */
 static int mroute4_add_vif(struct iface *iface)
 {
-	if (kern_add_vif(iface)) {
+	if (kern_vif_add(iface)) {
 		switch (errno) {
 		case ENOPROTOOPT:
 			smclog(LOG_INFO, "Interface %s is not multicast capable, skipping VIF.",
@@ -311,7 +311,7 @@ static int mroute4_del_vif(struct iface *iface)
 	if (iface->mrdisc)
 		return mrdisc_deregister(iface->vif);
 
-	if (kern_del_vif(iface)) {
+	if (kern_vif_del(iface)) {
 		smclog(LOG_ERR, "Failed deleting VIF for iface %s: %s", iface->name, strerror(errno));
 		return -1;
 	}
@@ -421,7 +421,7 @@ int mroute4_dyn_add(struct mroute *route)
 		memset(route->ttl, 0, NELEMS(route->ttl) * sizeof(route->ttl[0]));
 	}
 
-	ret = kern_mroute4('a', route, entry ? 1 : 0);
+	ret = kern_mroute_add(route, entry ? 1 : 0);
 	if (ret)
 		return ret;
 
@@ -446,7 +446,7 @@ int mroute4_dyn_add(struct mroute *route)
 	return 0;
 }
 
-static int is_active4(struct mroute *route)
+static int is_active(struct mroute *route)
 {
 	size_t i;
 
@@ -466,7 +466,7 @@ static unsigned long get_valid_pkt4(struct mroute *route)
 {
 	struct mroute_stats ms = { 0 };
 
-	if (kern_stats4(route, &ms))
+	if (kern_stats(route, &ms))
 		return 0;
 
 	return ms.ms_pktcnt - ms.ms_wrong_if;
@@ -508,7 +508,7 @@ void mroute4_dyn_expire(int max_idle)
 			}
 
 			/* Not used, expire */
-			kern_mroute4('r', entry, is_active4(entry));
+			kern_mroute_del(entry, is_active(entry));
 			LIST_REMOVE(entry, link);
 			free(entry);
 		}
@@ -575,7 +575,7 @@ int mroute4_add(struct mroute *route)
 	/* ... (S,G) matches and inbound differs, then replace route */
 	entry = mroute4_similar(route);
 	if (entry) {
-		kern_mroute4('r', entry, is_active4(entry));
+		kern_mroute_del(entry, is_active(entry));
 		LIST_REMOVE(entry, link);
 		free(entry);
 	}
@@ -599,7 +599,7 @@ int mroute4_add(struct mroute *route)
 
 		/* Also, immediately expire any currently blocked traffic */
 		LIST_FOREACH_SAFE(dyn, &mroute4_dyn_list, link, tmp) {
-			if (!is_active4(dyn) && is_match4(entry, dyn)) {
+			if (!is_active(dyn) && is_match4(entry, dyn)) {
 				char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 
 				inet_addr2str(&dyn->group, group, sizeof(group));
@@ -607,7 +607,7 @@ int mroute4_add(struct mroute *route)
 				smclog(LOG_DEBUG, "Flushing (%s,%s) on VIF %d, new matching (*,G) rule ...",
 				       origin, group, dyn->inbound);
 
-				kern_mroute4('r', dyn, 0);
+				kern_mroute_del(dyn, 0);
 				LIST_REMOVE(dyn, link);
 				free(dyn);
 			}
@@ -617,7 +617,7 @@ int mroute4_add(struct mroute *route)
 	}
 
 	LIST_INSERT_HEAD(&mroute4_static_list, entry, link);
-	return kern_mroute4('a', route, 1);
+	return kern_mroute_add(route, 1);
 }
 
 /* Remove from kernel and linked list */
@@ -625,7 +625,7 @@ static int do_mroute4_del(struct mroute *entry)
 {
 	int ret;
 
-	ret = kern_mroute4('r', entry, is_active4(entry));
+	ret = kern_mroute_del(entry, is_active(entry));
 	if (ret && ENOENT != errno)
 		return ret;
 
@@ -875,7 +875,7 @@ void mroute6_disable(int close_socket)
 /* Create a virtual interface from @iface so it can be used for IPv6 multicast routing. */
 static int mroute6_add_mif(struct iface *iface)
 {
-	if (kern_add_mif(iface)) {
+	if (kern_mif_add(iface)) {
 		switch (errno) {
 		case ENOPROTOOPT:
 			smclog(LOG_INFO, "Interface %s is not multicast capable, skipping MIF.",
@@ -904,7 +904,7 @@ static int mroute6_add_mif(struct iface *iface)
 
 static int mroute6_del_mif(struct iface *iface)
 {
-	if (kern_del_mif(iface)) {
+	if (kern_mif_del(iface)) {
 		smclog(LOG_ERR, "Failed deleting MIF for iface %s: %s", iface->name, strerror(errno));
 		return -1;
 	}
@@ -957,18 +957,6 @@ static int is_mroute6_static(struct mroute *route)
 	return !is_anyaddr(&route->source);
 }
 
-static int is_active6(struct mroute *route)
-{
-	size_t i;
-
-	for (i = 0; i < NELEMS(route->ttl); i++) {
-		if (route->ttl[i])
-			return 1;
-	}
-
-	return 0;
-}
-
 /**
  * mroute6_dyn_add - Add route to kernel if it matches a known (*,G) route.
  * @route: Pointer to candidate struct mroute IPv6 multicast route
@@ -1001,7 +989,7 @@ int mroute6_dyn_add(struct mroute *route)
 		memset(route->ttl, 0, NELEMS(route->ttl) * sizeof(route->ttl[0]));
 	}
 
-	ret = kern_mroute6('a', route);
+	ret = kern_mroute_add(route, entry ? 1 : 0);
 	if (ret)
 		return ret;
 
@@ -1084,7 +1072,7 @@ int mroute6_add(struct mroute *route)
 	/* ... (S,G) matches and inbound differs, then replace route */
 	entry = mroute6_similar(route);
 	if (entry) {
-		kern_mroute6('r', entry);
+		kern_mroute_del(entry, is_active(entry));
 		LIST_REMOVE(entry, link);
 		free(entry);
 	}
@@ -1104,7 +1092,7 @@ int mroute6_add(struct mroute *route)
 
 		/* Also, immediately expire any currently blocked traffic */
 		LIST_FOREACH_SAFE(dyn, &mroute6_dyn_list, link, tmp) {
-			if (!is_active6(dyn) && is_match6(entry, dyn)) {
+			if (!is_active(dyn) && is_match6(entry, dyn)) {
 				char origin[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
 
 				inet_addr2str(&dyn->group,  group, sizeof(group));
@@ -1112,7 +1100,7 @@ int mroute6_add(struct mroute *route)
 				smclog(LOG_DEBUG, "Flushing (%s,%s) on MIF %d, new matching (*,G) rule ...",
 				       origin, group, dyn->inbound);
 
-				kern_mroute6('r', dyn);
+				kern_mroute_del(dyn, 0);
 				LIST_REMOVE(dyn, link);
 				free(dyn);
 			}
@@ -1122,7 +1110,7 @@ int mroute6_add(struct mroute *route)
 	}
 
 	LIST_INSERT_HEAD(&mroute6_static_list, entry, link);
-	return kern_mroute6('a', route);
+	return kern_mroute_add(route, 1);
 }
 
 /* Remove from kernel and linked list */
@@ -1130,7 +1118,7 @@ static int do_mroute6_del(struct mroute *entry)
 {
 	int ret;
 
-	ret = kern_mroute6('r', entry);
+	ret = kern_mroute_del(entry, is_active(entry));
 	if (ret && ENOENT != errno)
 		return ret;
 
@@ -1268,7 +1256,7 @@ int mroute_del_vif(char *ifname)
 #ifdef ENABLE_CLIENT
 static int show_mroute(int sd, struct mroute *r, int detail)
 {
-	struct iface *i;
+	struct iface *iface;
 	char src[INET_ADDRSTRLEN] = "*";
 	char src_len[5] = "";
 	char grp[INET_ADDRSTRLEN];
@@ -1286,9 +1274,9 @@ static int show_mroute(int sd, struct mroute *r, int detail)
 	if (r->len)
 		snprintf(grp_len, sizeof(grp_len), "/%u", r->len);
 
-	i = iface_find_by_vif(r->inbound);
+	iface = iface_find_by_vif(r->inbound);
 	snprintf(sg, sizeof(sg), "(%s%s, %s%s)", src, src_len, grp, grp_len);
-	snprintf(buf, sizeof(buf), "%-46s %-16s", sg, i->name);
+	snprintf(buf, sizeof(buf), "%-46s %-16s", sg, iface->name);
 
 	if (detail) {
 		struct mroute_stats ms = { 0 };
@@ -1296,10 +1284,10 @@ static int show_mroute(int sd, struct mroute *r, int detail)
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 		if (r->group.ss_family == AF_INET6)
-			kern_stats6(r, &ms);
+			kern_stats(r, &ms);
 		else
 #endif
-		kern_stats4(r, &ms);
+		kern_stats(r, &ms);
 		snprintf(stats, sizeof(stats), " %10lu %10lu ", ms.ms_pktcnt, ms.ms_bytecnt);
 		strlcat(buf, stats, sizeof(buf));
 	}
@@ -1310,11 +1298,11 @@ static int show_mroute(int sd, struct mroute *r, int detail)
 		if (r->ttl[vif] == 0)
 			continue;
 
-		i = iface_find_by_mif(vif);
-		if (!i)
+		iface = iface_find_by_mif(vif);
+		if (!iface)
 			continue;
 
-		snprintf(tmp, sizeof(tmp), " %s", i->name);
+		snprintf(tmp, sizeof(tmp), " %s", iface->name);
 		strlcat(buf, tmp, sizeof(buf));
 	}
 	strlcat(buf, "\n", sizeof(buf));

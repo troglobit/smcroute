@@ -35,16 +35,15 @@ int kern_mroute_exit (void);
 int kern_mroute6_init(int table_id, void (*cb)(int, void *), void *arg);
 int kern_mroute6_exit(void);
 
-int kern_add_vif     (struct iface *iface);
-int kern_del_vif     (struct iface *iface);
+int kern_vif_add     (struct iface *iface);
+int kern_vif_del     (struct iface *iface);
 
-int kern_add_mif     (struct iface *iface);
-int kern_del_mif     (struct iface *iface);
+int kern_mif_add     (struct iface *iface);
+int kern_mif_del     (struct iface *iface);
 
-int kern_mroute4     (int cmd, struct mroute *route, int active);
-int kern_mroute6     (int cmd, struct mroute *route);
+int kern_mroute_add  (struct mroute *route, int active);
+int kern_mroute_del  (struct mroute *route, int active);
 
-int kern_stats4      (struct mroute *route, struct mroute_stats *ms);
-int kern_stats6      (struct mroute *route, struct mroute_stats *ms);
+int kern_stats       (struct mroute *route, struct mroute_stats *ms);
 
 #endif /* SMCROUTE_KERN_H_ */
