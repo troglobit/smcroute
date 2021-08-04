@@ -135,7 +135,7 @@ static int join_mgroup(int lineno, char *ifname, char *source, char *group)
 		inet_anyaddr(grp.ss_family, &src);
 
 
-	rc += mcgroup_action('j', ifname, &src, &grp, grp_len);
+	rc += mcgroup_action(1, ifname, &src, &grp, grp_len);
 done:
 	return rc;
 }

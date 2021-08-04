@@ -282,13 +282,13 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, inet_addr_t
 
 	mcg = find_conf(ifname, source, group, len);
 	if (mcg) {
-		if (cmd == 'j') {
+		if (cmd) {
 			smclog(LOG_INFO, "Already joined (%s,%s) on %s", src, grp, ifname);
 			errno = EALREADY;
 			return 1;
 		}
 	} else {
-		if (cmd != 'j') {
+		if (!cmd) {
 			smclog(LOG_INFO, "No group (%s,%s) on %s to leave", src, grp, ifname);
 			errno = ENOENT;
 			return 1;
@@ -296,7 +296,8 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, inet_addr_t
 
 		mcg = calloc(1, sizeof(*mcg));
 		if (!mcg) {
-			smclog(LOG_ERR, "Out of memory in op '%c' for (%s,%s) on %s", cmd, src, grp, ifname);
+			smclog(LOG_ERR, "Out of memory to %s (%s,%s) on %s",
+			       cmd ? "join" : "leave", src, grp, ifname);
 			return 1;
 		}
 
@@ -333,7 +334,7 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, inet_addr_t
 			}
 			addr++;
 
-			if (cmd != 'j') {
+			if (!cmd) {
 				struct mcgroup *kmcg;
 
 				kmcg = find_kern(mcg);
@@ -345,14 +346,14 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, inet_addr_t
 				sd = alloc_mc_sock(group->ss_family);
 
 			if (kern_join_leave(sd, cmd, mcg)) {
-				if (cmd == 'j' && errno == EADDRINUSE)
+				if (cmd && errno == EADDRINUSE)
 					continue; /* Already joined, ignore */
 
 				rc++;
 				break;
 			}
 
-			if (cmd == 'j')
+			if (cmd)
 				list_add(sd, mcg);
 			else
 				list_rem(sd, mcg);
@@ -362,7 +363,7 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, inet_addr_t
 			inet_addr_set(&mcg->group, &orig);
 	}
 
-	if (cmd != 'j') {
+	if (!cmd) {
 		LIST_REMOVE(mcg, link);
 		free(mcg);
 	}

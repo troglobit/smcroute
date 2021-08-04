@@ -107,7 +107,7 @@ static int do_mgroup(struct ipc_msg *msg)
 	else
 		inet_anyaddr(grp.ss_family, &src);
 
-	return mcgroup_action(msg->cmd, ifname, &src, &grp, grp_len);
+	return mcgroup_action(msg->cmd == 'j' ? 1 : 0, ifname, &src, &grp, grp_len);
 }
 
 static int do_mroute4(struct ipc_msg *msg)

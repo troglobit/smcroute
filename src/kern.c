@@ -82,34 +82,32 @@ static int group_req(int sd, int cmd, struct mcgroup *mcg)
 		proto = IPPROTO_IP;
 
 	if (is_anyaddr(&mcg->source)) {
-		if (cmd == 'j')	op = MCAST_JOIN_GROUP;
+		if (cmd)	op = MCAST_JOIN_GROUP;
 		else		op = MCAST_LEAVE_GROUP;
 
+		arg                = &gr;
+		len                = sizeof(gr);
 		gr.gr_interface    = mcg->iface->ifindex;
 		gr.gr_group        = mcg->group;
 
 		strncpy(source, "*", sizeof(source));
 		inet_addr2str(&gr.gr_group, group, sizeof(group));
-
-		arg                = &gr;
-		len                = sizeof(gr);
 	} else {
-		if (cmd == 'j')	op = MCAST_JOIN_SOURCE_GROUP;
+		if (cmd)	op = MCAST_JOIN_SOURCE_GROUP;
 		else		op = MCAST_LEAVE_SOURCE_GROUP;
 
+		arg                = &gsr;
+		len                = sizeof(gsr);
 		gsr.gsr_interface  = mcg->iface->ifindex;
 		gsr.gsr_source     = mcg->source;
 		gsr.gsr_group      = mcg->group;
 
 		inet_addr2str(&gsr.gsr_source, source, sizeof(source));
 		inet_addr2str(&gsr.gsr_group, group, sizeof(group));
-
-		arg                = &gsr;
-		len                = sizeof(gsr);
 	}
 
 	smclog(LOG_DEBUG, "%s group (%s,%s) on ifindex %d and socket %d ...",
-	       cmd == 'j' ? "Join" : "Leave", source, group, mcg->iface->ifindex, sd);
+	       cmd ? "Join" : "Leave", source, group, mcg->iface->ifindex, sd);
 
 	return setsockopt(sd, proto, op, arg, len);
 }
@@ -140,7 +138,7 @@ static int group_req(int sd, int cmd, struct mcgroup *mcg)
 		ipv6mr.ipv6mr_interface = mcg->iface->ifindex;
 
 		proto = IPPROTO_IPV6;
-		op    = cmd == 'j' ? IPV6_JOIN_GROUP : IPV6_LEAVE_GROUP;
+		op    = cmd ? IPV6_JOIN_GROUP : IPV6_LEAVE_GROUP;
 		arg   = &ipv6mr;
 		len   = sizeof(ipv6mr);
 	} else
@@ -154,12 +152,12 @@ static int group_req(int sd, int cmd, struct mcgroup *mcg)
 #endif
 
 		proto = IPPROTO_IP;
-		op    = cmd == 'j' ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP;
+		op    = cmd ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP;
 		arg   = &ipmr;
 		len   = sizeof(ipmr);
 	}
 
-	smclog(LOG_DEBUG, "%s group (*,%s) on ifindex %d ...", cmd == 'j' ? "Join" : "Leave",
+	smclog(LOG_DEBUG, "%s group (*,%s) on ifindex %d ...", cmd ? "Join" : "Leave",
 	       inet_addr2str(&mcg->group, group, sizeof(group)), mcg->iface->ifindex);
 
 	return setsockopt(sd, proto, op, arg, len);
@@ -169,9 +167,6 @@ static int group_req(int sd, int cmd, struct mcgroup *mcg)
 int kern_join_leave(int sd, int cmd, struct mcgroup *mcg)
 {
 	int err;
-
-	if (!cmd)
-		cmd = 'j';
 
 	err = group_req(sd, cmd, mcg);
 	if (err) {
@@ -185,7 +180,7 @@ int kern_join_leave(int sd, int cmd, struct mcgroup *mcg)
 		len = mcg->len == 0 ? 32 : mcg->len;
 
 		smclog(LOG_ERR, "Failed %s group (%s,%s/%d) on sd %d ... %d: %s",
-		       cmd == 'j' ? "joining" : "leaving",
+		       cmd ? "joining" : "leaving",
 		       source, group, len, sd,
 		       errno, strerror(errno));
 		return 1;
