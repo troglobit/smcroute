@@ -365,6 +365,7 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, inet_addr_t
 
 	if (!cmd) {
 		LIST_REMOVE(mcg, link);
+		free_mc_sock(mcg->sd);
 		free(mcg);
 	}
 
