@@ -1263,7 +1263,6 @@ static int show_mroute(int sd, struct mroute *r, int detail)
 	char grp_len[5] = "";
 	char sg[(INET_ADDRSTRLEN + 3) * 2 + 5];
 	char buf[MAX_MC_VIFS * 17 + 80];
-	int vif;
 
 	if (!is_anyaddr(&r->source)) {
 		inet_addr2str(&r->source, src, sizeof(src));
