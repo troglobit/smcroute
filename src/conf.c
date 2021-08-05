@@ -90,7 +90,7 @@ static int match(char *keyword, char *token)
 	return !strncmp(keyword, token, len);
 }
 
-static int join_mgroup(int lineno, char *ifname, char *source, char *group)
+static int conf_mgroup(int lineno, char *ifname, char *source, char *group)
 {
 	inet_addr_t src = { 0 }, grp = { 0 };
 	int grp_len = 0;
@@ -140,7 +140,7 @@ done:
 	return rc;
 }
 
-static int add_mroute(int lineno, char *ifname, char *group, char *source, char *outbound[], int num)
+static int conf_mroute(int lineno, char *ifname, char *group, char *source, char *outbound[], int num)
 {
 	struct ifmatch state_in, state_out;
 	struct mroute mroute = { 0 };
@@ -248,6 +248,14 @@ static int add_mroute(int lineno, char *ifname, char *group, char *source, char 
 
 done:
 	return rc;
+}
+
+static int conf_phyint(int enable, char *ifname, int mrdisc, int threshold)
+{
+	if (enable)
+		return mroute_add_vif(ifname, mrdisc, threshold);
+
+	return mroute_del_vif(ifname);
 }
 
 static char *chomp(char *str)
@@ -365,15 +373,22 @@ static int conf_parse(const char *file, int do_vifs)
 			continue;
 		}
 
-		if (op == MGROUP) {
-			rc += join_mgroup(lineno, ifname, source, group);
-		} else if (op == MROUTE) {
-			rc += add_mroute(lineno, ifname, group, source, dest, num);
-		} else if (op == PHYINT) {
-			if (enable)
-				rc += mroute_add_vif(ifname, mrdisc, threshold);
-			else
-				rc += mroute_del_vif(ifname);
+		switch (op) {
+		case MGROUP:
+			rc += conf_mgroup(lineno, ifname, source, group);
+			break;
+
+		case MROUTE:
+			rc += conf_mroute(lineno, ifname, group, source, dest, num);
+			break;
+
+		case PHYINT:
+			rc += conf_phyint(enable, ifname, mrdisc, threshold);
+			break;
+
+		default:
+			WARN("Unknown token %d", op);
+			break;
 		}
 
 		lineno++;
