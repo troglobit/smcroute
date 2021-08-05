@@ -26,6 +26,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "conf.h"
 #include "log.h"
 #include "msg.h"
 #include "iface.h"
@@ -55,209 +56,72 @@ int is_range(char *arg)
 
 static int do_mgroup(struct ipc_msg *msg)
 {
-	char addr[INET_ADDRSTR_LEN];
+	char source[INET_ADDRSTR_LEN + 5] = { 0 };
+	char group[INET_ADDRSTR_LEN + 5] = { 0 };
 	char *ifname = msg->argv[0];
-	inet_addr_t src = { 0 };
-	inet_addr_t grp = { 0 };
-	int grp_len;
-	int len_max;
 
 	if (msg->count < 2) {
 		errno = EINVAL;
 		return -1;
 	}
-	if (msg->count == 3)
-		strlcpy(addr, msg->argv[2], sizeof(addr));
-	else
-		strlcpy(addr, msg->argv[1], sizeof(addr));
-
-	grp_len = is_range(addr);
-	if (inet_str2addr(addr, &grp) || !is_multicast(&grp)) {
-		smclog(LOG_WARNING, "Invalid multicast group: %s", addr);
-		return 1;
-	}
-
-#ifdef HAVE_IPV6_MULTICAST_HOST
-	if (grp.ss_family == AF_INET6)
-		len_max = 128;
-	else
-#endif
-	len_max = 32;
-	if (grp_len < 0 || grp_len > len_max) {
-		smclog(LOG_WARNING, "Invalid group prefix length (0-%d): %d", len_max, grp_len);
-		return 1;
-	}
-	if (!grp_len)
-		grp_len = len_max;
-
 	if (msg->count == 3) {
-		int src_len;
+		strlcpy(source, msg->argv[1], sizeof(source));
+		strlcpy(group, msg->argv[2], sizeof(group));
+	} else
+		strlcpy(group, msg->argv[1], sizeof(group));
 
-		strlcpy(addr, msg->argv[1], sizeof(addr));
-
-		src_len = is_range(addr);
-		if (src_len > 0)
-			smclog(LOG_WARNING, "Ignoring source prefix len: %d", src_len);
-
-		if (inet_str2addr(addr, &src)) {
-			smclog(LOG_WARNING, "Invalid multicast source: %s", addr);
-			return 1;
-		}
-	}
-	else
-		inet_anyaddr(grp.ss_family, &src);
-
-	return mcgroup_action(msg->cmd == 'j' ? 1 : 0, ifname, &src, &grp, grp_len);
+	return conf_mgroup(msg->cmd == 'j' ? 1 : 0, ifname, source[0] ? source : NULL, group);
 }
 
 static int do_mroute(struct ipc_msg *msg)
 {
-	char src[INET_ADDRSTR_LEN], grp[INET_ADDRSTR_LEN];
-	struct mroute mroute = { 0 };
-	struct ifmatch state_in;
-	struct iface *iface;
-	char *ifname_in;
-	int result = 0;
-	int errmsg = 0;	/* Only emit first non-fatal error message as that's the most relevant */
+	char src[INET_ADDRSTR_LEN + 5];
+	char *ifname, *source, *group;
+	inet_addr_t ss;
 	int pos = 0;
-	int len_max;
-	int src_len;
-	int len;
-	int vif;
 
 	if (msg->count < 2) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	ifname_in = msg->argv[pos++];
+	ifname = msg->argv[pos++];
 
-	src_len = is_range(msg->argv[pos]);
 	strlcpy(src, msg->argv[pos++], sizeof(src));
-	if (inet_str2addr(src, &mroute.source)) {
-		smclog(LOG_DEBUG, "Invalid IP address: %s", src);
+	is_range(src);
+	if (inet_str2addr(src, &ss)) {
+		smclog(LOG_ERR, "mroute: invalid source/group address: %s", src);
 		return 1;
 	}
 
-	if (!is_multicast(&mroute.source)) {
-		len = is_range(msg->argv[pos]);
+	if (!is_multicast(&ss)) {
+		char grp[INET_ADDRSTR_LEN + 5];
+
 		strlcpy(grp, msg->argv[pos++], sizeof(grp));
-		if (inet_str2addr(grp, &mroute.group) || !is_multicast(&mroute.group)) {
-			smclog(LOG_DEBUG, "Invalid multicast group: %s", grp);
+		is_range(grp);
+		if (inet_str2addr(grp, &ss) || !is_multicast(&ss)) {
+			smclog(LOG_DEBUG, "mroute: invalid multicast group: %s", grp);
 			return 1;
 		}
+
+		source = msg->argv[1];
+		group  = msg->argv[2];
 	} else {
-		/* missing source arg, was actually the group, swaparoo */
-		mroute.group = mroute.source;
-		inet_anyaddr(mroute.group.ss_family, &mroute.source);
-		len = src_len;
-		src_len = 0;
+		source = NULL;
+		group  = msg->argv[1];
 	}
 
-#ifdef HAVE_IPV6_MULTICAST_HOST
-	if (mroute.group.ss_family == AF_INET6)
-		len_max = 128;
-	else
-#endif
-		len_max = 32;
-	if (len && (len < 0 || len > len_max)) {
-		smclog(LOG_DEBUG, "Invalid group prefix length (0-%d): %d", len_max, len);
-		return 1;
+	if (msg->cmd == 'a') {
+		char *out[MAX_MC_VIFS];
+		int num = 0;
+
+		while (pos < msg->count)
+			out[num++] = msg->argv[pos++];
+
+		return conf_mroute(1, ifname, source, group, out, num);
 	}
 
-	if (src_len && (src_len < 0 || src_len > len_max)) {
-		smclog(LOG_DEBUG, "Invalid source prefix length (0-%d): %d", len_max, len);
-		return 1;
-	}
-
-	mroute.src_len = src_len;
-	mroute.len     = len;
-
-	iface_match_init(&state_in);
-	smclog(LOG_DEBUG, "Checking for input iface %s ...", ifname_in);
-	while (iface_match_vif_by_name(ifname_in, &state_in, &iface) != NO_VIF) {
-		struct ifmatch state_out;
-
-#ifdef HAVE_IPV6_MULTICAST_HOST
-		if (mroute.group.ss_family == AF_INET6)
-			vif = iface->mif;
-		else
-#endif
-		vif = iface->vif;
-		smclog(LOG_DEBUG, "Input iface %s has vif %d", ifname_in, vif);
-		mroute.inbound = vif;
-
-		/*
-		 * Scan output interfaces for the 'add' command only, just
-		 * ignore it for the 'remove' command.
-		 */
-		if (msg->cmd == 'a') {
-			if (pos >= msg->count) {
-				smclog(LOG_DEBUG, "Missing outbound interface");
-				return 1;
-			}
-
-			int total = 0;
-			while (pos < msg->count) {
-				char *ifname_out = msg->argv[pos++];
-
-				iface_match_init(&state_out);
-				while (iface_match_vif_by_name(ifname_out, &state_out, &iface) != NO_VIF) {
-#ifdef HAVE_IPV6_MULTICAST_HOST
-					if (mroute.group.ss_family == AF_INET6)
-						vif = iface->mif;
-					else
-#endif
-					vif = iface->vif;
-					if (vif == mroute.inbound) {
-						/* In case of wildcard match in==out is normal, so don't complain */
-						if (!ifname_is_wildcard(ifname_in) && !ifname_is_wildcard(ifname_out) && !errmsg++)
-							smclog(LOG_WARNING, "Same outbound interface (%s) as inbound (%s) may cause routing loops.",
-							       ifname_out, ifname_in);
-					}
-					/* Use configured TTL threshold for the output phyint */
-					mroute.ttl[vif] = iface->threshold;
-					total++;
-				}
-
-				if (!state_out.match_count && !errmsg++)
-					smclog(LOG_DEBUG, "Invalid output interface");
-			}
-
-			if (!total) {
-				if (!errmsg++)
-					smclog(LOG_DEBUG, "No valid output interfaces");
-				result += 1;
-			} else {
-				smclog(LOG_DEBUG, "Adding multicast route (%s/%u,%s/%u)",
-				       inet_addr2str(&mroute.source, src, sizeof(src)), mroute.src_len,
-				       inet_addr2str(&mroute.group, grp, sizeof(grp)), mroute.len);
-#ifdef HAVE_IPV6_MULTICAST_HOST
-				if (mroute.group.ss_family == AF_INET6)
-					result += mroute6_add(&mroute);
-				else
-#endif
-				result += mroute4_add(&mroute);
-			}
-		} else {
-			smclog(LOG_DEBUG, "Deleting multicast route (%s/%u,%s/%u)",
-			       inet_addr2str(&mroute.source, src, sizeof(src)), mroute.src_len,
-			       inet_addr2str(&mroute.group, grp, sizeof(grp)), mroute.len);
-#ifdef HAVE_IPV6_MULTICAST_HOST
-			if (mroute.group.ss_family == AF_INET6)
-				result += mroute6_del(&mroute);
-			else
-#endif
-			result += mroute4_del(&mroute);
-		}
-	}
-
-	if (!state_in.match_count) {
-		smclog(LOG_DEBUG, "Invalid input interface");
-		return 1;
-	}
-
-	return result;
+	return conf_mroute(0, ifname, source, group, NULL, 0);
 }
 
 static int do_show(struct ipc_msg *msg, int sd, int detail)

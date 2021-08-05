@@ -32,21 +32,34 @@
 
 #define MAX_LINE_LEN 512
 
-#define DEBUG(fmt, args...)						\
-	smclog(LOG_DEBUG, "%s:%02d: " fmt, conf, lineno, ##args)
-#define INFO(fmt, args...)						\
-	smclog(LOG_INFO, "%s:%02d: " fmt, conf, lineno, ##args)
-#define WARN(fmt, args...) {						\
-	smclog(LOG_WARNING, "%s:%02d: " fmt, conf, lineno, ##args);	\
-	if (conf_vrfy)							\
-		rc++;							\
-}
+#define DEBUG(fmt, args...) {						    \
+	if (lineno)							    \
+		smclog(LOG_DEBUG, "%s:%02d: " fmt, conf, lineno, ##args);   \
+	else								    \
+		smclog(LOG_DEBUG, "ipc: " fmt, ##args);			    \
+	}
+#define INFO(fmt, args...) {						    \
+	if (lineno)							    \
+		smclog(LOG_INFO, "%s:%02d: " fmt, conf, lineno, ##args);    \
+	else								    \
+		smclog(LOG_INFO, "ipc: " fmt, ##args);			    \
+	}
+
+#define WARN(fmt, args...) {						    \
+	if (lineno)							    \
+		smclog(LOG_WARNING, "%s:%02d: " fmt, conf, lineno, ##args); \
+	else								    \
+		smclog(LOG_WARNING, "ipc: " fmt, ##args);		    \
+	if (conf_vrfy)							    \
+		rc++;							    \
+	}
 
 /* Tokens */
 #define MGROUP 1
 #define MROUTE 2
 #define PHYINT 3
 
+static int lineno = 0;
 static const char *conf = NULL;
 
 static char *pop_token(char **line)
@@ -90,7 +103,7 @@ static int match(char *keyword, char *token)
 	return !strncmp(keyword, token, len);
 }
 
-static int conf_mgroup(int lineno, char *ifname, char *source, char *group)
+int conf_mgroup(int cmd, char *ifname, char *source, char *group)
 {
 	inet_addr_t src = { 0 }, grp = { 0 };
 	int grp_len = 0;
@@ -135,12 +148,12 @@ static int conf_mgroup(int lineno, char *ifname, char *source, char *group)
 		inet_anyaddr(grp.ss_family, &src);
 
 
-	rc += mcgroup_action(1, ifname, &src, &grp, grp_len);
+	rc += mcgroup_action(cmd, ifname, &src, &grp, grp_len);
 done:
 	return rc;
 }
 
-static int conf_mroute(int lineno, char *ifname, char *group, char *source, char *outbound[], int num)
+int conf_mroute(int cmd, char *ifname, char *source, char *group, char *outbound[], int num)
 {
 	struct ifmatch state_in, state_out;
 	struct mroute mroute = { 0 };
@@ -149,7 +162,7 @@ static int conf_mroute(int lineno, char *ifname, char *group, char *source, char
 	int rc = 0;
 	int vif;
 
-	if (!ifname || !group || !outbound || !num) {
+	if (!ifname || !group) {
 		errno = EINVAL;
 		return 1;
 	}
@@ -190,7 +203,7 @@ static int conf_mroute(int lineno, char *ifname, char *group, char *source, char
 	iface_match_init(&state_in);
 	DEBUG("mroute: checking for input iface %s ...", ifname);
 	while (iface_match_vif_by_name(ifname, &state_in, &iface) != NO_VIF) {
-		int i, total;
+		char src[INET_ADDRSTR_LEN], grp[INET_ADDRSTR_LEN];
 
 #ifdef HAVE_IPV6_MULTICAST_HOST
 		if (mroute.group.ss_family == AF_INET6)
@@ -201,48 +214,64 @@ static int conf_mroute(int lineno, char *ifname, char *group, char *source, char
 		DEBUG("mroute: input iface %s has vif %d", ifname, vif);
 		mroute.inbound = vif;
 
-		total = 0;
-		for (i = 0; i < num; i++) {
-			iface_match_init(&state_out);
+		if (cmd) {
+			int i, total = 0;
 
-			DEBUG("mroute: checking for %s ...", outbound[i]);
-			while (iface_match_vif_by_name(outbound[i], &state_out, &iface) != NO_VIF) {
+			for (i = 0; i < num; i++) {
+				iface_match_init(&state_out);
+
+				DEBUG("mroute: checking for %s ...", outbound[i]);
+				while (iface_match_vif_by_name(outbound[i], &state_out, &iface) != NO_VIF) {
+#ifdef HAVE_IPV6_MULTICAST_HOST
+					if (mroute.group.ss_family == AF_INET6)
+						vif = iface->mif;
+					else
+#endif
+					vif = iface->vif;
+					if (vif == mroute.inbound) {
+						/* In case of wildcard match in==out is normal, so don't complain */
+						if (!ifname_is_wildcard(ifname) && !ifname_is_wildcard(outbound[i]))
+							INFO("mroute: Same outbound interface (%s) as inbound (%s) may cause routing loops.",
+							     outbound[i], iface->name);
+					}
+
+					/* Use configured TTL threshold for the output phyint */
+					mroute.ttl[vif] = iface->threshold;
+					total++;
+				}
+				if (!state_out.match_count)
+					WARN("mroute: Invalid outbound interface, skipping %s", outbound[i]);
+			}
+
+			if (!total) {
+				WARN("mroute: no outbound interfaces, cannot add multicast route.");
+				rc += 1;
+			} else {
+				smclog(LOG_DEBUG, "mroute: adding route from %s (%s/%u,%s/%u)", iface->name,
+				       inet_addr2str(&mroute.source, src, sizeof(src)), mroute.src_len,
+				       inet_addr2str(&mroute.group, grp, sizeof(grp)), mroute.len);
 #ifdef HAVE_IPV6_MULTICAST_HOST
 				if (mroute.group.ss_family == AF_INET6)
-					vif = iface->mif;
+					rc += mroute6_add(&mroute);
 				else
 #endif
-				vif = iface->vif;
-				if (vif == mroute.inbound) {
-					/* In case of wildcard match in==out is normal, so don't complain */
-					if (!ifname_is_wildcard(ifname) && !ifname_is_wildcard(outbound[i]))
-						INFO("mroute: Same outbound interface (%s) as inbound (%s) may cause routing loops.",
-						     outbound[i], ifname);
-				}
-
-				/* Use configured TTL threshold for the output phyint */
-				mroute.ttl[vif] = iface->threshold;
-				total++;
+				rc += mroute4_add(&mroute);
 			}
-			if (!state_out.match_count)
-				WARN("mroute: Invalid outbound interface, skipping %s", outbound[i]);
-		}
-
-		if (!total) {
-			WARN("mroute: No valid outbound interfaces, skipping multicast route.");
-			rc += 1;
 		} else {
+			smclog(LOG_DEBUG, "mroute: deleting route froum %s (%s/%u,%s/%u)", iface->name,
+			       inet_addr2str(&mroute.source, src, sizeof(src)), mroute.src_len,
+			       inet_addr2str(&mroute.group, grp, sizeof(grp)), mroute.len);
 #ifdef HAVE_IPV6_MULTICAST_HOST
 			if (mroute.group.ss_family == AF_INET6)
-				rc += mroute6_add(&mroute);
+				rc += mroute6_del(&mroute);
 			else
 #endif
-			rc += mroute4_add(&mroute);
+			rc += mroute4_del(&mroute);
 		}
 	}
 
 	if (!state_in.match_count) {
-		WARN("mroute: Invalid inbound interface: %s", ifname);
+		WARN("mroute: invalid inbound interface: %s", ifname);
 		rc++;
 	}
 
@@ -287,7 +316,6 @@ static char *chomp(char *str)
 static int conf_parse(const char *file, int do_vifs)
 {
 	char *linebuf, *line;
-	int lineno = 1;
 	int rc = 0;
 	FILE *fp;
 
@@ -306,6 +334,7 @@ static int conf_parse(const char *file, int do_vifs)
 	}
 
 	conf = file;
+	lineno = 1;
 	while ((line = fgets(linebuf, MAX_LINE_LEN, fp))) {
 		int   op = 0, num = 0, enable = do_vifs;
 		int   mrdisc = 0, threshold = DEFAULT_THRESHOLD;
@@ -375,11 +404,11 @@ static int conf_parse(const char *file, int do_vifs)
 
 		switch (op) {
 		case MGROUP:
-			rc += conf_mgroup(lineno, ifname, source, group);
+			rc += conf_mgroup(1, ifname, source, group);
 			break;
 
 		case MROUTE:
-			rc += conf_mroute(lineno, ifname, group, source, dest, num);
+			rc += conf_mroute(1, ifname, source, group, dest, num);
 			break;
 
 		case PHYINT:
@@ -396,6 +425,7 @@ static int conf_parse(const char *file, int do_vifs)
 
 	free(linebuf);
 	fclose(fp);
+	lineno = 0;
 
 	return rc;
 }
