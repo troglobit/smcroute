@@ -1,36 +1,32 @@
-AUTOMAKE_OPTIONS        = subdir-objects
+AUTOMAKE_OPTIONS     = subdir-objects
 
-sbin_PROGRAMS		= smcrouted
-smcrouted_SOURCES	= smcrouted.c mroute.c mroute.h iface.c iface.h mcgroup.c mcgroup.h  \
-			  notify.c notify.h script.c script.h util.h log.c log.h pidfile.c \
-			  inet.c inet.h kern.c socket.c socket.h timer.c timer.h queue.h
-smcrouted_CFLAGS        = -W -Wall -Wextra -Wno-deprecated-declarations
-smcrouted_CPPFLAGS	= -D_ATFILE_SOURCE -D_INCOMPLETE_XOPEN_C063
-smcrouted_CPPFLAGS     += -DSYSCONFDIR=\"@sysconfdir@\" -DRUNSTATEDIR=\"@runstatedir@\"
-smcrouted_LDADD		= $(LIBS) $(LIBOBJS) @LIB_RT@ @LIB_PTHREAD@
+sbin_PROGRAMS	     = smcrouted smcroutectl
+smcrouted_SOURCES    = smcrouted.c conf.c conf.h mroute.c mroute.h iface.c \
+		       iface.h inet.c inet.h ipc.c ipc.h kern.c kern.h	   \
+		       log.c log.h mcgroup.c mcgroup.h msg.c msg.h	   \
+		       notify.c notify.h pidfile.c queue.h script.c	   \
+		       script.h socket.c socket.h timer.c timer.h util.h
+
+smcrouted_CFLAGS     = -W -Wall -Wextra -Wno-deprecated-declarations
+smcrouted_CPPFLAGS   = -D_ATFILE_SOURCE -D_INCOMPLETE_XOPEN_C063
+smcrouted_CPPFLAGS  += -DSYSCONFDIR=\"@sysconfdir@\" -DRUNSTATEDIR=\"@runstatedir@\"
+smcrouted_LDADD	     = $(LIBS) $(LIBOBJS) @LIB_RT@ @LIB_PTHREAD@
+
 if USE_LIBCAP
-smcrouted_SOURCES      += cap.c cap.h
-smcrouted_LDADD	       += -lcap
+smcrouted_SOURCES   += cap.c cap.h
+smcrouted_LDADD	    += -lcap
 endif
+
 if HAVE_LIBSYSTEMD
-smcrouted_SOURCES      += systemd.c
-smcrouted_CFLAGS       += $(libsystemd_CFLAGS)
-smcrouted_LDADD        += $(libsystemd_LIBS)
+smcrouted_SOURCES   += systemd.c
+smcrouted_CFLAGS    += $(libsystemd_CFLAGS)
+smcrouted_LDADD	    += $(libsystemd_LIBS)
 endif
 
 if USE_MRDISC
-smcrouted_SOURCES      += mrdisc.c mrdisc.h
+smcrouted_SOURCES   += mrdisc.c mrdisc.h
 endif
 
-if HAVE_CLIENT
-sbin_PROGRAMS	       += smcroutectl
-smcrouted_SOURCES      += msg.c msg.h ipc.c ipc.h
-smcroutectl_SOURCES	= smcroutectl.c msg.h util.h
-smcroutectl_CFLAGS      = -W -Wall -Wextra
-smcroutectl_CPPFLAGS    = -DRUNSTATEDIR=\"@runstatedir@\"
-endif
-
-if USE_DOTCONF
-smcrouted_SOURCES      += conf.c conf.h
-endif
-
+smcroutectl_SOURCES  = smcroutectl.c msg.h util.h
+smcroutectl_CFLAGS   = -W -Wall -Wextra
+smcroutectl_CPPFLAGS = -DRUNSTATEDIR=\"@runstatedir@\"

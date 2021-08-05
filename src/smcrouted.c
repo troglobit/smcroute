@@ -260,11 +260,7 @@ static int usage(int code)
 	else
 		snprintf(pidfn, sizeof(pidfn), "%s", pid_file);
 
-	printf("Usage: %s [hnNsv] [-c SEC] [-d SEC] [-e CMD] "
-#ifdef ENABLE_DOTCONF
-	       "[-f FILE] "
-#endif
-	       "[-l LVL] "
+	printf("Usage: %s [hnNsv] [-c SEC] [-d SEC] [-e CMD] [-f FILE] [-l LVL] "
 #ifdef ENABLE_MRDISC
 	       "[-m SEC] "
 #endif
@@ -276,10 +272,8 @@ static int usage(int code)
 	       "  -d SEC          Startup delay, useful for delaying interface probe at boot\n"
 	       "  -e CMD          Script or command to call on startup/reload when all routes\n"
 	       "                  have been installed, or when a (*,G) is installed\n"
-#ifdef ENABLE_DOTCONF
 	       "  -f FILE         Configuration file, default use ident NAME: %s\n"
 	       "  -F FILE         Check configuration file syntax, use -l to increase verbosity\n"
-#endif
 	       "  -h              This help text\n"
 	       "  -I NAME         Identity for .conf/.pid/.sock file, and syslog, default: %s\n"
 	       "  -l LVL          Set log level: none, err, notice*, info, debug\n"
@@ -287,10 +281,8 @@ static int usage(int code)
 	       "  -m SEC          Multicast router discovery, 4-180, default: 20 sec\n"
 #endif
 	       "  -n              Run daemon in foreground, when started by systemd or finit\n"
-#ifdef ENABLE_DOTCONF
 	       "  -N              No multicast VIFs/MIFs created by default.  Use with\n"
 	       "                  smcroute.conf `phyint enable` directive\n"
-#endif
 #ifdef ENABLE_LIBCAP
 	       "  -p USER[:GROUP] After initialization set UID and GID to USER and GROUP\n"
 #endif
@@ -301,11 +293,7 @@ static int usage(int code)
 	       "                  Default use ident NAME: %s\n"
 	       "  -t ID           Set multicast routing table ID, default: 0\n"
 	       "  -v              Show program version\n"
-	       "\n", prognm, conf_file,
-#ifdef ENABLE_DOTCONF
-	       ident,
-#endif
-	       pidfn, sock_file);
+	       "\n", prognm, conf_file, ident, pidfn, sock_file);
 
 	return code;
 }
@@ -354,12 +342,6 @@ int main(int argc, char *argv[])
 			script = optarg;
 			break;
 
-#ifndef ENABLE_DOTCONF
-		case 'F':
-		case 'f':
-			warnx("Built without .conf file support.");
-			break;
-#else
 		case 'F':
 			log_level = LOG_INFO; /* Raise log level for verify */
 			conf_vrfy = 1;
@@ -367,7 +349,6 @@ int main(int argc, char *argv[])
 		case 'f':
 			conf_file = optarg;
 			break;
-#endif
 
 		case 'h':	/* help */
 			return usage(0);
@@ -396,11 +377,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'N':
-#ifndef ENABLE_DOTCONF
-			errx(1, "Built without .conf file, no way to enable individual interfaces.");
-#else
 			do_vifs = 0;
-#endif
 			break;
 
 		case 'p':

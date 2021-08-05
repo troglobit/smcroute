@@ -51,12 +51,6 @@ AC_ARG_ENABLE(test,
 	[ac_enable_test="no"])
 AC_ARG_ENABLE([ipv6],
 	AS_HELP_STRING([--disable-ipv6], [disable IPv6 support]))
-AC_ARG_ENABLE([client],
-	AS_HELP_STRING([--disable-client], [disable smcroutectl and IPC API]),,
-	enable_client=yes)
-AC_ARG_ENABLE([config],
-	AS_HELP_STRING([--disable-config], [disable /etc/smcroute.conf support]),,
-	enable_config=yes)
 AC_ARG_WITH([libcap],
 	AS_HELP_STRING([--without-libcap], [disable libcap, -p USER:GROUP drop-privs support]),,
 	[with_libcap=auto])
@@ -86,20 +80,6 @@ AS_IF([test "x$enable_mrdisc" = "xyes"],
     AC_DEFINE([ENABLE_MRDISC], 1, [Enable IPv4 multicast router discovery protocol]),
     enable_mrdisc=no)
 AM_CONDITIONAL([USE_MRDISC], [test "x$enable_mrdisc" = "xyes"])
-
-# Build w/o smcroutectl and IPC API?
-AS_IF([test "x$enable_client" != "xno"],
-    AC_DEFINE([ENABLE_CLIENT], 1, [Enable smcroutectl and the daemon IPC API]))
-AM_CONDITIONAL([HAVE_CLIENT], [test "x$enable_client" != "xno"])
-
-# Build w/o smcroute.conf support?
-AS_IF([test "x$enable_config" != "xno"],
-    AC_DEFINE([ENABLE_DOTCONF], 1, [Enable /etc/smcroute.conf support]))
-AM_CONDITIONAL([USE_DOTCONF], [test "x$enable_config" != "xno"])
-
-# Sanity check ...
-AS_IF([test "x$with_client" = "xno" -a "x$with_config" = "xno"],
-    AC_MSG_ERROR([Cannot disable both smcroutectl and /etc/smcroute.conf support.]))
 
 # Required to check for libsystemd-dev
 PKG_PROG_PKG_CONFIG
@@ -247,8 +227,6 @@ cat <<EOF
 
  Optional features:
   IPv6...........: $enable_ipv6
-  Client IPC.....: $enable_client
-  Config file....: $enable_config
   MRDISC RFC4286.: $enable_mrdisc
   libcap.........: $with_libcap
   systemd........: $with_systemd

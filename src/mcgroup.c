@@ -374,7 +374,6 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, inet_addr_t
 	return rc;
 }
 
-#ifdef ENABLE_CLIENT
 /* Write all joined IGMP/MLD groups to client socket */
 int mcgroup_show(int sd, int detail)
 {
@@ -413,7 +412,6 @@ int mcgroup_show(int sd, int detail)
 
 	return 0;
 }
-#endif
 
 /**
  * Local Variables:

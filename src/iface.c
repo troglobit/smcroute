@@ -433,7 +433,6 @@ mifi_t iface_match_mif_by_name(const char *ifname, struct ifmatch *state, struct
 	return NO_VIF;
 }
 
-#ifdef ENABLE_CLIENT
 /* Return all currently known interfaces */
 int iface_show(int sd, int detail)
 {
@@ -457,7 +456,6 @@ int iface_show(int sd, int detail)
 
 	return 0;
 }
-#endif
 
 /**
  * Local Variables:
