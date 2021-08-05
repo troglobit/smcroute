@@ -35,6 +35,7 @@
 
 #include <paths.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #define MX_CMDPKT_SZ 1024	/* command size including appended strings */
 
