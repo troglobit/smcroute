@@ -1,7 +1,7 @@
 /* Daemon capability API
  *
- * Copyright (C) 2016  Markus Palonen <markus.palonen@gmail.com>
- * Copyright (C) 2016-2020 Joachim Wiberg <troglobit@gmail.com>
+ * Copyright (C) 2016       Markus Palonen <markus.palonen@gmail.com>
+ * Copyright (C) 2016-2020  Joachim Wiberg <troglobit@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
