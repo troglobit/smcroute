@@ -149,7 +149,7 @@ static void handle_nocache4(int sd, void *arg)
 			 */
 			if (ENOENT == errno)
 				smclog(LOG_INFO, "Multicast from %s, group %s, on %s does not match any (*,G) rule",
-				       origin, group, iface->name);
+				       origin, group, iface->ifname);
 			return;
 		}
 
@@ -158,7 +158,7 @@ static void handle_nocache4(int sd, void *arg)
 
 	case IGMPMSG_WRONGVIF:
 		smclog(LOG_WARNING, "Multicast from %s, group %s, coming in on wrong VIF %u, iface %s",
-		       origin, group, mroute.inbound, iface->name);
+		       origin, group, mroute.inbound, iface->ifname);
 		break;
 
 	case IGMPMSG_WHOLEPKT:
@@ -281,7 +281,7 @@ static int mroute4_add_vif(struct iface *iface)
 		switch (errno) {
 		case ENOPROTOOPT:
 			smclog(LOG_INFO, "Interface %s is not multicast capable, skipping VIF.",
-			       iface->name);
+			       iface->ifname);
 			return -1;
 
 		case EAGAIN:
@@ -289,19 +289,19 @@ static int mroute4_add_vif(struct iface *iface)
 			return -1;
 
 		case ENOMEM:
-			smclog(LOG_WARNING, "Not enough available VIFs to create %s", iface->name);
+			smclog(LOG_WARNING, "Not enough available VIFs to create %s", iface->ifname);
 			return 1;
 
 		default:
 			break;
 		}
 
-		smclog(LOG_DEBUG, "Failed creating VIF for %s: %s", iface->name, strerror(errno));
+		smclog(LOG_DEBUG, "Failed creating VIF for %s: %s", iface->ifname, strerror(errno));
 		return -1;
 	}
 
 	if (iface->mrdisc)
-		return mrdisc_register(iface->name, iface->vif);
+		return mrdisc_register(iface->ifname, iface->vif);
 
 	return 0;
 }
@@ -312,7 +312,7 @@ static int mroute4_del_vif(struct iface *iface)
 		return mrdisc_deregister(iface->vif);
 
 	if (kern_vif_del(iface)) {
-		smclog(LOG_ERR, "Failed deleting VIF for iface %s: %s", iface->name, strerror(errno));
+		smclog(LOG_ERR, "Failed deleting VIF for iface %s: %s", iface->ifname, strerror(errno));
 		return -1;
 	}
 
@@ -769,7 +769,7 @@ static void handle_nocache6(int sd, void *arg)
 			 */
 			if (ENOENT == errno)
 				smclog(LOG_INFO, "Multicast from %s, group %s, on %s does not match any (*,G) rule",
-				       origin, group, iface->name);
+				       origin, group, iface->ifname);
 			return;
 		}
 
@@ -778,7 +778,7 @@ static void handle_nocache6(int sd, void *arg)
 
 	case MRT6MSG_WRONGMIF:
 		smclog(LOG_WARNING, "Multicast from %s, group %s, coming in on wrong MIF %u, iface %s",
-		       origin, group, mroute.inbound, iface->name);
+		       origin, group, mroute.inbound, iface->ifname);
 		break;
 
 	case MRT6MSG_WHOLEPKT:
@@ -879,7 +879,7 @@ static int mroute6_add_mif(struct iface *iface)
 		switch (errno) {
 		case ENOPROTOOPT:
 			smclog(LOG_INFO, "Interface %s is not multicast capable, skipping MIF.",
-			       iface->name);
+			       iface->ifname);
 			return -1;
 
 		case EAGAIN:
@@ -887,14 +887,14 @@ static int mroute6_add_mif(struct iface *iface)
 			return -1;
 
 		case ENOMEM:
-			smclog(LOG_WARNING, "Not enough available MIFs to create %s", iface->name);
+			smclog(LOG_WARNING, "Not enough available MIFs to create %s", iface->ifname);
 			return 1;
 
 		default:
 			break;
 		}
 
-		smclog(LOG_DEBUG, "Failed creating MIF for %s: %s", iface->name, strerror(errno));
+		smclog(LOG_DEBUG, "Failed creating MIF for %s: %s", iface->ifname, strerror(errno));
 
 		return -1;
 	}
@@ -905,7 +905,7 @@ static int mroute6_add_mif(struct iface *iface)
 static int mroute6_del_mif(struct iface *iface)
 {
 	if (kern_mif_del(iface)) {
-		smclog(LOG_ERR, "Failed deleting MIF for iface %s: %s", iface->name, strerror(errno));
+		smclog(LOG_ERR, "Failed deleting MIF for iface %s: %s", iface->ifname, strerror(errno));
 		return -1;
 	}
 
@@ -1216,7 +1216,7 @@ int mroute_add_vif(char *ifname, uint8_t mrdisc, uint8_t threshold)
 	smclog(LOG_DEBUG, "Adding %s to list of multicast routing interfaces", ifname);
 	iface_match_init(&state);
 	while ((iface = iface_match_by_name(ifname, &state))) {
-		smclog(LOG_DEBUG, "Creating multicast VIF for %s", iface->name);
+		smclog(LOG_DEBUG, "Creating multicast VIF for %s", iface->ifname);
 		iface->mrdisc    = mrdisc;
 		iface->threshold = threshold;
 		ret += mroute4_add_vif(iface);
@@ -1274,7 +1274,7 @@ static int show_mroute(int sd, struct mroute *r, int detail)
 
 	iface = iface_find_by_inbound(r);
 	snprintf(sg, sizeof(sg), "(%s%s, %s%s)", src, src_len, grp, grp_len);
-	snprintf(buf, sizeof(buf), "%-46s %-16s", sg, iface->name);
+	snprintf(buf, sizeof(buf), "%-46s %-16s", sg, iface->ifname);
 
 	if (detail) {
 		struct mroute_stats ms = { 0 };
@@ -1294,7 +1294,7 @@ static int show_mroute(int sd, struct mroute *r, int detail)
 	while (iface) {
 		char tmp[22];
 
-		snprintf(tmp, sizeof(tmp), " %s", iface->name);
+		snprintf(tmp, sizeof(tmp), " %s", iface->ifname);
 		strlcat(buf, tmp, sizeof(buf));
 
 		iface = iface_outbound_iterator(r, 0);

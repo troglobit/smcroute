@@ -99,7 +99,7 @@ static int iface_update(int refresh)
 
 		/* Copy data from interface iterator 'ifa' */
 		iface = &iface_list[num_ifaces++];
-		strlcpy(iface->name, ifa->ifa_name, sizeof(iface->name));
+		strlcpy(iface->ifname, ifa->ifa_name, sizeof(iface->ifname));
 
 		/*
 		 * Only copy interface address if inteface has one.  On
@@ -111,7 +111,7 @@ static int iface_update(int refresh)
 		if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET)
 			iface->inaddr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
 		iface->flags = ifa->ifa_flags;
-		iface->ifindex = if_nametoindex(iface->name);
+		iface->ifindex = if_nametoindex(iface->ifname);
 		iface->vif = ALL_VIFS;
 		iface->mif = ALL_MIFS;
 		iface->mrdisc = 0;
@@ -209,7 +209,7 @@ struct iface *iface_find_by_name(const char *ifname)
 
 	for (i = 0; i < num_ifaces; i++) {
 		iface = &iface_list[i];
-		if (!strcmp(nm, iface->name)) {
+		if (!strcmp(nm, iface->ifname)) {
 			if (iface->vif != NO_VIF) {
 				free(nm);
 				return iface;
@@ -316,7 +316,7 @@ struct iface *iface_match_by_name(const char *ifname, struct ifmatch *state)
 	for (; state->iter < num_ifaces; state->iter++) {
 		struct iface *iface = &iface_list[state->iter];
 
-		if (!strncmp(ifname, iface->name, match_len)) {
+		if (!strncmp(ifname, iface->ifname, match_len)) {
 			state->iter++;
 			state->match_count++;
 
@@ -394,11 +394,11 @@ vifi_t iface_match_vif_by_name(const char *ifname, struct ifmatch *state, struct
 			if (found)
 				*found = iface;
 
-			smclog(LOG_DEBUG, "  %s has VIF %d", iface->name, iface->vif);
+			smclog(LOG_DEBUG, "  %s has VIF %d", iface->ifname, iface->vif);
 			return iface->vif;
 		}
 
-		smclog(LOG_DEBUG, "  No VIF for %s", iface->name);
+		smclog(LOG_DEBUG, "  No VIF for %s", iface->ifname);
 		state->match_count--;
 	}
 
@@ -423,7 +423,7 @@ mifi_t iface_match_mif_by_name(const char *ifname, struct ifmatch *state, struct
 			if (found)
 				*found = iface;
 
-			smclog(LOG_DEBUG, "  %s has MIF %d", iface->name, iface->mif);
+			smclog(LOG_DEBUG, "  %s has MIF %d", iface->ifname, iface->mif);
 			return iface->mif;
 		}
 
@@ -445,7 +445,7 @@ int iface_show(int sd, int detail)
 		char buf[256];
 
 		snprintf(buf, sizeof(buf), "%-16s  %6d  %3d  %3d\n",
-			 iface->name, iface->ifindex, iface->vif, iface->mif);
+			 iface->ifname, iface->ifindex, iface->vif, iface->mif);
 		if (ipc_send(sd, buf, strlen(buf)) < 0) {
 			smclog(LOG_ERR, "Failed sending reply to client: %s", strerror(errno));
 			return -1;

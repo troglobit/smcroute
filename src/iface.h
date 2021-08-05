@@ -14,7 +14,7 @@
 #define NO_VIF            ALL_VIFS	/* -1 */
 
 struct iface {
-	char name[IFNAMSIZ];
+	char     ifname[IFNAMSIZ];
 	struct in_addr inaddr;		/* == 0 for non IP interfaces */
 	int      ifindex;		/* Physical interface index   */
 	short    flags;

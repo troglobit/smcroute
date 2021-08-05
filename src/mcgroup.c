@@ -170,7 +170,7 @@ static void list_add(int sd, struct mcgroup *mcg)
 
 	*entry = *mcg;
 #if 0
-	strlcpy(entry->ifname, iface->name, sizeof(entry->ifname));
+	strlcpy(entry->ifname, iface->ifname, sizeof(entry->ifname));
 	entry->iface   = iface;
 	entry->source  = *source;
 	entry->group   = *group;
@@ -398,7 +398,7 @@ int mcgroup_show(int sd, int detail)
 			snprintf(sg, sizeof(sg), "(%s, %s/%d)", src, grp, entry->len);
 		else
 			snprintf(sg, sizeof(sg), "(%s, %s)", src, grp);
-		snprintf(buf, sizeof(buf), "%-46s %s\n", sg, iface->name);
+		snprintf(buf, sizeof(buf), "%-46s %s\n", sg, iface->ifname);
 
 		if (ipc_send(sd, buf, strlen(buf)) < 0) {
 			smclog(LOG_ERR, "Failed sending reply to client: %s", strerror(errno));

@@ -232,7 +232,7 @@ int conf_mroute(int cmd, char *ifname, char *source, char *group, char *outbound
 						/* In case of wildcard match in==out is normal, so don't complain */
 						if (!ifname_is_wildcard(ifname) && !ifname_is_wildcard(outbound[i]))
 							INFO("mroute: Same outbound interface (%s) as inbound (%s) may cause routing loops.",
-							     outbound[i], iface->name);
+							     outbound[i], iface->ifname);
 					}
 
 					/* Use configured TTL threshold for the output phyint */
@@ -247,7 +247,7 @@ int conf_mroute(int cmd, char *ifname, char *source, char *group, char *outbound
 				WARN("mroute: no outbound interfaces, cannot add multicast route.");
 				rc += 1;
 			} else {
-				smclog(LOG_DEBUG, "mroute: adding route from %s (%s/%u,%s/%u)", iface->name,
+				smclog(LOG_DEBUG, "mroute: adding route from %s (%s/%u,%s/%u)", iface->ifname,
 				       inet_addr2str(&mroute.source, src, sizeof(src)), mroute.src_len,
 				       inet_addr2str(&mroute.group, grp, sizeof(grp)), mroute.len);
 #ifdef HAVE_IPV6_MULTICAST_HOST
@@ -258,7 +258,7 @@ int conf_mroute(int cmd, char *ifname, char *source, char *group, char *outbound
 				rc += mroute4_add(&mroute);
 			}
 		} else {
-			smclog(LOG_DEBUG, "mroute: deleting route froum %s (%s/%u,%s/%u)", iface->name,
+			smclog(LOG_DEBUG, "mroute: deleting route froum %s (%s/%u,%s/%u)", iface->ifname,
 			       inet_addr2str(&mroute.source, src, sizeof(src)), mroute.src_len,
 			       inet_addr2str(&mroute.group, grp, sizeof(grp)), mroute.len);
 #ifdef HAVE_IPV6_MULTICAST_HOST

@@ -285,7 +285,7 @@ int kern_vif_add(struct iface *iface)
 	vc.vifc_rmt_addr.s_addr = htonl(INADDR_ANY);
 
 	smclog(LOG_DEBUG, "Map iface %-16s => VIF %-2d ifindex %2d flags 0x%04x TTL threshold %u",
-	       iface->name, vc.vifc_vifi, iface->ifindex, vc.vifc_flags, iface->threshold);
+	       iface->ifname, vc.vifc_vifi, iface->ifindex, vc.vifc_flags, iface->threshold);
 
 	if (setsockopt(sd4, IPPROTO_IP, MRT_ADD_VIF, &vc, sizeof(vc)))
 		return 1;
@@ -308,7 +308,7 @@ int kern_vif_del(struct iface *iface)
 	if (iface->vif == NO_VIF)
 		return errno = ENOENT;
 
-	smclog(LOG_DEBUG, "Removing  %-16s => VIF %-2d", iface->name, iface->vif);
+	smclog(LOG_DEBUG, "Removing  %-16s => VIF %-2d", iface->ifname, iface->vif);
 
 	vifc.vifc_vifi = iface->vif;
 #ifdef __linux__
@@ -519,7 +519,7 @@ int kern_mif_add(struct iface *iface)
 #endif
 
 	smclog(LOG_DEBUG, "Map iface %-16s => MIF %-2d ifindex %2d flags 0x%04x TTL threshold %u",
-	       iface->name, mc.mif6c_mifi, mc.mif6c_pifi, mc.mif6c_flags, iface->threshold);
+	       iface->ifname, mc.mif6c_mifi, mc.mif6c_pifi, mc.mif6c_flags, iface->threshold);
 
 	if (setsockopt(sd6, IPPROTO_IPV6, MRT6_ADD_MIF, &mc, sizeof(mc)))
 		return -1;
@@ -541,7 +541,7 @@ int kern_mif_del(struct iface *iface)
 	if (iface->vif == NO_VIF)
 		return errno = ENOENT;
 
-	smclog(LOG_DEBUG, "Removing  %-16s => MIF %-2d", iface->name, iface->mif);
+	smclog(LOG_DEBUG, "Removing  %-16s => MIF %-2d", iface->ifname, iface->mif);
 
 	rc = setsockopt(sd6, IPPROTO_IPV6, MRT6_DEL_MIF, &iface->mif, sizeof(iface->mif));
 	if (!rc)
