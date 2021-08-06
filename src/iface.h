@@ -14,6 +14,7 @@
 #define NO_VIF            ALL_VIFS	/* -1 */
 
 struct iface {
+	int      unused;		/* set on reload/SIGHUP only */
 	char     ifname[IFNAMSIZ];
 	struct in_addr inaddr;		/* == 0 for non IP interfaces */
 	int      ifindex;		/* Physical interface index   */
@@ -31,8 +32,8 @@ struct ifmatch {
 
 void          iface_init              (void);
 void          iface_exit              (void);
-
 void          iface_update            (void);
+
 struct iface *iface_iterator          (int first);
 struct iface *iface_outbound_iterator (struct mroute *route, int first);
 

@@ -7,6 +7,7 @@
 
 struct mcgroup {
 	LIST_ENTRY(mcgroup) link;
+	int            unused;
 
 	char           ifname[IFNAMSIZ];
 	struct iface  *iface;
@@ -16,7 +17,9 @@ struct mcgroup {
 	int            sd;
 };
 
-void mcgroup_exit   (void);
+void mcgroup_reload_beg(void);
+void mcgroup_reload_end(void);
+void mcgroup_exit      (void);
 
 int  mcgroup_action    (int cmd, const char *ifname, inet_addr_t *source, inet_addr_t *group, int len);
 

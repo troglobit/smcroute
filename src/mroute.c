@@ -81,11 +81,8 @@ LIST_HEAD(, mroute) mroute6_dyn_list = LIST_HEAD_INITIALIZER();
 LIST_HEAD(, mroute) mroute6_static_list = LIST_HEAD_INITIALIZER();
 #endif
 
+static int mroute4_dyn_add(struct mroute *route);
 static int mroute4_add_vif(struct iface *iface);
-
-#ifdef HAVE_IPV6_MULTICAST_ROUTING
-static int mroute6_add_mif(struct iface *iface);
-#endif
 
 /* Check for kernel IGMPMSG_NOCACHE for (*,G) hits. I.e., source-less routes. */
 static void handle_nocache4(int sd, void *arg)
@@ -249,12 +246,10 @@ int mroute4_enable(int do_vifs, int table_id, int timeout)
  *
  * Disable IPv4 multicast routing and release kernel routing socket.
  */
-void mroute4_disable(int close_socket)
+static void mroute4_disable(void)
 {
 	struct mroute *entry, *tmp;
 
-	/* XXX: refactor, we shouldn't need to close close socket at runtime */
-	(void)close_socket;
 	if (kern_mroute_exit())
 		return;
 
@@ -292,6 +287,10 @@ static int mroute4_add_vif(struct iface *iface)
 			smclog(LOG_WARNING, "Not enough available VIFs to create %s", iface->ifname);
 			return 1;
 
+		case EEXIST:
+			smclog(LOG_DEBUG, "Interface %s already has VIF %d.", iface->ifname, iface->vif);
+			return 0;
+
 		default:
 			break;
 		}
@@ -311,10 +310,11 @@ static int mroute4_del_vif(struct iface *iface)
 	if (iface->mrdisc)
 		return mrdisc_deregister(iface->vif);
 
-	if (kern_vif_del(iface)) {
+	if (kern_vif_del(iface) && errno != ENOENT) {
 		smclog(LOG_ERR, "Failed deleting VIF for iface %s: %s", iface->ifname, strerror(errno));
 		return -1;
 	}
+	iface->vif = -1;
 
 	return 0;
 }
@@ -396,7 +396,7 @@ static int is_mroute4_static(struct mroute *route)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute4_dyn_add(struct mroute *route)
+static int mroute4_dyn_add(struct mroute *route)
 {
 	struct mroute *entry, *new_entry;
 	int ret;
@@ -515,18 +515,37 @@ void mroute4_dyn_expire(int max_idle)
 	}
 }
 
-static int mroute4_exists(struct mroute *route)
+/* unlink a previous entry that is to be replaced with a new route at reload */
+static int mroute_unlink_reload(struct mroute *entry, struct mroute *route)
 {
-	struct mroute *entry;
+	LIST_REMOVE(entry, link);
+	free(entry);
 
-	LIST_FOREACH(entry, &mroute4_conf_list, link) {
+	/* tell mroute*_add() about it */
+	route->unused = 1;
+
+	return 0;
+}
+
+/* check if already exists, if we're reloading removing it */
+static int mroute4_add_exists(struct mroute *route)
+{
+	struct mroute *entry, *tmp;
+
+	LIST_FOREACH_SAFE(entry, &mroute4_conf_list, link, tmp) {
 		if (is_match4(entry, route)) {
+			if (entry->unused)
+				return mroute_unlink_reload(entry, route);
+
 			smclog(LOG_INFO, "(*,G) route already exists");
 			return 1;
 		}
 	}
 	LIST_FOREACH(entry, &mroute4_static_list, link) {
 		if (is_exact_match4(entry, route)) {
+			if (entry->unused)
+				return mroute_unlink_reload(entry, route);
+
 			smclog(LOG_INFO, "Static route already exists");
 			return 1;
 		}
@@ -536,7 +555,7 @@ static int mroute4_exists(struct mroute *route)
 }
 
 /* Only inbound differs, there can only be one ... */
-static struct mroute *mroute4_similar(struct mroute *route)
+static struct mroute *mroute4_add_similar(struct mroute *route)
 {
 	struct mroute *entry;
 
@@ -567,13 +586,13 @@ int mroute4_add(struct mroute *route)
 	struct mroute *entry;
 
 	/* Exact match, then skip ... */
-	if (mroute4_exists(route)){
+	if (mroute4_add_exists(route)) {
 		errno = EEXIST;
 		return 1;
 	}
 
 	/* ... (S,G) matches and inbound differs, then replace route */
-	entry = mroute4_similar(route);
+	entry = mroute4_add_similar(route);
 	if (entry) {
 		kern_mroute_del(entry, is_active(entry));
 		LIST_REMOVE(entry, link);
@@ -587,6 +606,7 @@ int mroute4_add(struct mroute *route)
 	}
 
 	memcpy(entry, route, sizeof(struct mroute));
+	entry->unused = 0;		/* unmark from reload */
 
 	/*
 	 * For (*,G) we save to a linked list to be added on-demand when
@@ -702,6 +722,8 @@ int mroute4_del(struct mroute *route)
 }
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
+static int mroute6_dyn_add(struct mroute *route);
+static int mroute6_add_mif(struct iface *iface);
 
 /*
  * Receive and drop ICMPv6 stuff. This is either MLD packets or upcall
@@ -860,15 +882,11 @@ int mroute6_enable(int do_vifs, int table_id)
  *
  * Disable IPv6 multicast routing and release kernel routing socket.
  */
-void mroute6_disable(int close_socket)
+static void mroute6_disable(void)
 {
-#ifndef HAVE_IPV6_MULTICAST_ROUTING
-	(void)close_socket;
-#else
-	/* XXX: refactor, we shouldn't need to close close socket at runtime */
-	(void)close_socket;
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
 	kern_mroute6_exit();
-#endif /* HAVE_IPV6_MULTICAST_ROUTING */
+#endif
 }
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
@@ -890,6 +908,10 @@ static int mroute6_add_mif(struct iface *iface)
 			smclog(LOG_WARNING, "Not enough available MIFs to create %s", iface->ifname);
 			return 1;
 
+		case EEXIST:
+			smclog(LOG_DEBUG, "Interface %s already has MIF %d.", iface->ifname, iface->mif);
+			return 0;
+
 		default:
 			break;
 		}
@@ -904,10 +926,11 @@ static int mroute6_add_mif(struct iface *iface)
 
 static int mroute6_del_mif(struct iface *iface)
 {
-	if (kern_mif_del(iface)) {
+	if (kern_mif_del(iface) && errno != ENOENT) {
 		smclog(LOG_ERR, "Failed deleting MIF for iface %s: %s", iface->ifname, strerror(errno));
 		return -1;
 	}
+	iface->mif = -1;
 
 	return 0;
 }
@@ -964,7 +987,7 @@ static int is_mroute6_static(struct mroute *route)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute6_dyn_add(struct mroute *route)
+static int mroute6_dyn_add(struct mroute *route)
 {
 	struct mroute *entry, *new_entry;
 	int ret;
@@ -1200,10 +1223,10 @@ int mroute_init(int do_vifs, int table_id, int cache_tmo)
 		mroute6_enable(do_vifs, table_id);
 }
 
-void mroute_exit(int close_socket)
+void mroute_exit(void)
 {
-	mroute4_disable(close_socket);
-	mroute6_disable(close_socket);
+	mroute4_disable();
+	mroute6_disable();
 }
 
 /* Used by file parser to add VIFs/MIFs after setup */
@@ -1213,10 +1236,10 @@ int mroute_add_vif(char *ifname, uint8_t mrdisc, uint8_t threshold)
 	struct iface *iface;
 	int ret = 0;
 
-	smclog(LOG_DEBUG, "Adding %s to list of multicast routing interfaces", ifname);
 	iface_match_init(&state);
 	while ((iface = iface_match_by_name(ifname, &state))) {
-		smclog(LOG_DEBUG, "Creating multicast VIF for %s", iface->ifname);
+		smclog(LOG_DEBUG, "Creating/updating multicast VIF for %s", iface->ifname);
+		iface->unused    = 0;
 		iface->mrdisc    = mrdisc;
 		iface->threshold = threshold;
 		ret += mroute4_add_vif(iface);
@@ -1238,7 +1261,6 @@ int mroute_del_vif(char *ifname)
 	struct iface *iface;
 	int ret = 0;
 
-	smclog(LOG_DEBUG, "Pruning %s from list of multicast routing interfaces", ifname);
 	iface_match_init(&state);
 	while ((iface = iface_match_by_name(ifname, &state))) {
 		ret += mroute4_del_vif(iface);
@@ -1251,6 +1273,82 @@ int mroute_del_vif(char *ifname)
 		return 1;
 
 	return ret;
+}
+
+/*
+ * Called on SIGHUP/reload.  Mark all known configured routes as
+ * 'unused', let mroute*_add() unmark and mroute_reload_end() take
+ * care to remove routes that still have the 'unused' flag.
+ */
+void mroute_reload_beg(void)
+{
+	struct mroute *entry;
+	struct iface *iface;
+	int first = 1;
+
+	LIST_FOREACH(entry, &mroute4_static_list, link)
+		entry->unused = 1;
+	LIST_FOREACH(entry, &mroute4_dyn_list, link)
+		entry->unused = 1;
+	LIST_FOREACH(entry, &mroute4_conf_list, link)
+		entry->unused = 1;
+
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
+	LIST_FOREACH(entry, &mroute6_static_list, link)
+		entry->unused = 1;
+	LIST_FOREACH(entry, &mroute6_dyn_list, link)
+		entry->unused = 1;
+	LIST_FOREACH(entry, &mroute6_conf_list, link)
+		entry->unused = 1;
+#endif
+
+	while ((iface = iface_iterator(first))) {
+		first = 0;
+		iface->unused = 1;
+	}
+}
+
+void mroute_reload_end(void)
+{
+	struct mroute *entry, *tmp;
+	struct iface *iface;
+	int first = 1;
+
+	LIST_FOREACH_SAFE(entry, &mroute4_static_list, link, tmp) {
+		if (entry->unused)
+			mroute4_del(entry);
+	}
+	LIST_FOREACH_SAFE(entry, &mroute4_dyn_list, link, tmp) {
+		if (entry->unused)
+			mroute4_del(entry);
+	}
+	LIST_FOREACH_SAFE(entry, &mroute4_conf_list, link, tmp) {
+		if (entry->unused)
+			mroute4_del(entry);
+	}
+
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
+	LIST_FOREACH_SAFE(entry, &mroute6_static_list, link, tmp) {
+		if (entry->unused)
+			mroute6_del(entry);
+	}
+	LIST_FOREACH_SAFE(entry, &mroute6_dyn_list, link, tmp) {
+		if (entry->unused)
+			mroute6_del(entry);
+	}
+	LIST_FOREACH_SAFE(entry, &mroute6_conf_list, link, tmp) {
+		if (entry->unused)
+			mroute6_del(entry);
+	}
+#endif
+
+	while ((iface = iface_iterator(first))) {
+		first = 0;
+		if (iface->unused) {
+			mroute_del_vif(iface->ifname);
+			iface->unused = 0;
+		}
+	}
 }
 
 static int show_mroute(int sd, struct mroute *r, int detail)

@@ -72,30 +72,25 @@ static const char version_info[] = PACKAGE_NAME " v" PACKAGE_VERSION;
 /* Cleans up, i.e. releases allocated resources. Called via atexit() */
 static void clean(void)
 {
-	mroute_exit(1);
+	mroute_exit();
 	mcgroup_exit();
 	ipc_exit();
 	iface_exit();
 	smclog(LOG_NOTICE, "Exiting.");
 }
 
-static void restart(void)
-{
-	mroute_exit(0);
-	mcgroup_exit();
-	/* No need to close the IPC, only at cleanup. */
-
-	/* Update list of interfaces and create new virtual interface mappings in kernel. */
-	iface_init();
-	mroute_init(do_vifs, table_id, cache_tmo);
-}
-
 void reload(void)
 {
 	notify_reload();
 
-	restart();
+	mcgroup_reload_beg();
+	mroute_reload_beg();
+
+	iface_update();
 	conf_read(conf_file, do_vifs);
+
+	mcgroup_reload_end();
+	mroute_reload_end();
 
 	/* Acknowledge client SIGHUP/reload */
 	notify_ready(NULL, uid, gid);

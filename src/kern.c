@@ -238,12 +238,10 @@ int kern_mroute_exit(void)
 	if (setsockopt(sd4, IPPROTO_IP, MRT_DONE, NULL, 0))
 		smclog(LOG_WARNING, "Failed shutting down IPv4 multicast routing socket: %s",
 		       strerror(errno));
-#if 0
-	if (close_socket) {
-		socket_close(sd4);
-		sd4 = -1;
-	}
-#endif
+
+	socket_close(sd4);
+	sd4 = -1;
+
 	return 0;
 }
 
@@ -259,6 +257,8 @@ int kern_vif_add(struct iface *iface)
 		return errno = ENOPROTOOPT;
 	if (sd4 == -1)
 		return errno = EAGAIN;
+	if (iface->vif != NO_VIF)
+		return errno = EEXIST;
 
 	/* find a free vif */
 	for (i = 0, vif = -1; i < NELEMS(vif_list); i++) {
@@ -497,6 +497,8 @@ int kern_mif_add(struct iface *iface)
 		return errno = EINVAL;
 	if ((iface->flags & IFF_MULTICAST) != IFF_MULTICAST)
 		return errno = ENOPROTOOPT;
+	if (iface->mif != NO_VIF)
+		return errno = EEXIST;
 
 	/* find a free mif */
 	for (i = 0; i < NELEMS(mif_list); i++) {
@@ -540,7 +542,7 @@ int kern_mif_del(struct iface *iface)
 		return errno = EAGAIN;
 	if (!iface)
 		return errno = EINVAL;
-	if (iface->vif == NO_VIF)
+	if (iface->mif == NO_VIF)
 		return errno = ENOENT;
 
 	smclog(LOG_DEBUG, "Removing  %-16s => MIF %-2d", iface->ifname, iface->mif);
@@ -549,9 +551,9 @@ int kern_mif_del(struct iface *iface)
 	if (!rc) {
 		mif_list[iface->mif].iface = NULL;
 		iface->mif = -1;
+	}
 
 	return rc;
-	}
 }
 
 static int kern_mroute6(int cmd, struct mroute *route)

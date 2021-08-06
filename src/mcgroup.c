@@ -283,6 +283,11 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, inet_addr_t
 	mcg = find_conf(ifname, source, group, len);
 	if (mcg) {
 		if (cmd) {
+			if (mcg->unused) {
+				mcg->unused = 0;
+				return 0;
+			}
+
 			smclog(LOG_INFO, "Already joined (%s,%s) on %s", src, grp, ifname);
 			errno = EALREADY;
 			return 1;
@@ -373,6 +378,31 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, inet_addr_t
 		return 1;
 
 	return rc;
+}
+
+/*
+ * Called on SIGHUP/reload.  Mark all known configured groups as
+ * 'unused', let mcgroup_action() unmark and mcgroup_reload_end()
+ * take care to remove groups that still have the 'unused' flag.
+ */
+void mcgroup_reload_beg(void)
+{
+	struct mcgroup *entry;
+
+	LIST_FOREACH(entry, &conf_list, link)
+		entry->unused = 1;
+}
+
+void mcgroup_reload_end(void)
+{
+	struct mcgroup *entry, *tmp;
+
+	LIST_FOREACH_SAFE(entry, &conf_list, link, tmp) {
+		if (!entry->unused)
+			continue;
+
+		mcgroup_action(0, entry->ifname, &entry->source, &entry->group, entry->len);
+	}
 }
 
 /* Write all joined IGMP/MLD groups to client socket */
