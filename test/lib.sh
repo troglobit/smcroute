@@ -277,9 +277,19 @@ topo_teardown()
 signal()
 {
     echo
-    print "Got signal, cleaning up"
+    if [ "$1" != "EXIT" ]; then
+	print "Got signal, cleaning up"
+    fi
     topo_teardown
-    exit 1
+}
+
+# props to https://stackoverflow.com/a/2183063/1708249
+trapit()
+{
+    func="$1" ; shift
+    for sig ; do
+        trap "$func $sig" "$sig"
+    done
 }
 
 topo()
@@ -287,7 +297,7 @@ topo()
     if [ ! -d "/tmp/$NM" ]; then
 	mkdir "/tmp/$NM"
 	touch "/tmp/$NM/PIDs"
-	trap signal INT TERM QUIT
+	trapit signal INT TERM QUIT EXIT
     fi
 
     if [ $# -lt 1 ]; then
