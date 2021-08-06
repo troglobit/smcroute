@@ -49,37 +49,18 @@ static int cache_timeout = 0;
  * User added/configured (*,G) matched on-demand at runtime.  See
  * mroute4_dyn_list for the (S,G) routes set from this "template".
  */
-LIST_HEAD(, mroute) mroute4_conf_list = LIST_HEAD_INITIALIZER();
+LIST_HEAD(, mroute) mroute_asm_conf_list = LIST_HEAD_INITIALIZER();
 
 /*
  * Dynamically, on-demand, set (S,G) routes.  Tracks if the user
  * removes a configured (*,G) route.
  */
-LIST_HEAD(, mroute) mroute4_dyn_list = LIST_HEAD_INITIALIZER();
+LIST_HEAD(, mroute) mroute_asm_kern_list = LIST_HEAD_INITIALIZER();
 
 /*
  * Tracks regular static routes, mostly for 'smcroutectl show'
  */
-LIST_HEAD(, mroute) mroute4_static_list = LIST_HEAD_INITIALIZER();
-
-#ifdef HAVE_IPV6_MULTICAST_ROUTING
-/*
- * User added/configured (*,G) matched on-demand at runtime.  See
- * mroute6_dyn_list for the (S,G) routes set from this "template".
- */
-LIST_HEAD(, mroute) mroute6_conf_list = LIST_HEAD_INITIALIZER();
-
-/*
- * Dynamically, on-demand, set (S,G) routes.  Tracks if the user
- * removes a configured (*,G) route.
- */
-LIST_HEAD(, mroute) mroute6_dyn_list = LIST_HEAD_INITIALIZER();
-
-/*
- * Tracks regular static routes, mostly for 'smcroutectl show'
- */
-LIST_HEAD(, mroute) mroute6_static_list = LIST_HEAD_INITIALIZER();
-#endif
+LIST_HEAD(, mroute) mroute_ssm_list = LIST_HEAD_INITIALIZER();
 
 static void mroute4_dyn_expire (int max_idle);
 static int  mroute4_dyn_add    (struct mroute *route);
@@ -229,10 +210,6 @@ int mroute4_enable(int do_vifs, int table_id, int timeout)
 			mroute4_add_vif(iface);
 	}
 
-	LIST_INIT(&mroute4_conf_list);
-	LIST_INIT(&mroute4_dyn_list);
-	LIST_INIT(&mroute4_static_list);
-
 	if (timeout && !running) {
 		running++;
 		cache_timeout = timeout;
@@ -255,15 +232,15 @@ static void mroute4_disable(void)
 		return;
 
 	/* Free list of (*,G) routes on SIGHUP */
-	LIST_FOREACH_SAFE(entry, &mroute4_conf_list, link, tmp) {
+	LIST_FOREACH_SAFE(entry, &mroute_asm_conf_list, link, tmp) {
 		LIST_REMOVE(entry, link);
 		free(entry);
 	}
-	LIST_FOREACH_SAFE(entry, &mroute4_dyn_list, link, tmp) {
+	LIST_FOREACH_SAFE(entry, &mroute_asm_kern_list, link, tmp) {
 		LIST_REMOVE(entry, link);
 		free(entry);
 	}
-	LIST_FOREACH_SAFE(entry, &mroute4_static_list, link, tmp) {
+	LIST_FOREACH_SAFE(entry, &mroute_ssm_list, link, tmp) {
 		LIST_REMOVE(entry, link);
 		free(entry);
 	}
@@ -402,7 +379,7 @@ static int mroute4_dyn_add(struct mroute *route)
 	struct mroute *entry, *new_entry;
 	int ret;
 
-	LIST_FOREACH(entry, &mroute4_conf_list, link) {
+	LIST_FOREACH(entry, &mroute_asm_conf_list, link) {
 		/* Find matching (*,G) ... and interface. */
 		if (!is_match4(entry, route))
 			continue;
@@ -435,7 +412,7 @@ static int mroute4_dyn_add(struct mroute *route)
 	new_entry = malloc(sizeof(struct mroute));
 	if (new_entry) {
 		memcpy(new_entry, route, sizeof(struct mroute));
-		LIST_INSERT_HEAD(&mroute4_dyn_list, new_entry, link);
+		LIST_INSERT_HEAD(&mroute_asm_kern_list, new_entry, link);
 	}
 
 	/* Signal to cache handler we've added a stop filter */
@@ -490,7 +467,7 @@ static void mroute4_dyn_expire(int max_idle)
 
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
-	LIST_FOREACH_SAFE(entry, &mroute4_dyn_list, link, tmp) {
+	LIST_FOREACH_SAFE(entry, &mroute_asm_kern_list, link, tmp) {
 		if (!entry->last_use) {
 			/* New entry */
 			entry->last_use = now.tv_sec;
@@ -521,11 +498,11 @@ static struct mroute *mroute4_find(struct mroute *route)
 {
 	struct mroute *entry;
 
-	LIST_FOREACH(entry, &mroute4_conf_list, link) {
+	LIST_FOREACH(entry, &mroute_asm_conf_list, link) {
 		if (is_match4(entry, route))
 			return entry;
 	}
-	LIST_FOREACH(entry, &mroute4_static_list, link) {
+	LIST_FOREACH(entry, &mroute_ssm_list, link) {
 		if (is_match4(entry, route))
 			return entry;
 	}
@@ -538,7 +515,7 @@ static struct mroute *mroute4_source_moved(struct mroute *route)
 {
 	struct mroute *entry;
 
-	LIST_FOREACH(entry, &mroute4_static_list, link) {
+	LIST_FOREACH(entry, &mroute_ssm_list, link) {
 		if (!inet_addr_cmp(&entry->source, &route->source) &&
 		    !inet_addr_cmp(&entry->group, &route->group) &&
 		    entry->len     == route->len &&
@@ -608,11 +585,11 @@ static int mroute4_add(struct mroute *route)
 		struct mroute *dyn, *tmp;
 
 		if (!entry->unused)
-			LIST_INSERT_HEAD(&mroute4_conf_list, entry, link);
+			LIST_INSERT_HEAD(&mroute_asm_conf_list, entry, link);
 		entry->unused = 0;	/* unmark from reload */
 
 		/* Also, immediately expire any currently blocked traffic */
-		LIST_FOREACH_SAFE(dyn, &mroute4_dyn_list, link, tmp) {
+		LIST_FOREACH_SAFE(dyn, &mroute_asm_kern_list, link, tmp) {
 			if (!is_active(dyn) && is_match4(entry, dyn)) {
 				char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 
@@ -631,7 +608,7 @@ static int mroute4_add(struct mroute *route)
 	}
 
 	if (!entry->unused)
-		LIST_INSERT_HEAD(&mroute4_static_list, entry, link);
+		LIST_INSERT_HEAD(&mroute_ssm_list, entry, link);
 	entry->unused = 0;	/* unmark from reload */
 
 	return kern_mroute_add(route, 1);
@@ -696,7 +673,7 @@ static int mroute4_del(struct mroute *route)
 	struct mroute *entry, *set, *tmp;
 
 	if (is_mroute4_static(route)) {
-		LIST_FOREACH_SAFE(entry, &mroute4_static_list, link, tmp) {
+		LIST_FOREACH_SAFE(entry, &mroute_ssm_list, link, tmp) {
 			if (!is_exact_match4(entry, route))
 				continue;
 
@@ -707,7 +684,7 @@ static int mroute4_del(struct mroute *route)
 		}
 
 		/* Not found in static list, check if spawned from a (*,G) rule. */
-		LIST_FOREACH_SAFE(entry, &mroute4_dyn_list, link, tmp) {
+		LIST_FOREACH_SAFE(entry, &mroute_asm_kern_list, link, tmp) {
 			if (!is_exact_match4(entry, route))
 				continue;
 
@@ -723,7 +700,7 @@ static int mroute4_del(struct mroute *route)
 	}
 
 	/* Find matching (*,G) ... and interface .. and prefix length. */
-	LIST_FOREACH_SAFE(entry, &mroute4_conf_list, link, tmp) {
+	LIST_FOREACH_SAFE(entry, &mroute_asm_conf_list, link, tmp) {
 		int ret = 0;
 
 		if (!is_match4(entry, route) || entry->len != route->len ||
@@ -731,7 +708,7 @@ static int mroute4_del(struct mroute *route)
 			continue;
 
 		/* Remove all (S,G) routes spawned from the (*,G) as well ... */
-		LIST_FOREACH_SAFE(set, &mroute4_dyn_list, link, tmp) {
+		LIST_FOREACH_SAFE(set, &mroute_asm_kern_list, link, tmp) {
 			if (!is_match4(entry, set) || entry->len != route->len)
 				continue;
 
@@ -900,10 +877,6 @@ int mroute6_enable(int do_vifs, int table_id)
 			mroute6_add_mif(iface);
 	}
 
-	LIST_INIT(&mroute6_conf_list);
-	LIST_INIT(&mroute6_dyn_list);
-	LIST_INIT(&mroute6_static_list);
-
 	return 0;
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
@@ -1025,7 +998,7 @@ static int mroute6_dyn_add(struct mroute *route)
 	struct mroute *entry, *new_entry;
 	int ret;
 
-	LIST_FOREACH(entry, &mroute6_conf_list, link) {
+	LIST_FOREACH(entry, &mroute_asm_conf_list, link) {
 		/* Find matching (*,G) ... and interface. */
 		if (!is_match6(entry, route))
 			continue;
@@ -1058,7 +1031,7 @@ static int mroute6_dyn_add(struct mroute *route)
 	new_entry = malloc(sizeof(struct mroute));
 	if (new_entry) {
 		memcpy(new_entry, route, sizeof(struct mroute));
-		LIST_INSERT_HEAD(&mroute6_dyn_list, new_entry, link);
+		LIST_INSERT_HEAD(&mroute_asm_kern_list, new_entry, link);
 	}
 
 	/* Signal to cache handler we've added a stop filter */
@@ -1074,13 +1047,13 @@ static int mroute6_exists(struct mroute *route)
 {
 	struct mroute *entry;
 
-	LIST_FOREACH(entry, &mroute6_conf_list, link) {
+	LIST_FOREACH(entry, &mroute_asm_conf_list, link) {
 		if (is_match6(entry, route)) {
 			smclog(LOG_INFO, "(*,G) route already exists");
 			return 1;
 		}
 	}
-	LIST_FOREACH(entry, &mroute6_static_list, link) {
+	LIST_FOREACH(entry, &mroute_ssm_list, link) {
 		if (is_exact_match6(entry, route)) {
 			smclog(LOG_INFO, "Static route already exists");
 			return 1;
@@ -1095,7 +1068,7 @@ static struct mroute *mroute6_similar(struct mroute *route)
 {
 	struct mroute *entry;
 
-	LIST_FOREACH(entry, &mroute6_static_list, link) {
+	LIST_FOREACH(entry, &mroute_ssm_list, link) {
 		if (!inet_addr_cmp(&entry->source, &route->source) &&
 		    !inet_addr_cmp(&entry->group, &route->group)   &&
 		    entry->len     == route->len &&
@@ -1144,10 +1117,10 @@ static int mroute6_add(struct mroute *route)
 	if (!is_mroute6_static(route)) {
 		struct mroute *dyn, *tmp;
 
-		LIST_INSERT_HEAD(&mroute6_conf_list, entry, link);
+		LIST_INSERT_HEAD(&mroute_asm_conf_list, entry, link);
 
 		/* Also, immediately expire any currently blocked traffic */
-		LIST_FOREACH_SAFE(dyn, &mroute6_dyn_list, link, tmp) {
+		LIST_FOREACH_SAFE(dyn, &mroute_asm_kern_list, link, tmp) {
 			if (!is_active(dyn) && is_match6(entry, dyn)) {
 				char origin[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
 
@@ -1165,7 +1138,7 @@ static int mroute6_add(struct mroute *route)
 		return 0;
 	}
 
-	LIST_INSERT_HEAD(&mroute6_static_list, entry, link);
+	LIST_INSERT_HEAD(&mroute_ssm_list, entry, link);
 	return kern_mroute_add(route, 1);
 }
 
@@ -1200,7 +1173,7 @@ static int mroute6_del(struct mroute *route)
 	struct mroute *entry, *set, *tmp;
 
 	if (is_mroute6_static(route)) {
-		LIST_FOREACH_SAFE(entry, &mroute6_static_list, link, tmp) {
+		LIST_FOREACH_SAFE(entry, &mroute_ssm_list, link, tmp) {
 			if (!is_exact_match6(entry, route))
 				continue;
 
@@ -1208,7 +1181,7 @@ static int mroute6_del(struct mroute *route)
 		}
 
 		/* Not found in static list, check if spawned from a (*,G) rule. */
-		LIST_FOREACH_SAFE(entry, &mroute6_dyn_list, link, tmp) {
+		LIST_FOREACH_SAFE(entry, &mroute_asm_kern_list, link, tmp) {
 			if (!is_exact_match6(entry, route))
 				continue;
 
@@ -1221,7 +1194,7 @@ static int mroute6_del(struct mroute *route)
 	}
 
 	/* Find matching (*,G) ... and interface .. and prefix length. */
-	LIST_FOREACH_SAFE(entry, &mroute6_conf_list, link, tmp) {
+	LIST_FOREACH_SAFE(entry, &mroute_asm_conf_list, link, tmp) {
 		int ret = 0;
 
 		if (!is_match6(entry, route) || entry->len != route->len ||
@@ -1229,7 +1202,7 @@ static int mroute6_del(struct mroute *route)
 			continue;
 
 		/* Remove all (S,G) routes spawned from the (*,G) as well ... */
-		LIST_FOREACH_SAFE(set, &mroute6_dyn_list, link, tmp) {
+		LIST_FOREACH_SAFE(set, &mroute_asm_kern_list, link, tmp) {
 			if (!is_match6(entry, set) || entry->len != route->len)
 				continue;
 
@@ -1252,6 +1225,10 @@ static int mroute6_del(struct mroute *route)
 
 int mroute_init(int do_vifs, int table_id, int cache_tmo)
 {
+	LIST_INIT(&mroute_asm_conf_list);
+	LIST_INIT(&mroute_asm_kern_list);
+	LIST_INIT(&mroute_ssm_list);
+
 	return  mroute4_enable(do_vifs, table_id, cache_tmo) ||
 		mroute6_enable(do_vifs, table_id);
 }
@@ -1342,21 +1319,12 @@ void mroute_reload_beg(void)
 	struct iface *iface;
 	int first = 1;
 
-	LIST_FOREACH(entry, &mroute4_static_list, link)
+	LIST_FOREACH(entry, &mroute_ssm_list, link)
 		entry->unused = 1;
-	LIST_FOREACH(entry, &mroute4_dyn_list, link)
+	LIST_FOREACH(entry, &mroute_asm_kern_list, link)
 		entry->unused = 1;
-	LIST_FOREACH(entry, &mroute4_conf_list, link)
+	LIST_FOREACH(entry, &mroute_asm_conf_list, link)
 		entry->unused = 1;
-
-#ifdef HAVE_IPV6_MULTICAST_ROUTING
-	LIST_FOREACH(entry, &mroute6_static_list, link)
-		entry->unused = 1;
-	LIST_FOREACH(entry, &mroute6_dyn_list, link)
-		entry->unused = 1;
-	LIST_FOREACH(entry, &mroute6_conf_list, link)
-		entry->unused = 1;
-#endif
 
 	while ((iface = iface_iterator(first))) {
 		first = 0;
@@ -1370,33 +1338,18 @@ void mroute_reload_end(void)
 	struct iface *iface;
 	int first = 1;
 
-	LIST_FOREACH_SAFE(entry, &mroute4_static_list, link, tmp) {
+	LIST_FOREACH_SAFE(entry, &mroute_ssm_list, link, tmp) {
 		if (entry->unused)
-			mroute4_del(entry);
+			mroute_del_route(entry);
 	}
-	LIST_FOREACH_SAFE(entry, &mroute4_dyn_list, link, tmp) {
+	LIST_FOREACH_SAFE(entry, &mroute_asm_kern_list, link, tmp) {
 		if (entry->unused)
-			mroute4_del(entry);
+			mroute_del_route(entry);
 	}
-	LIST_FOREACH_SAFE(entry, &mroute4_conf_list, link, tmp) {
+	LIST_FOREACH_SAFE(entry, &mroute_asm_conf_list, link, tmp) {
 		if (entry->unused)
-			mroute4_del(entry);
+			mroute_del_route(entry);
 	}
-
-#ifdef HAVE_IPV6_MULTICAST_ROUTING
-	LIST_FOREACH_SAFE(entry, &mroute6_static_list, link, tmp) {
-		if (entry->unused)
-			mroute6_del(entry);
-	}
-	LIST_FOREACH_SAFE(entry, &mroute6_dyn_list, link, tmp) {
-		if (entry->unused)
-			mroute6_del(entry);
-	}
-	LIST_FOREACH_SAFE(entry, &mroute6_conf_list, link, tmp) {
-		if (entry->unused)
-			mroute6_del(entry);
-	}
-#endif
 
 	while ((iface = iface_iterator(first))) {
 		first = 0;
@@ -1467,39 +1420,21 @@ static int show_mroute(int sd, struct mroute *r, int detail)
 int mroute_show(int sd, int detail)
 {
 	struct mroute *r;
-	struct mroute *r6;
 
-	LIST_FOREACH(r, &mroute4_conf_list, link) {
+	LIST_FOREACH(r, &mroute_asm_conf_list, link) {
 		if (show_mroute(sd, r, detail) < 0)
 			return 1;
 	}
 
-	LIST_FOREACH(r, &mroute4_dyn_list, link) {
+	LIST_FOREACH(r, &mroute_asm_kern_list, link) {
 		if (show_mroute(sd, r, detail) < 0)
 			return 1;
 	}
 
-	LIST_FOREACH(r, &mroute4_static_list, link) {
+	LIST_FOREACH(r, &mroute_ssm_list, link) {
 		if (show_mroute(sd, r, detail) < 0)
 			return 1;
 	}
-
-#ifdef HAVE_IPV6_MULTICAST_ROUTING
-	LIST_FOREACH(r6, &mroute6_conf_list, link) {
-		if (show_mroute(sd, r6, detail) < 0)
-			return 1;
-	}
-
-	LIST_FOREACH(r6, &mroute6_dyn_list, link) {
-		if (show_mroute(sd, r6, detail) < 0)
-			return 1;
-	}
-
-	LIST_FOREACH(r6, &mroute6_static_list, link) {
-		if (show_mroute(sd, r6, detail) < 0)
-			return 1;
-	}
-#endif
 
 	return 0;
 }
