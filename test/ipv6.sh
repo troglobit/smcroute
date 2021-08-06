@@ -66,11 +66,9 @@ echo " => $lines2 for group ff2e::42,  expected => 2"
 echo " => $lines3 for group ff2e::43,  expected => 2"
 echo " => $lines4 for group ff2e::44,  expected => 3"
 
-print "Cleaning up ..."
-topo teardown
-
+########################################################################### DONE
 # one frame lost due to initial (*,G) -> (S,G) route setup
 # no frames lost in pure (S,G) route
 # shellcheck disable=SC2166 disable=SC2086
-[ $lines1 -eq 3 -a $lines2 -ge 2 -a $lines3 -ge 2 -a $lines4 -eq 3 ] && exit 0
-exit 1
+[ $lines1 -eq 3 -a $lines2 -ge 2 -a $lines3 -ge 2 -a $lines4 -eq 3 ] && OK
+FAIL

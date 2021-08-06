@@ -63,11 +63,9 @@ echo " => $lines2 for 225.3.2.1, expected => 3"
 echo " => $lines3 for 225.1.2.4, expected => 2"
 echo " => $lines4 for 225.1.2.5, expected => 3"
 
-print "Cleaning up ..."
-topo teardown
-
+########################################################################### DONE
 # Expect one frame lost due to initial (*,G) -> (S,G) route setup, while
 # we don't expect any frame loss in pure (S,G) routes
 # shellcheck disable=SC2166 disable=SC2086
-[ $lines1 -ge 2 -a $lines2 -eq 3 -a $lines3 -ge 2 -a $lines4 -eq 3 ] && exit 0
-exit 1
+[ $lines1 -ge 2 -a $lines2 -eq 3 -a $lines3 -ge 2 -a $lines4 -eq 3 ] && OK
+FAIL

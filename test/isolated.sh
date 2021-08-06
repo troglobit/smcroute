@@ -50,9 +50,7 @@ lines=$(tshark -r "/tmp/$NM/pcap" 2>/dev/null | grep 225.1.2.3 | tee "/tmp/$NM/r
 cat "/tmp/$NM/result"
 echo " => $lines expected 2"
 
-print "Cleaning up ..."
-topo teardown
-
+########################################################################### DONE
 # one frame lost due to initial (*,G) -> (S,G) setup
-[ "$lines" = "2" ] && exit 0
-exit 1
+[ "$lines" = "2" ] && OK
+FAIL

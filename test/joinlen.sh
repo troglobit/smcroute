@@ -61,9 +61,6 @@ grep "0xe1010102 0x0a00000a" /proc/net/mcfilter
 join_ssm=$?
 
 ########################################################################### DONE
-print "Cleaning up ..."
-topo teardown
-
 # shellcheck disable=SC2166
-[ $config_asm -eq 0 -a $config_ssm -eq 0 -a $join_asm -eq 0 -a $join_ssm -eq 0 ] && exit 0
-exit 1
+[ $config_asm -eq 0 -a $config_ssm -eq 0 -a $join_asm -eq 0 -a $join_ssm -eq 0 ] && OK
+FAIL

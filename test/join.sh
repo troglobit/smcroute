@@ -176,9 +176,6 @@ else
 fi
 
 ########################################################################### DONE
-print "Cleaning up ..."
-topo teardown
-
 # shellcheck disable=SC2166
-[ $config -eq 0 -a $dynamic -eq 0 -a $leave -eq 0 ] && exit 0
-exit 1
+[ $config -eq 0 -a $dynamic -eq 0 -a $leave -eq 0 ] && OK
+FAIL

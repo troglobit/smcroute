@@ -54,10 +54,8 @@ cat "/tmp/$NM/result2"
 echo "Receieved on a1.100, expected >=2 pkt of 225.3.2.1:"
 cat "/tmp/$NM/result3"
 
-print "Cleaning up ..."
-topo teardown
-
+########################################################################### DONE
 # one frame lost due to initial (*,G) -> (S,G) setup
 # shellcheck disable=SC2086 disable=SC2166
-[ $lines1 -ge 2 -a $lines2 -ge 2 -a $lines3 -ge 2 -a $lines4 -ge 2 ] && exit 0
-exit 1
+[ $lines1 -ge 2 -a $lines2 -ge 2 -a $lines3 -ge 2 -a $lines4 -ge 2 ] && OK
+FAIL
