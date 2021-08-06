@@ -516,47 +516,25 @@ static void mroute4_dyn_expire(int max_idle)
 	}
 }
 
-/* unlink a previous entry that is to be replaced with a new route at reload */
-static int mroute_unlink_reload(struct mroute *entry, struct mroute *route)
+/* find any existing route, with matching inbound interface */
+static struct mroute *mroute4_find(struct mroute *route)
 {
-	LIST_REMOVE(entry, link);
-	free(entry);
+	struct mroute *entry;
 
-	/* tell mroute*_add() about it */
-	route->unused = 1;
-
-	return 0;
-}
-
-/* check if already exists, if we're reloading removing it */
-static int mroute4_add_exists(struct mroute *route)
-{
-	struct mroute *entry, *tmp;
-
-	LIST_FOREACH_SAFE(entry, &mroute4_conf_list, link, tmp) {
-		if (is_match4(entry, route)) {
-			if (entry->unused)
-				return mroute_unlink_reload(entry, route);
-
-			smclog(LOG_INFO, "(*,G) route already exists");
-			return 1;
-		}
+	LIST_FOREACH(entry, &mroute4_conf_list, link) {
+		if (is_match4(entry, route))
+			return entry;
 	}
 	LIST_FOREACH(entry, &mroute4_static_list, link) {
-		if (is_exact_match4(entry, route)) {
-			if (entry->unused)
-				return mroute_unlink_reload(entry, route);
-
-			smclog(LOG_INFO, "Static route already exists");
-			return 1;
-		}
+		if (is_match4(entry, route))
+			return entry;
 	}
 
-	return 0;
+	return NULL;
 }
 
-/* Only inbound differs, there can only be one ... */
-static struct mroute *mroute4_add_similar(struct mroute *route)
+/* Matching (S,G) but S has moved interface -- L3 topology change */
+static struct mroute *mroute4_source_moved(struct mroute *route)
 {
 	struct mroute *entry;
 
@@ -586,28 +564,41 @@ static int mroute4_add(struct mroute *route)
 {
 	struct mroute *entry;
 
-	/* Exact match, then skip ... */
-	if (mroute4_add_exists(route)) {
-		errno = EEXIST;
-		return 1;
-	}
-
-	/* ... (S,G) matches and inbound differs, then replace route */
-	entry = mroute4_add_similar(route);
+	entry = mroute4_find(route);
 	if (entry) {
-		kern_mroute_del(entry, is_active(entry));
-		LIST_REMOVE(entry, link);
-		free(entry);
+		size_t i;
+
+		/* .conf: replace found entry with new outbounds */
+		if (entry->unused) {
+			for (i = 0; i < NELEMS(entry->ttl); i++)
+				entry->ttl[i] = 0;
+		}
+
+		/* ipc: add any new outbound interafces */
+		for (i = 0; i < NELEMS(entry->ttl); i++) {
+			if (route->ttl[i])
+				entry->ttl[i] = route->ttl[i];
+		}
+
+		entry->unused = 1;  /* don't add to below lists again */
+	} else {
+		/* ... (S,G) matches and inbound differs, then replace route */
+		entry = mroute4_source_moved(route);
+		if (entry) {
+			kern_mroute_del(entry, is_active(entry));
+			LIST_REMOVE(entry, link);
+			free(entry);
+		}
+
+		entry = calloc(1, sizeof(struct mroute));
+		if (!entry) {
+			smclog(LOG_WARNING, "Cannot add multicast route: %s", strerror(errno));
+			return 1;
+		}
+
+		memcpy(entry, route, sizeof(struct mroute));
 	}
 
-	entry = malloc(sizeof(struct mroute));
-	if (!entry) {
-		smclog(LOG_WARNING, "Cannot add multicast route: %s", strerror(errno));
-		return 1;
-	}
-
-	memcpy(entry, route, sizeof(struct mroute));
-	entry->unused = 0;		/* unmark from reload */
 
 	/*
 	 * For (*,G) we save to a linked list to be added on-demand when
@@ -616,7 +607,9 @@ static int mroute4_add(struct mroute *route)
 	if (!is_mroute4_static(route)) {
 		struct mroute *dyn, *tmp;
 
-		LIST_INSERT_HEAD(&mroute4_conf_list, entry, link);
+		if (!entry->unused)
+			LIST_INSERT_HEAD(&mroute4_conf_list, entry, link);
+		entry->unused = 0;	/* unmark from reload */
 
 		/* Also, immediately expire any currently blocked traffic */
 		LIST_FOREACH_SAFE(dyn, &mroute4_dyn_list, link, tmp) {
@@ -637,7 +630,10 @@ static int mroute4_add(struct mroute *route)
 		return 0;
 	}
 
-	LIST_INSERT_HEAD(&mroute4_static_list, entry, link);
+	if (!entry->unused)
+		LIST_INSERT_HEAD(&mroute4_static_list, entry, link);
+	entry->unused = 0;	/* unmark from reload */
+
 	return kern_mroute_add(route, 1);
 }
 
@@ -655,6 +651,33 @@ static int do_mroute4_del(struct mroute *entry)
 	free(entry);
 
 	return ret;
+}
+
+/*
+ * We get here when called by `smcroutectl del`, not from .conf parser.
+ * Removes one or more outbound interfaces from an active route, or if
+ * no interfaces are given, remove the route.  The former is useful to
+ * be able to remove all outbound interfaces from a route, and thus
+ * block an (S,G) pair.  Similar to how add works.
+ */
+static int do_mroute4_del_outbound(struct mroute *entry, struct mroute *route)
+{
+	size_t i, num = 0;
+
+	/* remove any listed interafces */
+	for (i = 0; i < NELEMS(entry->ttl); i++) {
+		if (!route->ttl[i])
+			continue;
+
+		entry->ttl[i] = 0;
+		num++;
+	}
+
+	/* if no outbound in route => remove route altogether */
+	if (!num)
+		return do_mroute4_del(entry);
+
+	return kern_mroute_add(entry, 1);
 }
 
 /**
@@ -677,7 +700,10 @@ static int mroute4_del(struct mroute *route)
 			if (!is_exact_match4(entry, route))
 				continue;
 
-			return do_mroute4_del(entry);
+			if (entry->unused)
+				return do_mroute4_del(entry);
+
+			return do_mroute4_del_outbound(entry, route);
 		}
 
 		/* Not found in static list, check if spawned from a (*,G) rule. */
@@ -685,7 +711,10 @@ static int mroute4_del(struct mroute *route)
 			if (!is_exact_match4(entry, route))
 				continue;
 
-			return do_mroute4_del(entry);
+			if (entry->unused)
+				return do_mroute4_del(entry);
+
+			return do_mroute4_del_outbound(entry, route);
 		}
 
 		smclog(LOG_NOTICE, "Cannot delete multicast route: not found");
@@ -706,10 +735,13 @@ static int mroute4_del(struct mroute *route)
 			if (!is_match4(entry, set) || entry->len != route->len)
 				continue;
 
-			ret += do_mroute4_del(set);
+			if (entry->unused)
+				ret += do_mroute4_del(set);
+			else
+				ret += do_mroute4_del_outbound(set, route);
 		}
 
-		if (!ret) {
+		if (!ret && entry->unused) {
 			LIST_REMOVE(entry, link);
 			free(entry);
 		}

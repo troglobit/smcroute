@@ -160,7 +160,7 @@ int conf_mroute(int cmd, char *ifname, char *source, char *group, char *outbound
 {
 	struct ifmatch state_in, state_out;
 	struct mroute mroute = { 0 };
-	struct iface *iface;
+	struct iface *iface_in, *iface;
 	int len_max;
 	int family;
 	int rc = 0;
@@ -207,48 +207,47 @@ int conf_mroute(int cmd, char *ifname, char *source, char *group, char *outbound
 
 	iface_match_init(&state_in);
 	DEBUG("mroute: checking for input iface %s ...", ifname);
-	while (iface_match_vif_by_name(ifname, &state_in, &iface) != NO_VIF) {
+	while (iface_match_vif_by_name(ifname, &state_in, &iface_in) != NO_VIF) {
 		char src[INET_ADDRSTR_LEN], grp[INET_ADDRSTR_LEN];
+		int i, total = 0;
 
-		vif = iface_get_vif(family, iface);
+		vif = iface_get_vif(family, iface_in);
 		DEBUG("mroute: input iface %s has vif %d", ifname, vif);
 		mroute.inbound = vif;
 
-		if (cmd) {
-			int i, total = 0;
+		for (i = 0; i < num; i++) {
+			iface_match_init(&state_out);
 
-			for (i = 0; i < num; i++) {
-				iface_match_init(&state_out);
-
-				DEBUG("mroute: checking for %s ...", outbound[i]);
-				while (iface_match_vif_by_name(outbound[i], &state_out, &iface) != NO_VIF) {
-					vif = iface_get_vif(family, iface);
-					if (vif == mroute.inbound) {
-						/* In case of wildcard match in==out is normal, so don't complain */
-						if (!ifname_is_wildcard(ifname) && !ifname_is_wildcard(outbound[i]))
-							INFO("mroute: Same outbound interface (%s) as inbound (%s) may cause routing loops.",
-							     outbound[i], iface->ifname);
-					}
-
-					/* Use configured TTL threshold for the output phyint */
-					mroute.ttl[vif] = iface->threshold;
-					total++;
+			DEBUG("mroute: checking for %s ...", outbound[i]);
+			while (iface_match_vif_by_name(outbound[i], &state_out, &iface) != NO_VIF) {
+				vif = iface_get_vif(family, iface);
+				if (vif == mroute.inbound && cmd) {
+					/* In case of wildcard match in==out is normal, so don't complain */
+					if (!ifname_is_wildcard(ifname) && !ifname_is_wildcard(outbound[i]))
+						INFO("mroute: Same outbound interface (%s) as inbound (%s) may cause routing loops.",
+						     outbound[i], iface_in->ifname);
 				}
-				if (!state_out.match_count)
-					WARN("mroute: Invalid outbound interface, skipping %s", outbound[i]);
-			}
 
+				/* Use configured TTL threshold for the output phyint */
+				mroute.ttl[vif] = iface->threshold;
+				total++;
+			}
+			if (!state_out.match_count)
+				WARN("mroute: Invalid outbound interface, skipping %s", outbound[i]);
+		}
+
+		if (cmd) {
 			if (!total) {
 				WARN("mroute: no outbound interfaces, cannot add multicast route.");
 				rc += 1;
 			} else {
-				smclog(LOG_DEBUG, "mroute: adding route from %s (%s/%u,%s/%u)", iface->ifname,
+				smclog(LOG_DEBUG, "mroute: adding route from %s (%s/%u,%s/%u)", iface_in->ifname,
 				       inet_addr2str(&mroute.source, src, sizeof(src)), mroute.src_len,
 				       inet_addr2str(&mroute.group, grp, sizeof(grp)), mroute.len);
 				rc += mroute_add_route(&mroute);
 			}
 		} else {
-			smclog(LOG_DEBUG, "mroute: deleting route froum %s (%s/%u,%s/%u)", iface->ifname,
+			smclog(LOG_DEBUG, "mroute: deleting route froum %s (%s/%u,%s/%u)", iface_in->ifname,
 			       inet_addr2str(&mroute.source, src, sizeof(src)), mroute.src_len,
 			       inet_addr2str(&mroute.group, grp, sizeof(grp)), mroute.len);
 			rc += mroute_del_route(&mroute);
@@ -387,10 +386,10 @@ static int conf_parse(const char *file, int do_vifs)
 			continue;
 		}
 
+		switch (op) {
 		case EMPTY:
 			break;
 
-		switch (op) {
 		case MGROUP:
 			rc += conf_mgroup(1, ifname, source, group);
 			break;

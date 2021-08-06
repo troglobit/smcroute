@@ -77,7 +77,9 @@ static int do_mroute(struct ipc_msg *msg)
 {
 	char src[INET_ADDRSTR_LEN + 5];
 	char *ifname, *source, *group;
+	char *out[MAX_MC_VIFS];
 	inet_addr_t ss;
+	int num = 0;
 	int pos = 0;
 
 	if (msg->count < 2) {
@@ -111,17 +113,10 @@ static int do_mroute(struct ipc_msg *msg)
 		group  = msg->argv[1];
 	}
 
-	if (msg->cmd == 'a') {
-		char *out[MAX_MC_VIFS];
-		int num = 0;
+	while (pos < msg->count)
+		out[num++] = msg->argv[pos++];
 
-		while (pos < msg->count)
-			out[num++] = msg->argv[pos++];
-
-		return conf_mroute(1, ifname, source, group, out, num);
-	}
-
-	return conf_mroute(0, ifname, source, group, NULL, 0);
+	return conf_mroute(msg->cmd == 'a' ? 1 : 0, ifname, source, group, out, num);
 }
 
 static int do_show(struct ipc_msg *msg, int sd, int detail)
