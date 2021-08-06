@@ -45,6 +45,7 @@ void          iface_match_init        (struct ifmatch *state);
 struct iface *iface_match_by_name     (const char *ifname, struct ifmatch *state);
 int           ifname_is_wildcard      (const char *ifname);
 
+vifi_t        iface_get_vif           (int af_family, struct iface *iface);
 vifi_t        iface_match_vif_by_name (const char *ifname, struct ifmatch *state, struct iface **found);
 mifi_t        iface_match_mif_by_name (const char *ifname, struct ifmatch *state, struct iface **found);
 

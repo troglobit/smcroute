@@ -108,6 +108,7 @@ int conf_mgroup(int cmd, char *ifname, char *source, char *group)
 	inet_addr_t src = { 0 }, grp = { 0 };
 	int grp_len = 0;
 	int len_max;
+	int family;
 	int rc = 0;
 
 	if (!ifname || !group) {
@@ -120,9 +121,10 @@ int conf_mgroup(int cmd, char *ifname, char *source, char *group)
 		WARN("join: Invalid multicast group: %s", group);
 		goto done;
 	}
+	family = grp.ss_family;
 
 #ifdef HAVE_IPV6_MULTICAST_HOST
-	if (grp.ss_family == AF_INET6)
+	if (family == AF_INET6)
 		len_max = 128;
 	else
 #endif
@@ -145,7 +147,7 @@ int conf_mgroup(int cmd, char *ifname, char *source, char *group)
 			goto done;
 		}
 	} else
-		inet_anyaddr(grp.ss_family, &src);
+		inet_anyaddr(family, &src);
 
 
 	rc += mcgroup_action(cmd, ifname, &src, &grp, grp_len);
@@ -159,6 +161,7 @@ int conf_mroute(int cmd, char *ifname, char *source, char *group, char *outbound
 	struct mroute mroute = { 0 };
 	struct iface *iface;
 	int len_max;
+	int family;
 	int rc = 0;
 	int vif;
 
@@ -172,9 +175,10 @@ int conf_mroute(int cmd, char *ifname, char *source, char *group, char *outbound
 		WARN("mroute: Invalid multicast group: %s", group);
 		goto done;
 	}
+	family = mroute.group.ss_family;
 
 #ifdef HAVE_IPV6_MULTICAST_HOST
-	if (mroute.group.ss_family == AF_INET6)
+	if (family == AF_INET6)
 		len_max = 128;
 	else
 #endif
@@ -196,7 +200,7 @@ int conf_mroute(int cmd, char *ifname, char *source, char *group, char *outbound
 			goto done;
 		}
 	} else {
-		inet_anyaddr(mroute.group.ss_family, &mroute.source);
+		inet_anyaddr(family, &mroute.source);
 		mroute.src_len = 0;
 	}
 
@@ -205,12 +209,7 @@ int conf_mroute(int cmd, char *ifname, char *source, char *group, char *outbound
 	while (iface_match_vif_by_name(ifname, &state_in, &iface) != NO_VIF) {
 		char src[INET_ADDRSTR_LEN], grp[INET_ADDRSTR_LEN];
 
-#ifdef HAVE_IPV6_MULTICAST_HOST
-		if (mroute.group.ss_family == AF_INET6)
-			vif = iface->mif;
-		else
-#endif
-		vif = iface->vif;
+		vif = iface_get_vif(family, iface);
 		DEBUG("mroute: input iface %s has vif %d", ifname, vif);
 		mroute.inbound = vif;
 
@@ -222,12 +221,7 @@ int conf_mroute(int cmd, char *ifname, char *source, char *group, char *outbound
 
 				DEBUG("mroute: checking for %s ...", outbound[i]);
 				while (iface_match_vif_by_name(outbound[i], &state_out, &iface) != NO_VIF) {
-#ifdef HAVE_IPV6_MULTICAST_HOST
-					if (mroute.group.ss_family == AF_INET6)
-						vif = iface->mif;
-					else
-#endif
-					vif = iface->vif;
+					vif = iface_get_vif(family, iface);
 					if (vif == mroute.inbound) {
 						/* In case of wildcard match in==out is normal, so don't complain */
 						if (!ifname_is_wildcard(ifname) && !ifname_is_wildcard(outbound[i]))
@@ -250,23 +244,13 @@ int conf_mroute(int cmd, char *ifname, char *source, char *group, char *outbound
 				smclog(LOG_DEBUG, "mroute: adding route from %s (%s/%u,%s/%u)", iface->ifname,
 				       inet_addr2str(&mroute.source, src, sizeof(src)), mroute.src_len,
 				       inet_addr2str(&mroute.group, grp, sizeof(grp)), mroute.len);
-#ifdef HAVE_IPV6_MULTICAST_HOST
-				if (mroute.group.ss_family == AF_INET6)
-					rc += mroute6_add(&mroute);
-				else
-#endif
-				rc += mroute4_add(&mroute);
+				rc += mroute_add_route(&mroute);
 			}
 		} else {
 			smclog(LOG_DEBUG, "mroute: deleting route froum %s (%s/%u,%s/%u)", iface->ifname,
 			       inet_addr2str(&mroute.source, src, sizeof(src)), mroute.src_len,
 			       inet_addr2str(&mroute.group, grp, sizeof(grp)), mroute.len);
-#ifdef HAVE_IPV6_MULTICAST_HOST
-			if (mroute.group.ss_family == AF_INET6)
-				rc += mroute6_del(&mroute);
-			else
-#endif
-			rc += mroute4_del(&mroute);
+			rc += mroute_del_route(&mroute);
 		}
 	}
 

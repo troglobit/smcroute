@@ -357,6 +357,15 @@ struct iface *iface_outbound_iterator(struct mroute *route, int first)
 	return NULL;
 }
 
+vifi_t iface_get_vif(int af_family, struct iface *iface)
+{
+#ifdef HAVE_IPV6_MULTICAST_HOST
+	if (af_family == AF_INET6)
+		return iface->mif;
+#endif
+	return iface->vif;
+}
+
 /**
  * iface_match_vif_by_name - Get matching virtual interface index by interface name pattern (IPv4)
  * @ifname: Interface name pattern

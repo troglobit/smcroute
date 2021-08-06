@@ -163,7 +163,7 @@ int msg_do(int sd, struct ipc_msg *msg)
 		break;
 
 	case 'F':
-		mroute4_dyn_expire(0);
+		mroute_expire(0);
 		break;
 
 	case 'H':		/* HUP */

@@ -97,18 +97,15 @@ struct mroute {
 	time_t	       last_use;	/* timestamp of last forwarded packet */
 };
 
-void mroute4_dyn_expire(int max_idle);
-int  mroute4_add       (struct mroute *mroute);
-int  mroute4_del       (struct mroute *mroute);
-
-int  mroute6_add       (struct mroute *mroute);
-int  mroute6_del       (struct mroute *mroute);
-
 int  mroute_init       (int do_vifs, int table_id, int cache_tmo);
 void mroute_exit       (void);
 
 int  mroute_add_vif    (char *ifname, uint8_t mrdisc, uint8_t threshold);
 int  mroute_del_vif    (char *ifname);
+void mroute_expire     (int max_idle);
+
+int  mroute_add_route  (struct mroute *mroute);
+int  mroute_del_route  (struct mroute *mroute);
 
 void mroute_reload_beg (void);
 void mroute_reload_end (void);

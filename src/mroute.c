@@ -81,8 +81,9 @@ LIST_HEAD(, mroute) mroute6_dyn_list = LIST_HEAD_INITIALIZER();
 LIST_HEAD(, mroute) mroute6_static_list = LIST_HEAD_INITIALIZER();
 #endif
 
-static int mroute4_dyn_add(struct mroute *route);
-static int mroute4_add_vif(struct iface *iface);
+static void mroute4_dyn_expire (int max_idle);
+static int  mroute4_dyn_add    (struct mroute *route);
+static int  mroute4_add_vif    (struct iface *iface);
 
 /* Check for kernel IGMPMSG_NOCACHE for (*,G) hits. I.e., source-less routes. */
 static void handle_nocache4(int sd, void *arg)
@@ -171,11 +172,11 @@ static void handle_nocache4(int sd, void *arg)
 	}
 }
 
-static void cache_flush(void *arg)
+static void cache4_flush(void *arg)
 {
 	(void)arg;
 
-	smclog(LOG_INFO, "Cache timeout, flushing unused (*,G) routes!");
+	smclog(LOG_INFO, "Cache timeout, flushing unused IPv4 (*,G) routes!");
 	mroute4_dyn_expire(cache_timeout);
 }
 
@@ -235,7 +236,7 @@ int mroute4_enable(int do_vifs, int table_id, int timeout)
 	if (timeout && !running) {
 		running++;
 		cache_timeout = timeout;
-		timer_add(timeout, cache_flush, NULL);
+		timer_add(timeout, cache4_flush, NULL);
 	}
 
 	return 0;
@@ -482,7 +483,7 @@ static unsigned long get_valid_pkt4(struct mroute *route)
  * The latter is useful in case of topology changes (e.g. VRRP fail-over)
  * or similar.
  */
-void mroute4_dyn_expire(int max_idle)
+static void mroute4_dyn_expire(int max_idle)
 {
 	struct mroute *entry, *tmp;
 	struct timespec now;
@@ -581,7 +582,7 @@ static struct mroute *mroute4_add_similar(struct mroute *route)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute4_add(struct mroute *route)
+static int mroute4_add(struct mroute *route)
 {
 	struct mroute *entry;
 
@@ -667,7 +668,7 @@ static int do_mroute4_del(struct mroute *entry)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute4_del(struct mroute *route)
+static int mroute4_del(struct mroute *route)
 {
 	struct mroute *entry, *set, *tmp;
 
@@ -1082,7 +1083,7 @@ static struct mroute *mroute6_similar(struct mroute *route)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute6_add(struct mroute *route)
+static int mroute6_add(struct mroute *route)
 {
 	struct mroute *entry;
 
@@ -1162,7 +1163,7 @@ static int do_mroute6_del(struct mroute *entry)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute6_del(struct mroute *route)
+static int mroute6_del(struct mroute *route)
 {
 	struct mroute *entry, *set, *tmp;
 
@@ -1273,6 +1274,29 @@ int mroute_del_vif(char *ifname)
 		return 1;
 
 	return ret;
+}
+
+void mroute_expire(int max_idle)
+{
+	mroute4_dyn_expire(max_idle);
+}
+
+int mroute_add_route(struct mroute *mroute)
+{
+#ifdef HAVE_IPV6_MULTICAST_HOST
+	if (mroute->group.ss_family == AF_INET6)
+		return mroute6_add(mroute);
+#endif
+	return mroute4_add(mroute);
+}
+
+int mroute_del_route(struct mroute *mroute)
+{
+#ifdef HAVE_IPV6_MULTICAST_HOST
+	if (mroute->group.ss_family == AF_INET6)
+		return mroute6_del(mroute);
+#endif
+	return mroute4_del(mroute);
 }
 
 /*
