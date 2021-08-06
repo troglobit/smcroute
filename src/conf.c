@@ -55,6 +55,7 @@
 	}
 
 /* Tokens */
+#define EMPTY  0
 #define MGROUP 1
 #define MROUTE 2
 #define PHYINT 3
@@ -385,6 +386,9 @@ static int conf_parse(const char *file, int do_vifs)
 			WARN("Interface %s matches no valid system interfaces, skipping.", ifname);
 			continue;
 		}
+
+		case EMPTY:
+			break;
 
 		switch (op) {
 		case MGROUP:
