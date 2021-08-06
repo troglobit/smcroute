@@ -63,8 +63,9 @@ LIST_HEAD(, mroute) mroute_asm_kern_list = LIST_HEAD_INITIALIZER();
 LIST_HEAD(, mroute) mroute_ssm_list = LIST_HEAD_INITIALIZER();
 
 static void mroute4_dyn_expire (int max_idle);
-static int  mroute4_dyn_add    (struct mroute *route);
 static int  mroute4_add_vif    (struct iface *iface);
+static int  mroute_dyn_add     (struct mroute *route);
+static int  is_match           (struct mroute *rule, struct mroute *cand);
 
 /* Check for kernel IGMPMSG_NOCACHE for (*,G) hits. I.e., source-less routes. */
 static void handle_nocache4(int sd, void *arg)
@@ -118,7 +119,7 @@ static void handle_nocache4(int sd, void *arg)
 		smclog(LOG_DEBUG, "New multicast data from %s to group %s on VIF %u",
 		       origin, group, mroute.inbound);
 
-		result = mroute4_dyn_add(&mroute);
+		result = mroute_dyn_add(&mroute);
 		if (result) {
 			/*
 			 * This is a common error, the router receives streams it is not
@@ -367,63 +368,6 @@ static int is_mroute4_static(struct mroute *route)
 	return !is_anyaddr(&route->source) && route->src_len == 0 && route->len == 0;
 }
 
-/**
- * mroute4_dyn_add - Add route to kernel if it matches a known (*,G) route.
- * @route: Pointer to candidate struct mroute IPv4 multicast route
- *
- * Returns:
- * POSIX OK(0) on success, non-zero on error with @errno set.
- */
-static int mroute4_dyn_add(struct mroute *route)
-{
-	struct mroute *entry, *new_entry;
-	int ret;
-
-	LIST_FOREACH(entry, &mroute_asm_conf_list, link) {
-		/* Find matching (*,G) ... and interface. */
-		if (!is_match4(entry, route))
-			continue;
-
-		/* Use configured template (*,G) outbound interfaces. */
-		memcpy(route->ttl, entry->ttl, NELEMS(route->ttl) * sizeof(route->ttl[0]));
-		break;
-	}
-
-	if (!entry) {
-		/*
-		 * No match, add entry without outbound interfaces
-		 * nevertheless to avoid continuous cache misses from
-		 * the kernel. Note that this still gets reported as an
-		 * error (ENOENT) below.
-		 */
-		memset(route->ttl, 0, NELEMS(route->ttl) * sizeof(route->ttl[0]));
-	}
-
-	ret = kern_mroute_add(route, entry ? 1 : 0);
-	if (ret)
-		return ret;
-
-	/*
-	 * Add to list of dynamically added routes. Necessary if the user
-	 * removes the (*,G) using the command line interface rather than
-	 * updating the conf file and SIGHUP. Note: if we fail to alloc()
-	 * memory we don't do anything, just add kernel route silently.
-	 */
-	new_entry = malloc(sizeof(struct mroute));
-	if (new_entry) {
-		memcpy(new_entry, route, sizeof(struct mroute));
-		LIST_INSERT_HEAD(&mroute_asm_kern_list, new_entry, link);
-	}
-
-	/* Signal to cache handler we've added a stop filter */
-	if (!entry) {
-		errno = ENOENT;
-		return -1;
-	}
-
-	return 0;
-}
-
 static int is_active(struct mroute *route)
 {
 	size_t i;
@@ -499,11 +443,11 @@ static struct mroute *mroute4_find(struct mroute *route)
 	struct mroute *entry;
 
 	LIST_FOREACH(entry, &mroute_asm_conf_list, link) {
-		if (is_match4(entry, route))
+		if (is_match(entry, route))
 			return entry;
 	}
 	LIST_FOREACH(entry, &mroute_ssm_list, link) {
-		if (is_match4(entry, route))
+		if (is_match(entry, route))
 			return entry;
 	}
 
@@ -732,7 +676,6 @@ static int mroute4_del(struct mroute *route)
 }
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
-static int mroute6_dyn_add(struct mroute *route);
 static int mroute6_add_mif(struct iface *iface);
 
 /*
@@ -791,7 +734,7 @@ static void handle_nocache6(int sd, void *arg)
 		       origin, group, mroute.inbound);
 
 		/* Find any matching route for this group on that iif. */
-		result = mroute6_dyn_add(&mroute);
+		result = mroute_dyn_add(&mroute);
 		if (result) {
 			/*
 			 * This is a common error, the router receives streams it is not
@@ -986,63 +929,6 @@ static int is_mroute6_static(struct mroute *route)
 	return !is_anyaddr(&route->source);
 }
 
-/**
- * mroute6_dyn_add - Add route to kernel if it matches a known (*,G) route.
- * @route: Pointer to candidate struct mroute IPv6 multicast route
- *
- * Returns:
- * POSIX OK(0) on success, non-zero on error with @errno set.
- */
-static int mroute6_dyn_add(struct mroute *route)
-{
-	struct mroute *entry, *new_entry;
-	int ret;
-
-	LIST_FOREACH(entry, &mroute_asm_conf_list, link) {
-		/* Find matching (*,G) ... and interface. */
-		if (!is_match6(entry, route))
-			continue;
-
-		/* Use configured template (*,G) outbound interfaces. */
-		memcpy(route->ttl, entry->ttl, NELEMS(route->ttl) * sizeof(route->ttl[0]));
-		break;
-	}
-
-	if (!entry) {
-		/*
-		 * No match, add entry without outbound interfaces
-		 * nevertheless to avoid continuous cache misses from
-		 * the kernel. Note that this still gets reported as an
-		 * error (ENOENT) below.
-		 */
-		memset(route->ttl, 0, NELEMS(route->ttl) * sizeof(route->ttl[0]));
-	}
-
-	ret = kern_mroute_add(route, entry ? 1 : 0);
-	if (ret)
-		return ret;
-
-	/*
-	 * Add to list of dynamically added routes. Necessary if the user
-	 * removes the (*,G) using the command line interface rather than
-	 * updating the conf file and SIGHUP. Note: if we fail to alloc()
-	 * memory we don't do anything, just add kernel route silently.
-	 */
-	new_entry = malloc(sizeof(struct mroute));
-	if (new_entry) {
-		memcpy(new_entry, route, sizeof(struct mroute));
-		LIST_INSERT_HEAD(&mroute_asm_kern_list, new_entry, link);
-	}
-
-	/* Signal to cache handler we've added a stop filter */
-	if (!entry) {
-		errno = ENOENT;
-		return -1;
-	}
-
-	return 0;
-}
-
 static int mroute6_exists(struct mroute *route)
 {
 	struct mroute *entry;
@@ -1222,6 +1108,74 @@ static int mroute6_del(struct mroute *route)
 	return -1;
 }
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
+
+static int is_match(struct mroute *rule, struct mroute *cand)
+{
+	if (rule->group.ss_family != cand->group.ss_family)
+		return 0;
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
+	if (rule->group.ss_family == AF_INET6)
+		return is_match6(rule, cand);
+#endif
+	return is_match4(rule, cand);
+}
+
+/**
+ * mroute_dyn_add - Add route to kernel if it matches a known (*,G) route.
+ * @route: Pointer to candidate multicast route
+ *
+ * Returns:
+ * POSIX OK(0) on success, non-zero on error with @errno set.
+ */
+static int mroute_dyn_add(struct mroute *route)
+{
+	struct mroute *entry, *new_entry;
+	int ret;
+
+	LIST_FOREACH(entry, &mroute_asm_conf_list, link) {
+		/* Find matching (*,G) ... and interface. */
+		if (!is_match(entry, route))
+			continue;
+
+		/* Use configured template (*,G) outbound interfaces. */
+		memcpy(route->ttl, entry->ttl, NELEMS(route->ttl) * sizeof(route->ttl[0]));
+		break;
+	}
+
+	if (!entry) {
+		/*
+		 * No match, add entry without outbound interfaces
+		 * nevertheless to avoid continuous cache misses from
+		 * the kernel. Note that this still gets reported as an
+		 * error (ENOENT) below.
+		 */
+		memset(route->ttl, 0, NELEMS(route->ttl) * sizeof(route->ttl[0]));
+	}
+
+	ret = kern_mroute_add(route, entry ? 1 : 0);
+	if (ret)
+		return ret;
+
+	/*
+	 * Add to list of dynamically added routes. Necessary if the user
+	 * removes the (*,G) using the command line interface rather than
+	 * updating the conf file and SIGHUP. Note: if we fail to alloc()
+	 * memory we don't do anything, just add kernel route silently.
+	 */
+	new_entry = malloc(sizeof(struct mroute));
+	if (new_entry) {
+		memcpy(new_entry, route, sizeof(struct mroute));
+		LIST_INSERT_HEAD(&mroute_asm_kern_list, new_entry, link);
+	}
+
+	/* Signal to cache handler we've added a stop filter */
+	if (!entry) {
+		errno = ENOENT;
+		return -1;
+	}
+
+	return 0;
+}
 
 int mroute_init(int do_vifs, int table_id, int cache_tmo)
 {
