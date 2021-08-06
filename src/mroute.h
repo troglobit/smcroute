@@ -14,7 +14,6 @@
 #endif
 #include "queue.h"		/* Needed by netinet/ip_mroute.h on FreeBSD */
 
-
 #ifdef HAVE_LINUX_MROUTE_H
 #define _LINUX_IN_H             /* For Linux <= 2.6.25 */
 #include <linux/types.h>
@@ -71,6 +70,7 @@
 #  define MAXMIFS MAXVIFS
 # endif
 
+/* Allocate data types to the max, on FreeBSD MAXMIFS > MAXVIFS */
 # if MAXMIFS > MAXVIFS
 #  define MAX_MC_VIFS MAXMIFS
 # else
@@ -78,6 +78,11 @@
 # endif
 #else
 #define MAX_MC_VIFS MAXVIFS
+#endif
+
+/* We're on a system w/o IPv6 routing, define to avoid other ifdefs */
+#ifndef mifi_t
+typedef unsigned short mifi_t;
 #endif
 
 struct mroute {
@@ -93,6 +98,7 @@ struct mroute {
 	vifi_t         inbound;		/* incoming VIF	   */
 	uint8_t	       ttl[MAX_MC_VIFS];/* outgoing VIFs   */
 
+
 	unsigned long  valid_pkt;	/* packet counter at last mroute4_dyn_expire() */
 	time_t	       last_use;	/* timestamp of last forwarded packet */
 };
@@ -102,6 +108,7 @@ void mroute_exit       (void);
 
 int  mroute_add_vif    (char *ifname, uint8_t mrdisc, uint8_t threshold);
 int  mroute_del_vif    (char *ifname);
+
 void mroute_expire     (int max_idle);
 
 int  mroute_add_route  (struct mroute *mroute);
