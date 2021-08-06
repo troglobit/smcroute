@@ -6,6 +6,14 @@ and smcroute.conf ... describing commands and options get messed up and
 smcroutectl doesn't even have an options section.
 
 
+Refactor `iface_list` into a linked list
+-----------------------------------------
+
+Like everything else ... this to be able to drop interfaces that have
+been removed from the system while smcrouted is running and gets a
+SIGHUP.
+
+
 Possibly Exit with Error if Multicast Socket is Busy
 ----------------------------------------------------
 
