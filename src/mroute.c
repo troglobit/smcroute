@@ -562,7 +562,7 @@ int mroute_add_route(struct mroute *route)
 }
 
 /* Remove from kernel and linked list */
-static int do_mroute4_del(struct mroute *entry)
+static int do_mroute_del(struct mroute *entry)
 {
 	int ret;
 
@@ -584,7 +584,7 @@ static int do_mroute4_del(struct mroute *entry)
  * be able to remove all outbound interfaces from a route, and thus
  * block an (S,G) pair.  Similar to how add works.
  */
-static int do_mroute4_del_outbound(struct mroute *entry, struct mroute *route)
+static int do_mroute_del_outbound(struct mroute *entry, struct mroute *route)
 {
 	size_t i, num = 0;
 
@@ -599,14 +599,14 @@ static int do_mroute4_del_outbound(struct mroute *entry, struct mroute *route)
 
 	/* if no outbound in route => remove route altogether */
 	if (!num)
-		return do_mroute4_del(entry);
+		return do_mroute_del(entry);
 
 	return kern_mroute_add(entry, 1);
 }
 
 /**
- * mroute4_del - Remove route from kernel, or all matching routes if wildcard
- * @route: Pointer to struct mroute IPv4 multicast route to remove
+ * mroute_del_route - Remove route from kernel, or all matching routes if wildcard
+ * @route: Pointer to multicast route to remove
  *
  * Removes the given multicast @route from the kernel multicast routing
  * table, or if the @route is a wildcard, then all matching kernel
@@ -615,30 +615,30 @@ static int do_mroute4_del_outbound(struct mroute *entry, struct mroute *route)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-static int mroute4_del(struct mroute *route)
+int mroute_del_route(struct mroute *route)
 {
 	struct mroute *entry, *set, *tmp;
 
 	if (is_mroute_static(route)) {
 		LIST_FOREACH_SAFE(entry, &mroute_ssm_list, link, tmp) {
-			if (!is_exact_match4(entry, route))
+			if (!is_exact_match(entry, route))
 				continue;
 
 			if (entry->unused)
-				return do_mroute4_del(entry);
+				return do_mroute_del(entry);
 
-			return do_mroute4_del_outbound(entry, route);
+			return do_mroute_del_outbound(entry, route);
 		}
 
 		/* Not found in static list, check if spawned from a (*,G) rule. */
 		LIST_FOREACH_SAFE(entry, &mroute_asm_kern_list, link, tmp) {
-			if (!is_exact_match4(entry, route))
+			if (!is_exact_match(entry, route))
 				continue;
 
 			if (entry->unused)
-				return do_mroute4_del(entry);
+				return do_mroute_del(entry);
 
-			return do_mroute4_del_outbound(entry, route);
+			return do_mroute_del_outbound(entry, route);
 		}
 
 		smclog(LOG_NOTICE, "Cannot delete multicast route: not found");
@@ -650,19 +650,19 @@ static int mroute4_del(struct mroute *route)
 	LIST_FOREACH_SAFE(entry, &mroute_asm_conf_list, link, tmp) {
 		int ret = 0;
 
-		if (!is_match4(entry, route) || entry->len != route->len ||
+		if (!is_match(entry, route) || entry->len != route->len ||
 		    entry->src_len != route->src_len)
 			continue;
 
 		/* Remove all (S,G) routes spawned from the (*,G) as well ... */
 		LIST_FOREACH_SAFE(set, &mroute_asm_kern_list, link, tmp) {
-			if (!is_match4(entry, set) || entry->len != route->len)
+			if (!is_match(entry, set) || entry->len != route->len)
 				continue;
 
 			if (entry->unused)
-				ret += do_mroute4_del(set);
+				ret += do_mroute_del(set);
 			else
-				ret += do_mroute4_del_outbound(set, route);
+				ret += do_mroute_del_outbound(set, route);
 		}
 
 		if (!ret && entry->unused) {
@@ -926,86 +926,6 @@ static int is_match6(struct mroute *rule, struct mroute *cand)
 
 	return result;
 }
-
-/* Remove from kernel and linked list */
-static int do_mroute6_del(struct mroute *entry)
-{
-	int ret;
-
-	ret = kern_mroute_del(entry, is_active(entry));
-	if (ret && ENOENT != errno)
-		return ret;
-
-	/* Also remove on ENOENT */
-	LIST_REMOVE(entry, link);
-	free(entry);
-
-	return ret;
-}
-
-/**
- * mroute6_del - Remove route from kernel
- * @route: Pointer to struct mroute IPv6 multicast route to remove
- *
- * Removes the given multicast @route from the kernel multicast routing
- * table.
- *
- * Returns:
- * POSIX OK(0) on success, non-zero on error with @errno set.
- */
-static int mroute6_del(struct mroute *route)
-{
-	struct mroute *entry, *set, *tmp;
-
-	if (is_mroute_static(route)) {
-		LIST_FOREACH_SAFE(entry, &mroute_ssm_list, link, tmp) {
-			if (!is_exact_match6(entry, route))
-				continue;
-
-			return do_mroute6_del(entry);
-		}
-
-		/* Not found in static list, check if spawned from a (*,G) rule. */
-		LIST_FOREACH_SAFE(entry, &mroute_asm_kern_list, link, tmp) {
-			if (!is_exact_match6(entry, route))
-				continue;
-
-			return do_mroute6_del(entry);
-		}
-
-		smclog(LOG_NOTICE, "Cannot delete multicast route: not found");
-		errno = ENOENT;
-		return -1;
-	}
-
-	/* Find matching (*,G) ... and interface .. and prefix length. */
-	LIST_FOREACH_SAFE(entry, &mroute_asm_conf_list, link, tmp) {
-		int ret = 0;
-
-		if (!is_match6(entry, route) || entry->len != route->len ||
-		    entry->src_len != route->src_len)
-			continue;
-
-		/* Remove all (S,G) routes spawned from the (*,G) as well ... */
-		LIST_FOREACH_SAFE(set, &mroute_asm_kern_list, link, tmp) {
-			if (!is_match6(entry, set) || entry->len != route->len)
-				continue;
-
-			ret += do_mroute6_del(set);
-		}
-
-		if (!ret) {
-			LIST_REMOVE(entry, link);
-			free(entry);
-		}
-
-		return ret;
-	}
-
-	smclog(LOG_NOTICE, "Cannot delete multicast route: not found");
-	errno = ENOENT;
-	return -1;
-}
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
 static int is_match(struct mroute *rule, struct mroute *cand)
@@ -1152,15 +1072,6 @@ int mroute_del_vif(char *ifname)
 void mroute_expire(int max_idle)
 {
 	mroute4_dyn_expire(max_idle);
-}
-
-int mroute_del_route(struct mroute *mroute)
-{
-#ifdef HAVE_IPV6_MULTICAST_HOST
-	if (mroute->group.ss_family == AF_INET6)
-		return mroute6_del(mroute);
-#endif
-	return mroute4_del(mroute);
 }
 
 /*
