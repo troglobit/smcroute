@@ -316,8 +316,10 @@ int kern_vif_del(struct iface *iface)
 #else
 	rc = setsockopt(sd4, IPPROTO_IP, MRT_DEL_VIF, &vifc->vifc_vifi, sizeof(vifc->vifc_vifi));
 #endif
-	if (!rc)
+	if (!rc) {
+		vif_list[iface->vif].iface = NULL;
 		iface->vif = -1;
+	}
 
 	return rc;
 }
@@ -544,10 +546,12 @@ int kern_mif_del(struct iface *iface)
 	smclog(LOG_DEBUG, "Removing  %-16s => MIF %-2d", iface->ifname, iface->mif);
 
 	rc = setsockopt(sd6, IPPROTO_IPV6, MRT6_DEL_MIF, &iface->mif, sizeof(iface->mif));
-	if (!rc)
+	if (!rc) {
+		mif_list[iface->mif].iface = NULL;
 		iface->mif = -1;
 
 	return rc;
+	}
 }
 
 static int kern_mroute6(int cmd, struct mroute *route)
