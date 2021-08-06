@@ -32,6 +32,7 @@ struct ifmatch {
 void          iface_init              (void);
 void          iface_exit              (void);
 
+void          iface_update            (void);
 struct iface *iface_iterator          (int first);
 struct iface *iface_outbound_iterator (struct mroute *route, int first);
 

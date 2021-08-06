@@ -44,27 +44,11 @@ static unsigned int num_ifaces_alloc = 0;
 static unsigned int num_ifaces = 0;
 
 /**
- * iface_update - Periodic check of new interfaces or addresses
- * @refresh: Only update interface addresses
- *
- * This functions is not only called by iface_init() at startup or
- * SIGHUP, it is also called periodically to check if known ifaces
- * have changed or gained an IP address.  This is required because
- * on Linux (and possibly other UNICES too) it is not possible to
- * join a multicast group without an address (YMMV).
- *
- * Note:
- * For now we only return %TRUE for interface updates.
- *
- * Returns:
- * %TRUE(1), at least one interface added or updated, otherwise
- * %FALSE(0) if there was no change.
+ * iface_update - Check of new interfaces
  */
-static int iface_update(int refresh)
+void iface_update(void)
 {
 	struct ifaddrs *ifaddr, *ifa;
-	struct iface *iface;
-	int change = 0;
 
 	if (getifaddrs(&ifaddr) == -1) {
 		smclog(LOG_ERR, "Failed retrieving interface addresses: %s", strerror(errno));
@@ -72,18 +56,16 @@ static int iface_update(int refresh)
 	}
 
 	for (ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
+		struct iface *iface;
+
 		/* Check if already added? */
 		iface = iface_find_by_name(ifa->ifa_name);
 		if (iface) {
-			if (!iface->inaddr.s_addr && ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET) {
+			if (!iface->inaddr.s_addr && ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET)
 				iface->inaddr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
-				change = 1;
-			}
+
 			continue;
 		}
-
-		if (refresh)
-			continue;
 
 		/* Allocate more space? */
 		if (num_ifaces == num_ifaces_alloc) {
@@ -117,9 +99,8 @@ static int iface_update(int refresh)
 		iface->mrdisc = 0;
 		iface->threshold = DEFAULT_THRESHOLD;
 	}
-	freeifaddrs(ifaddr);
 
-	return change;
+	freeifaddrs(ifaddr);
 }
 
 /**
@@ -142,7 +123,7 @@ void iface_init(void)
 		exit(255);
 	}
 
-	iface_update(0);
+	iface_update();
 }
 
 /**
