@@ -1,4 +1,4 @@
-.Dd $Mdocdate: Jul 28 2021 $
+.Dd $Mdocdate: Aug 6 2021 $
 .Dt SMCROUTE 8 SMM
 .Os
 .Sh NAME
@@ -24,7 +24,7 @@
 .Op Ar COMMAND
 .Pp
 .Nm smcroutectl
-.Ao help | flush | kill | restart | version Ac
+.Ao help | flush | kill | reload | version Ac
 .Nm smcroutectl
 .Ao show Ac
 .Op groups | routes
@@ -277,10 +277,20 @@ optional.
 .It Nm help [cmd]
 Print a usage information message.
 .It Nm kill
-Stop (kill) running daemon.
-.It Nm restart
-Tell daemon to restart and reload its configuration file.  Same as
+Tell a running
+.Nm smcrouted
+to exit gracefully, same as
+.Ar SIGTERM .
+.It Nm reload
+Tell
+.Nm smcrouted
+to reload its configuration and activate the changes.  Same as
 .Ar SIGHUP .
+Note, any routes or groups added or removed with
+.Nm smcroutectl
+will be lost.  Only the configuration set in the file
+.Pa smcroute.conf
+is activated.
 .It Nm show [groups|routes]
 Show joined multicast groups or multicast routes, defaults to show
 routes.  Can be combined with the
@@ -490,8 +500,9 @@ responds to the following signals:
 .Pp
 .Bl -tag -width TERM -compact
 .It Cm HUP
-Restart and reload the configuration file.  All existing multicast
-routes and groups are dropped.
+Tell
+.Nm
+to reload its configuration file and activate the changes.
 .It Cm INT
 Terminates execution gracefully.
 .It Cm TERM
@@ -522,7 +533,7 @@ tool can be used.
 .Sh FILES
 .Bl -tag -width /proc/net/ip6_mr_cache -compact
 .It Pa /etc/smcroute.conf
-Routes to be set when starting, or restarting
+Groups to join and routes to set when starting, or reloading
 .Nm smcrouted
 on
 .Ar SIGHUP .

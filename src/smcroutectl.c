@@ -63,7 +63,8 @@ struct arg {
 	{ "version", 0, 'v', NULL,   "Show program version", NULL, 0 },
 	{ "flush" ,  0, 'F', NULL,   "Flush all dynamically set (*,G) multicast routes", NULL, 0 },
 	{ "kill",    0, 'k', NULL,   "Kill running daemon", NULL, 0 },
-	{ "restart", 0, 'H', NULL,   "Tell daemon to restart and reload its .conf file, like SIGHUP", NULL, 0 },
+	{ "reload",  0, 'H', NULL,   "Reload .conf file, like SIGHUP", NULL, 0 },
+	{ "restart", 0, 'H', NULL,   NULL, NULL, 0 }, /* Alias, compat with older versions */
 	{ "show",    0, 's', NULL,   "Show status of routes, joined groups, interfaces, etc.", NULL, 1 },
 	{ "add",     3, 'a', NULL,   "Add a multicast route",    "eth0 192.168.2.42 225.1.2.3 eth1 eth2", 0 },
 	{ "remove",  2, 'r', NULL,   "Remove a multicast route", "eth0 192.168.2.42 225.1.2.3", 0 },
