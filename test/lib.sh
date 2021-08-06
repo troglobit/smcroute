@@ -10,6 +10,18 @@ print()
     printf "\e[7m>> %-80s\e[0m\n" "$1"
 }
 
+FAIL()
+{
+    print "TEST: FAIL"
+    exit 1
+}
+
+OK()
+{
+    print "TEST: OK"
+    exit 0
+}
+
 show_mroute()
 {
     # Show active routes (and counters)
