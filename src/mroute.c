@@ -513,7 +513,6 @@ int mroute_add_route(struct mroute *route)
 		memcpy(entry, route, sizeof(struct mroute));
 	}
 
-
 	/*
 	 * For (*,G) we save to a linked list to be added on-demand when
 	 * the kernel sends IGMPMSG_NOCACHE.
@@ -902,21 +901,21 @@ static int is_exact_match6(struct mroute *rule, struct mroute *cand)
  */
 static int is_match6(struct mroute *rule, struct mroute *cand)
 {
-	int result;
+	int rc = 0;
 
 	if (rule->inbound != cand->inbound)
-		return 0;
+		return rc;
 
 	if (rule->len == 0 && cand->len == 0)
-		result = !inet_addr_cmp(&rule->group, &cand->group);
+		rc = !inet_addr_cmp(&rule->group, &cand->group);
 	else
 		/* TODO: Match based on prefix length */
-		result = 1;
+		rc = 1;
 
 	if (rule->src_len > 0 && cand->src_len > 0)
-		result &= !inet_addr_cmp(&rule->source, &cand->source);
+		rc &= !inet_addr_cmp(&rule->source, &cand->source);
 
-	return result;
+	return rc;
 }
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
