@@ -268,7 +268,7 @@ static struct mcgroup *find_kern(struct mcgroup *mcg)
 	return NULL;
 }
 
-int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, inet_addr_t *group, int len)
+int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, int src_len, inet_addr_t *group, int len)
 {
 	char src[INET_ADDRSTR_LEN] = "*", grp[INET_ADDRSTR_LEN];
 	struct mcgroup *mcg;
@@ -308,6 +308,7 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, inet_addr_t
 
 		strlcpy(mcg->ifname, ifname, sizeof(mcg->ifname));
 		mcg->source  = *source;
+		mcg->src_len = src_len;
 		mcg->group   = *group;
 		mcg->len     = len;
 
@@ -316,56 +317,83 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, inet_addr_t
 
 	iface_match_init(&state);
 	while ((mcg->iface = match_valid_iface(ifname, &state))) {
-		uint32_t addr = 0, addr_max = 0;
-		struct in_addr orig, next;
+		uint32_t saddr = 0, saddr_max = 0;
+		struct in_addr sorig, snext;
 
-		if (mcg->group.ss_family == AF_INET) {
+		if (mcg->source.ss_family == AF_INET && !is_anyaddr(&mcg->source)) {
 			int mask;
 
-			if (mcg->len > 0)
-				mask = 0xFFFFFFFFu << (32 - mcg->len);
+			if (mcg->src_len > 0)
+				mask = 0xFFFFFFFFu << (32 - mcg->src_len);
 			else
 				mask = 0xFFFFFFFFu;
 
-			orig = *inet_addr_get(&mcg->group);
-			addr = ntohl(orig.s_addr) & mask;
-			addr_max = addr | ~mask;
+			sorig = *inet_addr_get(&mcg->source);
+			saddr = ntohl(sorig.s_addr) & mask;
+			saddr_max = saddr | ~mask;
 		}
 
-		while (addr <= addr_max) {
-			if (addr) {
-				next.s_addr = htonl(addr);
-				inet_addr_set(&mcg->group, &next);
+		while (saddr <= saddr_max) {
+			uint32_t gaddr = 0, gaddr_max = 0;
+			struct in_addr gorig, gnext;
+
+			if (saddr) {
+				snext.s_addr = htonl(saddr);
+				inet_addr_set(&mcg->source, &snext);
 			}
-			addr++;
+			saddr++;
 
-			if (!cmd) {
-				struct mcgroup *kmcg;
+			if (mcg->group.ss_family == AF_INET) {
+				int mask;
 
-				kmcg = find_kern(mcg);
-				if (!kmcg)
-					continue;
+				if (mcg->len > 0)
+					mask = 0xFFFFFFFFu << (32 - mcg->len);
+				else
+					mask = 0xFFFFFFFFu;
 
-				sd = kmcg->sd;
-			} else
-				sd = alloc_mc_sock(group->ss_family);
-
-			if (kern_join_leave(sd, cmd, mcg)) {
-				if (cmd && errno == EADDRINUSE)
-					continue; /* Already joined, ignore */
-
-				rc++;
-				break;
+				gorig = *inet_addr_get(&mcg->group);
+				gaddr = ntohl(gorig.s_addr) & mask;
+				gaddr_max = gaddr | ~mask;
 			}
 
-			if (cmd)
-				list_add(sd, mcg);
-			else
-				list_rem(sd, mcg);
+			while (gaddr <= gaddr_max) {
+				if (gaddr) {
+					gnext.s_addr = htonl(gaddr);
+					inet_addr_set(&mcg->group, &gnext);
+				}
+				gaddr++;
+
+				if (!cmd) {
+					struct mcgroup *kmcg;
+
+					kmcg = find_kern(mcg);
+					if (!kmcg)
+						continue;
+
+					sd = kmcg->sd;
+				} else
+					sd = alloc_mc_sock(group->ss_family);
+
+				if (kern_join_leave(sd, cmd, mcg)) {
+					if (cmd && errno == EADDRINUSE)
+						continue; /* Already joined, ignore */
+
+					rc++;
+					break;
+				}
+
+				if (cmd)
+					list_add(sd, mcg);
+				else
+					list_rem(sd, mcg);
+			}
+
+			if (gaddr && mcg->group.ss_family == AF_INET)
+				inet_addr_set(&mcg->group, &gorig);
 		}
 
-		if (addr && mcg->group.ss_family == AF_INET)
-			inet_addr_set(&mcg->group, &orig);
+		if (saddr && mcg->source.ss_family == AF_INET)
+			inet_addr_set(&mcg->source, &sorig);
 	}
 
 	if (!cmd) {
@@ -401,7 +429,7 @@ void mcgroup_reload_end(void)
 		if (!entry->unused)
 			continue;
 
-		mcgroup_action(0, entry->ifname, &entry->source, &entry->group, entry->len);
+		mcgroup_action(0, entry->ifname, &entry->source, entry->src_len, &entry->group, entry->len);
 	}
 }
 
@@ -410,7 +438,7 @@ int mcgroup_show(int sd, int detail)
 {
 	struct mcgroup *entry;
 	char buf[256];
-	char sg[INET_ADDRSTR_LEN * 2 + 5 + 3];
+	char sg[INET_ADDRSTR_LEN * 2 + 10 + 3];
  
 	LIST_FOREACH(entry, &conf_list, link) {
 		struct iface *iface;
@@ -425,12 +453,20 @@ int mcgroup_show(int sd, int detail)
 			inet_addr2str(&entry->source, src, sizeof(src));
 		inet_addr2str(&entry->group, grp, sizeof(grp));
 
-		if (entry->len > 0)
-			snprintf(sg, sizeof(sg), "(%s, %s/%d)", src, grp, entry->len);
+		snprintf(sg, sizeof(sg), "(%s", src);
+		if (entry->src_len > 0)
+			snprintf(buf, sizeof(buf), "/%u, ", entry->src_len);
 		else
-			snprintf(sg, sizeof(sg), "(%s, %s)", src, grp);
-		snprintf(buf, sizeof(buf), "%-46s %s\n", sg, iface->ifname);
+			snprintf(buf, sizeof(buf), ", ");
+		strlcat(sg, buf, sizeof(sg));
 
+		if (entry->len > 0)
+			snprintf(buf, sizeof(buf), "%s/%u)", grp, entry->len);
+		else
+			snprintf(buf, sizeof(buf), "%s)", grp);
+		strlcat(sg, buf, sizeof(sg));
+
+		snprintf(buf, sizeof(buf), "%-46s %s\n", sg, iface->ifname);
 		if (ipc_send(sd, buf, strlen(buf)) < 0) {
 			smclog(LOG_ERR, "Failed sending reply to client: %s", strerror(errno));
 			return -1;

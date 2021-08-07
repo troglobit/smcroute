@@ -12,6 +12,7 @@ struct mcgroup {
 	char           ifname[IFNAMSIZ];
 	struct iface  *iface;
 	inet_addr_t    source;
+	uint8_t        src_len;
 	inet_addr_t    group;
 	uint8_t        len;
 	int            sd;
@@ -21,7 +22,7 @@ void mcgroup_reload_beg(void);
 void mcgroup_reload_end(void);
 void mcgroup_exit      (void);
 
-int  mcgroup_action    (int cmd, const char *ifname, inet_addr_t *source, inet_addr_t *group, int len);
+int  mcgroup_action    (int cmd, const char *ifname, inet_addr_t *source, int src_len, inet_addr_t *group, int len);
 
 int  mcgroup_show      (int sd, int detail);
 

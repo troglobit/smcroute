@@ -102,6 +102,7 @@ static int match(char *keyword, char *token)
 int conf_mgroup(struct conf *conf, int cmd, char *iif, char *source, char *group)
 {
 	inet_addr_t src = { 0 }, grp = { 0 };
+	int src_len = 0;
 	int grp_len = 0;
 	int len_max;
 	int family;
@@ -133,10 +134,11 @@ int conf_mgroup(struct conf *conf, int cmd, char *iif, char *source, char *group
 		grp_len = len_max;
 
 	if (source) {
-		int src_len = is_range(source);
-
-		if (src_len > 0)
-			WARN("join: ignoring source prefix len: %d", src_len);
+		src_len = is_range(source);
+		if (src_len < 0 || src_len > len_max) {
+			WARN("join: Invalid source prefix length (0-%d): %d", len_max, src_len);
+			goto done;
+		}
 
 		if (inet_str2addr(source, &src)) {
 			WARN("join: Invalid multicast source: %s", source);
@@ -144,9 +146,10 @@ int conf_mgroup(struct conf *conf, int cmd, char *iif, char *source, char *group
 		}
 	} else
 		inet_anyaddr(family, &src);
+	if (!src_len)
+		src_len = len_max;
 
-
-	rc += mcgroup_action(cmd, iif, &src, &grp, grp_len);
+	rc += mcgroup_action(cmd, iif, &src, src_len, &grp, grp_len);
 done:
 	return rc;
 }
