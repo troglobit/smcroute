@@ -13,12 +13,14 @@ print()
 FAIL()
 {
     print "TEST: FAIL"
+    [ $# -gt 0 ] && echo "$*"
     exit 1
 }
 
 OK()
 {
     print "TEST: OK"
+    [ $# -gt 0 ] && echo "$*"
     exit 0
 }
 
