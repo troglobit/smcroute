@@ -14,6 +14,17 @@ been removed from the system while smcrouted is running and gets a
 SIGHUP.
 
 
+Investigate why MIF thresholds don't seem to work on Linux 5.11.0
+------------------------------------------------------------------
+
+Here smcrouted has managed to set the TTL thresholds of three OIFs to
+values != 1, but the kernel still lists all of them as `:1`.  See test
+`reload6.sh`
+
+    Group                            Origin                           Iif      Pkts  Bytes     Wrong  Oifs
+    ff2e:0000:0000:0000:0000:0000:0000:0042 fc00:0000:0000:0000:0000:0000:0000:0001 0          0        0        0  2:1    4:1    5:1
+
+
 Possibly Exit with Error if Multicast Socket is Busy
 ----------------------------------------------------
 
