@@ -16,6 +16,7 @@
  */
 
 #include <errno.h>
+#include <glob.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
@@ -293,7 +294,7 @@ static char *chomp(char *str)
  *    mgroup   from IFNAME [source ADDRESS] group MCGROUP
  *    mroute   from IFNAME source ADDRESS   group MCGROUP to IFNAME [IFNAME ...]
  */
-static int conf_parse(struct conf *conf, int do_vifs)
+int conf_parse(struct conf *conf, int do_vifs)
 {
 	char *linebuf, *line;
 	int rc = 0;
@@ -324,13 +325,16 @@ static int conf_parse(struct conf *conf, int do_vifs)
 
 	conf->lineno = 1;
 	while ((line = fgets(linebuf, MAX_LINE_LEN, fp))) {
-		int   op = 0, num = 0, enable = do_vifs;
 		int   mrdisc = 0, threshold = DEFAULT_THRESHOLD;
-		char *token;
-		char *iif = NULL;
+		int   op = 0, num = 0, enable = do_vifs;
+		char *oif[MAX_MC_VIFS];
+		char *include = NULL;
 		char *source = NULL;
 		char *group  = NULL;
-		char *oif[MAX_MC_VIFS];
+		char *iif = NULL;
+		char *token;
+		glob_t gl;
+		size_t i;
 
 		/* Strip any line end character(s) */
 		chomp(line);
@@ -344,6 +348,8 @@ static int conf_parse(struct conf *conf, int do_vifs)
 			if (!op) {
 				if (match("mgroup", token)) {
 					op = MGROUP;
+				} else if (match("ssmgroup", token)) {
+					op = MGROUP; /* Compat */
 				} else if (match("mroute", token)) {
 					op = MROUTE;
 				} else if (match("phyint", token)) {
@@ -351,8 +357,11 @@ static int conf_parse(struct conf *conf, int do_vifs)
 					iif = pop_token(&line);
 					if (!iif)
 						op = 0;
-				} else if (match("ssmgroup", token)) {
-					op = MGROUP; /* Compat */
+				} else if (match("include", token)) {
+					op = INCLUDE;
+					include = pop_token(&line);
+					smclog(LOG_DEBUG, "Found include --> %s", include);
+					break;
 				} else {
 					WARN("Unknown command %s, skipping.", token);
 					continue;
@@ -404,6 +413,19 @@ static int conf_parse(struct conf *conf, int do_vifs)
 
 		case PHYINT:
 			rc += conf_phyint(conf, enable, iif, mrdisc, threshold);
+			break;
+
+		case INCLUDE:
+			glob(include, 0, NULL, &gl);
+			for (i = 0; i < gl.gl_pathc; i++) {
+				struct conf inc = { .file = gl.gl_pathv[i] };
+
+				smclog(LOG_DEBUG, "Glob expansion to %s ...", gl.gl_pathv[i]);
+				if (conf_parse(&inc, do_vifs))
+					smclog(LOG_WARNING, "Failed reading %s: %s",
+					       gl.gl_pathv[i], strerror(errno));
+			}
+			globfree(&gl);
 			break;
 
 		default:

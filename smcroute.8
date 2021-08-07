@@ -1,4 +1,4 @@
-.Dd $Mdocdate: Aug 6 2021 $
+.Dd $Mdocdate: Aug 7 2021 $
 .Dt SMCROUTE 8 SMM
 .Os
 .Sh NAME
@@ -421,6 +421,7 @@ etc.  Wildcards are available for inbound interfaces.
 #   phyint IFNAME <enable|disable> [mrdisc] [ttl-threshold <1-255>]
 #   mgroup from IFNAME [source ADDRESS] group MCGROUP[/LEN]
 #   mroute from IFNAME [source ADDRESS] group MCGROUP[/LEN] to IFNAME [IFNAME ...]
+#   include /PATH/TO/*.conf
 
 # This example disables the creation of a multicast VIF for WiFi
 # interface wlan0.  The kernel (at least Linux) sets the ALLMULTI
@@ -460,6 +461,10 @@ mroute from eth0 group 225.3.2.1 to eth1 eth2
 # works for IPv4.  Also, it is not possible to set a range of groups
 # to join atm.
 mroute from eth0 group 225.0.0.0/24 to eth1 eth2
+
+# Include any snippet in /etc/smcroute.d/, but please remember that
+# all phyint statements must be read first.
+include /etc/smcroute.d/*.conf
 .Ed
 .Pp
 Fairly simple. As usual, to identify the origin of the inbound multicast
