@@ -318,9 +318,10 @@ static int is_match4(struct mroute *rule, struct mroute *cand)
 	struct in_addr *addr1, *addr2;
 	inet_addr_t a, b;
 	uint32_t mask;
+	int rc = 0;
 
 	if (rule->inbound != cand->inbound)
-		return 0;
+		return rc;
 
 	if (rule->len > 0)
 		mask = 0xFFFFFFFFu << (32 - rule->len);
@@ -336,8 +337,9 @@ static int is_match4(struct mroute *rule, struct mroute *cand)
 	addr1->s_addr &= mask;
 	addr2->s_addr &= mask;
 
+	rc = !inet_addr_cmp(&a, &b);
 	if (is_anyaddr(&rule->source))
-		return !inet_addr_cmp(&a, &b);
+		return rc;
 
 	if (rule->src_len > 0)
 		mask = 0xFFFFFFFFu << (32 - rule->src_len);
@@ -352,8 +354,9 @@ static int is_match4(struct mroute *rule, struct mroute *cand)
 	addr2 = inet_addr_get(&b);
 	addr1->s_addr &= mask;
 	addr2->s_addr &= mask;
+	rc &= !inet_addr_cmp(&a, &b);
 
-	return !inet_addr_cmp(&a, &b);
+	return rc;
 }
 
 static int is_mroute_static(struct mroute *route)
