@@ -32,36 +32,30 @@
 
 #define MAX_LINE_LEN 512
 
-#define DEBUG(fmt, args...) {						    \
-	if (lineno)							    \
-		smclog(LOG_DEBUG, "%s:%02d: " fmt, conf, lineno, ##args);   \
-	else								    \
-		smclog(LOG_DEBUG, "ipc: " fmt, ##args);			    \
+#define DEBUG(fmt, args...) {						\
+	if (conf)							\
+		smclog(LOG_DEBUG, "%s:%02d: " fmt, conf->file,		\
+		       conf->lineno, ##args);				\
+	else								\
+		smclog(LOG_DEBUG, "ipc: " fmt, ##args);			\
 	}
-#define INFO(fmt, args...) {						    \
-	if (lineno)							    \
-		smclog(LOG_INFO, "%s:%02d: " fmt, conf, lineno, ##args);    \
-	else								    \
-		smclog(LOG_INFO, "ipc: " fmt, ##args);			    \
-	}
-
-#define WARN(fmt, args...) {						    \
-	if (lineno)							    \
-		smclog(LOG_WARNING, "%s:%02d: " fmt, conf, lineno, ##args); \
-	else								    \
-		smclog(LOG_WARNING, "ipc: " fmt, ##args);		    \
-	if (conf_vrfy)							    \
-		rc++;							    \
+#define INFO(fmt, args...) {						\
+	if (conf)							\
+		smclog(LOG_INFO, "%s:%02d: " fmt, conf->file,		\
+			conf->lineno, ##args);				\
+	else								\
+		smclog(LOG_INFO, "ipc: " fmt, ##args);			\
 	}
 
-/* Tokens */
-#define EMPTY  0
-#define MGROUP 1
-#define MROUTE 2
-#define PHYINT 3
-
-static int lineno = 0;
-static const char *conf = NULL;
+#define WARN(fmt, args...) {						\
+	if (conf)							\
+		smclog(LOG_WARNING, "%s:%02d: " fmt, conf->file,	\
+		       conf->lineno, ##args);				\
+	else								\
+		smclog(LOG_WARNING, "ipc: " fmt, ##args);		\
+	if (conf_vrfy)							\
+		rc++;							\
+	}
 
 static char *pop_token(char **line)
 {
@@ -104,7 +98,7 @@ static int match(char *keyword, char *token)
 	return !strncmp(keyword, token, len);
 }
 
-int conf_mgroup(int cmd, char *ifname, char *source, char *group)
+int conf_mgroup(struct conf *conf, int cmd, char *iif, char *source, char *group)
 {
 	inet_addr_t src = { 0 }, grp = { 0 };
 	int grp_len = 0;
@@ -112,7 +106,7 @@ int conf_mgroup(int cmd, char *ifname, char *source, char *group)
 	int family;
 	int rc = 0;
 
-	if (!ifname || !group) {
+	if (!iif || !group) {
 		errno = EINVAL;
 		return 1;
 	}
@@ -151,12 +145,12 @@ int conf_mgroup(int cmd, char *ifname, char *source, char *group)
 		inet_anyaddr(family, &src);
 
 
-	rc += mcgroup_action(cmd, ifname, &src, &grp, grp_len);
+	rc += mcgroup_action(cmd, iif, &src, &grp, grp_len);
 done:
 	return rc;
 }
 
-int conf_mroute(int cmd, char *ifname, char *source, char *group, char *outbound[], int num)
+int conf_mroute(struct conf *conf, int cmd, char *iif, char *source, char *group, char *oif[], int num)
 {
 	struct ifmatch state_in, state_out;
 	struct mroute mroute = { 0 };
@@ -166,7 +160,7 @@ int conf_mroute(int cmd, char *ifname, char *source, char *group, char *outbound
 	int rc = 0;
 	int vif;
 
-	if (!ifname || !group) {
+	if (!iif || !group) {
 		errno = EINVAL;
 		return 1;
 	}
@@ -206,26 +200,26 @@ int conf_mroute(int cmd, char *ifname, char *source, char *group, char *outbound
 	}
 
 	iface_match_init(&state_in);
-	DEBUG("mroute: checking for input iface %s ...", ifname);
-	while (iface_match_vif_by_name(ifname, &state_in, &iface_in) != NO_VIF) {
+	DEBUG("mroute: checking for input iface %s ...", iif);
+	while (iface_match_vif_by_name(iif, &state_in, &iface_in) != NO_VIF) {
 		char src[INET_ADDRSTR_LEN], grp[INET_ADDRSTR_LEN];
 		int i, total = 0;
 
 		vif = iface_get_vif(family, iface_in);
-		DEBUG("mroute: input iface %s has vif %d", ifname, vif);
+		DEBUG("mroute: input iface %s has vif %d", iif, vif);
 		mroute.inbound = vif;
 
 		for (i = 0; i < num; i++) {
 			iface_match_init(&state_out);
 
-			DEBUG("mroute: checking for %s ...", outbound[i]);
-			while (iface_match_vif_by_name(outbound[i], &state_out, &iface) != NO_VIF) {
+			DEBUG("mroute: checking for %s ...", oif[i]);
+			while (iface_match_vif_by_name(oif[i], &state_out, &iface) != NO_VIF) {
 				vif = iface_get_vif(family, iface);
 				if (vif == mroute.inbound && cmd) {
 					/* In case of wildcard match in==out is normal, so don't complain */
-					if (!ifname_is_wildcard(ifname) && !ifname_is_wildcard(outbound[i]))
+					if (!ifname_is_wildcard(iif) && !ifname_is_wildcard(oif[i]))
 						INFO("mroute: Same outbound interface (%s) as inbound (%s) may cause routing loops.",
-						     outbound[i], iface_in->ifname);
+						     oif[i], iface_in->ifname);
 				}
 
 				/* Use configured TTL threshold for the output phyint */
@@ -233,7 +227,7 @@ int conf_mroute(int cmd, char *ifname, char *source, char *group, char *outbound
 				total++;
 			}
 			if (!state_out.match_count)
-				WARN("mroute: Invalid outbound interface, skipping %s", outbound[i]);
+				WARN("mroute: Invalid outbound interface, skipping %s", oif[i]);
 		}
 
 		if (cmd) {
@@ -255,7 +249,7 @@ int conf_mroute(int cmd, char *ifname, char *source, char *group, char *outbound
 	}
 
 	if (!state_in.match_count) {
-		WARN("mroute: invalid inbound interface: %s", ifname);
+		WARN("mroute: invalid inbound interface: %s", iif);
 		rc++;
 	}
 
@@ -263,12 +257,14 @@ done:
 	return rc;
 }
 
-static int conf_phyint(int enable, char *ifname, int mrdisc, int threshold)
+static int conf_phyint(struct conf *conf, int enable, char *iif, int mrdisc, int threshold)
 {
-	if (enable)
-		return mroute_add_vif(ifname, mrdisc, threshold);
+	(void)conf;
 
-	return mroute_del_vif(ifname);
+	if (enable)
+		return mroute_add_vif(iif, mrdisc, threshold);
+
+	return mroute_del_vif(iif);
 }
 
 static char *chomp(char *str)
@@ -297,15 +293,24 @@ static char *chomp(char *str)
  *    mgroup   from IFNAME [source ADDRESS] group MCGROUP
  *    mroute   from IFNAME source ADDRESS   group MCGROUP to IFNAME [IFNAME ...]
  */
-static int conf_parse(const char *file, int do_vifs)
+static int conf_parse(struct conf *conf, int do_vifs)
 {
 	char *linebuf, *line;
 	int rc = 0;
 	FILE *fp;
 
-	fp = fopen(file, "r");
-	if (!fp)
-		return 1;
+	fp = fopen(conf->file, "r");
+	if (!fp) {
+		if (errno == ENOENT)
+			smclog(LOG_NOTICE, "Configuration file %s does not exist", conf->file);
+		else
+			smclog(LOG_WARNING, "Failed opening %s: %s", conf->file, strerror(errno));
+
+		if (conf_vrfy)
+			return 1;
+
+		smclog(LOG_NOTICE, "Continuing anyway, waiting for client to connect.");
+	}
 
 	linebuf = malloc(MAX_LINE_LEN * sizeof(char));
 	if (!linebuf) {
@@ -317,16 +322,15 @@ static int conf_parse(const char *file, int do_vifs)
 		return 1;
 	}
 
-	conf = file;
-	lineno = 1;
+	conf->lineno = 1;
 	while ((line = fgets(linebuf, MAX_LINE_LEN, fp))) {
 		int   op = 0, num = 0, enable = do_vifs;
 		int   mrdisc = 0, threshold = DEFAULT_THRESHOLD;
 		char *token;
-		char *ifname = NULL;
+		char *iif = NULL;
 		char *source = NULL;
 		char *group  = NULL;
-		char *dest[32];
+		char *oif[MAX_MC_VIFS];
 
 		/* Strip any line end character(s) */
 		chomp(line);
@@ -344,8 +348,8 @@ static int conf_parse(const char *file, int do_vifs)
 					op = MROUTE;
 				} else if (match("phyint", token)) {
 					op = PHYINT;
-					ifname = pop_token(&line);
-					if (!ifname)
+					iif = pop_token(&line);
+					if (!iif)
 						op = 0;
 				} else if (match("ssmgroup", token)) {
 					op = MGROUP; /* Compat */
@@ -356,13 +360,13 @@ static int conf_parse(const char *file, int do_vifs)
 			}
 
 			if (match("from", token)) {
-				ifname = pop_token(&line);
+				iif = pop_token(&line);
 			} else if (match("source", token)) {
 				source = pop_token(&line);
 			} else if (match("group", token)) {
 				group = pop_token(&line);
 			} else if (match("to", token)) {
-				while ((dest[num] = pop_token(&line)))
+				while ((oif[num] = pop_token(&line)))
 					num++;
 			} else if (match("enable", token)) {
 				enable = 1;
@@ -381,8 +385,8 @@ static int conf_parse(const char *file, int do_vifs)
 			}
 		}
 
-		if (ifname && !iface_exist(ifname)) {
-			WARN("Interface %s matches no valid system interfaces, skipping.", ifname);
+		if (iif && !iface_exist(iif)) {
+			WARN("Interface %s matches no valid system interfaces, skipping.", iif);
 			continue;
 		}
 
@@ -391,15 +395,15 @@ static int conf_parse(const char *file, int do_vifs)
 			break;
 
 		case MGROUP:
-			rc += conf_mgroup(1, ifname, source, group);
+			rc += conf_mgroup(conf, 1, iif, source, group);
 			break;
 
 		case MROUTE:
-			rc += conf_mroute(1, ifname, source, group, dest, num);
+			rc += conf_mroute(conf, 1, iif, source, group, oif, num);
 			break;
 
 		case PHYINT:
-			rc += conf_phyint(enable, ifname, mrdisc, threshold);
+			rc += conf_phyint(conf, enable, iif, mrdisc, threshold);
 			break;
 
 		default:
@@ -407,12 +411,11 @@ static int conf_parse(const char *file, int do_vifs)
 			break;
 		}
 
-		lineno++;
+		conf->lineno++;
 	}
 
 	free(linebuf);
 	fclose(fp);
-	lineno = 0;
 
 	return rc;
 }
@@ -420,27 +423,15 @@ static int conf_parse(const char *file, int do_vifs)
 /* Parse .conf file and setup routes */
 int conf_read(char *file, int do_vifs)
 {
-	int rc;
+	struct conf conf = { .file = file };
 
-	if (access(file, R_OK)) {
-		if (errno == ENOENT)
-			smclog(LOG_NOTICE, "Configuration file %s does not exist", file);
-		else
-			smclog(LOG_WARNING, "Unexpected error when accessing %s: %s", file, strerror(errno));
-
-		if (!conf_vrfy)
-			smclog(LOG_NOTICE, "Continuing anyway, waiting for client to connect.");
-
+	if (conf_parse(&conf, do_vifs)) {
+		smclog(LOG_WARNING, "Failed reading %s: %s.", file,
+		       errno ? strerror(errno) : "parse error");
 		return 1;
 	}
 
-	rc = conf_parse(file, do_vifs);
-	if (rc)
-		smclog(LOG_WARNING, "Failed reading %s: %s.", file, errno ? strerror(errno): "parse error");
-	else
-		script_exec(NULL);
-
-	return rc;
+	return script_exec(NULL);
 }
 
 /**

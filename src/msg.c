@@ -70,7 +70,7 @@ static int do_mgroup(struct ipc_msg *msg)
 	} else
 		strlcpy(group, msg->argv[1], sizeof(group));
 
-	return conf_mgroup(msg->cmd == 'j' ? 1 : 0, ifname, source[0] ? source : NULL, group);
+	return conf_mgroup(NULL, msg->cmd == 'j' ? 1 : 0, ifname, source[0] ? source : NULL, group);
 }
 
 static int do_mroute(struct ipc_msg *msg)
@@ -116,7 +116,7 @@ static int do_mroute(struct ipc_msg *msg)
 	while (pos < msg->count)
 		out[num++] = msg->argv[pos++];
 
-	return conf_mroute(msg->cmd == 'a' ? 1 : 0, ifname, source, group, out, num);
+	return conf_mroute(NULL, msg->cmd == 'a' ? 1 : 0, ifname, source, group, out, num);
 }
 
 static int do_show(struct ipc_msg *msg, int sd, int detail)
