@@ -593,6 +593,9 @@ static int kern_mroute6(int cmd, struct mroute *route)
 		return 1;
 	}
 
+	smclog(LOG_DEBUG, "%s %s -> %s from VIF %d", cmd ? "Add" : "Del",
+	       origin, group, route->inbound);
+
 	return 0;
 }
 
