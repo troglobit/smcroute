@@ -121,9 +121,9 @@ static int group_req(int sd, int cmd, struct mcgroup *mcg)
 	struct ipv6_mreq ipv6mr;
 #endif
 #ifdef HAVE_STRUCT_IP_MREQN
-	struct ip_mreqn ipmr;
+	struct ip_mreqn imr;
 #else
-	struct ip_mreq ipmr;
+	struct ip_mreq imr;
 #endif
 	int op, proto;
 	size_t len;
@@ -144,17 +144,17 @@ static int group_req(int sd, int cmd, struct mcgroup *mcg)
 	} else
 #endif
 	{
-		ipmr.imr_multiaddr = *inet_addr_get(&mcg->group);
+		imr.imr_multiaddr = *inet_addr_get(&mcg->group);
 #ifdef HAVE_STRUCT_IP_MREQN
-		ipmr.imr_ifindex   = mcg->iface->ifindex;
+		imr.imr_ifindex   = mcg->iface->ifindex;
 #else
-		ipmr.imr_interface = mcg->iface->inaddr;
+		imr.imr_interface = mcg->iface->inaddr;
 #endif
 
 		proto = IPPROTO_IP;
 		op    = cmd ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP;
-		arg   = &ipmr;
-		len   = sizeof(ipmr);
+		arg   = &imr;
+		len   = sizeof(imr);
 	}
 
 	smclog(LOG_DEBUG, "%s group (*,%s) on ifindex %d ...", cmd ? "Join" : "Leave",
@@ -166,10 +166,7 @@ static int group_req(int sd, int cmd, struct mcgroup *mcg)
 
 int kern_join_leave(int sd, int cmd, struct mcgroup *mcg)
 {
-	int err;
-
-	err = group_req(sd, cmd, mcg);
-	if (err) {
+	if (group_req(sd, cmd, mcg)) {
 		char source[INET_ADDRSTR_LEN] = "*";
 		char group[INET_ADDRSTR_LEN];
 		int len;
@@ -247,7 +244,7 @@ int kern_mroute_exit(void)
 
 int kern_vif_add(struct iface *iface)
 {
-	struct vifctl vc;
+	struct vifctl vifc;
 	size_t i;
 	int vif;
 
@@ -271,23 +268,23 @@ int kern_vif_add(struct iface *iface)
 	if (vif == -1)
 		return errno = ENOMEM;
 
-	memset(&vc, 0, sizeof(vc));
-	vc.vifc_vifi = vif;
-	vc.vifc_flags = 0;      /* no tunnel, no source routing, register ? */
-	vc.vifc_threshold = iface->threshold;
-	vc.vifc_rate_limit = 0;	/* hopefully no limit */
+	memset(&vifc, 0, sizeof(vifc));
+	vifc.vifc_vifi = vif;
+	vifc.vifc_flags = 0;      /* no tunnel, no source routing, register ? */
+	vifc.vifc_threshold = iface->threshold;
+	vifc.vifc_rate_limit = 0;	/* hopefully no limit */
 #ifdef VIFF_USE_IFINDEX		/* Register VIF using ifindex, not lcl_addr, since Linux 2.6.33 */
-	vc.vifc_flags |= VIFF_USE_IFINDEX;
-	vc.vifc_lcl_ifindex = iface->ifindex;
+	vifc.vifc_flags |= VIFF_USE_IFINDEX;
+	vifc.vifc_lcl_ifindex = iface->ifindex;
 #else
-	vc.vifc_lcl_addr.s_addr = iface->inaddr.s_addr;
+	vifc.vifc_lcl_addr.s_addr = iface->inaddr.s_addr;
 #endif
-	vc.vifc_rmt_addr.s_addr = htonl(INADDR_ANY);
+	vifc.vifc_rmt_addr.s_addr = htonl(INADDR_ANY);
 
 	smclog(LOG_DEBUG, "Map iface %-16s => VIF %-2d ifindex %2d flags 0x%04x TTL threshold %u",
-	       iface->ifname, vc.vifc_vifi, iface->ifindex, vc.vifc_flags, iface->threshold);
+	       iface->ifname, vifc.vifc_vifi, iface->ifindex, vifc.vifc_flags, iface->threshold);
 
-	if (setsockopt(sd4, IPPROTO_IP, MRT_ADD_VIF, &vc, sizeof(vc)))
+	if (setsockopt(sd4, IPPROTO_IP, MRT_ADD_VIF, &vifc, sizeof(vifc)))
 		return 1;
 
 	iface->vif = vif;
@@ -328,7 +325,7 @@ static int kern_mroute4(int cmd, struct mroute *route, int active)
 {
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	int op = cmd ? MRT_ADD_MFC : MRT_DEL_MFC;
-	struct mfcctl mc;
+	struct mfcctl mfcc;
 	size_t i;
 
 	if (sd4 == -1) {
@@ -336,19 +333,19 @@ static int kern_mroute4(int cmd, struct mroute *route, int active)
 		return -1;
 	}
 
-	memset(&mc, 0, sizeof(mc));
-	mc.mfcc_origin   = *inet_addr_get(&route->source);
-	mc.mfcc_mcastgrp = *inet_addr_get(&route->group);
-	mc.mfcc_parent   = route->inbound;
+	memset(&mfcc, 0, sizeof(mfcc));
+	mfcc.mfcc_origin   = *inet_addr_get(&route->source);
+	mfcc.mfcc_mcastgrp = *inet_addr_get(&route->group);
+	mfcc.mfcc_parent   = route->inbound;
 
 	inet_addr2str(&route->source, origin, sizeof(origin));
 	inet_addr2str(&route->group, group, sizeof(group));
 
 	/* copy the TTL vector, as many as the kernel supports */
-	for (i = 0; i < NELEMS(mc.mfcc_ttls); i++)
-		mc.mfcc_ttls[i] = route->ttl[i];
+	for (i = 0; i < NELEMS(mfcc.mfcc_ttls); i++)
+		mfcc.mfcc_ttls[i] = route->ttl[i];
 
-	if (setsockopt(sd4, IPPROTO_IP, op, &mc, sizeof(mc))) {
+	if (setsockopt(sd4, IPPROTO_IP, op, &mfcc, sizeof(mfcc))) {
 		if (ENOENT == errno)
 			smclog(LOG_DEBUG, "failed removing multicast route (%s,%s), does not exist.",
 				origin, group);
@@ -389,7 +386,7 @@ static int kern_stats4(struct mroute *route, struct mroute_stats *ms)
 		return errno;
 	}
 
-	ms->ms_pktcnt =  sg_req.pktcnt;
+	ms->ms_pktcnt   = sg_req.pktcnt;
 	ms->ms_bytecnt  = sg_req.bytecnt;
 	ms->ms_wrong_if = sg_req.wrong_if;
 
@@ -402,18 +399,18 @@ static int kern_stats4(struct mroute *route, struct mroute_stats *ms)
 
 static int proc_set_val(char *file, int val)
 {
-	int fd, result = 0;
+	int fd, rc = 0;
 
 	fd = open(file, O_WRONLY);
 	if (fd < 0)
 		return 1;
 
 	if (-1 == write(fd, "1", val))
-		result = 1;
+		rc = 1;
 
 	close(fd);
 
-	return result;
+	return rc;
 }
 #endif /* Linux only */
 
@@ -487,7 +484,7 @@ int kern_mroute6_exit(void)
 /* Create a virtual interface from @iface so it can be used for IPv6 multicast routing. */
 int kern_mif_add(struct iface *iface)
 {
-	struct mif6ctl mc;
+	struct mif6ctl mif6c;
 	int mif = -1;
 	size_t i;
 
@@ -511,21 +508,21 @@ int kern_mif_add(struct iface *iface)
 	if (mif == -1)
 		return errno = ENOMEM;
 
-	memset(&mc, 0, sizeof(mc));
-	mc.mif6c_mifi = mif;
-	mc.mif6c_flags = 0;             /* no register */
+	memset(&mif6c, 0, sizeof(mif6c));
+	mif6c.mif6c_mifi = mif;
+	mif6c.mif6c_flags = 0;             /* no register */
 #ifdef HAVE_MIF6CTL_VIFC_THRESHOLD
-	mc.vifc_threshold = iface->threshold;
+	mif6c.vifc_threshold = iface->threshold;
 #endif
-	mc.mif6c_pifi = iface->ifindex; /* physical interface index */
+	mif6c.mif6c_pifi = iface->ifindex; /* physical interface index */
 #ifdef HAVE_MIF6CTL_VIFC_RATE_LIMIT
-	mc.vifc_rate_limit = 0;         /* hopefully no limit */
+	mif6c.vifc_rate_limit = 0;         /* hopefully no limit */
 #endif
 
 	smclog(LOG_DEBUG, "Map iface %-16s => MIF %-2d ifindex %2d flags 0x%04x TTL threshold %u",
-	       iface->ifname, mc.mif6c_mifi, mc.mif6c_pifi, mc.mif6c_flags, iface->threshold);
+	       iface->ifname, mif6c.mif6c_mifi, mif6c.mif6c_pifi, mif6c.mif6c_flags, iface->threshold);
 
-	if (setsockopt(sd6, IPPROTO_IPV6, MRT6_ADD_MIF, &mc, sizeof(mc)))
+	if (setsockopt(sd6, IPPROTO_IPV6, MRT6_ADD_MIF, &mif6c, sizeof(mif6c)))
 		return -1;
 
 	iface->mif = mif;
@@ -560,7 +557,7 @@ static int kern_mroute6(int cmd, struct mroute *route)
 {
 	char origin[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
 	int op = cmd ? MRT6_ADD_MFC : MRT6_DEL_MFC;
-	struct mf6cctl mc;
+	struct mf6cctl mf6cc;
 	size_t i;
 
 	if (sd6 == -1)
@@ -568,25 +565,25 @@ static int kern_mroute6(int cmd, struct mroute *route)
 	if (!route)
 		return errno = EINVAL;
 
-	memset(&mc, 0, sizeof(mc));
-	mc.mf6cc_origin   = *inet_addr6_get(&route->source);
-	mc.mf6cc_mcastgrp = *inet_addr6_get(&route->group);
-	mc.mf6cc_parent   = route->inbound;
+	memset(&mf6cc, 0, sizeof(mf6cc));
+	mf6cc.mf6cc_origin   = *inet_addr6_get(&route->source);
+	mf6cc.mf6cc_mcastgrp = *inet_addr6_get(&route->group);
+	mf6cc.mf6cc_parent   = route->inbound;
 
 	inet_addr2str(&route->source, origin, INET_ADDRSTR_LEN);
 	inet_addr2str(&route->group, group, INET_ADDRSTR_LEN);
 
-	IF_ZERO(&mc.mf6cc_ifset);
+	IF_ZERO(&mf6cc.mf6cc_ifset);
 	for (i = 0; i < NELEMS(route->ttl); i++) {
 		if (route->ttl[i]) {
-			IF_SET(i, &mc.mf6cc_ifset);
+			IF_SET(i, &mf6cc.mf6cc_ifset);
 		}
 	}
 
-	if (setsockopt(sd6, IPPROTO_IPV6, op, &mc, sizeof(mc))) {
+	if (setsockopt(sd6, IPPROTO_IPV6, op, &mf6cc, sizeof(mf6cc))) {
 		if (ENOENT == errno)
-			smclog(LOG_DEBUG, "failed removing IPv6 multicast route (%s,%s), does not exist.",
-				origin, group);
+			smclog(LOG_DEBUG, "failed removing IPv6 multicast route (%s,%s), "
+			       "does not exist.", origin, group);
 		else
 			smclog(LOG_WARNING, "failed %s IPv6 multicast route (%s,%s): %s",
 			       cmd ? "adding" : "removing", origin, group, strerror(errno));
