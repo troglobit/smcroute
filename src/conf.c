@@ -308,9 +308,9 @@ int conf_parse(struct conf *conf, int do_vifs)
 			smclog(LOG_WARNING, "Failed opening %s: %s", conf->file, strerror(errno));
 
 		if (conf_vrfy)
-			return 1;
+			smclog(LOG_NOTICE, "Continuing anyway, waiting for client to connect.");
 
-		smclog(LOG_NOTICE, "Continuing anyway, waiting for client to connect.");
+		return 1;
 	}
 
 	linebuf = malloc(MAX_LINE_LEN * sizeof(char));
