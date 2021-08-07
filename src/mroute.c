@@ -41,7 +41,7 @@
 #include "util.h"
 
 /*
- * Cache flush timeout, used only for IPv4 (*,G) atm.
+ * Cache flush timeout, used for learned S in (*,G) that stop xmit
  */
 static int cache_timeout = 0;
 
@@ -62,7 +62,6 @@ LIST_HEAD(, mroute) mroute_asm_kern_list = LIST_HEAD_INITIALIZER();
  */
 LIST_HEAD(, mroute) mroute_ssm_list = LIST_HEAD_INITIALIZER();
 
-static void mroute4_dyn_expire (int max_idle);
 static int  mroute4_add_vif    (struct iface *iface);
 static int  mroute_dyn_add     (struct mroute *route);
 static int  is_match           (struct mroute *rule, struct mroute *cand);
@@ -155,12 +154,12 @@ static void handle_nocache4(int sd, void *arg)
 	}
 }
 
-static void cache4_flush(void *arg)
+static void cache_flush(void *arg)
 {
 	(void)arg;
 
 	smclog(LOG_INFO, "Cache timeout, flushing unused IPv4 (*,G) routes!");
-	mroute4_dyn_expire(cache_timeout);
+	mroute_expire(cache_timeout);
 }
 
 /**
@@ -172,10 +171,9 @@ static void cache4_flush(void *arg)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute4_enable(int do_vifs, int table_id, int timeout)
+static int mroute4_enable(int do_vifs, int table_id)
 {
 	struct iface *iface;
-	static int running = 0;
 
 	if (kern_mroute_init(table_id, handle_nocache4, NULL)) {
 		switch (errno) {
@@ -210,12 +208,6 @@ int mroute4_enable(int do_vifs, int table_id, int timeout)
 	if (do_vifs) {
 		for (iface = iface_iterator(1); iface; iface = iface_iterator(0))
 			mroute4_add_vif(iface);
-	}
-
-	if (timeout && !running) {
-		running++;
-		cache_timeout = timeout;
-		timer_add(timeout, cache4_flush, NULL);
 	}
 
 	return 0;
@@ -385,7 +377,7 @@ static int is_active(struct mroute *route)
  * Get valid packet usage statistics (i.e. number of actually forwarded
  * packets) from the kernel for an installed MFC entry
  */
-static unsigned long get_valid_pkt4(struct mroute *route)
+static unsigned long get_valid_pkt(struct mroute *route)
 {
 	struct mroute_stats ms = { 0 };
 
@@ -396,7 +388,7 @@ static unsigned long get_valid_pkt4(struct mroute *route)
 }
 
 /**
- * mroute4_dyn_expire - Expire dynamically added (*,G) routes
+ * mroute_expire - Expire dynamically added (*,G) routes
  * @max_idle: Timeout for routes in seconds, 0 to expire all dynamic routes
  *
  * This function flushes all (*,G) routes which haven't been used (i.e. no
@@ -405,7 +397,7 @@ static unsigned long get_valid_pkt4(struct mroute *route)
  * The latter is useful in case of topology changes (e.g. VRRP fail-over)
  * or similar.
  */
-static void mroute4_dyn_expire(int max_idle)
+void mroute_expire(int max_idle)
 {
 	struct mroute *entry, *tmp;
 	struct timespec now;
@@ -416,13 +408,13 @@ static void mroute4_dyn_expire(int max_idle)
 		if (!entry->last_use) {
 			/* New entry */
 			entry->last_use = now.tv_sec;
-			entry->valid_pkt = get_valid_pkt4(entry);
+			entry->valid_pkt = get_valid_pkt(entry);
 		}
 
 		if (entry->last_use + max_idle <= now.tv_sec) {
 			unsigned long valid_pkt;
 
-			valid_pkt = get_valid_pkt4(entry);
+			valid_pkt = get_valid_pkt(entry);
 			if (valid_pkt != entry->valid_pkt) {
 				/* Used since last check, update */
 				entry->last_use = now.tv_sec;
@@ -779,7 +771,7 @@ static void handle_nocache6(int sd, void *arg)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-int mroute6_enable(int do_vifs, int table_id)
+static int mroute6_enable(int do_vifs, int table_id)
 {
 #ifndef HAVE_IPV6_MULTICAST_ROUTING
 	(void)do_vifs;
@@ -1009,11 +1001,19 @@ static int mroute_dyn_add(struct mroute *route)
 
 int mroute_init(int do_vifs, int table_id, int cache_tmo)
 {
+	static int running = 0;
+
 	LIST_INIT(&mroute_asm_conf_list);
 	LIST_INIT(&mroute_asm_kern_list);
 	LIST_INIT(&mroute_ssm_list);
 
-	return  mroute4_enable(do_vifs, table_id, cache_tmo) ||
+	if (cache_tmo > 0 && !running) {
+		running++;
+		cache_timeout = cache_tmo;
+		timer_add(cache_tmo, cache_flush, NULL);
+	}
+
+	return  mroute4_enable(do_vifs, table_id) ||
 		mroute6_enable(do_vifs, table_id);
 }
 
@@ -1067,11 +1067,6 @@ int mroute_del_vif(char *ifname)
 		return 1;
 
 	return ret;
-}
-
-void mroute_expire(int max_idle)
-{
-	mroute4_dyn_expire(max_idle);
 }
 
 /*
