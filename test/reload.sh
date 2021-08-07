@@ -50,6 +50,7 @@ sleep 1
 ../src/smcroutectl -pS "/tmp/$NM/sock" show groups
 show_mroute
 cat /proc/net/ip_mr_vif
+cat /proc/net/ip_mr_cache
 
 check_output "Iif: a1" "Oifs: b1 b3"
 
@@ -74,11 +75,12 @@ sleep 1
 ../src/smcroutectl -pS "/tmp/$NM/sock" show groups
 show_mroute
 cat /proc/net/ip_mr_vif
+cat /proc/net/ip_mr_cache
 
 check_output "Iif: a1" "Oifs: b3(ttl 3) b2(ttl 2)"
 
 print "Updating route from smcroutectl ..."
-../src/smcroutectl -S "/tmp/$NM/sock" add a1 10.0.0.1 225.3.2.1 b2 b3 b4
+../src/smcroutectl -S "/tmp/$NM/sock" add a1 10.0.0.1 225.3.2.1 b4
 show_mroute
 
 check_output "Iif: a1" "Oifs: b3(ttl 3) b2(ttl 2) b4(ttl 4)"
