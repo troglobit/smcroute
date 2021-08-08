@@ -89,6 +89,46 @@ void inet_anyaddr(sa_family_t family, inet_addr_t *addr)
 	sin->sin_addr.s_addr = htonl(INADDR_ANY);
 }
 
+inet_addr_t inet_netaddr(inet_addr_t *addr, int len)
+{
+	inet_addr_t net = *addr;
+	uint32_t bits;
+	int max_len;
+
+	assert(addr);
+#ifdef HAVE_IPV6_MULTICAST_HOST
+	if (addr->ss_family == AF_INET6)
+		max_len = 128;
+	else
+#endif
+		max_len = 32;
+	assert(len > 0 && len <= max_len);
+	bits = max_len - len;
+
+#ifdef HAVE_IPV6_MULTICAST_HOST
+	if (addr->ss_family == AF_INET6) {
+		struct sockaddr_in6 *sin6 = inet_addr6_get(&net);
+		struct in6_addr s6 = sin6->sin6_addr;
+		uint32_t pos = 3;
+
+		while (bits >= 32) {
+			s6.s6_addr32[pos--] = 0;
+			bits -= 32;
+		}
+
+		s6.s6_addr32[pos] = htonl(ntohl(s6.s6_addr32[pos]) & (0xffffffffu << bits));
+		sin6->sin6_addr = s6;
+	} else
+#endif
+	{
+		struct in_addr *ina = inet_addr_get(&net);
+
+		ina->s_addr = htonl(ntohl(ina->s_addr) & (0xffffffffu << bits));
+	}
+
+	return net;
+}
+
 int inet_addr_cmp(inet_addr_t *a, inet_addr_t *b)
 {
 	if (!a || !b) {
@@ -195,7 +235,6 @@ int is_anyaddr(inet_addr_t *addr)
 
 int inet_iter_init(struct inet_iter *iter, inet_addr_t *addr, int len)
 {
-	uint32_t mask;
 	int max_len;
 
 	if (!iter)
@@ -214,34 +253,8 @@ int inet_iter_init(struct inet_iter *iter, inet_addr_t *addr, int len)
 
 	iter->orig = *addr;
 	iter->len  = len;
-	iter->addr = *addr;
+	iter->addr = inet_netaddr(addr, len);
 	iter->num  = 1 << (max_len - len);
-
-#ifdef HAVE_IPV6_MULTICAST_HOST
-	if (addr->ss_family == AF_INET6) {
-		struct sockaddr_in6 *sin6 = inet_addr6_get(&iter->addr);
-		struct in6_addr s6 = sin6->sin6_addr;
-		uint32_t bits = max_len - len;
-		uint32_t pos = 3;
-
-		while (bits >= 32) {
-			s6.s6_addr32[pos--] = 0;
-			bits -= 32;
-		}
-
-		s6.s6_addr32[pos] = htonl(ntohl(s6.s6_addr32[pos]) & (0xffffffffu << bits));
-		sin6->sin6_addr = s6;
-	} else
-#endif
-	{
-		struct in_addr *ina = inet_addr_get(&iter->addr);
-
-		mask = 0xffffffffu;
-		if (len > 0)
-			mask <<= max_len - len;
-
-		ina->s_addr = htonl(ntohl(ina->s_addr) & mask);
-	}
 
 	return 0;
 }

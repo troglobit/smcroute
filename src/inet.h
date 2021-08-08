@@ -53,6 +53,7 @@ struct sockaddr_in6 *inet_addr6_get (inet_addr_t *addr);
 #endif
 
 void                 inet_anyaddr   (sa_family_t family, inet_addr_t *addr);
+inet_addr_t          inet_netaddr   (inet_addr_t *addr, int len);
 
 int                  inet_addr_cmp  (inet_addr_t *a, inet_addr_t *b);
 
