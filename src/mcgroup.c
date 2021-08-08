@@ -63,8 +63,13 @@ static struct sock_fprog fprog = {
 };
 #endif /* HAVE_LINUX_FILTER_H */
 
-/* Linux net.ipv4.igmp_max_memberships defaults to 20 */
+/*
+ * Linux net.ipv4.igmp_max_memberships defaults to 20, but empiricism
+ * suggests we can only ever get 10 from each socket on Linux 5.11.
+ * We therefore calibrate for the current system this using ENOBUFS.
+ */
 #define MAX_GROUPS 20
+static int max_groups = MAX_GROUPS;
 
 struct mc_sock {
 	LIST_ENTRY(mc_sock) link;
@@ -81,7 +86,7 @@ static int alloc_mc_sock(int family)
 	struct mc_sock *entry;
 
 	LIST_FOREACH(entry, &mc_sock_list, link) {
-		if (entry->cnt < MAX_GROUPS && entry->family == family)
+		if (entry->cnt < max_groups && entry->family == family)
 			break;
 	}
 
@@ -127,6 +132,7 @@ static int alloc_mc_sock(int family)
 	}
 
 	entry->cnt++;
+	smclog(LOG_DEBUG, "Group socket %d count %d of MAX %d", entry->sd, entry->cnt, max_groups);
 
 	return entry->sd;
 }
@@ -367,7 +373,7 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, int src_len
 					inet_addr_set(&mcg->group, &gnext);
 				}
 				gaddr++;
-
+			retry:
 				if (!cmd) {
 					struct mcgroup *kmcg;
 
@@ -380,9 +386,27 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, int src_len
 					sd = alloc_mc_sock(group->ss_family);
 
 				if (kern_join_leave(sd, cmd, mcg)) {
-					if (cmd && errno == EADDRINUSE)
-						continue; /* Already joined, ignore */
+					if (cmd) {
+						switch (errno) {
+						case EADDRINUSE:
+							 /* Already joined, ignore */
+							continue;
 
+						case ENOBUFS:
+							smclog(LOG_WARNING, "Out of groups on socket "
+							       "adjusting max_groups %d.", max_groups);
+							/*
+							 * Maxed out net.ipv4.igmp_max_msf
+							 * or net.ipv4.igmp_max_memberships
+							 * Linux only.
+							 */
+							max_groups--;
+							goto retry;
+
+						default:
+							break;
+						}
+					}
 					rc++;
 					break;
 				}
