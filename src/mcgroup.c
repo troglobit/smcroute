@@ -224,31 +224,17 @@ void mcgroup_init(void)
  */
 void mcgroup_exit(void)
 {
-#if 0
-	struct mcgroup *centry, *ctmp;
-	struct mgroup *entry, *tmp;
+	struct mcgroup *entry, *tmp;
 
-	if (mcgroup4_socket != -1) {
-		socket_close(mcgroup4_socket);
-		mcgroup4_socket = -1;
-	}
-
-#ifdef HAVE_IPV6_MULTICAST_HOST
-	if (mcgroup6_socket != -1) {
-		socket_close(mcgroup6_socket);
-		mcgroup6_socket = -1;
-	}
-#endif
-
-	LIST_FOREACH_SAFE(centry, &conf_list, link, ctmp) {
-		LIST_REMOVE(centry, link);
-		free(centry);
-	}
-	LIST_FOREACH_SAFE(entry, &kern_list, link, tmp) {
+	LIST_FOREACH_SAFE(entry, &conf_list, link, tmp) {
 		LIST_REMOVE(entry, link);
 		free(entry);
 	}
-#endif
+	LIST_FOREACH_SAFE(entry, &kern_list, link, tmp) {
+		LIST_REMOVE(entry, link);
+		free_mc_sock(entry->sd);
+		free(entry);
+	}
 }
 
 static struct mcgroup *find_conf(const char *ifname, inet_addr_t *source, inet_addr_t *group, int len)
