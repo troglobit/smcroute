@@ -198,6 +198,7 @@ static int start_server(void)
 
 	atexit(clean);
 	signal_init();
+	mcgroup_init();
 	ipc_init(sock_file);
 
 	conf_read(conf_file, do_vifs);

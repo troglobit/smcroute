@@ -32,6 +32,7 @@
 #ifdef HAVE_LINUX_FILTER_H
 #include <linux/filter.h>
 #endif
+#include <sys/resource.h>
 
 #include "log.h"
 #include "ipc.h"
@@ -198,6 +199,24 @@ static void list_rem(int sd, struct mcgroup *mcg)
 		free_mc_sock(entry->sd);
 		free(entry);
 	}
+}
+
+void mcgroup_init(void)
+{
+	struct rlimit rlim;
+
+	if (getrlimit(RLIMIT_NOFILE, &rlim)) {
+		smclog(LOG_ERR, "Failed reading RLIMIT_NOFILE");
+		return;
+	}
+
+	smclog(LOG_DEBUG, "NOFILE: current %ld max %ld", rlim.rlim_cur, rlim.rlim_max);
+	rlim.rlim_cur = 2048;
+	if (setrlimit(RLIMIT_NOFILE, &rlim)) {
+		smclog(LOG_ERR, "Failed setting RLIMIT_NOFILE soft limit to %d: %m", 2048);
+		return;
+	}
+	smclog(LOG_DEBUG, "NOFILE: set new current %ld max %ld", rlim.rlim_cur, rlim.rlim_max);
 }
 
 /*
