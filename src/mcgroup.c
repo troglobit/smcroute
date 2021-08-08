@@ -328,52 +328,14 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, int src_len
 
 	iface_match_init(&state);
 	while ((mcg->iface = match_valid_iface(ifname, &state))) {
-		uint32_t saddr = 0, saddr_max = 0;
-		struct in_addr sorig, snext;
+		struct inet_iter siter;
 
-		if (mcg->source.ss_family == AF_INET && !is_anyaddr(&mcg->source)) {
-			int mask;
+		inet_iter_init(&siter, &mcg->source, mcg->src_len);
+		while (inet_iterator(&siter, &mcg->source)) {
+			struct inet_iter giter;
 
-			if (mcg->src_len > 0)
-				mask = 0xFFFFFFFFu << (32 - mcg->src_len);
-			else
-				mask = 0xFFFFFFFFu;
-
-			sorig = *inet_addr_get(&mcg->source);
-			saddr = ntohl(sorig.s_addr) & mask;
-			saddr_max = saddr | ~mask;
-		}
-
-		while (saddr <= saddr_max) {
-			uint32_t gaddr = 0, gaddr_max = 0;
-			struct in_addr gorig, gnext;
-
-			if (saddr) {
-				snext.s_addr = htonl(saddr);
-				inet_addr_set(&mcg->source, &snext);
-			}
-			saddr++;
-
-			if (mcg->group.ss_family == AF_INET) {
-				int mask;
-
-				if (mcg->len > 0)
-					mask = 0xFFFFFFFFu << (32 - mcg->len);
-				else
-					mask = 0xFFFFFFFFu;
-
-				gorig = *inet_addr_get(&mcg->group);
-				gaddr = ntohl(gorig.s_addr) & mask;
-				gaddr_max = gaddr | ~mask;
-			}
-
-			while (gaddr <= gaddr_max) {
-				if (gaddr) {
-					gnext.s_addr = htonl(gaddr);
-					inet_addr_set(&mcg->group, &gnext);
-				}
-				gaddr++;
-			retry:
+			inet_iter_init(&giter, &mcg->group, mcg->len);
+			while (inet_iterator(&giter, &mcg->group)) {
 				if (!cmd) {
 					struct mcgroup *kmcg;
 
@@ -382,8 +344,10 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, int src_len
 						continue;
 
 					sd = kmcg->sd;
-				} else
+				} else {
+				retry:
 					sd = alloc_mc_sock(group->ss_family);
+				}
 
 				if (kern_join_leave(sd, cmd, mcg)) {
 					if (cmd) {
@@ -417,12 +381,10 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, int src_len
 					list_rem(sd, mcg);
 			}
 
-			if (gaddr && mcg->group.ss_family == AF_INET)
-				inet_addr_set(&mcg->group, &gorig);
+			mcg->group = giter.orig;
 		}
 
-		if (saddr && mcg->source.ss_family == AF_INET)
-			inet_addr_set(&mcg->source, &sorig);
+		mcg->source = siter.orig;
 	}
 
 	if (!cmd) {
