@@ -19,6 +19,24 @@ check_output()
     fi
 }
 
+check_output6()
+{
+    print "Verifying ..."
+    if [ -n "$1" ]; then
+	ip -6 maddr show dev a2
+	if ! ip -6 maddr show dev a2 | grep -q "$1"; then
+	    FAIL "Cannot find (* $1)"
+	fi
+    fi
+
+    if [ -n "$2" ]; then
+	cat /proc/net/mcfilter6
+	if ! grep -q "$2" /proc/net/mcfilter6; then
+	    FAIL "Cannot find ($2)"
+	fi
+    fi
+}
+
 # shellcheck source=/dev/null
 . "$(dirname "$0")/lib.sh"
 
@@ -74,6 +92,32 @@ print "Debug 2 ..."
 print "Phase 3: Join group from multiple sources (IPC)"
 ../src/smcroutectl -S "/tmp/$NM/sock" join a1 10.0.0.1/26 225.1.2.3
 check_output "" "0xe1010203 0x0a00003e"
+
+################################################################### LEAVE GROUPS
+print "Debug 3 ..."
+../src/smcroutectl -S "/tmp/$NM/sock" show group
+../src/smcroutectl -S "/tmp/$NM/sock" leave a1 10.0.0.1/26 225.1.2.3
+
+######################################################## JOIN SOURCES AND GROUPS
+print "Phase 4: Join multiple groups from multiple sources (IPC)"
+../src/smcroutectl -S "/tmp/$NM/sock" join a1 10.0.0.1/30 225.1.2.3/30
+check_output "" "0xe1010201 0x0a000003"
+
+############################################################## JOIN IPv6 SOURCES
+print "Phase 5: Join IPv6 group from multiple sources (IPC)"
+../src/smcroutectl -S "/tmp/$NM/sock" join a1 2001:1::1/122 ff2e::42
+check_output6 "" "ff2e0000000000000000000000000042 2001000100000000000000000000001c"
+
+../src/smcroutectl -S "/tmp/$NM/sock" show group
+../src/smcroutectl -S "/tmp/$NM/sock" leave a1 2001:1::1/122 ff2e::42
+
+################################################### JOIN IPv6 SOURCES AND GROUPS
+print "Phase 6: Join multiple IPv6 groups from multiple sources (IPC)"
+../src/smcroutectl -S "/tmp/$NM/sock" join a1 2001:1::1/126 ff2e::42/126
+check_output6 "" "ff2e0000000000000000000000000041 20010001000000000000000000000002"
+
+../src/smcroutectl -S "/tmp/$NM/sock" show group
+../src/smcroutectl -S "/tmp/$NM/sock" leave a1 2001:1::1/122 ff2e::42/126
 
 ########################################################################### DONE
 OK
