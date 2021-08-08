@@ -193,8 +193,139 @@ int is_anyaddr(inet_addr_t *addr)
 	return sin->sin_addr.s_addr == htonl(INADDR_ANY);
 }
 
+int inet_iter_init(struct inet_iter *iter, inet_addr_t *addr, int len)
+{
+	uint32_t mask;
+	int max_len;
+
+	if (!iter)
+		return errno = EINVAL;
+
+#ifdef HAVE_IPV6_MULTICAST_HOST
+	if (addr->ss_family == AF_INET6)
+		max_len = 128;
+	else
+#endif
+	max_len = 32;
+	if (len < 0 || len > max_len) {
+		iter->num = 0;
+		return errno = EINVAL;
+	}
+
+	iter->orig = *addr;
+	iter->len  = len;
+	iter->addr = *addr;
+	iter->num  = 1 << (max_len - len);
+
+#ifdef HAVE_IPV6_MULTICAST_HOST
+	if (addr->ss_family == AF_INET6) {
+		struct sockaddr_in6 *sin6 = inet_addr6_get(&iter->addr);
+		struct in6_addr s6 = sin6->sin6_addr;
+		uint32_t bits = max_len - len;
+		uint32_t pos = 3;
+
+		while (bits >= 32) {
+			s6.s6_addr32[pos--] = 0;
+			bits -= 32;
+		}
+
+		s6.s6_addr32[pos] = htonl(ntohl(s6.s6_addr32[pos]) & (0xffffffffu << bits));
+		sin6->sin6_addr = s6;
+	} else
+#endif
+	{
+		struct in_addr *ina = inet_addr_get(&iter->addr);
+
+		mask = 0xffffffffu;
+		if (len > 0)
+			mask <<= max_len - len;
+
+		ina->s_addr = htonl(ntohl(ina->s_addr) & mask);
+	}
+
+	return 0;
+}
+
+int inet_iterator(struct inet_iter *iter, inet_addr_t *addr)
+{
+	if (!iter) {
+		errno = EINVAL;
+		return 0;
+	}
+	if (iter->num-- == 0)
+		return 0;
+
+	*addr = iter->addr;		/* prepared already */
+
+#ifdef HAVE_IPV6_MULTICAST_HOST
+	if (addr->ss_family == AF_INET6) {
+		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&iter->addr;
+		struct in6_addr s6 = sin6->sin6_addr;
+		uint32_t pos = 4;
+
+		while (pos--) {
+			uint32_t addr32 = ntohl(s6.s6_addr32[pos]);
+
+			addr32++;
+			s6.s6_addr32[pos] = htonl(addr32);
+			if (addr32 > 0)
+				break;
+		}
+
+		sin6->sin6_addr = s6;
+	} else
+#endif
+	{
+		struct sockaddr_in *sin = (struct sockaddr_in *)&iter->addr;
+		in_addr_t ina;
+
+		ina = ntohl(sin->sin_addr.s_addr);
+		sin->sin_addr.s_addr = htonl(++ina);
+	}
+
+	return 1;
+}
+
+#ifdef _UNIT_TEST
+#include <err.h>
+#include <stdio.h>
+
+int main(void)
+{
+	char str[INET_ADDRSTR_LEN];
+	struct inet_iter iter;
+	inet_addr_t addr;
+
+	inet_anyaddr(AF_INET6, &addr);
+	if (!is_anyaddr(&addr))
+		err(1, "FAIL");
+	puts("OK");
+
+	inet_str2addr("192.168.1.42", &addr);
+	inet_iter_init(&iter, &addr, 24);
+	printf("Got num: %u\n", iter.num);
+	while (inet_iterator(&iter, &addr))
+		printf("%s num %u\n", inet_addr2str(&addr, str, sizeof(str)), iter.num);
+
+	inet_str2addr("2001::1", &addr);
+	inet_iter_init(&iter, &addr, 122);
+	printf("Got num: %u -> initial str %s\n", iter.num, inet_addr2str(&addr, str, sizeof(str)));
+	while (inet_iterator(&iter, &addr))
+		printf("%s num %u\n", inet_addr2str(&addr, str, sizeof(str)), iter.num);
+
+	inet_str2addr("192.168.1.42", &addr);
+	inet_iter_init(&iter, &addr, 1);
+	printf("Got num: %u\n", iter.num);
+	while (inet_iterator(&iter, &addr))
+		printf("%s num %u\n", inet_addr2str(&addr, str, sizeof(str)), iter.num);
+
+	return 0;
+}
+#endif
+
 /**
  * Local Variables:
+ *  compile-command: "gcc -D_UNIT_TEST -I.. -I. -o unit_test inet.c && ./unit_test"
  *  indent-tabs-mode: t
  *  c-file-style: "linux"
  * End:

@@ -36,11 +36,21 @@
 #endif
 typedef struct sockaddr_storage inet_addr_t;
 
+struct inet_iter {
+	inet_addr_t orig;
+	int         len;
+
+	inet_addr_t addr;
+	uint32_t    num;
+};
+
 void                 inet_addr_set  (inet_addr_t *addr, const struct in_addr *ina);
 struct in_addr      *inet_addr_get  (inet_addr_t *addr);
 
+#ifdef HAVE_IPV6_MULTICAST_HOST
 void                 inet_addr6_set (inet_addr_t *addr, const struct in6_addr *ina);
 struct sockaddr_in6 *inet_addr6_get (inet_addr_t *addr);
+#endif
 
 void                 inet_anyaddr   (sa_family_t family, inet_addr_t *addr);
 
@@ -52,4 +62,6 @@ int                  inet_str2addr  (const char *str, inet_addr_t *addr);
 int                  is_multicast   (inet_addr_t *addr);
 int                  is_anyaddr     (inet_addr_t *addr);
 
+int                  inet_iter_init (struct inet_iter *iter, inet_addr_t *addr, int len);
+int                  inet_iterator  (struct inet_iter *iter, inet_addr_t *addr);
 #endif /* SMCROUTE_INET_H_ */
