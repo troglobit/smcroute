@@ -80,7 +80,7 @@ show_mroute
 check_output "Iif: a1" "Oifs: b3 b2"
 
 print "Updating route from smcroutectl ..."
-../src/smcroutectl -S "/tmp/$NM/sock" add a1 2001:1::10/64 ff2e::42 b4
+../src/smcroutectl -S "/tmp/$NM/sock" add a1 fc00::1 ff2e::42 b4
 show_mroute
 
 check_output "Iif: a1" "Oifs: b3 b2 b4"
