@@ -61,7 +61,7 @@ lines5=$(tshark -r "/tmp/$NM/pcap" 2>/dev/null | grep 225.3.2.1   | tee "/tmp/$N
 lines6=$(tshark -r "/tmp/$NM/pcap" 2>/dev/null | grep ff04::114   | tee "/tmp/$NM/result" | wc -l)
 lines7=$(tshark -r "/tmp/$NM/pcap" 2>/dev/null | grep 225.3.3.1   | tee "/tmp/$NM/result" | wc -l)
 cat "/tmp/$NM/result"
-echo " => $lines1 for 225.1.2.1 ,  expected >= 2"
+echo " => $lines1 for 225.1.2.1,   expected >= 2"
 echo " => $lines2 for 225.1.2.201, expected >= 2"
 echo " => $lines3 for ff2e::42,    expected >= 2"
 echo " => $lines4 for ff2e::7f,    expected >= 2"
