@@ -150,15 +150,6 @@ injected on a1 and tcpdump verifies function on a2.
 
 **Topology:** Basic
 
-
-### VLAN Interfaces
-
-Similar to the basic routing test, except VLAN interfaces are created on
-top of the base interfaces, and routing takes place there.  This test is
-based on [troglobit/smcroute#161][issue-161].
-
-**Topology:** Basic w/ VLANs
-
 												 
 ### Bridge VLANs
 
@@ -168,6 +159,31 @@ the VLANs.  The other end of each VETH pair is placed in an isolated
 network namespace to allow proper IP networking to be set up.
 
 **Topology:** Isolated Bridged w/ VLANs
+
+
+### Dynamic Routes
+
+Different combinations of `(*,G/LEN)` to `(S/LEN, G)` routing is tested
+here for both IPv4 and IPv6.
+
+**Topology:** Basic
+
+
+### Expiration of Dynamic Routes
+
+The command line option `smcrouted -c SEC` can be used to tweak the
+cache timeout for `(*,G)` routes.  This test verifies that it works
+as intended for both IPv4 and IPv6.
+
+**Topology:** Basic
+
+
+### Include Files
+
+This test does not traffic or forwarding verification, it only tests
+that the `include` directive for `smcroute.conf` works.
+
+**Topology:** Basic
 
 
 ### IPv6 (S,G) and (*,G) Forwarding
@@ -199,6 +215,56 @@ use different interfaces and verify operation by inspecting the Linux
 `ip maddr` and `/proc/net/mcfilter` output.
 
 **Topology:** Basic
+
+
+### Join/Leave ASM/SSM with Prefix Length
+
+Verify ASM & SSM join and leave for IPv4 & IPv6 in various prefix length
+combinations; `(S/LEN, G)`, `(S, G/LEN)`, and `(S/LEN, G/LEN)`.  Since
+ASM and SSM cannot be mixed on the same interface (fallback to ASM
+occurs), we use different interfaces and verify operation by inspecting
+the Linux `ip maddr` and `/proc/net/mcfilter` output.
+
+**Topology:** Basic
+
+
+### Poison Pill Routes
+
+Verifies `(*,G/LEN)` routes from a set of approved inbound interfaces
+are properly installed in the kernel MFC.  While blocking traffic to the
+same groups from other inbound interfaces using stop-filter, or "poison
+pill", routes (no outbound interfaces).  For details, see issue #143.
+
+Note, this test assumed the origin `S` of inbound traffic differs
+between inbound interfaces.  I.e., the same `S` on different inbound
+interfaces is not supported by `smcrouted`.
+
+**Topology:** Multi
+
+
+### Reload .conf File (IPv4)
+
+Verifies that reloading the .conf file using `SIGHUP` or `reload`
+command to `smcroutectl` does not disturb established flows, and
+that the resulting configuration is properly set in the kernel.
+
+**Topology:** Multi
+
+
+### Reload .conf File (IPv6)
+
+The same as the IPv4 test, but for IPv6.
+
+**Topology:** Multi
+
+
+### VLAN Interfaces
+
+Similar to the basic routing test, except VLAN interfaces are created on
+top of the base interfaces, and routing takes place there.  This test is
+based on [troglobit/smcroute#161][issue-161].
+
+**Topology:** Basic w/ VLANs
 
 
 [issue-161]: https://github.com/troglobit/smcroute/issues/161
