@@ -186,6 +186,8 @@ int conf_mroute(struct conf *conf, int cmd, char *iif, char *source, char *group
 		WARN("mroute: Invalid multicast group prefix length, %d", mroute.len);
 		goto done;
 	}
+	if (!mroute.len)
+		mroute.len = len_max;
 
 	if (source) {
 		mroute.src_len = is_range(source);
@@ -202,6 +204,8 @@ int conf_mroute(struct conf *conf, int cmd, char *iif, char *source, char *group
 		inet_anyaddr(family, &mroute.source);
 		mroute.src_len = 0;
 	}
+	if (!mroute.src_len)
+		mroute.src_len = len_max;
 
 	iface_match_init(&state_in);
 	DEBUG("mroute: checking for input iface %s ...", iif);

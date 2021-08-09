@@ -99,8 +99,8 @@ static void handle_nocache4(int sd, void *arg)
 	inet_addr_set(&mroute.source, &im->im_src);
 	inet_addr_set(&mroute.group, &im->im_dst);
 	mroute.inbound = im->im_vif;
-	mroute.len     = 0;
-	mroute.src_len = 0;
+	mroute.len     = 32;
+	mroute.src_len = 32;
 
 	inet_addr2str(&mroute.source, origin, sizeof(origin));
 	inet_addr2str(&mroute.group, group, sizeof(group));
@@ -312,48 +312,30 @@ static int is_exact_match4(struct mroute *a, struct mroute *b)
  * does 225.1.2.3 fall inside 225.0.0.0/8?  => Yes
  * does 225.1.2.3 fall inside 225.0.0.0/15? => Yes
  * does 225.1.2.3 fall inside 225.0.0.0/16? => No
+ *
+ * does ff05:bad1::1 fall inside ff05:bad0::/16? => Yes
+ * does ff05:bad1::1 fall inside ff05:bad0::/31? => Yes
+ * does ff05:bad1::1 fall inside ff05:bad0::/32? => No
  */
-static int is_match4(struct mroute *rule, struct mroute *cand)
+int is_match(struct mroute *rule, struct mroute *cand)
 {
-	struct in_addr *addr1, *addr2;
 	inet_addr_t a, b;
-	uint32_t mask;
 	int rc = 0;
 
+	if (rule->group.ss_family != cand->group.ss_family)
+		return 0;
 	if (rule->inbound != cand->inbound)
 		return rc;
 
-	if (rule->len > 0)
-		mask = 0xFFFFFFFFu << (32 - rule->len);
-	else
-		mask = 0xFFFFFFFFu;
-	mask = htonl(mask);
-
-	a = rule->group;
-	b = cand->group;
-
-	addr1 = inet_addr_get(&a);
-	addr2 = inet_addr_get(&b);
-	addr1->s_addr &= mask;
-	addr2->s_addr &= mask;
+	a = inet_netaddr(&rule->group, rule->len);
+	b = inet_netaddr(&cand->group, rule->len);
 
 	rc = !inet_addr_cmp(&a, &b);
 	if (is_anyaddr(&rule->source))
 		return rc;
 
-	if (rule->src_len > 0)
-		mask = 0xFFFFFFFFu << (32 - rule->src_len);
-	else
-		mask = 0xFFFFFFFFu;
-	mask = htonl(mask);
-
-	a = rule->source;
-	b = cand->source;
-
-	addr1 = inet_addr_get(&a);
-	addr2 = inet_addr_get(&b);
-	addr1->s_addr &= mask;
-	addr2->s_addr &= mask;
+	a = inet_netaddr(&rule->source, rule->src_len);
+	b = inet_netaddr(&cand->source, rule->src_len);
 	rc &= !inet_addr_cmp(&a, &b);
 
 	return rc;
@@ -361,7 +343,15 @@ static int is_match4(struct mroute *rule, struct mroute *cand)
 
 static int is_mroute_static(struct mroute *route)
 {
-	return !is_anyaddr(&route->source) && route->src_len == 0 && route->len == 0;
+	int max_len;
+
+#ifdef HAVE_IPV6_MULTICAST_HOST
+	if (route->group.ss_family == AF_INET6)
+		max_len = 128;
+	else
+#endif
+	max_len = 32;
+	return !is_anyaddr(&route->source) && route->src_len == max_len && route->len == max_len;
 }
 
 static int is_active(struct mroute *route)
@@ -711,8 +701,8 @@ static void handle_nocache6(int sd, void *arg)
 	inet_addr6_set(&mroute.source, &im6->im6_src);
 	inet_addr6_set(&mroute.group, &im6->im6_dst);
 	mroute.inbound = im6->im6_mif;
-	mroute.len     = 0;
-	mroute.src_len = 0;
+	mroute.len     = 128;
+	mroute.src_len = 128;
 
 	inet_addr2str(&mroute.source, origin, sizeof(origin));
 	inet_addr2str(&mroute.group, group, sizeof(group));
@@ -893,45 +883,7 @@ static int is_exact_match6(struct mroute *rule, struct mroute *cand)
 
 	return result;
 }
-
-/*
- * Used for (*,G) matches
- *
- * The incoming candidate is compared to the configured rule, e.g.
- * does ff05:bad1::1 fall inside ff05:bad0::/16? => Yes
- * does ff05:bad1::1 fall inside ff05:bad0::/31? => Yes
- * does ff05:bad1::1 fall inside ff05:bad0::/32? => No
- */
-static int is_match6(struct mroute *rule, struct mroute *cand)
-{
-	int rc = 0;
-
-	if (rule->inbound != cand->inbound)
-		return rc;
-
-	if (rule->len == 0 && cand->len == 0)
-		rc = !inet_addr_cmp(&rule->group, &cand->group);
-	else
-		/* TODO: Match based on prefix length */
-		rc = 1;
-
-	if (rule->src_len > 0 && cand->src_len > 0)
-		rc &= !inet_addr_cmp(&rule->source, &cand->source);
-
-	return rc;
-}
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
-
-static int is_match(struct mroute *rule, struct mroute *cand)
-{
-	if (rule->group.ss_family != cand->group.ss_family)
-		return 0;
-#ifdef HAVE_IPV6_MULTICAST_ROUTING
-	if (rule->group.ss_family == AF_INET6)
-		return is_match6(rule, cand);
-#endif
-	return is_match4(rule, cand);
-}
 
 static int is_exact_match(struct mroute *rule, struct mroute *cand)
 {
