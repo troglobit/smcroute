@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
+#include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 
@@ -84,6 +85,7 @@ int socket_register(int sd, void (*cb)(int, void *), void *arg)
  */
 int socket_create(int domain, int type, int proto, void (*cb)(int, void *), void *arg)
 {
+	int val = 0;
 	int sd;
 
 #ifdef HAVE_SOCK_CLOEXEC
@@ -92,6 +94,29 @@ int socket_create(int domain, int type, int proto, void (*cb)(int, void *), void
 	sd = socket(domain, type, proto);
 	if (sd < 0)
 		return -1;
+
+#ifdef HAVE_IPV6_MULTICAST_HOST
+		if (domain == AF_INET6) {
+			if (setsockopt(sd, SOL_SOCKET, IPV6_MULTICAST_LOOP, &val, sizeof(val)))
+				smclog(LOG_WARNING, "failed disabling IPV6_MULTICAST_LOOP: %s",
+				       strerror(errno));
+#ifdef IPV6_MULTICAST_ALL
+			if (setsockopt(sd, SOL_SOCKET, IPV6_MULTICAST_ALL, &val, sizeof(val)))
+				smclog(LOG_WARNING, "failed disabling IPV6_MULTICAST_ALL: %s",
+				       strerror(errno));
+#endif
+		} else
+#endif /* HAVE_IPV6_MULTICAST_HOST */
+		{
+			if (setsockopt(sd, SOL_SOCKET, IP_MULTICAST_LOOP, &val, sizeof(val)))
+				smclog(LOG_WARNING, "failed disabling IP_MULTICAST_LOOP: %s",
+				       strerror(errno));
+#ifdef IP_MULTICAST_ALL
+			if (setsockopt(sd, SOL_SOCKET, IP_MULTICAST_ALL, &val, sizeof(val)))
+				smclog(LOG_WARNING, "failed disabling IP_MULTICAST_ALL: %s",
+				       strerror(errno));
+#endif
+		}
 
 	if (socket_register(sd, cb, arg) < 0) {
 		close(sd);

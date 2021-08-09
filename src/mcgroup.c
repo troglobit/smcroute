@@ -91,9 +91,6 @@ static int alloc_mc_sock(int family)
 	}
 
 	if (!entry) {
-#ifdef IP_MULTICAST_ALL
-		int val = 0;
-#endif
 		entry = malloc(sizeof(struct mc_sock));
 		if (!entry) {
 			smclog(LOG_ERR, "Out of memory in %s()", __func__);
@@ -112,20 +109,6 @@ static int alloc_mc_sock(int family)
 #ifdef HAVE_LINUX_FILTER_H
 		if (setsockopt(entry->sd, SOL_SOCKET, SO_ATTACH_FILTER, &fprog, sizeof(fprog)) < 0)
 			smclog(LOG_WARNING, "failed setting IPv4 socket filter, continuing anyway");
-#endif
-
-#ifdef HAVE_IPV6_MULTICAST_HOST
-		if (family == AF_INET6) {
-#ifdef IPV6_MULTICAST_ALL
-			if (setsockopt(entry->sd, SOL_SOCKET, IPV6_MULTICAST_ALL, &val, sizeof(val)))
-				smclog(LOG_WARNING, "failed disabling IPV6_MULTICAST_ALL: %s", strerror(errno));
-#endif
-		} else
-#endif
-
-#ifdef IP_MULTICAST_ALL
-		if (setsockopt(entry->sd, SOL_SOCKET, IP_MULTICAST_ALL, &val, sizeof(val)))
-			smclog(LOG_WARNING, "failed disabling IP_MULTICAST_ALL: %s", strerror(errno));
 #endif
 
 		LIST_INSERT_HEAD(&mc_sock_list, entry, link);
