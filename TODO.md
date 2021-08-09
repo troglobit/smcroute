@@ -14,6 +14,24 @@ been removed from the system while smcrouted is running and gets a
 SIGHUP.
 
 
+Add support for WRONGVIF, somehow
+---------------------------------
+
+When an (S,G) for an already installed kernel MFC route suddenly appears
+on another inbound interface, the kernel sends a WRONGVIF upcall message
+to smcrouted.  Currently we don't act on it, mostly because there is no
+clear idea how to deal with such cases from a small routing daemon that
+knows nothing of the rest of the layer-3 topology (which may have been
+reconfigured due to link loss by, e.g. OSPF).  It can be a valid change
+of inbound interface, or looped back traffic that we don't want.
+
+For now, users are recommended to install multiast snooping switches on
+their outbound interfaces, and/or leverage to `phyint foo ttl-threshold`
+setting to prevent already routed multicast from being looped back.
+
+One idea is to delegate the behavior to our external script facility.
+
+
 Investigate why MIF thresholds don't seem to work on Linux 5.11.0
 ------------------------------------------------------------------
 
@@ -36,19 +54,6 @@ much point really continuing?
 
 Proposal: exit with error if either mrouting socket is busy.
           We need to consider this a configuration error.
-
-
-Support for reloading smcroute.conf without disturbing existing flows
----------------------------------------------------------------------
-
-When `restart()` is called, SMCRoute currently calls `mroute_exit()` and
-`mcgroup_exit()` to shut down the multicast routing socket, to flush all
-routes and leave all multicast groups, before parsing `smcroute.conf` to
-join new groups and set new routes.
-
-A common use-case is when a user makes a small change to `smcroute.conf`
-to leave a group or add a new route.  The expectation from the user is
-for established flows and joins to not be disturbed.
 
 
 Support for (re-)enumerating VIFs at runtime
@@ -100,22 +105,6 @@ we should proxy for.  Resulting `smcroute.conf` may then look like this:
 
 For more information, see the above mentioned tools and [RFC4605][],
 which details exactly this use-case.
-
-
-IPv6 support for (*,G) on-demand routing rules
-----------------------------------------------
-
-As of SMCRoute v1.99.0 IPv4 support for (*,G) routes was added.  Adding
-support for IPv6 should be fairly straight forward but needs figuring
-out the kernel interface and some basic testing.
-
-
-IPv6 support for listing joined groups and routes
--------------------------------------------------
-
-The current `smcroutectl show` command only lists IPv4 groups and
-routes.  Adding support for IPv6 as well is quite straight forward,
-but requires someone with IPv6 knowledge.
 
 
 [igmpproxy]: https://github.com/pali/igmpproxy
