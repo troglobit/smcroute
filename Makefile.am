@@ -1,11 +1,8 @@
 ## SMCRoute - A static multicast routing tool             -*-Makefile-*-
 ACLOCAL_AMFLAGS         = -I m4
-
-SUBDIRS                 = src
+SUBDIRS                 = man src
 DISTCLEANFILES		= *~ DEADJOE semantic.cache *.gdb *.elf core core.* *.d
 dist_sbin_SCRIPTS       = smcroute
-dist_man8_MANS		= smcroute.8
-SYMLINKS                = smcrouted.8 smcroutectl.8
 doc_DATA		= README.md COPYING smcroute.conf
 EXTRA_DIST		= README.md AUTHORS ChangeLog.md autogen.sh smcroute.conf smcroute.default smcroute.init
 
@@ -16,19 +13,6 @@ endif
 if HAVE_SYSTEMD
 systemd_DATA            = smcroute.service
 endif
-
-# Hook in install to add smcroute.8 --> smcrouted.8, smcroutectl.8 symlinks
-install-data-hook:
-	@for file in $(SYMLINKS); do			\
-		link=$(DESTDIR)$(man8dir)/$$file;	\
-		test -e $$link && continue;		\
-		$(LN_S) $(dist_man8_MANS) $$link;	\
-	done
-
-uninstall-hook:
-	@for file in $(SYMLINKS); do			\
-		$(RM) $(DESTDIR)$(mandir)/$$file;	\
-	done
 
 ## Generate MD5 checksum file
 MD5 = md5sum

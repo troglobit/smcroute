@@ -9,7 +9,7 @@ AM_SILENT_RULES([yes])
 
 AC_CONFIG_SRCDIR([src/smcrouted.c])
 AC_CONFIG_HEADER([config.h])
-AC_CONFIG_FILES([Makefile src/Makefile test/Makefile smcroute.service])
+AC_CONFIG_FILES([Makefile man/Makefile src/Makefile test/Makefile smcroute.service])
 
 # Older versions of autoconf (<2.58) do not have AC_CONFIG_MACRO_DIR()
 m4_include([m4/misc.m4])
