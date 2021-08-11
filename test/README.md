@@ -114,11 +114,11 @@ interfaces and using ping6 as emitter instead of requiring [nemesis][1].
                             SMCRoute
                          .-- router --.
                         /              \
-      netnst: left    vlan1         vlan2    netns: right
+      netns: left     vlan1         vlan2    netns: right
      .-------------.       \       /        .-------------.
      |             |        bridge0         |             |
      | MC --> eth0 |        /     \         | eth0 --> MC |
-     |            `--------'       '--------'             |
+     |            `--------'       '---------'            |
      '-------------'                        '-------------'
 
 Both bridge ports, `a1` and `a2`, are untagged members of each VLAN.
