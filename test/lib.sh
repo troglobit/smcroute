@@ -235,10 +235,6 @@ topo_isolated_bridge()
 
     topo_isolated "$@"
 
-    # This will fail to create the VETH pairs, but that's OK since
-    # we've set up the b1 and b2 interfaces here to be enslaved in
-    # the bridge instead.
-    #topo_bridge
     echo "Creating br0, adding $lif and $rif as bridge ports"
     ip link add br0 type bridge vlan_filtering 1 mcast_snooping 0
     ip link set "$lif" master br0
@@ -396,7 +392,7 @@ topo()
 	    topo_teardown
 	    ;;
 	*)
-	    print "No such topology: $1"
+	    print "No such topology: $t"
 	    exit 1
 	    ;;
     esac
