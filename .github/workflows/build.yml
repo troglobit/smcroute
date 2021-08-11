@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install pkg-config libsystemd-dev libcap-dev tshark
+          sudo apt-get -y install pkg-config libsystemd-dev libcap-dev tshark iptables
       - uses: actions/checkout@v2
       - name: Configure
         # Build in a sub-directory so we can safely set a+w on all
@@ -63,6 +63,7 @@ jobs:
           ~/tmp/sbin/smcroutectl -h
       - name: Run Unit Tests
         run: |
+          sudo chmod a+rw /var/run/xtables.lock
           make check || (cat test/test-suite.log; false)
       - name: Upload Test Results
         uses: actions/upload-artifact@v2
