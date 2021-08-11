@@ -61,7 +61,7 @@ struct arg {
 	{ NULL,      0, 't', NULL,   "Skip table heading in show command", NULL, 0 },
 	{ "help",    0, 'h', NULL,   "Show help text", NULL, 0 },
 	{ "version", 0, 'v', NULL,   "Show program version", NULL, 0 },
-	{ "flush" ,  0, 'F', NULL,   "Flush all dynamically set (*,G) multicast routes", NULL, 0 },
+	{ "flush" ,  0, 'F', NULL,   "Flush all dynamically installed (*,G) multicast routes", NULL, 0 },
 	{ "kill",    0, 'k', NULL,   "Kill running daemon", NULL, 0 },
 	{ "reload",  0, 'H', NULL,   "Reload .conf file, like SIGHUP", NULL, 0 },
 	{ "restart", 0, 'H', NULL,   NULL, NULL, 0 }, /* Alias, compat with older versions */
@@ -360,9 +360,9 @@ static int usage(int code)
 	}
 
 	printf("\nArguments:\n"
-	       "         <--------- INBOUND ---------->  <--- OUTBOUND ---->\n"
-	       "  add    IFNAME [SOURCE-IP] GROUP[/LEN]  IFNAME [IFNAME ...]\n"
-	       "  remove IFNAME [SOURCE-IP] GROUP[/LEN]\n"
+	       "         <--------- INBOUND ---------->        <--- OUTBOUND ---->\n"
+	       "  add    IFNAME [SOURCE-IP[/LEN]] GROUP[/LEN]  IFNAME [IFNAME ...]\n"
+	       "  remove IFNAME [SOURCE-IP[/LEN]] GROUP[/LEN]\n"
 	       "\n"
 	       "  join   IFNAME [SOURCE-IP[/LEN]] GROUP[/LEN]\n"
 	       "  leave  IFNAME [SOURCE-IP[/LEN]] GROUP[/LEN]\n"
