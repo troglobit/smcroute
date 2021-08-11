@@ -55,10 +55,10 @@ Interfaces `a1` and `a2` are Linux dummy type interfaces.
     MC -----> a1                       a2 ------> MC
 
 
-### Multi
+### Basic Plus
 
-Same as Basic, but with multiple output interfaces, useful for testing
-wildcard interface matching.
+Same as Basic, but with more inbound/output interfaces, useful for
+testing wildcard interface matching.
 
                         SMCRoute
                  .====== router =====.

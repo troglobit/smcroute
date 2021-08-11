@@ -120,10 +120,10 @@ EOF
     return 2
 }
 
-# Same as basic topology, but with multiple inbound interfaces.
+# Same as basic topology, but with more inbound/outbound interfaces.
 #
 # No IP address assignment is done in topo files, only topology setup.
-topo_multi()
+topo_plus()
 {
     cat << EOF > "$NM-topo.ip"
 link add a1 type dummy
@@ -337,8 +337,8 @@ topo()
 	    esac
 	    ;;
 
-	multi)
-	    topo_multi
+	plus)
+	    topo_plus
 	    ;;
 
 	teardown)

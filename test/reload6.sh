@@ -17,7 +17,7 @@ check_output()
 . "$(dirname "$0")/lib.sh"
 
 print "Creating world ..."
-topo multi
+topo plus
 ip addr add 2001:1::1/64 dev a1
 ip addr add 2001:2::1/64 dev a2
 ip addr add 2001:3::1/64 dev a3
