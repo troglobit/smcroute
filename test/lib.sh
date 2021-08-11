@@ -31,6 +31,13 @@ OK()
     exit 0
 }
 
+check_dep()
+{
+    if ! command -v "$1" >/dev/null; then
+	SKIP "Cannot find $1, skipping test."
+    fi
+}
+
 show_mroute()
 {
     # Show active routes (and counters)
@@ -252,6 +259,39 @@ topo_isolated_bridge()
     bridge vlan add vid 2 dev br0 self
 }
 
+# Variant of a variant ... this is the Multi Domain topology.  It has
+# two isolated network namespaces and a shared segment connecting them.
+# The intention is to emulate network setups where the same base subnet
+# is reused in many places.  So that when interconnecting them a string
+# of 1:1 NAT operations need to performed.  These type of setups are
+# more common than one might think; factories, train cars, ... tanks.
+#
+# Note, the bridge is only used to connect the ends of the VETH pairs.
+topo_multi()
+{
+    left="$1"
+    right="$2"
+    lif=$(basename "$left")
+    rif=$(basename "$right")
+
+    topo_isolated "$@"
+
+    nsenter --net="$left" -- ip link add eth1 type dummy
+    nsenter --net="$left" -- ip link set eth1 up
+    nsenter --net="$left" -- ip link set eth1 multicast on
+
+    nsenter --net="$right" -- ip link add eth1 type dummy
+    nsenter --net="$right" -- ip link set eth1 up
+    nsenter --net="$right" -- ip link set eth1 multicast on
+
+    echo "Creating br0, adding $lif and $rif as bridge ports"
+    ip link add br0 type bridge
+    ip link set "$lif" master br0
+    ip link set "$rif" master br0
+
+    ip link set br0 up
+}
+
 topo_teardown()
 {
     if [ -z "$NM" ]; then
@@ -342,6 +382,10 @@ topo()
 	    	    topo_isolated "$@"
 		    ;;
 	    esac
+	    ;;
+
+	multi)
+	    topo_multi "$@"
 	    ;;
 
 	plus)

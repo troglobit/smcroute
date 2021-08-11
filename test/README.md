@@ -6,6 +6,7 @@ The following tests verify fundamental functionality of SMCRoute when
 in `$PATH`:
 
   - `ip` and `bridge` (iproute2 package, not the BusyBox variants)
+  - `iptables`, for the 1:1 NAT test
   - `ping`
   - `tshark` (because `tcpdump -w foo.pcap` doesn't work in an unshare)
 
@@ -140,6 +141,28 @@ an isolated network namespace.  Purpose is to emulate true end devices.
     '-----------'     VETH pairs: aN//brN     '-----------'
                         In netns: eth0
 
+
+### Multi Domain
+
+This topology is intended to be used for testing multiple routers.  The
+bridge in the shared segment is only used to connect the two VETH pairs.
+
+
+          netns: left                       netns: right
+         .-------------.                   .-------------.
+         |  smcrouted  |                   |  smcrouted  |
+         |    /   \    |       br0         |    /   \    |
+    MC --> eth1   eth0 |      /   \        | eth0   eth1 <-- MC
+         |            `------'     '-------'             |
+         '-------------'  192.168.0.0/24   '-------------'
+           10.0.0.0/24                       10.0.0.0/24
+
+The idea is to provide a very tricky, but also very common, use case;
+replicated setups with the same IP subnet forwarding multicast to a
+shared LAN.  Commonly worked around using 1:1 NAT, or IP masquerading.
+Neither of which is really best friends with IP multicast routing.
+
+
 Tests
 -----
 
@@ -226,6 +249,20 @@ occurs), we use different interfaces and verify operation by inspecting
 the Linux `ip maddr` and `/proc/net/mcfilter` output.
 
 **Topology:** Basic
+
+
+### Multiple Routers with 1:1 NAT
+
+Verify multicast forwarding from two separate LANs to a shared segment,
+where the two separate LANs have the same IP subnet.  To make things
+worse, the same IP source address will be used for both multicast
+senders.
+
+Note, this test requires the host system also has `iptables`.  If the
+test cannot find the `iptables` tool, it will `exit 77` to trigger a
+SKIP in the test suite.
+
+**Topology:** Multi Domain
 
 
 ### Poison Pill Routes
