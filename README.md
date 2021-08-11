@@ -206,7 +206,11 @@ Experimental
 
 Multicast often originates from different sources but usually not at the
 same time.  For a more generic setup, and to reduce the number of rules
-required, it is possible to set (*,G) IPv4 multicast routes.
+required, it is possible to set `(*,G)` multicast routes for both IPv4
+and IPv6.  It's even possible to specify a `(*,G/LEN)` range, which
+`smcrouted` use as "templates" to match against and install proper
+`(S,G)` routes when the kernel informs it of inbound multicast from new
+sources.
 
 Example `smcroute.conf`:
 
@@ -223,7 +227,7 @@ or, from the command line:
     # smcroutectl add  eth0 225.1.2.3 eth1 eth2
 
 Also, see the `smcrouted -c SEC` option for periodic flushing of learned
-(*,G) rules, including the automatic blocking of unknown multicast, and
+`(*,G)` rules, including the automatic blocking of unknown multicast, and
 the `smcroutectl flush` command.
 
 Another experimental feature is multicast router discovery, [mrdisc][],
