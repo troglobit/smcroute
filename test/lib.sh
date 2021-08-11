@@ -10,11 +10,18 @@ print()
     printf "\e[7m>> %-80s\e[0m\n" "$1"
 }
 
+SKIP()
+{
+    print "TEST: SKIP"
+    [ $# -gt 0 ] && echo "$*"
+    exit 77
+}
+
 FAIL()
 {
     print "TEST: FAIL"
     [ $# -gt 0 ] && echo "$*"
-    exit 1
+    exit 99
 }
 
 OK()
