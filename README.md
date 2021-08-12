@@ -43,14 +43,21 @@ Multicast routes exist in the UNIX kernel as long as a multicast routing
 daemon runs.  On Linux, multiple multicast routers can run simultaneously
 using different multicast routing tables.
 
+The full documentation of SMCRoute is available in the manual pages, see
+[smcrouted(8)][], [smcroutectl(8)][], and [smcroute.conf(5)][].
+
 
 Features
 --------
 
+All features, except [mrdisc][], are supported for both IPv4 and IPv6.
+Please note, some features may not be available on systems other than
+Linux.  E.g., FreeBSD does not have SSM group join support.
+
   - Configuration file support, `/etc/smcroute.conf`
   - Configuration snippet include support, `/etc/smcroute.d/*.conf`
   - Daemon startup options support, `/etc/default/smcroute`
-  - Support for seamless reloading of the configuration  on `SIGHUP`
+  - Support for seamless reloading of the configuration on `SIGHUP`
   - Source-less on-demand routing, a.k.a. wildcard `(*,G)` based static
     routing, including support for `(*,G/LEN)` and `(S/LEN,G/LEN)`
   - Optional built-in [mrdisc][] support for IPv4, [RFC4286][]
@@ -59,16 +66,22 @@ Features
     to show both routes and joined groups
   - Interface wildcard matching, `eth+` matches `eth0, eth15`
 
+> **Note:** `smcroutectl` can be used to freely modify the runtime state
+>            of `smcrouted`, but any changes made (routes/groups) are
+>            lost when the configuration is reloaded.  This is by design.
+
 
 Usage
 -----
 
     smcrouted [-nNhsv] [-c SEC] [-d SEC] [-e CMD] [-f FILE] [-I NAME]
 	          [-l LVL] [-p USER:GROUP] [-P FILE] [-S FILE] [-t ID]
+    
     smcroutectl [-dptv] [-I NAME] [-S FILE] [COMMAND]
-    smcroutectl show [routes | groups]
-    smcroutectl ⟨add  | rem⟩   ⟨ROUTE⟩
-    smcroutectl ⟨join | leave⟩ ⟨GROUP⟩
+    smcroutectl ⟨kill | reload⟩
+    smcroutectl ⟨add  | rem⟩    ⟨ROUTE⟩
+    smcroutectl ⟨join | leave⟩  ⟨GROUP⟩
+    smcroutectl  show [ routes | groups]
 
 To set multicast routes and join groups you must first start the daemon,
 which needs *root privileges*, or `CAP_NET_ADMIN`.  Use `smcrouted -n`
@@ -378,6 +391,9 @@ Debian at [Alioth][] and before that by [Carsten Schill][], the original
 author.
 
 
+[smcrouted(8)]:    https://man.troglobit.com/man8/smcrouted.8.html
+[smcroutectl(8)]:  https://man.troglobit.com/man8/smcroutectl.8.html
+[smcroute.conf(5)]:https://man.troglobit.com/man5/smcroute.conf.5.html
 [Finit]:           https://github.com/troglobit/finit
 [mrouted]:         https://github.com/troglobit/mrouted
 [pimd]:            https://github.com/troglobit/pimd
