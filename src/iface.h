@@ -10,8 +10,12 @@
 
 #include "mroute.h"			/* vifit_t + mifi_t */
 
+#ifndef ALL_MIFS
+#define ALL_MIFS (vifi_t)-1
+#endif
+
 #define DEFAULT_THRESHOLD 1		/* Packet TTL must be at least 1 to pass */
-#define NO_VIF            ALL_VIFS	/* -1 */
+#define NO_VIF   ALL_VIFS
 
 struct iface {
 	int      unused;		/* set on reload/SIGHUP only */
