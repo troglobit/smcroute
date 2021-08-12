@@ -1091,21 +1091,27 @@ void mroute_reload_end(void)
 
 static int show_mroute(int sd, struct mroute *r, int detail)
 {
-	struct iface *iface;
 	char src[INET_ADDRSTRLEN] = "*";
 	char src_len[5] = "";
 	char grp[INET_ADDRSTRLEN];
 	char grp_len[5] = "";
 	char sg[(INET_ADDRSTRLEN + 3) * 2 + 5];
 	char buf[MAX_MC_VIFS * 17 + 80];
+	struct iface *iface;
+	int max_len = 32;
+
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
+	if (r->group.ss_family == AF_INET6)
+		max_len = 128;
+#endif
 
 	if (!is_anyaddr(&r->source)) {
 		inet_addr2str(&r->source, src, sizeof(src));
-		if (r->src_len)
+		if (r->src_len != max_len)
 			snprintf(src_len, sizeof(src_len), "/%u", r->src_len);
 	}
 	inet_addr2str(&r->group, grp, sizeof(grp));
-	if (r->len)
+	if (r->len != max_len)
 		snprintf(grp_len, sizeof(grp_len), "/%u", r->len);
 
 	iface = iface_find_by_inbound(r);
