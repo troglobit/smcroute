@@ -14,7 +14,8 @@ Table of Contents
   * [Many Interfaces](#many-interfaces)
   * [Multiple Routing Tables](#multiple-routing-tables)
   * [Client Tool](#client-tool)
-* [Experimental](#experimental)
+* [Wildcard Routes](#wildcard-routes)
+* [Multicast Router Discovery](#multicast-router-discovery)
 * [Build & Install](#build--install)
   * [Linux Requirements](#linux-requirements)
   * [*BSD Requirements](#bsd-requirements)
@@ -217,16 +218,16 @@ details:
   to the IPC socket permissions.
 
 
-Experimental
-------------
+Wildcard Routes
+---------------
 
 Multicast often originates from different sources but usually not at the
 same time.  For a more generic setup, and to reduce the number of rules
 required, it is possible to set `(*,G)` multicast routes for both IPv4
-and IPv6.  It's even possible to specify a `(*,G/LEN)` range, which
-`smcrouted` use as "templates" to match against and install proper
-`(S,G)` routes when the kernel informs it of inbound multicast from new
-sources.
+and IPv6.  Variants include `(*,G/LEN)` and `(S/LEN,G/LEN`.  These
+wildcard routes are used as "templates" to match against and install
+proper `(S,G)` routes when the kernel informs `smcrouted` of inbound
+multicast from new sources.
 
 Example `smcroute.conf`:
 
@@ -246,7 +247,11 @@ Also, see the `smcrouted -c SEC` option for periodic flushing of learned
 `(*,G)` rules, including the automatic blocking of unknown multicast, and
 the `smcroutectl flush` command.
 
-Another experimental feature is multicast router discovery, [mrdisc][],
+
+Multicast Router Discovery
+--------------------------
+
+Another interesting feature is multicast router discovery, [mrdisc][],
 described in [RFC4286][].  This feature is disabled by default, enable
 with `configure --enable-mrdisc`.  When enabled it periodically sends
 out an IGMP message on inbound interfaces¹ to alert switches to open up

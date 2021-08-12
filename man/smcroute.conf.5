@@ -237,12 +237,12 @@ this is called (*,G) routing.  When omitted,
 .Nm smcrouted
 dynamically installs (S,G) routes, matching the group and inbound
 interface, to the kernel when it learns of new inbound multicast.  This
-is an experimental feature inherited from
+feature was inherited from
 .Xr mrouted 8 ,
-which may not work as intended, in particular not with 1:1 NAT.  Also,
-depending on kernel and CPU load, account for the setup time to detect
-and install the route, expect at least one initial frame to be lost when
-using (*,G) rules.
+and may not work as intended in all use-cases.  Also, depending on
+kernel and CPU load, account for the setup time to detect and install
+the route, expect at least one initial frame to be lost when using (*,G)
+rules.
 .Sh FILES
 .Pa /etc/smcroute.conf ,
 .Pa /etc/smcroute.d/*.conf
