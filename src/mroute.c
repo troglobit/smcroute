@@ -158,7 +158,7 @@ static void cache_flush(void *arg)
 {
 	(void)arg;
 
-	smclog(LOG_INFO, "Cache timeout, flushing unused IPv4 (*,G) routes!");
+	smclog(LOG_INFO, "Cache timeout, flushing unused (*,G) routes!");
 	mroute_expire(cache_timeout);
 }
 
@@ -398,11 +398,23 @@ void mroute_expire(int max_idle)
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
 	LIST_FOREACH_SAFE(entry, &mroute_asm_kern_list, link, tmp) {
+		char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
+		struct iface *iface;
+
+		inet_addr2str(&entry->group, group, sizeof(group));
+		inet_addr2str(&entry->source, origin, sizeof(origin));
+		iface = iface_find_by_inbound(entry);
+
 		if (!entry->last_use) {
 			/* New entry */
 			entry->last_use = now.tv_sec;
 			entry->valid_pkt = get_valid_pkt(entry);
+			continue;
 		}
+
+		smclog(LOG_DEBUG, "Checking (%s,%s) on %s, time to expire: last %d max %d now: %d",
+		       origin, group, iface ? iface->ifname : "UNKNOWN",
+		       entry->last_use, max_idle, now.tv_sec);
 
 		if (entry->last_use + max_idle <= now.tv_sec) {
 			unsigned long valid_pkt;
@@ -410,12 +422,15 @@ void mroute_expire(int max_idle)
 			valid_pkt = get_valid_pkt(entry);
 			if (valid_pkt != entry->valid_pkt) {
 				/* Used since last check, update */
-				entry->last_use = now.tv_sec;
+				smclog(LOG_DEBUG, "  -> Nope, still active, valid %d vs last valid %d.",
+				       valid_pkt, entry->valid_pkt);
+				entry->last_use  = now.tv_sec;
 				entry->valid_pkt = valid_pkt;
 				continue;
 			}
 
 			/* Not used, expire */
+			smclog(LOG_DEBUG, "  -> Yup, stale route.");
 			kern_mroute_del(entry, is_active(entry));
 			LIST_REMOVE(entry, link);
 			free(entry);
