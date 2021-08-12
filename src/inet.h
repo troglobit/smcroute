@@ -36,6 +36,16 @@
 #endif
 typedef struct sockaddr_storage inet_addr_t;
 
+#ifndef s6_addr32
+# if   defined(__FreeBSD__)
+#  define s6_addr32 __u6_addr.__u6_addr32
+# elif defined(__linux__)
+#  define s6_addr32 __in6_u.__u6_addr32
+# else
+#  error "IPv6 s6_addr32 is not defined, unknown operating system, build --without-ipv6"
+# endif
+#endif
+
 struct inet_iter {
 	inet_addr_t orig;
 	int         len;
