@@ -11,6 +11,11 @@
 #        '-------------'  192.168.0.0/24   '-------------'
 #          10.0.0.0/24                       10.0.0.0/24
 #
+# Since we use tshark (because tcpdump doesn't work in an unshare), and
+# it doesn't seem to be able to dump the Ethernet header, we set the TTL
+# of the two ping's to different values to be able to separate the two
+# when inspecting the pcap from br0.
+#
 # Note: you may have to `chmod a+rw /var/run/xtables.lock` before test.
 #set -x
 
@@ -57,8 +62,11 @@ phyint eth1 enable
 mgroup from eth1 group 225.1.2.3
 mroute from eth1 group 225.1.2.3 to eth0
 
-mgroup from eth0 group 225.1.2.3
-mroute from eth0 group 225.1.2.3 to eth1
+# Disable for now, maybe use in another test.  With this
+# disabled we get WRONGVIF messages from the kernel that
+# can extend this test to verify.
+#mgroup from eth0 group 225.1.2.3
+#mroute from eth0 group 225.1.2.3 to eth1
 EOF
 cat "/tmp/$NM/shared.conf"
 
@@ -72,25 +80,30 @@ sleep 1
 collect br0 -c10 'dst 225.1.2.3'
 
 print "Starting emitters ..."
-nsenter --net=R1 -- ping -c 5 -W 1 -I eth1 -t 3 225.1.2.3 > /dev/null &
+nsenter --net=R1 -- ping -c 5 -W 1 -I eth1 -t 11 225.1.2.3 > /dev/null &
 sleep 1
-nsenter --net=R2 -- ping -c 5 -W 1 -I eth1 -t 3 225.1.2.3 > /dev/null &
+nsenter --net=R2 -- ping -c 5 -W 1 -I eth1 -t 21 225.1.2.3 > /dev/null &
 sleep 5
 
 print "R1 multicast routes and 1:1 NAT ..."
 nsenter --net=R1 -- ip mroute
+nsenter --net=R1 -- ../src/smcroutectl -d -S  "/tmp/$NM/R1.sock"
 nsenter --net=R1 -- iptables -v -L -t nat
 
 print "R2 multicast routes and 1:1 NAT ..."
 nsenter --net=R2 -- ip mroute
+nsenter --net=R2 -- ../src/smcroutectl -d -S  "/tmp/$NM/R2.sock"
 nsenter --net=R2 -- iptables -v -L -t nat
 
-print "Analyzing ..."
-lines=$(tshark -r "/tmp/$NM/pcap" 2>/dev/null | grep 225.1.2.3 | tee "/tmp/$NM/result" | wc -l)
-
+print "Analyzing br0 pcap, data from R1 and R2 ..."
+lines1=$(tshark -r "/tmp/$NM/pcap" 2>/dev/null | grep 225.1.2.3 | grep 'ttl=10' | tee    "/tmp/$NM/result" | wc -l)
+lines2=$(tshark -r "/tmp/$NM/pcap" 2>/dev/null | grep 225.1.2.3 | grep 'ttl=20' | tee -a "/tmp/$NM/result" | wc -l)
 cat "/tmp/$NM/result"
-echo " => $lines for group ff04::114, expected >= 8"
 
-# shellcheck disable=SC2086
-[ $lines -ge 8 ] && OK
+echo " => $lines1 for group 225.1.2.3 from R1, expected >= 4"
+echo " => $lines2 for group 225.1.2.3 from R2, expected >= 4"
+
+# Expect one frame loss due to initial (*,G) -> (S,G) route setup
+# shellcheck disable=SC2086 disable=SC2166
+[ $lines1 -ge 4 -a $lines2 -ge 4 ] && OK
 FAIL
