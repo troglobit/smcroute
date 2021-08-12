@@ -33,7 +33,7 @@ OK()
 
 check_dep()
 {
-    if ! command -v "$1" >/dev/null; then
+    if ! command -v "$1"; then
 	SKIP "Cannot find $1, skipping test."
     fi
 }

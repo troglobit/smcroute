@@ -18,6 +18,8 @@
 . "$(dirname "$0")/lib.sh"
 
 print "Checking dependencies ..."
+lsb_release -a
+uname -a
 check_dep iptables
 
 print "Creating world ..."
