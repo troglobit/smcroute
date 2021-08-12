@@ -1116,11 +1116,6 @@ static int show_mroute(int sd, struct mroute *r, int detail)
 		struct mroute_stats ms = { 0 };
 		char stats[30];
 
-#ifdef HAVE_IPV6_MULTICAST_ROUTING
-		if (r->group.ss_family == AF_INET6)
-			kern_stats(r, &ms);
-		else
-#endif
 		kern_stats(r, &ms);
 		snprintf(stats, sizeof(stats), " %10lu %10lu ", ms.ms_pktcnt, ms.ms_bytecnt);
 		strlcat(buf, stats, sizeof(buf));
