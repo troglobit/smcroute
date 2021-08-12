@@ -115,8 +115,8 @@ static void handle_nocache4(int sd, void *arg)
 	switch (im->im_msgtype) {
 	case IGMPMSG_NOCACHE:
 		/* Find any matching route for this group on that iif. */
-		smclog(LOG_DEBUG, "New multicast data from %s to group %s on VIF %u",
-		       origin, group, mroute.inbound);
+		smclog(LOG_DEBUG, "New multicast data from %s to group %s on %s",
+		       origin, group, iface->ifname);
 
 		result = mroute_dyn_add(&mroute);
 		if (result) {
