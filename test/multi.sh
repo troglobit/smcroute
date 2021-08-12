@@ -2,6 +2,15 @@
 # Verify interop between multiple routers and 1:1 NAT.  Same subnet and
 # source IP of multicast emitters.
 #
+#         netns: R1                         netns: R2
+#        .-------------.                   .-------------.
+#        |  smcrouted  |                   |  smcrouted  |
+#        |    /   \    |       br0         |    /   \    |
+#   MC --> eth1   eth0 |      /   \        | eth0   eth1 <-- MC
+#        |            `------'     '-------'             |
+#        '-------------'  192.168.0.0/24   '-------------'
+#          10.0.0.0/24                       10.0.0.0/24
+#
 # Note: you may have to `chmod a+rw /var/run/xtables.lock` before test.
 #set -x
 
@@ -17,6 +26,7 @@ topo multi R1 R2
 # IP world ...
 nsenter --net=R1 -- ip addr add 192.168.0.10/24 dev eth0
 nsenter --net=R1 -- ip addr add 10.0.0.1/24     dev eth1
+nsenter --net=R1 -- ip route add 192.168.20.0/24 via 192.168.0.20
 nsenter --net=R1 -- iptables -t nat -A PREROUTING  -d 192.168.10.0/24 -j NETMAP --to 10.0.0.0/24
 nsenter --net=R1 -- iptables -t nat -A POSTROUTING -s 10.0.0.0/24     -j NETMAP --to 192.168.10.0/24
 nsenter --net=R1 -- ip -br l
@@ -24,10 +34,17 @@ nsenter --net=R1 -- ip -br a
 
 nsenter --net=R2 -- ip addr add 192.168.0.20/24 dev eth0
 nsenter --net=R2 -- ip addr add 10.0.0.1/24     dev eth1
+nsenter --net=R2 -- ip route add 192.168.10.0/24 via 192.168.0.10
 nsenter --net=R2 -- iptables -t nat -A PREROUTING  -d 192.168.20.0/24 -j NETMAP --to 10.0.0.0/24
 nsenter --net=R2 -- iptables -t nat -A POSTROUTING -s 10.0.0.0/24     -j NETMAP --to 192.168.20.0/24
 nsenter --net=R2 -- ip -br l
 nsenter --net=R2 -- ip -br a
+
+print "Verifying connectivity ..."
+printf "R1 (192.168.0.10) "
+if ! nsenter --net=R1 -- ping -c 3 192.168.20.1; then
+    FAIL "R1: cannot reach ED2 via R2"
+fi
 
 print "Creating config ..."
 cat <<EOF >"/tmp/$NM/shared.conf"
