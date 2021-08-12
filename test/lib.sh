@@ -52,7 +52,7 @@ show_mroute()
 
 collect()
 {
-    print "Starting collector ..."
+    print "Starting collector on $1 ..."
     tshark -w "/tmp/$NM/pcap" -lni "$@" 2>/dev/null &
     echo $! >> "/tmp/$NM/PIDs"
     sleep 2
