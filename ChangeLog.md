@@ -3,6 +3,40 @@ ChangeLog
 
 All notable changes to the project are documented in this file.
 
+[v2.5.0][UNRELEASED]
+--------------------
+
+**Highlights:** native `/etc/smcroute.d/*.conf` support and seamless
+  update/removal of routes and groups by reloading `.conf` files or
+  using `smcroutectl`.
+
+### Changes
+- Fully automated test suite with 15 tests covering many use cases
+- Support for `/etc/smcroute.d/*.conf`, issue #103
+- Support for applying changes to `.conf` files without disturbing
+  established flows -- i.e., seamless addition or removal of outbound
+  interfaces in existing rules, or add/remove routes, without ever
+  affecting other routes, issue
+- Support for route replacement/update `smcroutectl`, issue #115
+- Full `(*,G)` wildcard route matching, for IPv4 and IPv6, issue #31
+- Variant wildcard route matching with source and group range matching.
+  This may of course waste a lot of resources, so handle with care:
+  - `(*,G/LEN)`, issue #135 (IPv4), issue #162 (IPv6)
+  - `(S/LEN,G)`, issue #81
+  - `(S/LEN,G/LEN)`
+- Full SSM/ASM group join support, for both IPv4 and IPv6.  Including
+  joining group ranges from both `smcroutectl` and `.conf`, issue #118
+  Please note, no SSM support on FreeBSD, only Linux
+- Command line option, `-F file.conf` to verify file syntax, issue #100
+
+### Fixes
+- Fix #120: failed ASM/SSM IGMP join if interface has no address
+- Fix #130: dynamic IPv6 routes are not flushed (like IPv4 `(*,G)`)
+- Fix #149: `(*,G)` cache timeout callback stops, or never starts
+- Fix #151: same log entries
+- Fix #156: `smcruotectl show` does not show IPv6 routes
+
+
 [v2.4.4][] - 2019-02-11
 -----------------------
 
@@ -492,6 +526,7 @@ Initial public release by Carsten Schill.
 [mrdisc]:     https://github.com/troglobit/mrdisc
 [RFC4286]:    https://tools.ietf.org/html/rfc4286
 [UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.4.4...HEAD
+[v2.5.0]:     https://github.com/troglobit/smcroute/compare/2.4.4...2.5.0
 [v2.4.4]:     https://github.com/troglobit/smcroute/compare/2.4.3...2.4.4
 [v2.4.3]:     https://github.com/troglobit/smcroute/compare/2.4.2...2.4.3
 [v2.4.2]:     https://github.com/troglobit/smcroute/compare/2.4.1...2.4.2
