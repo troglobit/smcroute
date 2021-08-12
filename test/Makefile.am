@@ -5,10 +5,10 @@ CLEANFILES         = *~ *.trs *.log
 TEST_EXTENSIONS    = .sh
 TESTS_ENVIRONMENT  = unshare -mrun
 
-TESTS              = basic.sh
+TESTS              = expire.sh
+TESTS             += basic.sh
 TESTS             += bridge.sh
 TESTS             += dyn.sh
-TESTS             += expire.sh
 TESTS             += include.sh
 TESTS             += ipv6.sh
 TESTS             += isolated.sh

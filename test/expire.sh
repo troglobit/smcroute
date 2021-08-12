@@ -31,7 +31,7 @@ EOF
 cat "/tmp/$NM/conf"
 
 print "Starting smcrouted ..."
-../src/smcrouted -c 8 -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug -S "/tmp/$NM/sock" &
+../src/smcrouted -c 10 -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug -S "/tmp/$NM/sock" &
 sleep 1
 
 collect a2 -c12 'dst ff04::114 or dst ff2e::42 or dst ff2e::43 or dst ff2e::44'
@@ -48,7 +48,7 @@ ip -6 mroute | grep -q "(2001:1::1,ff2e::42)"
 [ $? -eq 0 ] || FAIL "Failed learning IPv6 (*,G) route"
 
 print "Verifying (*,G) flush, please wait ... "
-sleep 8
+sleep 11
 show_mroute
 ip mroute | grep -q "(10.0.0.1,225.1.2.3)"
 [ $? -eq 1 ] || FAIL "Failed flushing IPv4 (*,G) route"
