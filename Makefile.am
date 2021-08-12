@@ -4,7 +4,7 @@ SUBDIRS                 = man src
 DISTCLEANFILES		= *~ DEADJOE semantic.cache *.gdb *.elf core core.* *.d
 dist_sbin_SCRIPTS       = smcroute
 doc_DATA		= README.md COPYING smcroute.conf
-EXTRA_DIST		= README.md AUTHORS ChangeLog.md autogen.sh smcroute.conf smcroute.default smcroute.init
+EXTRA_DIST		= README.md ChangeLog.md autogen.sh smcroute.conf smcroute.default smcroute.init
 
 if ENABLE_TEST
 SUBDIRS                += test
