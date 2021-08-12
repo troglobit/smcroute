@@ -55,7 +55,7 @@ collect()
     print "Starting collector ..."
     tshark -w "/tmp/$NM/pcap" -lni "$@" 2>/dev/null &
     echo $! >> "/tmp/$NM/PIDs"
-    sleep 1
+    sleep 2
 }
 
 # Set up a basic bridge topology, two VETH pairs with one end in the
