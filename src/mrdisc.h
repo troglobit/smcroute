@@ -44,7 +44,7 @@ void mrdisc_recv      (int sd, void *arg);
 #define mrdisc_deregister(vif)       0
 
 #define mrdisc_enable(ifname)
-#define mrdisc_disable(ifname)
+#define mrdisc_disable(ifname)       {}
 
 #define mrdisc_send(arg)
 #define mrdisc_recv(sd, arg)
