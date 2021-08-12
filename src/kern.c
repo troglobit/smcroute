@@ -311,7 +311,7 @@ int kern_vif_del(struct iface *iface)
 #ifdef __linux__
 	rc = setsockopt(sd4, IPPROTO_IP, MRT_DEL_VIF, &vifc, sizeof(vifc));
 #else
-	rc = setsockopt(sd4, IPPROTO_IP, MRT_DEL_VIF, &vifc->vifc_vifi, sizeof(vifc->vifc_vifi));
+	rc = setsockopt(sd4, IPPROTO_IP, MRT_DEL_VIF, &vifc.vifc_vifi, sizeof(vifc.vifc_vifi));
 #endif
 	if (!rc) {
 		vif_list[iface->vif].iface = NULL;
