@@ -29,12 +29,14 @@ Table of Contents
 About
 -----
 
-SMCRoute is a UNIX/Linux tool to manage and monitor multicast routes.
-It supports both IPv4 and IPv6 multicast routing.
+SMCRoute is a static multicast routing daemon providing fine grained
+control over the multicast forwarding cache (MFC) in the UNIX kernel.
+Both IPv4 and IPv6 are fully supported.
 
-SMCRoute can be used as an alternative to dynamic multicast routers
-like [mrouted][] or [pimd][] in setups where static multicast routes
-should be maintained and/or no proper IGMP or MLD signaling exists.
+SMCRoute can be used as an alternative to dynamic multicast routers like
+[mrouted][], [pimd][], or [pim6sd][] in setups where static multicast
+routes should be maintained and/or no proper IGMP or MLD signaling
+exists.
 
 Multicast routes exist in the UNIX kernel as long as a multicast routing
 daemon runs.  On Linux, multiple multicast routers can run simultaneously
@@ -44,38 +46,44 @@ using different multicast routing tables.
 Features
 --------
 
-- Configuration file support, `/etc/smcroute.conf`
-- Daemon startup options support, `/etc/default/smcroute`
-- Support for restarting and reloading the `.conf` on `SIGHUP`
-- Source-less on-demand routing, a.k.a. (*,G) based static routing
-- Optional built-in [mrdisc][] support, [RFC4286][]
-- Support for multiple routing tables on Linux
-- Client with built-in support to show routes and joined groups
-- Interface wildcard matching, `eth+` matches `eth0, eth15`
+  - Configuration file support, `/etc/smcroute.conf`
+  - Configuration snippet include support, `/etc/smcroute.d/*.conf`
+  - Daemon startup options support, `/etc/default/smcroute`
+  - Support for seamless reloading of the configuration  on `SIGHUP`
+  - Source-less on-demand routing, a.k.a. wildcard `(*,G)` based static
+    routing, including support for `(*,G/LEN)` and `(S/LEN,G/LEN)`
+  - Optional built-in [mrdisc][] support for IPv4, [RFC4286][]
+  - Support for multiple routing tables on Linux
+  - Client to add/remove routes, join/leave groups, and built-in support
+    to show both routes and joined groups
+  - Interface wildcard matching, `eth+` matches `eth0, eth15`
 
 
 Usage
 -----
 
-    smcrouted [-nNhsv] [-c SEC] [-d SEC] [-e CMD] [-f CONF] [-l LVL] [-p USER:GROUP] [-t ID]
-    smcroutectl [-Fkhv] [COMMAND] [⟨add | rem⟩ ⟨ROUTE⟩] [⟨join | leave⟩ ⟨GROUP⟩]
+    smcrouted [-nNhsv] [-c SEC] [-d SEC] [-e CMD] [-f FILE] [-I NAME]
+	          [-l LVL] [-p USER:GROUP] [-P FILE] [-S FILE] [-t ID]
+    smcroutectl [-dptv] [-I NAME] [-S FILE] [COMMAND]
+    smcroutectl show [routes | groups]
+    smcroutectl ⟨add  | rem⟩   ⟨ROUTE⟩
+    smcroutectl ⟨join | leave⟩ ⟨GROUP⟩
 
 To set multicast routes and join groups you must first start the daemon,
 which needs *root privileges*, or `CAP_NET_ADMIN`.  Use `smcrouted -n`
 to run the daemon in the foreground, as required by modern init daemons
 like systemd and [Finit][].
 
-By default `smcrouted` is started with `-n -s` options, i.e. the daemon runs
-in the foreground and uses syslog.
-
-By default `smcrouted` reads `/etc/default/smcroute` if the file exists. More
-startup options could be specified in this file. For example, to raise log level
-for debug purpose:
+When started from systemd, `smcrouted` rusn with the `-n -s` options,
+i.e. supervised in the foreground and uses syslog for logging output.
+The default log level is `INFO`, this can be adjusted using the file
+`/etc/default/smcroute`:
 
     SMCROUTED_OPTS=-l debug
 
-By default `smcrouted` reads `/etc/smcroute.conf`, which can look
-something like this:
+When configured with `--sysconfdir=/etc`, like most Linux distributions
+do, `smcrouted` reads `/etc/smcroute.conf`, which can look something
+like this:
 
     mgroup from eth0 group 225.1.2.3
     mgroup from eth0 group 225.1.2.3 source 192.168.1.42
@@ -126,6 +134,10 @@ file `netinet/in.h`.  Linux users can tweak this with the following
 
     echo 40 > /proc/sys/net/ipv4/igmp_max_memberships
 
+`smcrouted` probes this at runtime by attempting to join as many groups
+as possible (as have been requested), when the kernel accepts no further
+joins on a socket, `smcrouted` opens a new one.
+
 For large setups it is recommended to investigate enabling multicast
 router ports in the switches, either statically or by enabling support
 for multicast router discovery, RFC 4286, or possibly use a dynamic
@@ -156,6 +168,10 @@ Use the following in `/etc/smcroute.conf` to enable interfaces:
     phyint eth2 enable
 
 It is possible to use any interface that supports the `MULTICAST` flag.
+
+Note, however, that depending on the UNIX kernel in use, you may have to
+have an interface address set, in the relevant address family, and the
+interface may likely also have to be `UP`.
 
 
 ### Multiple Routing Tables
@@ -268,6 +284,11 @@ On *BSD the following kernel config is required:
     options    MROUTING    # Multicast routing
     options    PIM         # pimd extensions used for (*,G) support
 
+FreeBSD support module loading, `kldload(8)`, edit `/boot/loader.conf`:
+
+    ip_mroute_load="yes"
+    ip_mroute6_load="yes"
+
 ### General Requirements
 
 Check the list of multicast capable interfaces:
@@ -355,6 +376,7 @@ author.
 [Finit]:           https://github.com/troglobit/finit
 [mrouted]:         https://github.com/troglobit/mrouted
 [pimd]:            https://github.com/troglobit/pimd
+[pim6sd]:          https://github.com/troglobit/pim6sd
 [mrdisc]:          https://github.com/troglobit/mrdisc
 [RFC4286]:         https://tools.ietf.org/html/rfc4286
 [Home]:            https://github.com/troglobit/smcroute
