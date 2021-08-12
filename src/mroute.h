@@ -5,13 +5,14 @@
 #include "config.h"
 #include <stdint.h>
 #include <stdlib.h>
+#include <sys/types.h>		/* Defines u_char, needed by netinet/in.h */
+#include <sys/socket.h>
 #include <net/if.h>
 #include <netinet/in.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #ifdef HAVE_NETINET_IN_VAR_H
 #include <netinet/in_var.h>
 #endif
+#include <netinet/ip.h>
 #include "queue.h"		/* Needed by netinet/ip_mroute.h on FreeBSD */
 
 #ifdef HAVE_LINUX_MROUTE_H

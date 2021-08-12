@@ -26,7 +26,6 @@
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>		/* snprintf() */
-#include <netinet/ip.h>
 #include <unistd.h>
 #include <time.h>
 
