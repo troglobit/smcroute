@@ -431,12 +431,28 @@ to enable.
 .Sh FILES
 .Bl -tag -width /proc/net/ip6_mr_cache -compact
 .It Pa /etc/smcroute.conf
-Groups to join and routes to set when starting, or reloading
+Optional configuration file for
+.Nm .
+Defined interfaces to use, groups to join, and routes to set when
+starting, or reloading
 .Nm
 on
 .Ar SIGHUP .
 Like the PID file, the name of the configuration file may be different
-depending on command line options given to the daemon.
+depending on command line options given to the daemon.  Most notably,
+.Fl I Ar IDENT
+defines the full suite of files used by the
+.Nm
+daemon.  See
+.Xr smcroute.conf 5
+for details.
+.It Pa /etc/smcroute.d/*.conf
+Optional configuration directory, path defined by convention only, actual
+configuration directory, or file(s) to include, defined by
+.Pa /etc/smcroute.conf .
+See
+.Xr smcroute.conf 5
+for details.
 .It Pa /var/run/smcroute.pid
 Default PID file (re)created by
 .Nm
