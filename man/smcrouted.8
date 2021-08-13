@@ -38,13 +38,13 @@ no proper IGMP or MLD signaling exists.
 Multicast routes exist in the UNIX kernel only as long as a multicast
 routing daemon is running.  On Linux, multiple multicast routers can run
 simultaneously using different multicast routing tables.  To run
-.Nm smcrouted
+.Nm
 and,
 .Nm mrouted
 at the same time, set the former to use a routing table other than the
 default (0).
 .Pp
-.Nm smcrouted
+.Nm
 modifies the kernel routing table and needs either full
 .Ar superuser rights ,
 or
@@ -63,7 +63,7 @@ The following command line options are available:
 Run daemon in foreground, do not detach from controlling terminal
 .It Fl N
 By default
-.Nm smcrouted
+.Nm
 enables multicast routing on all available, and multicast capable,
 interfaces in the system.  These interfaces are enumerated as VIFs,
 virtual interfaces, of which most UNIX systems have a very limited
@@ -113,7 +113,7 @@ which can wait for interfaces to come up and files to be created before
 starting a service.
 .It Fl e Ar CMD
 Specify external script or command to be called when
-.Nm smcrouted
+.Nm
 has loaded/reloaded all static multicast routes from the configuration
 file, or when a source-less (ANY) rule has been installed.
 .It Fl I Ar NAME
@@ -121,7 +121,7 @@ Set daemon identity.  Used to create unique PID, IPC socket, and
 configuration file names, as well as set the syslog identity.  E.g.,
 .Fl I Ar foo
 would make
-.Nm smcrouted
+.Nm
 look for
 .Cm /etc/foo.conf ,
 write its PID to
@@ -134,11 +134,11 @@ in
 For
 .Nm smcroutectl
 the same option can be used to select the proper
-.Nm smcrouted
+.Nm
 instance to send IPC to.
 .Pp
 This option is required for both daemon and client when running multiple
-.Nm smcrouted
+.Nm
 instances, using multiple routing tables, on Linux.
 .It Fl l Ar LEVEL
 Set log level: none, err, notice, info, debug.  Default is notice.
@@ -151,7 +151,7 @@ is built with mrdisc support.
 Drop root privileges to USER:GROUP after start and retain CAP_NET_ADMIN
 capabilities only.  The :GROUP is optional.  This option is only
 available when
-.Nm smcrouted
+.Nm
 is built with libcap support.
 .It Fl P Ar FILE
 Set PID file name, and optionally full path, in case you need to
@@ -191,7 +191,7 @@ Show program version.
 The
 .Fl e Ar CMD
 option is useful if you want to trigger other processes to start when
-.Nm smcrouted
+.Nm
 has completed installing dynamic multicast routes from (*,G) rules in
 .Pa /etc/smcroute.conf ,
 or when a source-less (ANY) route, a.k.a (*,G) multicast rule, from
@@ -208,15 +208,15 @@ or
 .Ar install
 to let the script know if it is called on SIGHUP/startup, or when a
 (*,G) rule is matched and installed.  In the latter case
-.Nm smcrouted
+.Nm
 also sets two environment variables:
 .Nm source ,
 and
 .Nm group .
 Beware that these environment variables are unconditionally overwritten by
-.Nm smcrouted
+.Nm
 and can thus not be used to pass information to the script from outside of
-.Nm smcrouted .
+.Nm .
 .Sh OPERATION
 .Ss Introduction
 When
@@ -245,7 +245,7 @@ use for multicast routing using the
 .Pa /etc/smcroute.conf
 .Cm phyint
 directive.  It is recommended to always start
-.Nm smcrouted
+.Nm
 with the
 .Fl N
 flag, disabling VIF creation by default, and then selectively enable
@@ -333,7 +333,7 @@ from
 and may not work as intended in all use-cases.
 .Pp
 .Ss Multicast Groups
-.Nm smcrouted
+.Nm
 is capable of simple group join and leave by sending commands to the kernel.
 The kernel then handles sending Layer-2 IGMP/MLD join and leave frames as needed.
 This can be used for testing but is also useful sometimes to open up
@@ -341,16 +341,16 @@ multicast from the sender if located on a LAN with switches equipped
 with IGMP/MLD Snooping.  Such devices will prevent forwarding of
 multicast unless an IGMP/MLD capable router or multicast client is
 located on the same physical port as you run
-.Nm smcrouted
+.Nm
 on.  However, this feature of
-.Nm smcrouted
+.Nm
 is only intended as a workaround.  Some platforms impose a limit on the
 maximum number of groups that can be joined, some of these systems can
 be tuned to increase this limit.  For bigger installations it is
 strongly recommended to instead address the root cause, e.g. enable
 multicast router ports on intermediate switches, either statically or by
 enabling the multicast router discovery feature of
-.Nm smcrouted .
+.Nm .
 .Pp
 To emulate a multicast client using
 .Nm
@@ -378,7 +378,7 @@ desired interface.
 .Pp
 .Ss Multiple Daemon Instances
 When running multiple
-.Nm smcrouted
+.Nm
 instances, using the
 .Fl t Ar ID
 command line flag, one per routing table on Linux, it is required to use
@@ -386,10 +386,9 @@ the
 .Fl I Ar NAME
 option to both daemon and client.  This because the name of the IPC
 socket used for communicating is composed from the identity.
-
 .Sh SIGNALS
 For convenience in sending signals,
-.Nm smcrouted
+.Nm
 writes its process ID to
 .Pa /var/run/smcroute.pid
 upon startup, unless the
@@ -433,14 +432,14 @@ to enable.
 .Bl -tag -width /proc/net/ip6_mr_cache -compact
 .It Pa /etc/smcroute.conf
 Groups to join and routes to set when starting, or reloading
-.Nm smcrouted
+.Nm
 on
 .Ar SIGHUP .
 Like the PID file, the name of the configuration file may be different
 depending on command line options given to the daemon.
 .It Pa /var/run/smcroute.pid
 Default PID file (re)created by
-.Nm smcrouted
+.Nm
 when it has started up and is ready to receive commands.  See also the
 .Fl I Ar NAME
 or
@@ -448,7 +447,7 @@ or
 options which can change the default name.
 .It Pa /var/run/smcroute.sock
 IPC socket created by
-.Nm smcrouted
+.Nm
 for use by
 .Nm smcroutectl .
 Same caveats apply to this file as the previous two, command line
