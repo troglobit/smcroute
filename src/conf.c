@@ -33,30 +33,30 @@
 
 #define MAX_LINE_LEN 512
 
-#define DEBUG(fmt, args...) {						\
+#define DEBUG(fmt, args...) do {					\
 	if (conf)							\
-		smclog(LOG_DEBUG, "%s:%02d: " fmt, conf->file,		\
+		smclog(LOG_DEBUG, "%s line %d: " fmt, conf->file,	\
 		       conf->lineno, ##args);				\
 	else								\
 		smclog(LOG_DEBUG, "ipc: " fmt, ##args);			\
-	}
-#define INFO(fmt, args...) {						\
+	} while (0)
+#define INFO(fmt, args...) do {						\
 	if (conf)							\
-		smclog(LOG_INFO, "%s:%02d: " fmt, conf->file,		\
+		smclog(LOG_INFO, "%s line %d: " fmt, conf->file,	\
 			conf->lineno, ##args);				\
 	else								\
 		smclog(LOG_INFO, "ipc: " fmt, ##args);			\
-	}
+	} while (0)
 
-#define WARN(fmt, args...) {						\
+#define WARN(fmt, args...) do {						\
 	if (conf)							\
-		smclog(LOG_WARNING, "%s:%02d: " fmt, conf->file,	\
+		smclog(LOG_WARNING, "%s line %d: " fmt, conf->file,	\
 		       conf->lineno, ##args);				\
 	else								\
 		smclog(LOG_WARNING, "ipc: " fmt, ##args);		\
 	if (conf_vrfy)							\
 		rc++;							\
-	}
+	} while (0)
 
 static char *pop_token(char **line)
 {
