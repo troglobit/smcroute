@@ -12,6 +12,7 @@
 .Op Fl d Ar SEC
 .Op Fl e Ar CMD
 .Op Fl f Ar FILE
+.Op Fl F Ar FILE
 .Op Fl I Ar NAME
 .Op Fl l Ar LVL
 .Op Fl p Ar USER:GROUP
@@ -75,6 +76,10 @@ is required to enable the required interfaces.
 .It Fl f Ar FILE
 Alternate configuration file, default
 .Pa /etc/smcroute.conf
+.It Fl F Ar FILE
+Check configuration file syntax, use
+.Fl l Ar LEVEL
+to increase verbosity.  Returns non-zero on error.
 .It Fl c Ar SEC
 Flush unused dynamic (*,G) multicast routes every
 .Ar SEC
