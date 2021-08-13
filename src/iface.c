@@ -384,11 +384,11 @@ vifi_t iface_match_vif_by_name(const char *ifname, struct ifmatch *state, struct
 			if (found)
 				*found = iface;
 
-			smclog(LOG_DEBUG, "  %s has VIF %d", iface->ifname, iface->vif);
+//			smclog(LOG_DEBUG, "  %s has VIF %d", iface->ifname, iface->vif);
 			return iface->vif;
 		}
 
-		smclog(LOG_DEBUG, "  No VIF for %s", iface->ifname);
+//		smclog(LOG_DEBUG, "  %s has NO VIF", iface->ifname);
 		state->match_count--;
 	}
 
