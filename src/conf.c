@@ -58,6 +58,9 @@
 		rc++;							\
 	} while (0)
 
+/* Used only for verifying .conf files */
+static int conf_vrfy_vif;
+
 static char *pop_token(char **line)
 {
 	char *end, *token;
@@ -149,7 +152,8 @@ int conf_mgroup(struct conf *conf, int cmd, char *iif, char *source, char *group
 	if (!src_len)
 		src_len = len_max;
 
-	rc += mcgroup_action(cmd, iif, &src, src_len, &grp, grp_len);
+	if (!conf_vrfy)
+		rc += mcgroup_action(cmd, iif, &src, src_len, &grp, grp_len);
 done:
 	return rc;
 }
@@ -235,8 +239,11 @@ int conf_mroute(struct conf *conf, int cmd, char *iif, char *source, char *group
 				total++;
 			}
 			if (!state_out.match_count)
-				WARN("mroute: Invalid outbound interface, skipping %s", oif[i]);
+				WARN("mroute: outbound %s is not a known phyint, skipping", oif[i]);
 		}
+
+		if (conf_vrfy)
+			continue;
 
 		if (cmd) {
 			if (!total) {
@@ -257,7 +264,7 @@ int conf_mroute(struct conf *conf, int cmd, char *iif, char *source, char *group
 	}
 
 	if (!state_in.match_count) {
-		WARN("mroute: invalid inbound interface: %s", iif);
+		WARN("mroute: inbound %s is not a known phyint", iif);
 		rc++;
 	}
 
@@ -268,6 +275,21 @@ done:
 static int conf_phyint(struct conf *conf, int enable, char *iif, int mrdisc, int threshold)
 {
 	(void)conf;
+
+	if (conf_vrfy) {
+		struct iface *iface;
+		struct ifmatch ifm;
+
+		iface_match_init(&ifm);
+		iface = iface_match_by_name(iif, &ifm);
+		if (!iface)
+			return 1;
+
+		iface->vif = conf_vrfy_vif;
+		iface->mif = conf_vrfy_vif++;
+
+		return 0;
+	}
 
 	if (enable)
 		return mroute_add_vif(iif, mrdisc, threshold);
@@ -341,6 +363,7 @@ next:
 		char *source = NULL;
 		char *group  = NULL;
 		char *iif = NULL;
+		char *ttl = NULL;
 		char *token;
 		glob_t gl;
 		size_t i;
@@ -401,7 +424,19 @@ next:
 		}
 
 		if (iif && !iface_exist(iif)) {
-			WARN("Interface %s matches no valid system interfaces, skipping.", iif);
+			switch (op) {
+			case MGROUP:
+				WARN("mgroup from %s matches no valid phyint, skipping ...", iif);
+				break;
+
+			case MROUTE:
+				WARN("mroute from %s matches no valid phyint, skipping ...", iif);
+				break;
+
+			default:
+				WARN("phyint %s does not exist (yet?) on this system", iif);
+				break;
+			}
 			continue;
 		}
 
@@ -461,8 +496,7 @@ int conf_read(char *file, int do_vifs)
 	struct conf conf = { .file = file };
 
 	if (conf_parse(&conf, do_vifs)) {
-		smclog(LOG_WARNING, "Failed reading %s: %s.", file,
-		       errno ? strerror(errno) : "parse error");
+		smclog(LOG_WARNING, "Parse error in %s", file);
 		return 1;
 	}
 
