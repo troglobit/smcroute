@@ -330,7 +330,8 @@ int conf_parse(struct conf *conf, int do_vifs)
 		return 1;
 	}
 
-	conf->lineno = 1;
+	conf->lineno = 0;
+next:
 	while ((line = fgets(linebuf, MAX_LINE_LEN, fp))) {
 		int   mrdisc = 0, threshold = DEFAULT_THRESHOLD;
 		int   op = 0, num = 0, enable = do_vifs;
@@ -345,6 +346,7 @@ int conf_parse(struct conf *conf, int do_vifs)
 
 		/* Strip any line end character(s) */
 		chomp(line);
+		conf->lineno++;
 
 		DEBUG("%s", line);
 		while ((token = pop_token(&line))) {
@@ -362,8 +364,10 @@ int conf_parse(struct conf *conf, int do_vifs)
 				} else if (match("phyint", token)) {
 					op = PHYINT;
 					iif = pop_token(&line);
-					if (!iif)
-						op = 0;
+					if (!iif) {
+						WARN("phyint missing interface pattern");
+						goto next;
+					}
 				} else if (match("include", token)) {
 					op = INCLUDE;
 					include = pop_token(&line);
@@ -371,7 +375,7 @@ int conf_parse(struct conf *conf, int do_vifs)
 					break;
 				} else {
 					WARN("Unknown command %s, skipping.", token);
-					continue;
+					goto next;
 				}
 			}
 
@@ -439,8 +443,6 @@ int conf_parse(struct conf *conf, int do_vifs)
 			WARN("Unknown token %d", op);
 			break;
 		}
-
-		conf->lineno++;
 	}
 
 	free(linebuf);
