@@ -1,3 +1,10 @@
+Refactor smcroutectl to use parser from pimd
+--------------------------------------------
+
+Table headings belong with their data.  Use the "HEADING FOO=\n" syntax
+developed for mrouted and pimd.
+
+
 Refactor `iface_list` into a linked list
 -----------------------------------------
 
