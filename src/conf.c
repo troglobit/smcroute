@@ -297,9 +297,10 @@ static char *chomp(char *str)
  * routes accordingly in the kernel.  Whitespace is ignored.
  *
  * Format:
- *    phyint IFNAME <enable|disable> [threshold <1-255>]
+ *    phyint IFNAME <enable|disable> [ttl-threshold <1-255>]
  *    mgroup   from IFNAME [source ADDRESS] group MCGROUP
  *    mroute   from IFNAME source ADDRESS   group MCGROUP to IFNAME [IFNAME ...]
+ *    include FILEPATTERN
  */
 int conf_parse(struct conf *conf, int do_vifs)
 {
@@ -395,19 +396,22 @@ next:
 			} else if (match("mrdisc", token)) {
 				mrdisc = 1;
 			} else if (match("ttl-threshold", token)) {
-				token = pop_token(&line);
-				if (token) {
-					int ttl = atoi(token);
-
-					if (ttl >= 1 && ttl <= 255)
-						threshold = ttl;
-				}
+				ttl = pop_token(&line);
 			}
 		}
 
 		if (iif && !iface_exist(iif)) {
 			WARN("Interface %s matches no valid system interfaces, skipping.", iif);
 			continue;
+		}
+
+		if (ttl) {
+			int val = atoi(ttl);
+
+			if (val < 1 || val > 255)
+				WARN("phyint %s ttl %s out of range (1-255)", iif ? iif : "", ttl);
+			else
+				threshold = val;
 		}
 
 		switch (op) {
