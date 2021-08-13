@@ -68,14 +68,14 @@ struct ifsock {
 };
 
 static uint8_t interval       = 20;
-static LIST_HEAD(, ifsock) il = LIST_HEAD_INITIALIZER();
+static LIST_HEAD(ifslist, ifsock) ifsock_list = LIST_HEAD_INITIALIZER();
 
 
 static struct ifsock *find(int sd)
 {
 	struct ifsock *entry;
 
-	LIST_FOREACH(entry, &il, link) {
+	LIST_FOREACH(entry, &ifsock_list, link) {
 		if (entry->sd == sd)
 			return entry;
 	}
@@ -271,7 +271,7 @@ int mrdisc_exit(void)
 {
 	struct ifsock *entry, *tmp;
 
-	LIST_FOREACH_SAFE(entry, &il, link, tmp) {
+	LIST_FOREACH_SAFE(entry, &ifsock_list, link, tmp) {
 		inet_close(entry->sd);
 		LIST_REMOVE(entry, link);
 		free(entry);
@@ -287,7 +287,7 @@ int mrdisc_register(char *ifname, short vif)
 {
 	struct ifsock *entry;
 
-	LIST_FOREACH(entry, &il, link) {
+	LIST_FOREACH(entry, &ifsock_list, link) {
 		if (!strcmp(entry->ifname, ifname)) {
 			errno = EEXIST;
 			return -1;
@@ -302,7 +302,7 @@ int mrdisc_register(char *ifname, short vif)
 	entry->vif    = vif;
 	entry->sd     = -1;
 	strlcpy(entry->ifname, ifname, sizeof(entry->ifname));
-	LIST_INSERT_HEAD(&il, entry, link);
+	LIST_INSERT_HEAD(&ifsock_list, entry, link);
 
 	return 0;
 }
@@ -314,7 +314,7 @@ int mrdisc_deregister(short vif)
 {
 	struct ifsock *entry;
 
-	LIST_FOREACH(entry, &il, link) {
+	LIST_FOREACH(entry, &ifsock_list, link) {
 		if (entry->vif == vif) {
 			if (entry->refcnt)
 				inet_close(entry->sd);
@@ -335,7 +335,7 @@ int mrdisc_enable(short vif)
 {
 	struct ifsock *entry;
 
-	LIST_FOREACH(entry, &il, link) {
+	LIST_FOREACH(entry, &ifsock_list, link) {
 		if (entry->vif == vif) {
 			if (entry->refcnt == 0) {
 				entry->sd = inet_open(entry->ifname);
@@ -360,7 +360,7 @@ int mrdisc_disable(short vif)
 {
 	struct ifsock *entry;
 
-	LIST_FOREACH(entry, &il, link) {
+	LIST_FOREACH(entry, &ifsock_list, link) {
 		if (entry->vif == vif) {
 			if (entry->refcnt > 0)
 				entry->refcnt--;
@@ -380,7 +380,7 @@ void mrdisc_send(void *arg)
 	struct ifsock *entry;
 
 	(void)arg;
-	LIST_FOREACH(entry, &il, link) {
+	LIST_FOREACH(entry, &ifsock_list, link) {
 		if (entry->refcnt == 0) {
 			smclog(LOG_DEBUG, "Skipping mrdisc on inactive %s", entry->ifname);
 			continue;

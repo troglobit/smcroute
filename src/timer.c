@@ -47,7 +47,7 @@ struct timer {
 
 static timer_t timer;
 static int timerfd[2];
-static LIST_HEAD(, timer) tl = LIST_HEAD_INITIALIZER();
+static LIST_HEAD(tlist, timer) timer_list = LIST_HEAD_INITIALIZER();
 
 
 static void set(struct timer *t, struct timespec *now)
@@ -86,7 +86,7 @@ static struct timer *find(void (*cb), void *arg)
 {
 	struct timer *entry;
 
-	LIST_FOREACH(entry, &tl, link) {
+	LIST_FOREACH(entry, &timer_list, link) {
 		if (entry->cb != cb || entry->arg != arg)
 			continue;
 
@@ -102,11 +102,11 @@ static int start(struct timespec *now)
 	struct timer *next, *entry;
 	struct itimerspec it;
 
-	if (LIST_EMPTY(&tl))
+	if (LIST_EMPTY(&timer_list))
 		return -1;
 
-	next = LIST_FIRST(&tl);
-	LIST_FOREACH(entry, &tl, link)
+	next = LIST_FIRST(&timer_list);
+	LIST_FOREACH(entry, &timer_list, link)
 		next = compare(next, entry);
 
 	memset(&it, 0, sizeof(it));
@@ -138,7 +138,7 @@ static void run(int sd, void *arg)
 		smclog(LOG_DEBUG, "Failed read(pipe): %s", strerror(errno));
 
 	clock_gettime(CLOCK_MONOTONIC, &now);
-	LIST_FOREACH_SAFE(entry, &tl, link, tmp) {
+	LIST_FOREACH_SAFE(entry, &timer_list, link, tmp) {
 		if (expired(entry, &now)) {
 			if (entry->cb)
 				entry->cb(entry->arg);
@@ -219,7 +219,7 @@ int timer_add(int period, void (*cb)(void *), void *arg)
 
 	set(t, &now);
 
-	LIST_INSERT_HEAD(&tl, t, link);
+	LIST_INSERT_HEAD(&timer_list, t, link);
 
 	return start(&now);
 }

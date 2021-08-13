@@ -45,8 +45,8 @@
 /*
  * Track IGMP join, any-source and source specific
  */
-LIST_HEAD(, mcgroup) kern_list = LIST_HEAD_INITIALIZER();
-LIST_HEAD(, mcgroup) conf_list = LIST_HEAD_INITIALIZER();
+static LIST_HEAD(kmcglist, mcgroup) kern_list = LIST_HEAD_INITIALIZER();
+static LIST_HEAD(cmcglist, mcgroup) conf_list = LIST_HEAD_INITIALIZER();
 
 #ifdef HAVE_LINUX_FILTER_H
 /*

@@ -48,18 +48,18 @@ static int cache_timeout = 0;
  * User added/configured (*,G) matched on-demand at runtime.  See
  * mroute4_dyn_list for the (S,G) routes set from this "template".
  */
-LIST_HEAD(, mroute) mroute_asm_conf_list = LIST_HEAD_INITIALIZER();
+static LIST_HEAD(cmrlist, mroute) mroute_asm_conf_list = LIST_HEAD_INITIALIZER();
 
 /*
  * Dynamically, on-demand, set (S,G) routes.  Tracks if the user
  * removes a configured (*,G) route.
  */
-LIST_HEAD(, mroute) mroute_asm_kern_list = LIST_HEAD_INITIALIZER();
+static LIST_HEAD(kmrlist, mroute) mroute_asm_kern_list = LIST_HEAD_INITIALIZER();
 
 /*
  * Tracks regular static routes, mostly for 'smcroutectl show'
  */
-LIST_HEAD(, mroute) mroute_ssm_list = LIST_HEAD_INITIALIZER();
+static LIST_HEAD(smrlist, mroute) mroute_ssm_list = LIST_HEAD_INITIALIZER();
 
 static int  mroute4_add_vif    (struct iface *iface);
 static int  mroute_dyn_add     (struct mroute *route);

@@ -45,7 +45,7 @@ struct sock {
 };
 
 static int max_fdnum = -1;
-LIST_HEAD(, sock) sl = LIST_HEAD_INITIALIZER();
+static LIST_HEAD(slist, sock) sock_list = LIST_HEAD_INITIALIZER();
 
 
 int nfds(void)
@@ -67,7 +67,7 @@ int socket_register(int sd, void (*cb)(int, void *), void *arg)
 	entry->sd  = sd;
 	entry->cb  = cb;
 	entry->arg = arg;
-	LIST_INSERT_HEAD(&sl, entry, link);
+	LIST_INSERT_HEAD(&sock_list, entry, link);
 
 #if !defined(HAVE_SOCK_CLOEXEC) && defined(HAVE_FCNTL_H)
 	fcntl(sd, F_SETFD, fcntl(sd, F_GETFD) | FD_CLOEXEC);
@@ -130,7 +130,7 @@ int socket_close(int sd)
 {
 	struct sock *entry, *tmp;
 
-	LIST_FOREACH_SAFE(entry, &sl, link, tmp) {
+	LIST_FOREACH_SAFE(entry, &sock_list, link, tmp) {
 		if (entry->sd == sd) {
 			LIST_REMOVE(entry, link);
 			close(entry->sd);
@@ -151,7 +151,7 @@ int socket_poll(struct timeval *timeout)
 	struct sock *entry;
 
 	FD_ZERO(&fds);
-	LIST_FOREACH(entry, &sl, link)
+	LIST_FOREACH(entry, &sock_list, link)
 		FD_SET(entry->sd, &fds);
 
 	num = select(nfds(), &fds, NULL, NULL, timeout);
@@ -163,7 +163,7 @@ int socket_poll(struct timeval *timeout)
 		return num;
 	}
 
-	LIST_FOREACH(entry, &sl, link) {
+	LIST_FOREACH(entry, &sock_list, link) {
 		if (!FD_ISSET(entry->sd, &fds))
 			continue;
 
