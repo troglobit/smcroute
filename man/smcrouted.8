@@ -15,6 +15,7 @@
 .Op Fl F Ar FILE
 .Op Fl I Ar NAME
 .Op Fl l Ar LVL
+.Op Fl m Ar SEC
 .Op Fl p Ar USER:GROUP
 .Op Fl P Ar FILE
 .Op Fl S Ar FILE
@@ -141,6 +142,11 @@ This option is required for both daemon and client when running multiple
 instances, using multiple routing tables, on Linux.
 .It Fl l Ar LEVEL
 Set log level: none, err, notice, info, debug.  Default is notice.
+.It Fl m Ar SEC
+Modify Multicast Router Discovery (mrdisc) announcement interval.
+Default 20 sec.  This option is only available when
+.Nm
+is built with mrdisc support.
 .It Fl p Ar USER Op :GROUP
 Drop root privileges to USER:GROUP after start and retain CAP_NET_ADMIN
 capabilities only.  The :GROUP is optional.  This option is only
