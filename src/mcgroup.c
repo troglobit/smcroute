@@ -327,7 +327,8 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, int src_len
 
 				if (sd == -1) {
 					smclog(LOG_ERR, "Failed %s (%s,%s) on %s: %s",
-					       cmd ? "joining" : "leaving", src, grp, ifname);
+					       cmd ? "joining" : "leaving",
+					       src, grp, ifname, strerror(errno));
 					continue;
 				}
 
