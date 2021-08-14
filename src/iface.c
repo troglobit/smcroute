@@ -39,9 +39,7 @@
 #include "timer.h"
 #include "util.h"
 
-static struct iface *iface_list = NULL;
-static unsigned int num_ifaces_alloc = 0;
-static unsigned int num_ifaces = 0;
+static LIST_HEAD(iflist, iface) iface_list = LIST_HEAD_INITIALIZER();
 
 /**
  * iface_update - Check of new interfaces
@@ -67,21 +65,11 @@ void iface_update(void)
 			continue;
 		}
 
-		/* Allocate more space? */
-		if (num_ifaces == num_ifaces_alloc) {
-			num_ifaces_alloc *= 2;
-			iface_list = realloc(iface_list, num_ifaces_alloc * sizeof(struct iface));
-			if (!iface_list) {
-				smclog(LOG_ERR, "Failed allocating space for interfaces: %s", strerror(errno));
-				exit(255);
-			}
-			/* Initialize 2nd half of interface list */
-			memset(&iface_list[num_ifaces], 0, num_ifaces * sizeof(struct iface));
+		iface = calloc(1, sizeof(struct iface));
+		if (!iface) {
+			smclog(LOG_ERR, "Failed allocating space for interface: %s", strerror(errno));
+			exit(255);
 		}
-
-		/* Copy data from interface iterator 'ifa' */
-		iface = &iface_list[num_ifaces++];
-		strlcpy(iface->ifname, ifa->ifa_name, sizeof(iface->ifname));
 
 		/*
 		 * Only copy interface address if inteface has one.  On
@@ -93,36 +81,27 @@ void iface_update(void)
 		if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET)
 			iface->inaddr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
 		iface->flags = ifa->ifa_flags;
+		strlcpy(iface->ifname, ifa->ifa_name, sizeof(iface->ifname));
 		iface->ifindex = if_nametoindex(iface->ifname);
 		iface->vif = ALL_VIFS;
 		iface->mif = ALL_MIFS;
 		iface->mrdisc = 0;
 		iface->threshold = DEFAULT_THRESHOLD;
+
+		LIST_INSERT_HEAD(&iface_list, iface, link);
 	}
 
 	freeifaddrs(ifaddr);
 }
 
 /**
- * iface_init - Setup vector of active interfaces
+ * iface_init - Probe for interaces at startup
  *
  * Builds up a vector with active system interfaces.  Must be called
  * before any other interface functions in this module!
  */
 void iface_init(void)
 {
-	num_ifaces = 0;
-
-	if (iface_list)
-		free(iface_list);
-
-	num_ifaces_alloc = 1;
-	iface_list = calloc(num_ifaces_alloc, sizeof(struct iface));
-	if (!iface_list) {
-		smclog(LOG_ERR, "Failed allocating space for interfaces: %s", strerror(errno));
-		exit(255);
-	}
-
 	iface_update();
 }
 
@@ -131,9 +110,11 @@ void iface_init(void)
  */
 void iface_exit(void)
 {
-	if (iface_list) {
-		free(iface_list);
-		iface_list = NULL;
+	struct iface *iface, *tmp;
+
+	LIST_FOREACH_SAFE(iface, &iface_list, link, tmp) {
+		LIST_REMOVE(iface, link);
+		free(iface);
 	}
 }
 
@@ -148,11 +129,9 @@ void iface_exit(void)
  */
 struct iface *iface_find(int ifindex)
 {
-	size_t i;
+	struct iface *iface;
 
-	for (i = 0; i < num_ifaces; i++) {
-		struct iface *iface = &iface_list[i];
-
+	LIST_FOREACH(iface, &iface_list, link) {
 		if (iface->ifindex == ifindex)
 			return iface;
 	}
@@ -173,7 +152,6 @@ struct iface *iface_find_by_name(const char *ifname)
 {
 	struct iface *candidate = NULL;
 	struct iface *iface;
-	unsigned int i;
 	char *nm, *ptr;
 
 	if (!ifname)
@@ -188,8 +166,7 @@ struct iface *iface_find_by_name(const char *ifname)
 	if (ptr)
 		*ptr = 0;
 
-	for (i = 0; i < num_ifaces; i++) {
-		iface = &iface_list[i];
+	LIST_FOREACH(iface, &iface_list, link) {
 		if (!strcmp(nm, iface->ifname)) {
 			if (iface->vif != NO_VIF) {
 				free(nm);
@@ -207,11 +184,9 @@ struct iface *iface_find_by_name(const char *ifname)
 
 static struct iface *find_by_vif(vifi_t vif)
 {
-	size_t i;
+	struct iface *iface;
 
-	for (i = 0; i < num_ifaces; i++) {
-		struct iface *iface = &iface_list[i];
-
+	LIST_FOREACH(iface, &iface_list, link) {
 		if (iface->vif != NO_VIF && iface->vif == vif)
 			return iface;
 	}
@@ -221,11 +196,9 @@ static struct iface *find_by_vif(vifi_t vif)
 
 static struct iface *find_by_mif(mifi_t mif)
 {
-	size_t i;
+	struct iface *iface;
 
-	for (i = 0; i < num_ifaces; i++) {
-		struct iface *iface = &iface_list[i];
-
+	LIST_FOREACH(iface, &iface_list, link) {
 		if (iface->mif != NO_VIF && iface->mif == mif)
 			return iface;
 	}
@@ -257,7 +230,7 @@ struct iface *iface_find_by_inbound(struct mroute *route)
  */
 void iface_match_init(struct ifmatch *state)
 {
-	state->iter = 0;
+	state->iface = LIST_FIRST(&iface_list);
 	state->match_count = 0;
 }
 
@@ -294,15 +267,17 @@ struct iface *iface_match_by_name(const char *ifname, struct ifmatch *state)
 	if (ifname_is_wildcard(ifname))
 		match_len = strlen(ifname) - 1;
 
-	for (; state->iter < num_ifaces; state->iter++) {
-		struct iface *iface = &iface_list[state->iter];
+	while (state->iface != LIST_END(&iface_list)) {
+		struct iface *iface = state->iface;
 
 		if (!strncmp(ifname, iface->ifname, match_len)) {
-			state->iter++;
+			state->iface = LIST_NEXT(iface, link);
 			state->match_count++;
 
 			return iface;
 		}
+
+		state->iface = LIST_NEXT(iface, link);
 	}
 
 	return NULL;
@@ -317,15 +292,14 @@ struct iface *iface_match_by_name(const char *ifname, struct ifmatch *state)
  */
 struct iface *iface_iterator(int first)
 {
-	static size_t i = 0;
+	static struct iface *iface = NULL;
 
 	if (first)
-		i = 0;
+		iface = LIST_FIRST(&iface_list);
+	else
+		iface = LIST_NEXT(iface, link);
 
-	if (i >= num_ifaces)
-		return NULL;
-
-	return &iface_list[i++];
+	return iface;
 }
 
 struct iface *iface_outbound_iterator(struct mroute *route, int first)

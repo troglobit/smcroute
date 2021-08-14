@@ -5,14 +5,6 @@ Table headings belong with their data.  Use the "HEADING FOO=\n" syntax
 developed for mrouted and pimd.
 
 
-Refactor `iface_list` into a linked list
------------------------------------------
-
-Like everything else ... this to be able to drop interfaces that have
-been removed from the system while smcrouted is running and gets a
-SIGHUP.
-
-
 Tests must have uniquely named netns (if any)
 ---------------------------------------------
 

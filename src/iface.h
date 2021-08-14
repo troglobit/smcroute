@@ -18,7 +18,9 @@
 #define NO_VIF   ALL_VIFS
 
 struct iface {
+	LIST_ENTRY(iface) link;
 	int      unused;		/* set on reload/SIGHUP only */
+
 	char     ifname[IFNAMSIZ];
 	struct in_addr inaddr;		/* == 0 for non IP interfaces */
 	int      ifindex;		/* Physical interface index   */
@@ -30,8 +32,8 @@ struct iface {
 };
 
 struct ifmatch {
-	unsigned int iter;
-	unsigned int match_count;
+	struct iface *iface;
+	size_t match_count;
 };
 
 void          iface_init              (void);
