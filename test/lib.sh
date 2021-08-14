@@ -339,12 +339,6 @@ trapit()
 
 topo()
 {
-    if [ ! -d "/tmp/$NM" ]; then
-	mkdir "/tmp/$NM"
-	touch "/tmp/$NM/PIDs"
-	trapit signal INT TERM QUIT EXIT
-    fi
-
     if [ $# -lt 1 ]; then
 	print "Too few arguments to topo()"
 	exit 1
@@ -397,3 +391,8 @@ topo()
 	    ;;
     esac
 }
+
+# Runs once when including lib.sh
+mkdir "/tmp/$NM"
+touch "/tmp/$NM/PIDs"
+trapit signal INT TERM QUIT EXIT
