@@ -20,9 +20,10 @@
 #ifndef SMCROUTE_TIMER_H_
 #define SMCROUTE_TIMER_H_
 
-int timer_init (void);
+int  timer_init (void);
+void timer_exit (void);
 
-int timer_add  (int period, void (*cb)(void *), void *arg);
-int timer_del  (void (*cb)(void *), void *arg);
+int  timer_add  (int period, void (*cb)(void *), void *arg);
+int  timer_del  (void (*cb)(void *), void *arg);
 
 #endif /* SMCROUTE_TIMER_H_ */

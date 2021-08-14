@@ -74,6 +74,7 @@ static const char version_info[] = PACKAGE_NAME " v" PACKAGE_VERSION;
 /* Cleans up, i.e. releases allocated resources. Called via atexit() */
 static void clean(void)
 {
+	timer_exit();
 	mroute_exit();
 	mcgroup_exit();
 	ipc_exit();

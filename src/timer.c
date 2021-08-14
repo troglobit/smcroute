@@ -21,6 +21,7 @@
 #include <signal.h>
 #include <string.h>		/* memset() */
 #include <stdlib.h>		/* malloc() */
+#include <sysexits.h>
 #include <unistd.h>		/* read()/write() */
 #include <time.h>
 
@@ -169,13 +170,13 @@ int timer_init(void)
 {
 	struct sigaction sa;
 
-	if (pipe(timerfd))
-		return -1;
+	if (pipe(timerfd)) {
+		smclog(LOG_ERR, "Failed creating timer pipe(): %s", strerror(errno));
+		exit(EX_OSERR);
+	}
 
-	if (socket_register(timerfd[0], run, NULL) < 0)
-		return -1;
-	if (socket_register(timerfd[1], NULL, NULL) < 0)
-		return -1;
+	socket_register(timerfd[0], run, NULL);
+	socket_register(timerfd[1], NULL, NULL);
 
 	sa.sa_handler = handler;
 	sa.sa_flags = 0;
@@ -189,6 +190,24 @@ int timer_init(void)
 	}
 
 	return 0;
+}
+
+/*
+ * cleanup and free for program exit
+ */
+void timer_exit(void)
+{
+	struct timer *entry, *tmp;
+
+	timer_delete(timer);
+
+	socket_close(timerfd[0]);
+	socket_close(timerfd[1]);
+
+	LIST_FOREACH_SAFE(entry, &timer_list, link, tmp) {
+		LIST_REMOVE(entry, link);
+		free(entry);
+	}
 }
 
 /*
@@ -209,8 +228,10 @@ int timer_add(int period, void (*cb)(void *), void *arg)
 		return -1;
 
 	t = malloc(sizeof(*t));
-	if (!t)
-		return -1;
+	if (!t) {
+		smclog(LOG_ERR, "Out of memory in %s()", __func__);
+		exit(EX_OSERR);
+	}
 
 	t->active = 1;
 	t->period = period;
