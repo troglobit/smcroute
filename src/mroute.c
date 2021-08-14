@@ -484,6 +484,7 @@ static struct mroute *mroute_source_moved(struct mroute *route)
 int mroute_add_route(struct mroute *route)
 {
 	struct mroute *entry;
+	int local = 0;
 
 	entry = mroute_find(route);
 	if (entry) {
@@ -517,6 +518,7 @@ int mroute_add_route(struct mroute *route)
 			return 1;
 		}
 
+		local = 1;
 		memcpy(entry, route, sizeof(struct mroute));
 	}
 
@@ -552,7 +554,7 @@ int mroute_add_route(struct mroute *route)
 		return 0;
 	}
 
-	if (!entry->unused)
+	if (!entry->unused || local)
 		LIST_INSERT_HEAD(&mroute_ssm_list, entry, link);
 	entry->unused = 0;	/* unmark from reload */
 
