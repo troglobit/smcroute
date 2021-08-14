@@ -33,7 +33,11 @@ OK()
 
 check_dep()
 {
-    if ! command -v "$1"; then
+    if [ -n "$2" ]; then
+	if ! $@; then
+	    SKIP "$* is not supported on this system."
+	fi
+    elif ! command -v "$1"; then
 	SKIP "Cannot find $1, skipping test."
     fi
 }
