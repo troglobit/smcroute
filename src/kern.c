@@ -68,8 +68,8 @@ static struct mif {
 static int group_req(int sd, int cmd, struct mcgroup *mcg)
 {
 	char source[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
-	struct group_source_req gsr;
-	struct group_req gr;
+	struct group_source_req gsr = { 0 };
+	struct group_req gr = { 0 };
 	size_t len;
 	void *arg;
 	int op, proto;
@@ -118,12 +118,12 @@ static int group_req(int sd, int cmd, struct mcgroup *mcg)
 {
 	char group[INET_ADDRSTR_LEN];
 #ifdef HAVE_IPV6_MULTICAST_HOST
-	struct ipv6_mreq ipv6mr;
+	struct ipv6_mreq ipv6mr = { 0 };
 #endif
 #ifdef HAVE_STRUCT_IP_MREQN
-	struct ip_mreqn imr;
+	struct ip_mreqn imr = { 0 };
 #else
-	struct ip_mreq imr;
+	struct ip_mreq imr = { 0 };
 #endif
 	int op, proto;
 	size_t len;
@@ -244,7 +244,7 @@ int kern_mroute_exit(void)
 
 int kern_vif_add(struct iface *iface)
 {
-	struct vifctl vifc;
+	struct vifctl vifc = { 0 };
 	size_t i;
 	int vif;
 
@@ -295,7 +295,7 @@ int kern_vif_add(struct iface *iface)
 
 int kern_vif_del(struct iface *iface)
 {
-	struct vifctl vifc;
+	struct vifctl vifc = { 0 };
 	int rc;
 
 	if (sd4 == -1)
@@ -325,7 +325,7 @@ static int kern_mroute4(int cmd, struct mroute *route, int active)
 {
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	int op = cmd ? MRT_ADD_MFC : MRT_DEL_MFC;
-	struct mfcctl mfcc;
+	struct mfcctl mfcc = { 0 };
 	size_t i;
 
 	if (sd4 == -1) {
@@ -371,7 +371,7 @@ static int kern_mroute4(int cmd, struct mroute *route, int active)
 
 static int kern_stats4(struct mroute *route, struct mroute_stats *ms)
 {
-	struct sioc_sg_req sg_req;
+	struct sioc_sg_req sg_req = { 0 };
 
 	if (sd4 == -1)
 		return errno = EAGAIN;
@@ -484,7 +484,7 @@ int kern_mroute6_exit(void)
 /* Create a virtual interface from @iface so it can be used for IPv6 multicast routing. */
 int kern_mif_add(struct iface *iface)
 {
-	struct mif6ctl mif6c;
+	struct mif6ctl mif6c = { 0 };
 	int mif = -1;
 	size_t i;
 
@@ -557,7 +557,7 @@ static int kern_mroute6(int cmd, struct mroute *route)
 {
 	char origin[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
 	int op = cmd ? MRT6_ADD_MFC : MRT6_DEL_MFC;
-	struct mf6cctl mf6cc;
+	struct mf6cctl mf6cc = { 0 };
 	size_t i;
 
 	if (sd6 == -1)
