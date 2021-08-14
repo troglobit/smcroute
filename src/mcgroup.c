@@ -193,9 +193,10 @@ void mcgroup_init(void)
 	}
 
 	smclog(LOG_DEBUG, "NOFILE: current %ld max %ld", rlim.rlim_cur, rlim.rlim_max);
-	rlim.rlim_cur = 2048;
+	rlim.rlim_cur = rlim.rlim_max;
 	if (setrlimit(RLIMIT_NOFILE, &rlim)) {
-		smclog(LOG_ERR, "Failed setting RLIMIT_NOFILE soft limit to %d: %m", 2048);
+		smclog(LOG_ERR, "Failed setting RLIMIT_NOFILE soft limit to %d: %s",
+		       rlim.rlim_max, strerror(errno));
 		return;
 	}
 	smclog(LOG_DEBUG, "NOFILE: set new current %ld max %ld", rlim.rlim_cur, rlim.rlim_max);
