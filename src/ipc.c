@@ -39,7 +39,9 @@
 #include "mroute.h"
 
 extern char *ident;
+
 static struct sockaddr_un sun;
+static int ipc_socket = -1;
 
 
 /* Receive command from the smcroutectl */
@@ -92,8 +94,8 @@ static void ipc_accept(int sd, void *arg)
  */
 int ipc_init(char *path)
 {
-	int sd;
 	socklen_t len;
+	int sd;
 
 	if (strlen(RUNSTATEDIR) + strlen(ident) + 11 >= sizeof(sun.sun_path)) {
 		smclog(LOG_ERR, "Too long socket path, max %zd chars", sizeof(sun.sun_path));
@@ -121,6 +123,7 @@ int ipc_init(char *path)
 		socket_close(sd);
 		return -1;
 	}
+	ipc_socket = sd;
 
 	return sd;
 }
@@ -130,6 +133,8 @@ int ipc_init(char *path)
  */
 void ipc_exit(void)
 {
+	if (ipc_socket >= 0)
+		socket_close(ipc_socket);
 	unlink(sun.sun_path);
 }
 
