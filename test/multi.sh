@@ -16,7 +16,9 @@
 # of the two ping's to different values to be able to separate the two
 # when inspecting the pcap from br0.
 #
-# Note: you may have to `chmod a+rw /var/run/xtables.lock` before test.
+# Note: modern versions of iptables have introduced the xtables.lock file
+#       the default path for it can be overridden from v1.8.7 and later,
+#       a workaround is to `chmod a+rw /var/run/xtables.lock`
 #set -x
 
 # shellcheck source=/dev/null
@@ -25,7 +27,9 @@
 print "Checking dependencies ..."
 lsb_release -a
 uname -a
-check_dep iptables
+XTABLES_LOCK=$(mktemp -p "/tmp/$NM")
+export XTABLES_LOCK
+check_dep unshare -mrun iptables -L 2>/dev/null
 
 print "Creating world ..."
 topo multi R1 R2
