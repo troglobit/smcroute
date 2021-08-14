@@ -10,11 +10,11 @@ in `$PATH`:
   - `ping`
   - `tshark` (because `tcpdump -w foo.pcap` doesn't work in an unshare)
 
-These tools come preinstalled in the Docker container used by SMCRoute
-in the [GitHub CI/CD action][2].  Here's how you can get it yourself:
-
-    ~$ docker pull ghcr.io/troglobit/misc:latest
-    ~$ docker run --privileged -v`pwd`:`pwd` -w `pwd` -it ghcr.io/troglobit/misc:latest
+One test makes use of `iptables`, which may not work in an `unshare(1)`,
+unless you have v1.8.7 or newer that supports the `XTABLES_LOCKFILE` env
+variable.  As a workaround you can `chmod a+rw /var/run/xtables.lock`.
+Also, the GRE test requries your system to have the `ip_gre.ko` kernel
+module loaded.
 
 To run the tests:
 
