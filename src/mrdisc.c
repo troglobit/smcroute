@@ -295,8 +295,10 @@ int mrdisc_register(char *ifname, short vif)
 	}
 
 	entry = malloc(sizeof(*entry));
-	if (!entry)
+	if (!entry) {
+		smclog(LOG_ERR, "Out of memory in %s()", __func__);
 		return -1;
+	}
 
 	entry->refcnt = 0;
 	entry->vif    = vif;

@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sysexits.h>
 #include <time.h>
 #include <unistd.h>
 #include <netinet/in.h>
@@ -61,8 +62,10 @@ int socket_register(int sd, void (*cb)(int, void *), void *arg)
 	struct sock *entry;
 
 	entry = malloc(sizeof(*entry));
-	if (!entry)
-		return -1;
+	if (!entry) {
+		smclog(LOG_ERR, "Failed allocating memory registering socket: %s", strerror(errno));
+		exit(EX_OSERR);
+	}
 
 	entry->sd  = sd;
 	entry->cb  = cb;

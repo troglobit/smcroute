@@ -953,7 +953,9 @@ static int mroute_dyn_add(struct mroute *route)
 	 * memory we don't do anything, just add kernel route silently.
 	 */
 	new_entry = malloc(sizeof(struct mroute));
-	if (new_entry) {
+	if (!new_entry) {
+		smclog(LOG_ERR, "Out of memory in %s()", __func__);
+	} else {
 		memcpy(new_entry, route, sizeof(struct mroute));
 		LIST_INSERT_HEAD(&mroute_asm_kern_list, new_entry, link);
 	}

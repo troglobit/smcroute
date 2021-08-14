@@ -350,8 +350,8 @@ int conf_parse(struct conf *conf, int do_vifs)
 
 		fclose(fp);
 		errno = tmp;
-
-		return 1;
+		smclog(LOG_ERR, "Failed allocating memory to read .conf file: %s", strerror(errno));
+		exit(EX_OSERR);
 	}
 
 	conf->lineno = 0;
