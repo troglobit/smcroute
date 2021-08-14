@@ -158,15 +158,8 @@ static void list_add(int sd, struct mcgroup *mcg)
 		return;
 	}
 
-	*entry = *mcg;
-#if 0
-	strlcpy(entry->ifname, iface->ifname, sizeof(entry->ifname));
-	entry->iface   = iface;
-	entry->source  = *source;
-	entry->group   = *group;
-	entry->len     = len;
-#endif
-	entry->sd      = sd;
+	*entry    = *mcg;
+	entry->sd = sd;
 
 	LIST_INSERT_HEAD(&kern_list, entry, link);
 }
