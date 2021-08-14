@@ -18,7 +18,7 @@
 print "Checking dependencies ..."
 lsb_release -a
 uname -a
-check_dep iptables
+check_dep grep -q ip_gre /proc/modules
 
 print "Creating world ..."
 topo multi R1 R2
