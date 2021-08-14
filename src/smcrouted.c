@@ -51,6 +51,7 @@ int do_syslog  = 1;
 int cache_tmo  = 60;
 int interval   = MRDISC_INTERVAL_DEFAULT;
 int startup_delay = 0;
+int exit_delay = 0;
 int table_id   = 0;
 
 char *script    = NULL;
@@ -128,6 +129,13 @@ static void signal_init(void)
 		smclog(LOG_WARNING, "Failed setting up signal handlers: %s", strerror(errno));
 }
 
+static void server_exit(void *arg)
+{
+	(void)arg;
+	smclog(LOG_NOTICE, "Exit delay timer expired.");
+	exit(0);
+}
+
 static int server_loop(void)
 {
 	script_init(script);
@@ -175,6 +183,11 @@ static int start_server(void)
 	 * Timer API needs to be initilized before mroute_init()
 	 */
 	timer_init();
+
+	if (exit_delay > 0) {
+		smclog(LOG_INFO, "Exit delay requested, starting background timer, %d sec", exit_delay);
+		timer_add(exit_delay, server_exit, NULL);
+	}
 
 	/*
 	 * Build list of multicast-capable physical interfaces
@@ -341,7 +354,7 @@ int main(int argc, char *argv[])
 	int c, new_log_level = -1;
 
 	prognm = progname(argv[0]);
-	while ((c = getopt(argc, argv, "c:d:e:f:F:hI:l:m:nNp:P:sS:t:v")) != EOF) {
+	while ((c = getopt(argc, argv, "c:d:D:e:f:F:hI:l:m:nNp:P:sS:t:v")) != EOF) {
 		switch (c) {
 		case 'c':	/* cache timeout */
 			cache_tmo = atoi(optarg);
@@ -349,6 +362,10 @@ int main(int argc, char *argv[])
 
 		case 'd':
 			startup_delay = atoi(optarg);
+			break;
+
+		case 'D':		/* Undocumented, used for testing. */
+			exit_delay = atoi(optarg);
 			break;
 
 		case 'e':
