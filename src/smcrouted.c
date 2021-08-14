@@ -215,6 +215,16 @@ static int start_server(void)
 	return server_loop();
 }
 
+static void cleanup(void)
+{
+	if (conf_file)
+		free(conf_file);
+	conf_file = NULL;
+	if (sock_file)
+		free(sock_file);
+	sock_file = NULL;
+}
+
 static int compose_paths(void)
 {
 	/* Default .conf file path: "/etc" + '/' + "smcroute" + ".conf" */
@@ -246,12 +256,14 @@ static int compose_paths(void)
 	if (!pid_file)
 		pid_file = ident;
 
+	atexit(cleanup);
+
 	return 0;
 }
 
 static int usage(int code)
 {
-        char pidfn[80];
+        char pidfn[sizeof(RUNSTATEDIR) + strlen(pid_file) + 6];
 
 	compose_paths();
 	if (pid_file[0] != '/')
@@ -293,6 +305,8 @@ static int usage(int code)
 	       "  -t ID           Set multicast routing table ID, default: 0\n"
 	       "  -v              Show program version\n"
 	       "\n", prognm, conf_file, ident, pidfn, sock_file);
+
+	cleanup();
 
 	return code;
 }
@@ -346,7 +360,7 @@ int main(int argc, char *argv[])
 			conf_vrfy = 1;
 			/* fallthrough */
 		case 'f':
-			conf_file = optarg;
+			conf_file = strdup(optarg);
 			break;
 
 		case 'h':	/* help */
@@ -384,6 +398,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'P':
+			/* Handled separately from the other files, no strdup() */
 			pid_file = optarg;
 			break;
 
@@ -392,7 +407,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'S':
-			sock_file = optarg;
+			sock_file = strdup(optarg);
 			break;
 
 		case 't':
