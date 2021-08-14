@@ -529,7 +529,7 @@ int mroute_add_route(struct mroute *route)
 	if (!is_mroute_static(entry)) {
 		struct mroute *dyn, *tmp;
 
-		if (!entry->unused)
+		if (!entry->unused || local)
 			LIST_INSERT_HEAD(&mroute_asm_conf_list, entry, link);
 		entry->unused = 0;	/* unmark from reload */
 
