@@ -19,6 +19,7 @@
 
 #include "config.h"
 
+#include <alloca.h>
 #include <err.h>
 #include <errno.h>
 #include <getopt.h>
@@ -277,13 +278,19 @@ static int compose_paths(void)
 
 static int usage(int code)
 {
-        char pidfn[sizeof(RUNSTATEDIR) + strlen(pid_file) + 6];
+        char *pidfn;
+	size_t len;
 
 	compose_paths();
+	len = sizeof(RUNSTATEDIR) + strlen(pid_file) + 6;
+	pidfn = malloc(len);
+	if (!pidfn)
+		err(EX_OSERR, "Failed allocating memory for PID file name");
+
 	if (pid_file[0] != '/')
-		snprintf(pidfn, sizeof(pidfn), "%s/%s.pid", RUNSTATEDIR, pid_file);
+		snprintf(pidfn, len, "%s/%s.pid", RUNSTATEDIR, pid_file);
 	else
-		snprintf(pidfn, sizeof(pidfn), "%s", pid_file);
+		snprintf(pidfn, len, "%s", pid_file);
 
 	printf("Usage: %s [hnNsv] [-c SEC] [-d SEC] [-e CMD] [-f FILE] [-l LVL] "
 #ifdef ENABLE_MRDISC
@@ -320,6 +327,7 @@ static int usage(int code)
 	       "  -v              Show program version\n"
 	       "\n", prognm, conf_file, ident, pidfn, sock_file);
 
+	free(pidfn);
 	cleanup();
 
 	return code;
