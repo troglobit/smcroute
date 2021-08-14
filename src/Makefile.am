@@ -14,8 +14,7 @@ smcrouted_LDADD	     = $(LIBS) $(LIBOBJS) @LIB_RT@ @LIB_PTHREAD@
 
 if USE_LIBCAP
 smcrouted_SOURCES   += cap.c cap.h
-smcrouted_CFLAGS    += $(libcap_CFLAGS)
-smcrouted_LDADD     += $(libcap_LIBS)
+smcrouted_LDADD	    += -lcap
 endif
 
 if HAVE_LIBSYSTEMD

@@ -84,9 +84,6 @@ AM_CONDITIONAL([USE_MRDISC], [test "x$enable_mrdisc" = "xyes"])
 # Required to check for libsystemd-dev
 PKG_PROG_PKG_CONFIG
 
-# Available on both Linux and FreeBSD
-PKG_CHECK_MODULES([libcap], [libcap])
-
 # Check where to install the systemd .service file
 AS_IF([test "x$PKG_CONFIG" = "x"], [
 	with_systemd=no
@@ -125,6 +122,10 @@ LIBS=$old_LIBS
 AC_SEARCH_LIBS([timer_settime], [rt], need_librt=yes, [
 	unset ac_cv_search_timer_settime
 	AC_SEARCH_LIBS([timer_settime], [rt], need_pthread=yes,,[-lpthread])])
+# Check for libcap to not trigger false positives on FreeBSD et al
+LIBS=$old_LIBS
+AC_SEARCH_LIBS([cap_set_flag], [cap],, ac_cv_header_sys_capability_h=no)
+LIBS=$old_LIBS
 
 # Check for RFC 3678-style struct group_req (Linux, FreeBSD, Solaris, macOS, AIX)
 AC_CHECK_MEMBER([struct group_req.gr_interface],
