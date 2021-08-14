@@ -9,6 +9,7 @@ in `$PATH`:
   - `iptables`, for the 1:1 NAT test
   - `ping`
   - `tshark` (because `tcpdump -w foo.pcap` doesn't work in an unshare)
+  - `valgrind`, for the memleak test
 
 One test makes use of `iptables`, which may not work in an `unshare(1)`,
 unless you have v1.8.7 or newer that supports the `XTABLES_LOCKFILE` env
