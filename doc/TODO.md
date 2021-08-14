@@ -13,6 +13,20 @@ been removed from the system while smcrouted is running and gets a
 SIGHUP.
 
 
+Tests must have uniquely named netns (if any)
+---------------------------------------------
+
+I've had to rename the R1/R2 netns used in test/gre.sh, because it turns
+out these names are shared when we run in the unshare and gre.sh's names
+clashed with multi.sh's.  I.e., they were stomping hard on each other's
+toes and often the gre.sh test completed before multi.sh, thus causing
+the latter to lose both R1 and R2 and the test failed (of course).
+
+We may be able to work around this by running each test in its own root
+netns.  Something that could be set up by lib.sh.  I have not verified
+this yet, hence this TODO.
+
+
 Add support for WRONGVIF, somehow
 ---------------------------------
 
