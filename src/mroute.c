@@ -411,7 +411,7 @@ void mroute_expire(int max_idle)
 			continue;
 		}
 
-		smclog(LOG_DEBUG, "Checking (%s,%s) on %s, time to expire: last %d max %d now: %d",
+		smclog(LOG_DEBUG, "Checking (%s,%s) on %s, time to expire: last %ld max %d now: %ld",
 		       origin, group, iface ? iface->ifname : "UNKNOWN",
 		       entry->last_use, max_idle, now.tv_sec);
 
@@ -421,7 +421,7 @@ void mroute_expire(int max_idle)
 			valid_pkt = get_valid_pkt(entry);
 			if (valid_pkt != entry->valid_pkt) {
 				/* Used since last check, update */
-				smclog(LOG_DEBUG, "  -> Nope, still active, valid %d vs last valid %d.",
+				smclog(LOG_DEBUG, "  -> Nope, still active, valid %lu vs last valid %lu.",
 				       valid_pkt, entry->valid_pkt);
 				entry->last_use  = now.tv_sec;
 				entry->valid_pkt = valid_pkt;
