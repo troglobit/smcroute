@@ -28,7 +28,7 @@ jobs:
         run: |
           sudo modprobe ip_gre
           sudo apt-get -y update
-          sudo apt-get -y install pkg-config libsystemd-dev libcap-dev tshark iptables
+          sudo apt-get -y install pkg-config libsystemd-dev libcap-dev tshark iptables valgrind
       - uses: actions/checkout@v2
       - name: Configure
         # Build in a sub-directory so we can safely set a+w on all
