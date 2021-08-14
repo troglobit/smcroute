@@ -325,6 +325,12 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, int src_len
 					sd = alloc_mc_sock(group->ss_family);
 				}
 
+				if (sd == -1) {
+					smclog(LOG_ERR, "Failed %s (%s,%s) on %s: %s",
+					       cmd ? "joining" : "leaving", src, grp, ifname);
+					continue;
+				}
+
 				if (kern_join_leave(sd, cmd, mcg)) {
 					if (cmd) {
 						switch (errno) {
