@@ -34,5 +34,5 @@ print "Verifying config ..."
 rc=$?
 echo "Return code: $rc"
 
-[ $rc -eq 1 ] && OK
+[ $rc -eq 78 ] && OK
 FAIL

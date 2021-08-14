@@ -19,6 +19,7 @@
 #include <signal.h>		/* sigemptyset(), sigaction() */
 #include <string.h>
 #include <stdlib.h>
+#include <sysexits.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -109,11 +110,11 @@ int script_exec(struct mroute *mroute)
 	}
 	if (pid < 0) {
 		smclog(LOG_WARNING, "Cannot start script %s: %s", exec, strerror(errno));
-		return -1;
+		return EX_OSERR;
 	}
 
 	script = pid;
-	return 0;
+	return EX_OK;
 }
 
 /**

@@ -20,6 +20,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include <sysexits.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -497,8 +498,11 @@ int conf_read(char *file, int do_vifs)
 
 	if (conf_parse(&conf, do_vifs)) {
 		smclog(LOG_WARNING, "Parse error in %s", file);
-		return 1;
+		return EX_CONFIG;
 	}
+
+	if (conf_vrfy)
+		return EX_OK;
 
 	return script_exec(NULL);
 }

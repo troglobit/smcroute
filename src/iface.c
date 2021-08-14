@@ -25,6 +25,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sysexits.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <ifaddrs.h>
@@ -50,7 +51,7 @@ void iface_update(void)
 
 	if (getifaddrs(&ifaddr) == -1) {
 		smclog(LOG_ERR, "Failed retrieving interface addresses: %s", strerror(errno));
-		exit(255);
+		exit(EX_OSERR);
 	}
 
 	for (ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
@@ -68,7 +69,7 @@ void iface_update(void)
 		iface = calloc(1, sizeof(struct iface));
 		if (!iface) {
 			smclog(LOG_ERR, "Failed allocating space for interface: %s", strerror(errno));
-			exit(255);
+			exit(EX_OSERR);
 		}
 
 		/*

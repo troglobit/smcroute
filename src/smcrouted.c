@@ -24,6 +24,7 @@
 #include <getopt.h>
 #include <stdio.h>
 #include <signal.h>
+#include <sysexits.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/time.h>		/* gettimeofday() */
@@ -152,13 +153,13 @@ static int start_server(void)
 
 	if (geteuid() != 0) {
 		smclog(LOG_ERR, "Need root privileges to start %s", prognm);
-		return 1;
+		return EX_NOPERM;
 	}
 
 	if (background) {
 		if (daemon(0, 0) < 0) {
 			smclog(LOG_ERR, "Failed daemonizing: %s", strerror(errno));
-			return 1;
+			return EX_OSERR;
 		}
 	}
 
@@ -189,11 +190,13 @@ static int start_server(void)
 	/* At least one API (IPv4 or IPv6) must have initialized successfully
 	 * otherwise we abort the server initialization. */
 	if (!api) {
-		if (busy)
+		if (busy) {
 			smclog(LOG_ERR, "Another multicast routing application is already running.");
-		else
-			smclog(LOG_ERR, "Kernel does not support multicast routing.");
-		exit(1);
+			exit(EX_UNAVAILABLE);
+		}
+
+		smclog(LOG_ERR, "Kernel does not support multicast routing.");
+		exit(EX_PROTOCOL);
 	}
 
 	atexit(clean);
@@ -221,7 +224,7 @@ static int compose_paths(void)
 		conf_file = malloc(len);
 		if (!conf_file) {
 			smclog(LOG_ERR, "Failed allocating memory, exiting: %s", strerror(errno));
-			exit(1);
+			exit(EX_OSERR);
 		}
 
 		snprintf(conf_file, len, "%s/%s.conf", SYSCONFDIR, ident);
@@ -233,7 +236,7 @@ static int compose_paths(void)
 		sock_file = malloc(len);
 		if (!sock_file) {
 			smclog(LOG_ERR, "Failed allocating memory, exiting: %s", strerror(errno));
-			exit(1);
+			exit(EX_OSERR);
 		}
 
 		snprintf(sock_file, len, "%s/%s.sock", RUNSTATEDIR, ident);
@@ -347,7 +350,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'h':	/* help */
-			return usage(0);
+			return usage(EX_OK);
 
 		case 'I':
 			ident = optarg;
@@ -398,7 +401,7 @@ int main(int argc, char *argv[])
 #else
 			table_id = atoi(optarg);
 			if (table_id < 0)
-				return usage(1);
+				return usage(EX_USAGE);
 #endif
 			break;
 
@@ -409,10 +412,10 @@ int main(int argc, char *argv[])
 #ifdef PACKAGE_URL
 			printf("Project homepage:   %s\n", PACKAGE_URL);
 #endif
-			return 0;
+			return EX_OK;
 
 		default:	/* unknown option */
-			return usage(1);
+			return usage(EX_USAGE);
 		}
 	}
 

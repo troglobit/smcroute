@@ -501,6 +501,31 @@ forwarding caches, and VIF/MIF allocation, as well as the
 .Xr ifmcstat 8
 tool for querying group membership.
 .Xr 
+.Sh EXIT STATUS
+.Nm
+leverages BSD
+.Pa sysexits.h
+exit codes (64-78), which process supervisors like
+.Xr systemd 1
+and
+.Xr finit 8
+understands.  The following table details what codes are used for and
+how to interpret them.
+.Bl -column "Status" "Symbolic Name" "Description" -offset indent
+.It Sy Status Ta Sy Symbolic Name  Ta Sy Description
+.It 0    Ta EX_OK          Ta Success
+.It 64   Ta EX_USAGE       Ta Invalid command line option, or missing arugment
+.It 69   Ta EX_UNAVAILABLE Ta Multicast routing socket (or table) already in use
+.It 71   Ta EX_OSERR       Ta Failed
+.Fn fork ,
+.Fn daemon ,
+.Fn getifaddrs ,
+.Fn malloc ,
+etc.
+.It 76   Ta EX_PROTOCOL    Ta Kernel does not seem to support multicast routing
+.It 77   Ta EX_NOPERM      Ta Not enough permissions to run
+.It 78   Ta EX_CONFIG      Ta Parse error in configuration file
+.El
 .Sh SEE ALSO
 .Xr smcroute.conf 5 ,
 .Xr smcroutectl 8 ,
