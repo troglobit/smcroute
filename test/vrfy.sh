@@ -30,7 +30,7 @@ EOF
 cat "/tmp/$NM/conf"
 
 print "Verifying config ..."
-../src/smcrouted -F "/tmp/$NM/conf" -l info
+../src/smcrouted -N -F "/tmp/$NM/conf" -l info
 rc=$?
 echo "Return code: $rc"
 
