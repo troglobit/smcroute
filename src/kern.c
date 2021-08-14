@@ -472,12 +472,10 @@ int kern_mroute6_exit(void)
 	if (setsockopt(sd6, IPPROTO_IPV6, MRT6_DONE, NULL, 0))
 		smclog(LOG_WARNING, "Failed shutting down IPv6 multicast routing socket: %s",
 		       strerror(errno));
-#if 0
-	if (close_socket) {
-		socket_close(sd6);
-		sd6 = -1;
-	}
-#endif
+
+	socket_close(sd6);
+	sd6 = -1;
+
 	return 0;
 }
 
