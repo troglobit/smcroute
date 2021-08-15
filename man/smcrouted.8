@@ -1,5 +1,5 @@
 .\"  -*- nroff -*-
-.Dd August 10, 2021
+.Dd August 15, 2021
 .Dt SMCROUTED 8 SMM
 .Os
 .Sh NAME
@@ -51,7 +51,7 @@ or
 .Cm CAP_NET_ADMIN
 on Linux.  This also applies to the friendly control tool
 .Xr smcroutectl 8 .
-.Ss WARNING
+.Ss Warning
 Be careful when creating multicast routes.  You can easily flood your
 networks by inadvertently creating routing loops.  Either direct loops
 listing an inbound interface also as an outbound, or indirect loops by
@@ -146,7 +146,7 @@ Set log level: none, err, notice, info, debug.  Default is notice.
 Modify Multicast Router Discovery (mrdisc) announcement interval.
 Default 20 sec.  This option is only available when
 .Nm
-is built with mrdisc support.
+is built with mrdisc support (Linux, and IPv4, only). RFC4286.
 .It Fl p Ar USER Op :GROUP
 Drop root privileges to USER:GROUP after start and retain CAP_NET_ADMIN
 capabilities only.  The :GROUP is optional.  This option is only
@@ -401,10 +401,10 @@ advanced IP multicast testing the
 .Xr mcjoin 1
 tool can be used.
 .Pp
-.Ss TIPS
+.Ss Note
 A lot of extra information is sent under the daemon facility and the
 debug priority to the syslog daemon.  Use
-.Cm smcrouted -s -l debug
+.Ql smcrouted -s -l debug
 to enable.
 .Sh SIGNALS
 For convenience in sending signals,

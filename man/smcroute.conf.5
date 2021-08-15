@@ -1,5 +1,5 @@
 .\"  -*- nroff -*-
-.Dd August 10, 2021
+.Dd August 15, 2021
 .Dt SMCROUTE.CONF 5
 .Os
 .Sh NAME
@@ -177,9 +177,10 @@ but this can be overridden using the
 command line option.
 .Pp
 The
-.Ar IFNAME
-argument below is the interface name, or an interface wildcard of the
-form
+.Ar IIF
+and
+.Ar OIF
+arguments below are interface names, or interface wildcards of the form
 .Ar eth+ ,
 which matches
 .Ar eth0 , eth10 ,
