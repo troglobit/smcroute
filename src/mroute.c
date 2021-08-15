@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>		/* snprintf() */
+#include <sysexits.h>
 #include <unistd.h>
 #include <time.h>
 
@@ -1125,6 +1126,10 @@ static int show_mroute(int sd, struct mroute *r, int detail)
 
 	iface = iface_find_by_inbound(r);
 	snprintf(sg, sizeof(sg), "(%s%s, %s%s)", src, src_len, grp, grp_len);
+	if (!iface) {
+		smclog(LOG_ERR, "Failed reading iif for %s, aborting.", sg);
+		exit(EX_SOFTWARE);
+	}
 	snprintf(buf, sizeof(buf), "%-46s %-16s", sg, iface->ifname);
 
 	if (detail) {
