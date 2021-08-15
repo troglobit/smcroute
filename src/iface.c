@@ -44,8 +44,9 @@ static LIST_HEAD(iflist, iface) iface_list = LIST_HEAD_INITIALIZER();
 
 /**
  * iface_update - Check of new interfaces
+ * @do_vifs: If set, then mark all interfaces found as "in use"
  */
-void iface_update(void)
+void iface_update(int do_vifs)
 {
 	struct ifaddrs *ifaddr, *ifa;
 
@@ -60,12 +61,16 @@ void iface_update(void)
 		/* Check if already added? */
 		iface = iface_find_by_name(ifa->ifa_name);
 		if (iface) {
+			smclog(LOG_DEBUG, "Found %s, updating ...", ifa->ifa_name);
 			if (!iface->inaddr.s_addr && ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET)
 				iface->inaddr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
+			if (do_vifs)
+				iface->unused = 0;
 
 			continue;
 		}
 
+		smclog(LOG_DEBUG, "Found new interface %s, adding ...", ifa->ifa_name);
 		iface = calloc(1, sizeof(struct iface));
 		if (!iface) {
 			smclog(LOG_ERR, "Failed allocating space for interface: %s", strerror(errno));
@@ -97,13 +102,14 @@ void iface_update(void)
 
 /**
  * iface_init - Probe for interaces at startup
+ * @do_vifs: If set, then mark all interfaces found as "in use"
  *
  * Builds up a vector with active system interfaces.  Must be called
  * before any other interface functions in this module!
  */
-void iface_init(void)
+void iface_init(int do_vifs)
 {
-	iface_update();
+	iface_update(do_vifs);
 }
 
 /**
