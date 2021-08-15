@@ -168,10 +168,12 @@ struct iface *iface_find_by_name(const char *ifname)
 	if (!nm)
 		return NULL;
 
-	/* Alias interfaces should use the same VIF/MIF as parent */
+#ifdef __linux__
+	/* Linux alias interfaces should use the same VIF/MIF as parent */
 	ptr = strchr(nm, ':');
 	if (ptr)
 		*ptr = 0;
+#endif
 
 	LIST_FOREACH(iface, &iface_list, link) {
 		if (!strcmp(nm, iface->ifname)) {
