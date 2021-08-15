@@ -259,7 +259,7 @@ limit.  On a LAN this is usually managed automatically by bridges
 LANs there is also the need to scope multicast, often the same multicast
 groups are used for different purposes on different LANs.  This must be
 managed by administrators, at least three options exist:
-.Bl -tag -offsent indent
+.Bl -tag -offset indent
 .It Cm TTL scoping
 The traditional way of "raising walls" between zones.  The outbound
 interfaces of routers are given a TTL threshold greater than the hop it
@@ -268,7 +268,7 @@ lot easier than adjusting the TTL value of each multicast sender.  The
 only real downside to this is that it scales poorly with the number of
 routers and it affects all multicast traversing the router's interfaces.
 .It Cm Administrative scoping (RFC2365)
-This is one of the current best practises, defining boundaries for sets
+This is one of the current best practices, defining boundaries for sets
 of multicast groups instead of limiting all multicast (as TTL scoping
 does).  In the case of
 .Nm
@@ -473,13 +473,13 @@ and
 .Fl S Ar NAME
 to the daemon can be used to change the socket file name.
 .It Pa /proc/net/ip_mr_cache
-Linux specific, olds active IPv4 multicast routes.
+Linux specific, holds active IPv4 multicast routes.
 .It Pa /proc/net/ip_mr_vif
-Linux specific, olds the IPv4 virtual interfaces used by the active multicast routing daemon.
+Linux specific, holds the IPv4 virtual interfaces used by the active multicast routing daemon.
 .It Pa /proc/net/ip6_mr_cache
-Linux specific, olds active IPv6 multicast routes.
+Linux specific, holds active IPv6 multicast routes.
 .It Pa /proc/net/ip6_mr_vif
-Linux specific, olds the IPv6 virtual interfaces used by the active multicast routing daemon.
+Linux specific, holds the IPv6 virtual interfaces used by the active multicast routing daemon.
 .It Pa /proc/net/igmp
 Linux specific, holds active IGMP ASM (*,G) joins.
 .It Pa /proc/net/igmp6
@@ -514,7 +514,7 @@ how to interpret them.
 .Bl -column "Status" "Symbolic Name" "Description" -offset indent
 .It Sy Status Ta Sy Symbolic Name  Ta Sy Description
 .It 0    Ta EX_OK          Ta Success
-.It 64   Ta EX_USAGE       Ta Invalid command line option, or missing arugment
+.It 64   Ta EX_USAGE       Ta Invalid command line option, or missing argument
 .It 69   Ta EX_UNAVAILABLE Ta Multicast routing socket (or table) already in use
 .It 71   Ta EX_OSERR       Ta Failed
 .Fn fork ,

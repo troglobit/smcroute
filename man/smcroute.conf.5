@@ -10,7 +10,7 @@ The file
 .Nm
 is, strictly speaking, not critical to the operation of
 .Nm smcrouted .
-Some warnings may be logged, and provided the deamon is
+Some warnings may be logged, and provided the daemon is
 .Sy not
 started with
 .Fl N ,
@@ -76,7 +76,7 @@ statements for all possible multicast groups you may want to forward.
 .Pp
 .Cm ttl-threshold
 is a very useful setting to help implement "TTL scoping".  I.e., the
-mininum TTL level a multicast stream must exceed for the kernel to
+minimum TTL level a multicast stream must exceed for the kernel to
 consider it to be routed.  The default value (1) means a TTL of 2 or
 higher is needed for a frame to be forwarded to the routing stack,
 otherwise it is considered link-local.  See
@@ -110,7 +110,7 @@ is translated to as many sources and groups as specified.  To attempt to
 overcome (configured) kernel limitations,
 .Nm smcrouted
 probes the amount of joins available per socket.  When the socket has
-been exhuasted, another one is opened.  At most 2048 sockets are opened.
+been exhausted, another one is opened.  At most 2048 sockets are opened.
 .Pp
 The purpose of joining groups is to use layer-2 signaling to inform
 switches, and other routers, to open up multicast traffic to your
