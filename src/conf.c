@@ -338,7 +338,7 @@ int conf_parse(struct conf *conf, int do_vifs)
 		else
 			smclog(LOG_WARNING, "Failed opening %s: %s", conf->file, strerror(errno));
 
-		if (conf_vrfy)
+		if (!conf_vrfy)
 			smclog(LOG_NOTICE, "Continuing anyway, waiting for client to connect.");
 
 		return 1;
