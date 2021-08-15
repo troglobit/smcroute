@@ -469,6 +469,8 @@ int main(int argc, char *argv[])
 
 			default:
 				cmd = &args[i];
+				if (help)
+					goto help;
 				if (argc - (pos + 1) < args[i].min_args) {
 					warnx("Not enough arguments to command %s", nm);
 					status = 1;
