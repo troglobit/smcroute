@@ -488,7 +488,12 @@ next:
 	free(linebuf);
 	fclose(fp);
 
-	return rc;
+	if (rc) {
+		errno = EOPNOTSUPP;
+		return 1;
+	}
+
+	return 0;
 }
 
 /* Parse .conf file and setup routes */
@@ -497,7 +502,8 @@ int conf_read(char *file, int do_vifs)
 	struct conf conf = { .file = file };
 
 	if (conf_parse(&conf, do_vifs)) {
-		smclog(LOG_WARNING, "Parse error in %s", file);
+		if (errno == EOPNOTSUPP)
+			smclog(LOG_WARNING, "Parse error in %s", file);
 		return EX_CONFIG;
 	}
 
