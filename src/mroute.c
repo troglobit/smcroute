@@ -625,6 +625,51 @@ static int do_mroute_del_outbound(struct mroute *entry, struct mroute *route)
 	return kern_mroute_add(entry, 1);
 }
 
+/*
+ * When deleting a (*,G) route, it may have spawned one or more (S,G) routes
+ * that overlap with configured (S,G) routes.  The latter have precedence and
+ * thus when removing spawned ones we need to always keep the configured OIFs
+ */
+static int do_mroute_del_ssm_check(struct mroute *set, struct mroute *route)
+{
+	struct mroute *entry;
+
+	LIST_FOREACH(entry, &mroute_ssm_list, link) {
+		if (!is_exact_match(entry, set))
+			continue;
+
+		/* "active" means delete active OIFs */
+		if (is_active(route)) {
+			size_t i;
+
+			/* First remove all requested OIFs from route */
+			for (i = 0; i < NELEMS(set->ttl); i++) {
+				if (route->ttl[i])
+					set->ttl[i] = 0;
+			}
+
+			/* Then add all OIFs from SSM entry for smooth transition */
+			for (i = 0; i < NELEMS(set->ttl); i++) {
+				if (entry->ttl[i])
+					set->ttl[i] = entry->ttl[i];
+			}
+
+			kern_mroute_add(set, 1);
+		} else {
+			/*
+			 * Not "active" means user wants complete (*,G)
+			 * route removal, but we can't allow that if
+			 * there's a more specific (S,G) route set.
+			 */
+			kern_mroute_add(entry, 1);
+		}
+
+		return 0;
+	}
+
+	return 1;     /* Not found, no SSM overlap, it's OK to remove */
+}
+
 /**
  * mroute_del_route - Remove route from kernel, or all matching routes if wildcard
  * @route: Pointer to multicast route to remove
@@ -669,7 +714,7 @@ int mroute_del_route(struct mroute *route)
 
 	/* Find matching (*,G) ... and interface .. and prefix length. */
 	LIST_FOREACH_SAFE(entry, &mroute_asm_conf_list, link, tmp) {
-		int ret = 0;
+		int rc = 0;
 
 		if (!is_match(entry, route) || entry->len != route->len ||
 		    entry->src_len != route->src_len)
@@ -680,18 +725,26 @@ int mroute_del_route(struct mroute *route)
 			if (!is_match(entry, set) || entry->len != route->len)
 				continue;
 
-			if (entry->unused)
-				ret += do_mroute_del(set);
-			else
-				ret += do_mroute_del_outbound(set, route);
+			/* Check if overlapping with an SSM route, more specific wins */
+			if (do_mroute_del_ssm_check(set, route)) {
+				if (entry->unused)
+					rc += do_mroute_del(set);
+				else
+					rc += do_mroute_del_outbound(set, route);
+			}
+
+			if (!rc) {
+				LIST_REMOVE(set, link);
+				free(set);
+			}
 		}
 
-		if (!ret) {
+		if (!rc) {
 			LIST_REMOVE(entry, link);
 			free(entry);
 		}
 
-		return ret;
+		return rc;
 	}
 
 	smclog(LOG_NOTICE, "Cannot delete multicast route: not found");
