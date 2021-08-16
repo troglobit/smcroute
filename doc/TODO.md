@@ -78,6 +78,8 @@ Filtering multiple sources:
 
     mroute from eth0 except 192.168.1.0/24,192.168.2.3 group 225.1.2.0/24 to eth1 eth2
 
+This is sometimes also referred to as Administrative Scoping (RFC2365).
+
 
 Basic support for IGMP/MLD proxying
 -----------------------------------
