@@ -25,7 +25,7 @@ EOF
 cat "/tmp/$NM/conf"
 
 print "Starting smcrouted ..."
-../src/smcrouted -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug -S "/tmp/$NM/sock" &
+../src/smcrouted -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug -u "/tmp/$NM/sock" &
 sleep 1
 
 print "Starting collectors ..."

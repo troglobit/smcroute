@@ -44,7 +44,7 @@ EOF
 cat "/tmp/$NM/conf"
 
 print "Starting smcrouted ..."
-../src/smcrouted -f "/tmp/$NM/conf" -N -n -P "/tmp/$NM/pid" -l debug -S "/tmp/$NM/sock" &
+../src/smcrouted -f "/tmp/$NM/conf" -N -n -P "/tmp/$NM/pid" -l debug -u "/tmp/$NM/sock" &
 sleep 1
 
 ../src/smcroutectl -pS "/tmp/$NM/sock" show groups
@@ -69,7 +69,7 @@ mgroup from a3 group ff2e::44
 mroute from a3 group ff2e::44 to b3 b4
 EOF
 cat "/tmp/$NM/conf"
-../src/smcroutectl -S "/tmp/$NM/sock" reload
+../src/smcroutectl -u "/tmp/$NM/sock" reload
 sleep 1
 
 ../src/smcroutectl -pS "/tmp/$NM/sock" show groups
@@ -80,7 +80,7 @@ show_mroute
 check_output "Iif: a1" "Oifs: b3 b2"
 
 print "Updating route from smcroutectl ..."
-../src/smcroutectl -S "/tmp/$NM/sock" add a1 fc00::1 ff2e::42 b4
+../src/smcroutectl -u "/tmp/$NM/sock" add a1 fc00::1 ff2e::42 b4
 show_mroute
 
 check_output "Iif: a1" "Oifs: b3 b2 b4"

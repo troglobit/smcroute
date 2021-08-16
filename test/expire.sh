@@ -31,7 +31,7 @@ EOF
 cat "/tmp/$NM/conf"
 
 print "Starting smcrouted ..."
-../src/smcrouted -c 10 -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug -S "/tmp/$NM/sock" &
+../src/smcrouted -c 10 -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug -u "/tmp/$NM/sock" &
 sleep 1
 
 collect a2 -c12 'dst ff04::114 or dst ff2e::42 or dst ff2e::43 or dst ff2e::44'

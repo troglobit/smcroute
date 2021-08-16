@@ -69,9 +69,9 @@ EOF
 cat "/tmp/$NM/shared.conf"
 
 print "Starting smcrouted instances ..."
-nsenter --net=host1 -- ../src/smcrouted -f "/tmp/$NM/shared.conf" -n -N -I host1 -l debug -S "/tmp/$NM/host1.sock" &
+nsenter --net=host1 -- ../src/smcrouted -f "/tmp/$NM/shared.conf" -n -N -i host1 -l debug -u "/tmp/$NM/host1.sock" &
 echo $! >> "/tmp/$NM/PIDs"
-nsenter --net=host2 -- ../src/smcrouted -f "/tmp/$NM/shared.conf" -n -N -I host2 -l debug -S "/tmp/$NM/host2.sock" &
+nsenter --net=host2 -- ../src/smcrouted -f "/tmp/$NM/shared.conf" -n -N -i host2 -l debug -u "/tmp/$NM/host2.sock" &
 echo $! >> "/tmp/$NM/PIDs"
 sleep 1
 

@@ -5,9 +5,9 @@
 activate()
 {
     if [ -f /tmp/$NM/pid ]; then
-	../src/smcroutectl -S "/tmp/$NM/sock" reload
+	../src/smcroutectl -u "/tmp/$NM/sock" reload
     else
-	../src/smcrouted -c 8 -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug -S "/tmp/$NM/sock" &
+	../src/smcrouted -c 8 -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug -u "/tmp/$NM/sock" &
     fi
     sleep 1
 }

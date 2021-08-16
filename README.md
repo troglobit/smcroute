@@ -74,10 +74,10 @@ Linux.  E.g., FreeBSD does not have SSM group join support.
 Usage
 -----
 
-    smcrouted [-nNhsv] [-c SEC] [-d SEC] [-e CMD] [-f FILE] [-I NAME]
-	          [-l LVL] [-p USER:GROUP] [-P FILE] [-S FILE] [-t ID]
+    smcrouted [-nNhsv] [-c SEC] [-d SEC] [-e CMD] [-f FILE] [-i NAME]
+	          [-l LVL] [-p USER:GROUP] [-P FILE] [-t ID] [-u FILE]
     
-    smcroutectl [-dptv] [-I NAME] [-S FILE] [COMMAND]
+    smcroutectl [-dptv] [-i NAME] [-u FILE] [COMMAND]
     smcroutectl ⟨kill | reload⟩
     smcroutectl ⟨add  | rem⟩    ⟨ROUTE⟩
     smcroutectl ⟨join | leave⟩  ⟨GROUP⟩
@@ -194,10 +194,10 @@ On Linux it is possible to run multiple multicast routing daemons due to
 its support for multiple multicast routing tables.  In such setups it
 may be useful to change the default identity of SMCRoute:
 
-    smcrouted -I mrt1 -t 1
-    smcrouted -I mrt2 -t 2
+    smcrouted -i mrt1 -t 1
+    smcrouted -i mrt2 -t 2
 
-The `-I NAME` option alters the default syslog name, config file, PID
+The `-i NAME` option alters the default syslog name, config file, PID
 file, and client socket file name used.  In the first instance above,
 `smcrouted` will use:
 
@@ -206,7 +206,7 @@ file, and client socket file name used.  In the first instance above,
 - `/var/run/mrt1.sock`
 
 and syslog messages will use the `mrt1` identity as well.  Remember to
-use the same `-I NAME` also to `smcroutectl`.
+use the same `-i NAME` also to `smcroutectl`.
 
 
 ### Client Tool
@@ -219,8 +219,8 @@ SMCRoute also has a client interface to interact with the daemon:
 If the daemon runs with a different identity the client needs to be
 called using the same identity:
 
-    smcrouted   -I mrt
-    smcroutectl -I mrt show
+    smcrouted   -i mrt
+    smcroutectl -i mrt show
 
 There are more commands.  See the man page or the online help for
 details:

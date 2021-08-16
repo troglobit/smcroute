@@ -51,7 +51,7 @@ show_mroute()
     ip mroute
     ip -6 mroute
     echo "-----------------------------------------------------------------------------------"
-    ../src/smcroutectl -pd -S "/tmp/$NM/sock"
+    ../src/smcroutectl -pd -u "/tmp/$NM/sock"
 }
 
 collect()

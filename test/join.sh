@@ -33,7 +33,7 @@ EOF
 cat "/tmp/$NM/conf"
 
 print "Starting smcrouted ..."
-../src/smcrouted -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug -S "/tmp/$NM/sock" &
+../src/smcrouted -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug -u "/tmp/$NM/sock" &
 sleep 1
 
 echo "-----------------------------------------------------------------------------------"
@@ -79,11 +79,11 @@ fi
 
 #################################################################### JOIN GROUPS
 print "Phase 2: Join groups (IPC)"
-../src/smcroutectl -S "/tmp/$NM/sock" join a1 10.0.0.11 225.1.1.1
-../src/smcroutectl -S "/tmp/$NM/sock" join a2 225.2.2.2
+../src/smcroutectl -u "/tmp/$NM/sock" join a1 10.0.0.11 225.1.1.1
+../src/smcroutectl -u "/tmp/$NM/sock" join a2 225.2.2.2
 
-../src/smcroutectl -S "/tmp/$NM/sock" join a1 fc00::2 ff04::111
-../src/smcroutectl -S "/tmp/$NM/sock" join a2 ff2e::22
+../src/smcroutectl -u "/tmp/$NM/sock" join a1 fc00::2 ff04::111
+../src/smcroutectl -u "/tmp/$NM/sock" join a2 ff2e::22
 
 echo "-----------------------------------------------------------------------------------"
 ../src/smcroutectl -pS "/tmp/$NM/sock" show interfaces
@@ -128,11 +128,11 @@ fi
 
 ################################################################### LEAVE GROUPS
 print "Phase 3: Leave groups (IPC)"
-../src/smcroutectl -S "/tmp/$NM/sock" leave a1 10.0.0.10 225.1.2.3
-../src/smcroutectl -S "/tmp/$NM/sock" leave a2 225.3.2.1
+../src/smcroutectl -u "/tmp/$NM/sock" leave a1 10.0.0.10 225.1.2.3
+../src/smcroutectl -u "/tmp/$NM/sock" leave a2 225.3.2.1
 
-../src/smcroutectl -S "/tmp/$NM/sock" leave a1 fc00::1 ff04::114
-../src/smcroutectl -S "/tmp/$NM/sock" leave a2 ff2e::42
+../src/smcroutectl -u "/tmp/$NM/sock" leave a1 fc00::1 ff04::114
+../src/smcroutectl -u "/tmp/$NM/sock" leave a2 ff2e::42
 
 echo "-----------------------------------------------------------------------------------"
 ../src/smcroutectl -pS "/tmp/$NM/sock" show interfaces

@@ -27,7 +27,7 @@ EOF
 cat "/tmp/$NM/conf"
 
 print "Starting smcrouted ..."
-../src/smcrouted -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug -S "/tmp/$NM/sock" &
+../src/smcrouted -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug -u "/tmp/$NM/sock" &
 sleep 1
 
 echo "-----------------------------------------------------------------------------------"
@@ -42,8 +42,8 @@ echo "--------------------------------------------------------------------------
 collect a2 -c12 'dst 225.3.2.1 or dst 225.1.2.3 or dst 225.1.2.4 or 225.1.2.5'
 
 print "Adding IPC routes ..."
-../src/smcroutectl -S "/tmp/$NM/sock" add a1 225.1.2.4 a2
-../src/smcroutectl -S "/tmp/$NM/sock" add a1 10.0.0.1 225.1.2.5 a2
+../src/smcroutectl -u "/tmp/$NM/sock" add a1 225.1.2.4 a2
+../src/smcroutectl -u "/tmp/$NM/sock" add a1 10.0.0.1 225.1.2.5 a2
 show_mroute
 
 print "Starting emitter ..."

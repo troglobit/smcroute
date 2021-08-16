@@ -75,9 +75,9 @@ EOF
 cat "/tmp/$NM/shared.conf"
 
 print "Starting smcrouted instances ..."
-nsenter --net=R1 -- ../src/smcrouted -f "/tmp/$NM/shared.conf" -n -N -I R1 -l debug -S "/tmp/$NM/R1.sock" &
+nsenter --net=R1 -- ../src/smcrouted -f "/tmp/$NM/shared.conf" -n -N -i R1 -l debug -u "/tmp/$NM/R1.sock" &
 echo $! >> "/tmp/$NM/PIDs"
-nsenter --net=R2 -- ../src/smcrouted -f "/tmp/$NM/shared.conf" -n -N -I R2 -l debug -S "/tmp/$NM/R2.sock" &
+nsenter --net=R2 -- ../src/smcrouted -f "/tmp/$NM/shared.conf" -n -N -i R2 -l debug -u "/tmp/$NM/R2.sock" &
 echo $! >> "/tmp/$NM/PIDs"
 sleep 1
 
@@ -91,12 +91,12 @@ sleep 5
 
 print "R1 multicast routes and 1:1 NAT ..."
 nsenter --net=R1 -- ip mroute
-nsenter --net=R1 -- ../src/smcroutectl -d -S  "/tmp/$NM/R1.sock"
+nsenter --net=R1 -- ../src/smcroutectl -d -u  "/tmp/$NM/R1.sock"
 nsenter --net=R1 -- iptables -v -L -t nat
 
 print "R2 multicast routes and 1:1 NAT ..."
 nsenter --net=R2 -- ip mroute
-nsenter --net=R2 -- ../src/smcroutectl -d -S  "/tmp/$NM/R2.sock"
+nsenter --net=R2 -- ../src/smcroutectl -d -u  "/tmp/$NM/R2.sock"
 nsenter --net=R2 -- iptables -v -L -t nat
 
 print "Analyzing br0 pcap, data from R1 and R2 ..."

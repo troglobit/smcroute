@@ -56,12 +56,13 @@ struct arg {
 	int   has_detail;
 } args[] = {
 	{ NULL,      0, 'd', NULL,   "Detailed output in show command", NULL, 0 },
-	{ NULL,      1, 'I', "NAME", "Identity of routing daemon instance, default: " PACKAGE, "foo", 0 },
+	{ NULL,      1, 'i', "NAME", "Identity of routing daemon instance, default: " PACKAGE, "foo", 0 },
+	{ NULL,      1, 'I', "NAME", NULL, NULL, 0 }, /* Alias, compat with older versions */
 	{ NULL,      0, 'p', NULL,   "Use plain table headings, no ctrl chars", NULL, 0 },
-	{ NULL,      1, 'S', "FILE", "UNIX domain socket for daemon, default: " RUNSTATEDIR "/" PACKAGE ".sock", "/tmp/foo.sock", 0 },
 	{ NULL,      0, 't', NULL,   "Skip table heading in show command", NULL, 0 },
+	{ NULL,      1, 'u', "FILE", "UNIX domain socket for daemon, default: " RUNSTATEDIR "/" PACKAGE ".sock", "/tmp/foo.sock", 0 },
 	{ "help",    0, 'h', NULL,   "Show help text", NULL, 0 },
-	{ "version", 0, 'v', NULL,   "Show program version", NULL, 0 },
+	{ "version", 0, 'v', NULL,   "Show program version and support information", NULL, 0 },
 	{ "flush" ,  0, 'F', NULL,   "Flush all dynamically installed (*,G) multicast routes", NULL, 0 },
 	{ "kill",    0, 'k', NULL,   "Kill running daemon", NULL, 0 },
 	{ "reload",  0, 'H', NULL,   "Reload .conf file, like SIGHUP", NULL, 0 },
@@ -273,7 +274,7 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 
 		case ENOENT:
 			if (!sock_file) {
-				warnx("Daemon may be running with another -I NAME");
+				warnx("Daemon may be running with another -i NAME");
 				break;
 			}
 			/* fallthrough */
@@ -404,7 +405,7 @@ int main(int argc, char *argv[])
 	struct arg *cmd = NULL;
 
 	prognm = progname(argv[0]);
-	while ((c = getopt(argc, argv, "dhI:pS:tv")) != EOF) {
+	while ((c = getopt(argc, argv, "dhi:ptu:v")) != EOF) {
 		switch (c) {
 		case 'd':
 			detail++;
@@ -414,7 +415,8 @@ int main(int argc, char *argv[])
 			help++;
 			break;
 
-		case 'I':
+		case 'I':	/* compat with previous versions */
+		case 'i':
 			ident = optarg;
 			break;
 
@@ -422,12 +424,12 @@ int main(int argc, char *argv[])
 			plain = 1;
 			break;
 
-		case 'S':
-			sock_file = optarg;
-			break;
-
 		case 't':
 			heading = 0;
+			break;
+
+		case 'u':
+			sock_file = optarg;
 			break;
 
 		case 'v':

@@ -9,8 +9,8 @@
 .Sh SYNOPSIS
 .Nm smcroutectl
 .Op Fl dptv
-.Op Fl I Ar NAME
-.Op Fl S Ar FILE
+.Op Fl i Ar NAME
+.Op Fl u Ar FILE
 .Op Ar COMMAND
 .Pp
 .Nm smcroutectl
@@ -38,7 +38,7 @@ options are available:
 .Bl -tag -width Ds
 .It Fl d
 Enable detailed output in show commands.
-.It Fl I Ar NAME
+.It Fl i Ar NAME
 Connect to an
 .Nm smcrouted
 instance that runs with another identity,
@@ -56,14 +56,14 @@ Use plain table headings in
 .Cm show
 command output.  No ANSI control characters are used, not even for
 probing screen width.
-.It Fl S Ar FILE
+.It Fl u Ar FILE
 UNIX domain socket path, used for the IPC between
 .Nm smcrouted
 and
 .Nm .
 Use this to override the default socket path, otherwise derived from the
 identity,
-.Fl I Ar NAME .
+.Fl i Ar NAME .
 This option can be useful when overriding the identity is not
 sufficient, e.g. for testing.  The default depends on how
 .Nm
@@ -217,7 +217,7 @@ routes.  Can be combined with the
 .Fl d
 option to get details for each multicast route.
 .It Nm version
-Show program version.
+Show program version and support information.
 .El
 .Sh SEE ALSO
 .Xr smcrouted 8 ,

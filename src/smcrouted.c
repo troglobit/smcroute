@@ -292,13 +292,16 @@ static int usage(int code)
 	else
 		snprintf(pidfn, len, "%s", pid_file);
 
-	printf("Usage: %s [hnNsv] [-c SEC] [-d SEC] [-e CMD] [-f FILE] [-l LVL] "
+	printf("Usage:\n"
+	       "  %s [-hnNsv] [-c SEC] [-d SEC] [-e CMD] [-f FILE] [-i NAME] [-l LVL] "
+	       "\n"
+	       "                     "
 #ifdef ENABLE_MRDISC
 	       "[-m SEC] "
 #endif
-	       "[-P FILE] "
-	       "[-t ID] "
-	       "\n\n"
+	       "[-P FILE] [-t ID] [-u FILE]\n"
+	       "\n"
+	       "Options:\n"
 	       "  -c SEC          Flush dynamic (*,G) multicast routes every SEC seconds,\n"
 	       "                  default 60 sec.  Useful when source/interface changes\n"
 	       "  -d SEC          Startup delay, useful for delaying interface probe at boot\n"
@@ -307,7 +310,7 @@ static int usage(int code)
 	       "  -f FILE         Configuration file, default use ident NAME: %s\n"
 	       "  -F FILE         Check configuration file syntax, use -l to increase verbosity\n"
 	       "  -h              This help text\n"
-	       "  -I NAME         Identity for .conf/.pid/.sock file, and syslog, default: %s\n"
+	       "  -i NAME         Identity for .conf/.pid/.sock file, and syslog, default: %s\n"
 	       "  -l LVL          Set log level: none, err, notice*, info, debug\n"
 #ifdef ENABLE_MRDISC
 	       "  -m SEC          Multicast router discovery, 4-180, default: 20 sec\n"
@@ -321,10 +324,10 @@ static int usage(int code)
 	       "  -P FILE         Set daemon PID file name, with optional path.\n"
 	       "                  Default use ident NAME: %s\n"
 	       "  -s              Use syslog, default unless running in foreground, -n\n"
-	       "  -S FILE         UNIX domain socket path, for use with smcroutectl.\n"
-	       "                  Default use ident NAME: %s\n"
 	       "  -t ID           Set multicast routing table ID, default: 0\n"
-	       "  -v              Show program version\n"
+	       "  -u FILE         UNIX domain socket path, for use with smcroutectl.\n"
+	       "                  Default use ident NAME: %s\n"
+	       "  -v              Show program version and support information\n"
 	       "\n", prognm, conf_file, ident, pidfn, sock_file);
 
 	free(pidfn);
@@ -363,7 +366,7 @@ int main(int argc, char *argv[])
 	int c, new_log_level = -1;
 
 	prognm = progname(argv[0]);
-	while ((c = getopt(argc, argv, "c:d:D:e:f:F:hI:l:m:nNp:P:sS:t:v")) != EOF) {
+	while ((c = getopt(argc, argv, "c:d:D:e:f:F:hI:i:l:m:nNp:P:st:u:v")) != EOF) {
 		switch (c) {
 		case 'c':	/* cache timeout */
 			cache_tmo = atoi(optarg);
@@ -392,7 +395,8 @@ int main(int argc, char *argv[])
 		case 'h':	/* help */
 			return usage(EX_OK);
 
-		case 'I':
+		case 'I':	/* compat with previous versions */
+		case 'i':
 			ident = optarg;
 			break;
 
@@ -432,10 +436,6 @@ int main(int argc, char *argv[])
 			do_syslog++;
 			break;
 
-		case 'S':
-			sock_file = strdup(optarg);
-			break;
-
 		case 't':
 #ifndef __linux__
 			errx(1, "Different multicast routing tables only available on Linux.");
@@ -444,6 +444,10 @@ int main(int argc, char *argv[])
 			if (table_id < 0)
 				return usage(EX_USAGE);
 #endif
+			break;
+
+		case 'u':
+			sock_file = strdup(optarg);
 			break;
 
 		case 'v':	/* version */

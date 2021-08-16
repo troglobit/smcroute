@@ -30,7 +30,7 @@ EOF
 cat "/tmp/$NM/conf"
 
 print "Starting smcrouted ..."
-../src/smcrouted -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug -S "/tmp/$NM/sock" &
+../src/smcrouted -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug -u "/tmp/$NM/sock" &
 sleep 1
 
 echo "-----------------------------------------------------------------------------------"
@@ -44,8 +44,8 @@ echo "--------------------------------------------------------------------------
 
 collect a2 -c12 'dst ff04::114 or dst ff2e::42 or dst ff2e::43 or dst ff2e::44'
 
-../src/smcroutectl -S "/tmp/$NM/sock" add a1         ff2e::43 a2
-../src/smcroutectl -S "/tmp/$NM/sock" add a1 fc00::1 ff2e::44 a2
+../src/smcroutectl -u "/tmp/$NM/sock" add a1         ff2e::43 a2
+../src/smcroutectl -u "/tmp/$NM/sock" add a1 fc00::1 ff2e::44 a2
 show_mroute
 
 print "Starting emitter ..."
