@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <string.h>
+#include <sysexits.h>
 #ifdef HAVE_TERMIOS_H
 # include <termios.h>
 #endif
@@ -143,58 +144,61 @@ static int get_width(void)
 	return ret;
 }
 
-static void table_heading(char cmd, int detail)
+static void print(char *line, int indent)
 {
-	const char *r = "ROUTE (S,G)", *o = "OUTBOUND", *p = "PACKETS", *b = "BYTES";
-	const char *g = "GROUP (S,G)", *i = "INBOUND";
-	char line[120];
+	int type = 0;
+	int i, len;
 
-	if (!heading)
-		return;
+	chomp(line);
 
-	/* Skip heading also if user redirects output to a file */
-	if (!plain && !isatty(STDOUT_FILENO))
-		return;
+	/* Table headings, or repeat headers, end with a '=' */
+	len = (int)strlen(line) - 1;
+	if (len > 0) {
+		if (line[len] == '_')
+			type = 1;
+		if (line[len] == '=')
+			type = 2;
 
-	if (detail)
-		cmd -= 0x20;
+		if (type) {
+			if (!heading)
+				return;
+			line[len] = 0;
+		}
+	}
 
-	switch (cmd) {
-	case 'G':
-	case 'g':
-		snprintf(line, sizeof(line), "%-46s %-16s", g, i);
+	switch (type) {
+	case 1:
+		if (!plain) {
+			fprintf(stdout, "\e[4m%*s\e[0m\n%s\n", get_width(), "", line);
+			return;
+
+		}
+
+		len = len < 79 ? 79 : len;
+		for (i = 0; i < len; i++)
+			fputc('_', stdout);
+		fprintf(stdout, "\n%*s%s\n", indent, "", line);
 		break;
 
-	case 'R':
-		snprintf(line, sizeof(line), "%-46s %-16s %10s %10s  %-8s", r, i, p, b, o);
-		break;
+	case 2:
+		if (!plain) {
+			len = get_width() - len;
+			fprintf(stdout, "\e[7m%s%*s\e[0m\n", line, len, "");
+			return;
+		}
 
-	case 'r':
-		snprintf(line, sizeof(line), "%-46s %-16s %-8s", r, i, o);
-		break;
-
-	case 'i':
-	case 'I':
-		snprintf(line, sizeof(line), "PHYINT           IFINDEX  VIF  MIF");
+		len = len < 79 ? 79 : len;
+		for (i = 0; i < len; i++)
+			fputc('=', stdout);
+		fprintf(stdout, "\n%*s%s\n", indent, "", line);
+		for (i = 0; i < len; i++)
+			fputc('=', stdout);
+		fputs("\n", stdout);
 		break;
 
 	default:
-		return;
-	}
-
-	if (!plain) {
-		int len;
-
-		len = get_width() - (int)strlen(line);
-		fprintf(stderr, "\e[7m%s%*s\n\e[0m", line, len < 0 ? 0 : len, "");
-	} else {
-		size_t j, len;
-
-		fprintf(stderr, "%s\n", line);
-		len = strlen(line);
-		for (j = 0; j < len; j++)
-			fputc('=', stderr);
-		fputc('\n', stderr);
+		puts(line);
+		break;
 	}
 }
 
@@ -242,6 +246,7 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 	struct ipc_msg *msg;
 	int retries = 30;
 	int result = 0;
+	FILE *fp;
 	ssize_t len;
 	int sd;
 
@@ -284,7 +289,6 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 
 	/* Send command */
 	if (write(sd, msg, msg->len) != (ssize_t)msg->len) {
-	error:
 		warn("Communication with daemon failed");
 		close(sd);
 		free(msg);
@@ -292,42 +296,29 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 		return 1;
 	}
 
-	/* Wait here for reply */
-	len = read(sd, buf, sizeof(buf) - 1);
-	if (len < 0)
-		goto error;
-
-	if (len != 1 || *buf != '\0') {
-		char *fallback[] = { "route" };
-		int detail = 0;
-
-		if (!argv || !argv[0])
-			argv = fallback;
-
-		/* Make sure buffer is NULL terminated */
-		buf[len] = 0;
-
-		switch (cmd) {
-		case 'S':
-			detail = 1;
-			/* fallthrough */
-		case 's':
-			table_heading(argv[0][0], detail);
-			do {
-				fputs(buf, stdout);
-				len = read(sd, buf, sizeof(buf) - 1);
-				if (len >= 0)
-					buf[len] = 0;
-			} while (len > 0);
-			break;
-
-		default:
-			warnx("%s", buf);
-			result = 1;
-			break;
-		}
+	fp = tmpfile();
+	if (!fp) {
+		close(sd);
+		free(msg);
+		err(EX_OSERR, "Failed creating tmpfile()");
 	}
 
+	while ((len = read(sd, buf, sizeof(buf) - 1))) {
+		buf[len] = 0;
+		fwrite(buf, len, 1, fp);
+	}
+	rewind(fp);
+
+	if (cmd == 'S' || cmd == 's') {
+		while (fgets(buf, sizeof(buf), fp))
+			print(buf, 0);
+	} else {
+		if (fgets(buf, sizeof(buf), fp))
+			warnx("%s", buf);
+		result = 1;
+	}
+
+	fclose(fp);
 	close(sd);
 	free(msg);
 

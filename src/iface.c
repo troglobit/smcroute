@@ -410,8 +410,12 @@ mifi_t iface_match_mif_by_name(const char *ifname, struct ifmatch *state, struct
 int iface_show(int sd, int detail)
 {
 	struct iface *iface;
+	char line[120];
 
 	(void)detail;
+
+	snprintf(line, sizeof(line), "PHYINT           IFINDEX  VIF  MIF=\n");
+	ipc_send(sd, line, strlen(line));
 
 	iface = iface_iterator(1);
 	while (iface) {

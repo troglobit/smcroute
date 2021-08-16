@@ -410,10 +410,13 @@ void mcgroup_reload_end(void)
 /* Write all joined IGMP/MLD groups to client socket */
 int mcgroup_show(int sd, int detail)
 {
-	struct mcgroup *entry;
-	char buf[256];
 	char sg[INET_ADDRSTR_LEN * 2 + 10 + 3];
+	struct mcgroup *entry;
+	char line[256];
  
+	snprintf(line, sizeof(line), "%-46s %-16s=\n", "GROUP (S,G)", "INBOUND");
+	ipc_send(sd, line, strlen(line));
+
 	LIST_FOREACH(entry, &conf_list, link) {
 		struct iface *iface;
 		char src[INET_ADDRSTR_LEN] = "*";
@@ -429,19 +432,19 @@ int mcgroup_show(int sd, int detail)
 
 		snprintf(sg, sizeof(sg), "(%s", src);
 		if (entry->src_len > 0)
-			snprintf(buf, sizeof(buf), "/%u, ", entry->src_len);
+			snprintf(line, sizeof(line), "/%u, ", entry->src_len);
 		else
-			snprintf(buf, sizeof(buf), ", ");
-		strlcat(sg, buf, sizeof(sg));
+			snprintf(line, sizeof(line), ", ");
+		strlcat(sg, line, sizeof(sg));
 
 		if (entry->len > 0)
-			snprintf(buf, sizeof(buf), "%s/%u)", grp, entry->len);
+			snprintf(line, sizeof(line), "%s/%u)", grp, entry->len);
 		else
-			snprintf(buf, sizeof(buf), "%s)", grp);
-		strlcat(sg, buf, sizeof(sg));
+			snprintf(line, sizeof(line), "%s)", grp);
+		strlcat(sg, line, sizeof(sg));
 
-		snprintf(buf, sizeof(buf), "%-46s %s\n", sg, iface->ifname);
-		if (ipc_send(sd, buf, strlen(buf)) < 0) {
+		snprintf(line, sizeof(line), "%-46s %s\n", sg, iface->ifname);
+		if (ipc_send(sd, line, strlen(line)) < 0) {
 			smclog(LOG_ERR, "Failed sending reply to client: %s", strerror(errno));
 			return -1;
 		}

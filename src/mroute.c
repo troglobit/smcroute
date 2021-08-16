@@ -1236,24 +1236,89 @@ static int show_mroute(int sd, struct mroute *r, int detail)
 	return 0;
 }
 
+static int has_blocked(void)
+{
+	struct mroute *entry;
+
+	LIST_FOREACH(entry, &mroute_asm_kern_list, link) {
+		if (!is_active(entry))
+			return 1;
+	}
+
+	return 0;
+}
+
+static int has_learned(void)
+{
+	struct mroute *entry;
+
+	LIST_FOREACH(entry, &mroute_asm_kern_list, link) {
+		if (is_active(entry))
+			return 1;
+	}
+
+	return 0;
+}
+
 /* Write all (*,G) routes to client socket */
 int mroute_show(int sd, int detail)
 {
-	struct mroute *r;
+	const char *r = "ROUTE (S,G)", *o = "OUTBOUND", *i = "INBOUND";
+	struct mroute *entry;
+	char line[256];
 
-	LIST_FOREACH(r, &mroute_asm_conf_list, link) {
-		if (show_mroute(sd, r, detail) < 0)
-			return 1;
+	if (detail) {
+		const char *p = "PACKETS", *b = "BYTES";
+		snprintf(line, sizeof(line), "%-46s %-16s %10s %10s  %-8s=\n", r, i, p, b, o);
+	} else
+		snprintf(line, sizeof(line), "%-46s %-16s %-8s=\n", r, i, o);
+
+	if (!LIST_EMPTY(&mroute_asm_conf_list)) {
+		char *asm_conf = "(*,G) Rules_\n";
+
+		ipc_send(sd, asm_conf, strlen(asm_conf));
+		ipc_send(sd, line, strlen(line));
+		LIST_FOREACH(entry, &mroute_asm_conf_list, link) {
+			if (show_mroute(sd, entry, detail) < 0)
+				return 1;
+		}
 	}
 
-	LIST_FOREACH(r, &mroute_asm_kern_list, link) {
-		if (show_mroute(sd, r, detail) < 0)
-			return 1;
+	if (has_blocked()) {
+		char *stp_kern = "Blocked Multicast_\n";
+
+		ipc_send(sd, stp_kern, strlen(stp_kern));
+		ipc_send(sd, line, strlen(line));
+		LIST_FOREACH(entry, &mroute_asm_kern_list, link) {
+			if (is_active(entry))
+				continue;
+			if (show_mroute(sd, entry, detail) < 0)
+				return 1;
+		}
 	}
 
-	LIST_FOREACH(r, &mroute_ssm_list, link) {
-		if (show_mroute(sd, r, detail) < 0)
-			return 1;
+	if (has_learned()) {
+		char *asm_kern = "(*,G) -> Learned (S,G) Rules_\n";
+
+		ipc_send(sd, asm_kern, strlen(asm_kern));
+		ipc_send(sd, line, strlen(line));
+		LIST_FOREACH(entry, &mroute_asm_kern_list, link) {
+			if (!is_active(entry))
+				continue;
+			if (show_mroute(sd, entry, detail) < 0)
+				return 1;
+		}
+	}
+
+	if (!LIST_EMPTY(&mroute_ssm_list)) {
+		char *ssm_list = "(S,G) Rules_\n";
+
+		ipc_send(sd, ssm_list, strlen(ssm_list));
+		ipc_send(sd, line, strlen(line));
+		LIST_FOREACH(entry, &mroute_ssm_list, link) {
+			if (show_mroute(sd, entry, detail) < 0)
+				return 1;
+		}
 	}
 
 	return 0;

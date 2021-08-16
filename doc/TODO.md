@@ -1,10 +1,3 @@
-Refactor smcroutectl to use parser from pimd
---------------------------------------------
-
-Table headings belong with their data.  Use the "HEADING FOO=\n" syntax
-developed for mrouted and pimd.
-
-
 Tests must have uniquely named netns (if any)
 ---------------------------------------------
 
