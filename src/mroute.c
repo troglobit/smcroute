@@ -528,13 +528,13 @@ int mroute_add_route(struct mroute *route)
 	 * the kernel sends IGMPMSG_NOCACHE.
 	 */
 	if (!is_mroute_static(entry)) {
-		struct mroute *dyn, *tmp;
+		struct mroute *dyn, *ssm, *tmp;
 
 		if (!entry->unused || local)
 			LIST_INSERT_HEAD(&mroute_asm_conf_list, entry, link);
 		entry->unused = 0;	/* unmark from reload */
 
-		/* Also, immediately expire any currently blocked traffic */
+		/* Immediately expire any currently blocked traffic */
 		LIST_FOREACH_SAFE(dyn, &mroute_asm_kern_list, link, tmp) {
 			if (!is_active(dyn) && is_match(entry, dyn)) {
 				char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
@@ -550,6 +550,26 @@ int mroute_add_route(struct mroute *route)
 				LIST_REMOVE(dyn, link);
 				free(dyn);
 			}
+		}
+
+		/*
+		 * Check for overalps with SSM routes, e.g, an SSM route with same
+		 * inbound, but less outbound should be complemented with the oifs
+		 * from our new (*,G)
+		 */
+		LIST_FOREACH_SAFE(ssm, &mroute_ssm_list, link, tmp) {
+			struct mroute cand = { 0 };
+			size_t i;
+
+			if (!is_match(entry, ssm))
+				continue;
+
+			cand = *ssm;
+			for (i = 0; i < NELEMS(entry->ttl); i++)
+				cand.ttl[i] = entry->ttl[i];
+
+			/* ignore any return value, we're just speculating */
+			mroute_dyn_add(&cand);
 		}
 
 		return 0;
