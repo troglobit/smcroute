@@ -81,9 +81,10 @@ struct arg {
  */
 static struct ipc_msg *msg_create(uint16_t cmd, char *argv[], size_t count)
 {
-	char *ptr;
-	size_t i, len = 0, sz;
 	struct ipc_msg *msg;
+	size_t len = 0;
+	size_t i, sz;
+	char *ptr;
 
 	for (i = 0; i < count; i++)
 		len += strlen(argv[i]) + 1;
@@ -117,9 +118,9 @@ static int get_width(void)
 {
 	int ret = 74;
 #ifdef HAVE_TERMIOS_H
-	char buf[42];
-	struct termios tc, saved;
 	struct pollfd fd = { STDIN_FILENO, POLLIN, 0 };
+	struct termios tc, saved;
+	char buf[42];
 
 	memset(buf, 0, sizeof(buf));
 	tcgetattr(STDERR_FILENO, &tc);
@@ -237,12 +238,12 @@ static int ipc_connect(char *path)
 
 static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 {
-	int sd;
-	int result = 0;
-	int retry_count = 30;
-	ssize_t len;
-	struct ipc_msg *msg;
 	char buf[MX_CMDPKT_SZ + 1];
+	struct ipc_msg *msg;
+	int retries = 30;
+	int result = 0;
+	ssize_t len;
+	int sd;
 
 	msg = msg_create(cmd, argv, count);
 	if (!msg) {
@@ -257,7 +258,7 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 			break;
 
 		case ECONNREFUSED:
-			if (--retry_count) {
+			if (--retries) {
 				usleep(100000);
 				continue;
 			}
