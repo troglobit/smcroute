@@ -65,6 +65,21 @@ static inline int iface_exist(char *ifname)
 	return iface_match_by_name(ifname, &ifm) != NULL;
 }
 
+static inline int iface_ifname_maxlen(void)
+{
+	struct iface *iface;
+	int maxlen = 0;
+	int first = 1;
+
+	while ((iface = iface_iterator(first))) {
+		first = 0;
+		if ((int)strlen(iface->ifname) > maxlen)
+			maxlen = (int)strlen(iface->ifname);
+	}
+
+	return maxlen;
+}
+
 #endif /* SMCROUTE_IFACE_H_ */
 
 /**

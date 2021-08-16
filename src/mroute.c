@@ -1175,7 +1175,7 @@ void mroute_reload_end(void)
 	}
 }
 
-static int show_mroute(int sd, struct mroute *r, int detail)
+static int show_mroute(int sd, struct mroute *r, int inw, int detail)
 {
 	char src[INET_ADDRSTRLEN] = "*";
 	char src_len[5] = "";
@@ -1206,7 +1206,7 @@ static int show_mroute(int sd, struct mroute *r, int detail)
 		smclog(LOG_ERR, "Failed reading iif for %s, aborting.", sg);
 		exit(EX_SOFTWARE);
 	}
-	snprintf(buf, sizeof(buf), "%-46s %-16s", sg, iface->ifname);
+	snprintf(buf, sizeof(buf), "%-46s %-*s", sg, inw, iface->ifname);
 
 	if (detail) {
 		struct mroute_stats ms = { 0 };
@@ -1266,12 +1266,17 @@ int mroute_show(int sd, int detail)
 	const char *r = "ROUTE (S,G)", *o = "OUTBOUND", *i = "INBOUND";
 	struct mroute *entry;
 	char line[256];
+	int inw;
+
+	inw = iface_ifname_maxlen();
+	if (inw < (int)strlen(i))
+		inw = (int)strlen(i);
 
 	if (detail) {
 		const char *p = "PACKETS", *b = "BYTES";
-		snprintf(line, sizeof(line), "%-46s %-16s %10s %10s  %-8s=\n", r, i, p, b, o);
+		snprintf(line, sizeof(line), "%-46s %-*s %10s %10s  %-8s=\n", r, inw, i, p, b, o);
 	} else
-		snprintf(line, sizeof(line), "%-46s %-16s %-8s=\n", r, i, o);
+		snprintf(line, sizeof(line), "%-46s %-*s %-8s=\n", r, inw, i, o);
 
 	if (!LIST_EMPTY(&mroute_asm_conf_list)) {
 		char *asm_conf = "(*,G) Rules_\n";
@@ -1279,7 +1284,7 @@ int mroute_show(int sd, int detail)
 		ipc_send(sd, asm_conf, strlen(asm_conf));
 		ipc_send(sd, line, strlen(line));
 		LIST_FOREACH(entry, &mroute_asm_conf_list, link) {
-			if (show_mroute(sd, entry, detail) < 0)
+			if (show_mroute(sd, entry, inw, detail) < 0)
 				return 1;
 		}
 	}
@@ -1292,7 +1297,7 @@ int mroute_show(int sd, int detail)
 		LIST_FOREACH(entry, &mroute_asm_kern_list, link) {
 			if (is_active(entry))
 				continue;
-			if (show_mroute(sd, entry, detail) < 0)
+			if (show_mroute(sd, entry, inw, detail) < 0)
 				return 1;
 		}
 	}
@@ -1305,7 +1310,7 @@ int mroute_show(int sd, int detail)
 		LIST_FOREACH(entry, &mroute_asm_kern_list, link) {
 			if (!is_active(entry))
 				continue;
-			if (show_mroute(sd, entry, detail) < 0)
+			if (show_mroute(sd, entry, inw, detail) < 0)
 				return 1;
 		}
 	}
@@ -1316,7 +1321,7 @@ int mroute_show(int sd, int detail)
 		ipc_send(sd, ssm_list, strlen(ssm_list));
 		ipc_send(sd, line, strlen(line));
 		LIST_FOREACH(entry, &mroute_ssm_list, link) {
-			if (show_mroute(sd, entry, detail) < 0)
+			if (show_mroute(sd, entry, inw, detail) < 0)
 				return 1;
 		}
 	}
