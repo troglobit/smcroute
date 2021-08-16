@@ -34,4 +34,20 @@ size_t strlcat(char *dst, const char *src, size_t dsize);
 
 int is_range(char *arg);
 
+inline static char *chomp(char *str)
+{
+	char *p;
+
+	if (!str || strlen(str) < 1) {
+		errno = EINVAL;
+		return NULL;
+	}
+
+	p = str + strlen(str) - 1;
+        while (p >= str && *p == '\n')
+		*p-- = 0;
+
+	return str;
+}
+
 #endif /* SMCROUTE_UTIL_H_ */

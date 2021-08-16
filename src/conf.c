@@ -298,22 +298,6 @@ static int conf_phyint(struct conf *conf, int enable, char *iif, int mrdisc, int
 	return mroute_del_vif(iif);
 }
 
-static char *chomp(char *str)
-{
-	char *p;
-
-	if (!str || strlen(str) < 1) {
-		errno = EINVAL;
-		return NULL;
-	}
-
-	p = str + strlen(str) - 1;
-        while (p >= str && *p == '\n')
-		*p-- = 0;
-
-	return str;
-}
-
 /*
  * This function parses the given configuration file according to the
  * below format rules.  Joins multicast groups and creates multicast
