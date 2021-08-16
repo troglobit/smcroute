@@ -666,7 +666,7 @@ int mroute_del_route(struct mroute *route)
 				ret += do_mroute_del_outbound(set, route);
 		}
 
-		if (!ret && entry->unused) {
+		if (!ret) {
 			LIST_REMOVE(entry, link);
 			free(entry);
 		}
