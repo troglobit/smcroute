@@ -906,6 +906,9 @@ static int is_exact_match(struct mroute *rule, struct mroute *cand)
 {
 	if (rule->group.ss_family != cand->group.ss_family)
 		return 0;
+	if (rule->inbound != cand->inbound)
+		return 0;
+
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 	if (rule->group.ss_family == AF_INET6)
 		return is_exact_match6(rule, cand);
