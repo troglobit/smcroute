@@ -256,10 +256,6 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 			warnx("Need root privileges to connect to daemon");
 			break;
 
-		case ENOENT:
-			warnx("Daemon may be running with another -I NAME");
-			break;
-
 		case ECONNREFUSED:
 			if (--retry_count) {
 				usleep(100000);
@@ -268,6 +264,13 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 
 			warnx("Daemon not running");
 			break;
+
+		case ENOENT:
+			if (!sock_file) {
+				warnx("Daemon may be running with another -I NAME");
+				break;
+			}
+			/* fallthrough */
 
 		default:
 			warn("Failed connecting to daemon");
