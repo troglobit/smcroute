@@ -444,7 +444,7 @@ static struct mroute *mroute_find(struct mroute *route)
 	struct mroute *entry;
 
 	TAILQ_FOREACH(entry, &mroute_asm_conf_list, link) {
-		if (is_match(entry, route))
+		if (is_match(route, entry))
 			return entry;
 	}
 	TAILQ_FOREACH(entry, &mroute_ssm_list, link) {
@@ -484,7 +484,7 @@ static struct mroute *mroute_source_moved(struct mroute *route)
  */
 int mroute_add_route(struct mroute *route)
 {
-	struct mroute *entry;
+	struct mroute *entry, *dyn;
 	int local = 0;
 
 	entry = mroute_find(route);
@@ -528,7 +528,7 @@ int mroute_add_route(struct mroute *route)
 	 * the kernel sends IGMPMSG_NOCACHE.
 	 */
 	if (!is_mroute_static(entry)) {
-		struct mroute *dyn, *ssm, *tmp;
+		struct mroute *ssm, *tmp;
 
 		if (!entry->unused || local)
 			TAILQ_INSERT_TAIL(&mroute_asm_conf_list, entry, link);
@@ -557,7 +557,7 @@ int mroute_add_route(struct mroute *route)
 		 * inbound, but less outbound should be complemented with the oifs
 		 * from our new (*,G)
 		 */
-		TAILQ_FOREACH_SAFE(ssm, &mroute_ssm_list, link, tmp) {
+		TAILQ_FOREACH(ssm, &mroute_ssm_list, link) {
 			struct mroute cand = { 0 };
 			size_t i;
 
@@ -565,7 +565,7 @@ int mroute_add_route(struct mroute *route)
 				continue;
 
 			cand = *ssm;
-			for (i = 0; i < NELEMS(entry->ttl); i++)
+			for (i = 0; i < NELEMS(cand.ttl); i++)
 				cand.ttl[i] = entry->ttl[i];
 
 			/* ignore any return value, we're just speculating */
@@ -575,6 +575,27 @@ int mroute_add_route(struct mroute *route)
 		return 0;
 	}
 
+	/*
+	 * Check for overalps with ASM routes, e.g, an ASM route with
+	 * same inbound, but more outbound should complement the oifs
+	 * from our new SSM route.
+	 */
+	TAILQ_FOREACH(dyn, &mroute_asm_conf_list, link) {
+		struct mroute cand = { 0 };
+		size_t i;
+
+		if (!is_match(dyn, entry))
+			continue;
+
+		cand = *dyn;
+		for (i = 0; i < NELEMS(cand.ttl); i++)
+			cand.ttl[i] = entry->ttl[i];
+
+		/* ignore any return value, we're just speculating */
+		mroute_dyn_add(&cand);
+	}
+
+	smclog(LOG_DEBUG, "%s(): ssm route", __func__);
 	if (!entry->unused || local)
 		TAILQ_INSERT_TAIL(&mroute_ssm_list, entry, link);
 	entry->unused = 0;	/* unmark from reload */
