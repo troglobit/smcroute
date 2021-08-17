@@ -1219,14 +1219,14 @@ static int show_mroute(int sd, struct mroute *r, int inw, int detail)
 		smclog(LOG_ERR, "Failed reading iif for %s, aborting.", sg);
 		exit(EX_SOFTWARE);
 	}
-	snprintf(buf, sizeof(buf), "%-46s %-*s", sg, inw, iface->ifname);
+	snprintf(buf, sizeof(buf), "%-42s %-*s ", sg, inw, iface->ifname);
 
 	if (detail) {
 		struct mroute_stats ms = { 0 };
 		char stats[30];
 
 		kern_stats(r, &ms);
-		snprintf(stats, sizeof(stats), " %10lu %10lu ", ms.ms_pktcnt, ms.ms_bytecnt);
+		snprintf(stats, sizeof(stats), "%10lu %10lu ", ms.ms_pktcnt, ms.ms_bytecnt);
 		strlcat(buf, stats, sizeof(buf));
 	}
 
@@ -1287,9 +1287,9 @@ int mroute_show(int sd, int detail)
 
 	if (detail) {
 		const char *p = "PACKETS", *b = "BYTES";
-		snprintf(line, sizeof(line), "%-46s %-*s %10s %10s  %-8s=\n", r, inw, i, p, b, o);
+		snprintf(line, sizeof(line), "%-42s %-*s %10s %10s  %-8s=\n", r, inw, i, p, b, o);
 	} else
-		snprintf(line, sizeof(line), "%-46s %-*s %-8s=\n", r, inw, i, o);
+		snprintf(line, sizeof(line), "%-42s %-*s  %s=\n", r, inw, i, o);
 
 	if (!TAILQ_EMPTY(&mroute_asm_conf_list)) {
 		char *asm_conf = "(*,G) Rules_\n";
