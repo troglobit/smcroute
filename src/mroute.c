@@ -720,9 +720,15 @@ int mroute_del_route(struct mroute *route)
 
 	/* Find matching (*,G) ... and interface .. and prefix length. */
 	TAILQ_FOREACH_SAFE(entry, &mroute_asm_conf_list, link, tmp) {
-		if (!is_match(entry, route) || entry->len != route->len ||
-		    entry->src_len != route->src_len)
+		int changed = 0;
+
+		rc = 0;
+
+		if (!is_match(entry, route) || entry->len != route->len || entry->src_len != route->src_len)
 			continue;
+
+		if (!entry->unused && do_mroute_del_outbound(entry, route))
+			changed = 1;
 
 		/* Remove all (S,G) routes spawned from the (*,G) as well ... */
 		TAILQ_FOREACH_SAFE(set, &mroute_asm_kern_list, link, tmp) {
@@ -739,12 +745,14 @@ int mroute_del_route(struct mroute *route)
 					free(entry);
 				}
 			} else {
-				TAILQ_REMOVE(&mroute_asm_kern_list, set, link);
-				free(set);
+				if (!is_active(set)) {
+					TAILQ_REMOVE(&mroute_asm_kern_list, set, link);
+					free(set);
+				}
 			}
 		}
 
-		if (!rc) {
+		if (!changed) {
 			TAILQ_REMOVE(&mroute_asm_conf_list, entry, link);
 			free(entry);
 		}
