@@ -350,7 +350,7 @@ static int kern_mroute4(int cmd, struct mroute *route, int active)
 			smclog(LOG_DEBUG, "failed removing multicast route (%s,%s), does not exist.",
 				origin, group);
 		else
-			smclog(LOG_DEBUG, "failed %s IPv4 multicast route (%s,%s): %s",
+			smclog(LOG_WARNING, "failed %s IPv4 multicast route (%s,%s): %s",
 			       cmd ? "adding" : "removing", origin, group, strerror(errno));
 		return 1;
 	}
