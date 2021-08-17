@@ -1292,7 +1292,7 @@ int mroute_show(int sd, int detail)
 		snprintf(line, sizeof(line), "%-42s %-*s  %s=\n", r, inw, i, o);
 
 	if (!TAILQ_EMPTY(&mroute_asm_conf_list)) {
-		char *asm_conf = "(*,G) Rules_\n";
+		char *asm_conf = "(*,G) Template Rules_\n";
 
 		ipc_send(sd, asm_conf, strlen(asm_conf));
 		ipc_send(sd, line, strlen(line));
@@ -1316,7 +1316,7 @@ int mroute_show(int sd, int detail)
 	}
 
 	if (has_learned()) {
-		char *asm_kern = "(*,G) -> Learned (S,G) Rules_\n";
+		char *asm_kern = "(S,G) Rules, Learned from (*,G) Templates_\n";
 
 		ipc_send(sd, asm_kern, strlen(asm_kern));
 		ipc_send(sd, line, strlen(line));
