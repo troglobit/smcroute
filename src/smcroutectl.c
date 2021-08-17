@@ -405,7 +405,7 @@ int main(int argc, char *argv[])
 	struct arg *cmd = NULL;
 
 	prognm = progname(argv[0]);
-	while ((c = getopt(argc, argv, "dhi:ptu:v")) != EOF) {
+	while ((c = getopt(argc, argv, "dhI:i:ptu:v")) != EOF) {
 		switch (c) {
 		case 'd':
 			detail++;
@@ -436,7 +436,7 @@ int main(int argc, char *argv[])
 			return version();
 
 		default:
-			errx(0, "Unknown option -'%c'\n", c);
+			return usage(1);
 		}
 	}
 
