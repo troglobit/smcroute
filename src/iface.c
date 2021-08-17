@@ -40,7 +40,7 @@
 #include "timer.h"
 #include "util.h"
 
-static LIST_HEAD(iflist, iface) iface_list = LIST_HEAD_INITIALIZER();
+static TAILQ_HEAD(iflist, iface) iface_list = TAILQ_HEAD_INITIALIZER(iface_list);
 
 /**
  * iface_update - Check of new interfaces
@@ -94,7 +94,7 @@ void iface_update(int do_vifs)
 		iface->mrdisc = 0;
 		iface->threshold = DEFAULT_THRESHOLD;
 
-		LIST_INSERT_HEAD(&iface_list, iface, link);
+		TAILQ_INSERT_TAIL(&iface_list, iface, link);
 	}
 
 	freeifaddrs(ifaddr);
@@ -119,8 +119,8 @@ void iface_exit(void)
 {
 	struct iface *iface, *tmp;
 
-	LIST_FOREACH_SAFE(iface, &iface_list, link, tmp) {
-		LIST_REMOVE(iface, link);
+	TAILQ_FOREACH_SAFE(iface, &iface_list, link, tmp) {
+		TAILQ_REMOVE(&iface_list, iface, link);
 		free(iface);
 	}
 }
@@ -138,7 +138,7 @@ struct iface *iface_find(int ifindex)
 {
 	struct iface *iface;
 
-	LIST_FOREACH(iface, &iface_list, link) {
+	TAILQ_FOREACH(iface, &iface_list, link) {
 		if (iface->ifindex == ifindex)
 			return iface;
 	}
@@ -175,7 +175,7 @@ struct iface *iface_find_by_name(const char *ifname)
 		*ptr = 0;
 #endif
 
-	LIST_FOREACH(iface, &iface_list, link) {
+	TAILQ_FOREACH(iface, &iface_list, link) {
 		if (!strcmp(nm, iface->ifname)) {
 			if (iface->vif != NO_VIF) {
 				free(nm);
@@ -195,7 +195,7 @@ static struct iface *find_by_vif(vifi_t vif)
 {
 	struct iface *iface;
 
-	LIST_FOREACH(iface, &iface_list, link) {
+	TAILQ_FOREACH(iface, &iface_list, link) {
 		if (iface->vif != NO_VIF && iface->vif == vif)
 			return iface;
 	}
@@ -207,7 +207,7 @@ static struct iface *find_by_mif(mifi_t mif)
 {
 	struct iface *iface;
 
-	LIST_FOREACH(iface, &iface_list, link) {
+	TAILQ_FOREACH(iface, &iface_list, link) {
 		if (iface->mif != NO_VIF && iface->mif == mif)
 			return iface;
 	}
@@ -239,7 +239,7 @@ struct iface *iface_find_by_inbound(struct mroute *route)
  */
 void iface_match_init(struct ifmatch *state)
 {
-	state->iface = LIST_FIRST(&iface_list);
+	state->iface = TAILQ_FIRST(&iface_list);
 	state->match_count = 0;
 }
 
@@ -276,17 +276,17 @@ struct iface *iface_match_by_name(const char *ifname, struct ifmatch *state)
 	if (ifname_is_wildcard(ifname))
 		match_len = strlen(ifname) - 1;
 
-	while (state->iface != LIST_END(&iface_list)) {
+	while (state->iface != TAILQ_END(&iface_list)) {
 		struct iface *iface = state->iface;
 
 		if (!strncmp(ifname, iface->ifname, match_len)) {
-			state->iface = LIST_NEXT(iface, link);
+			state->iface = TAILQ_NEXT(iface, link);
 			state->match_count++;
 
 			return iface;
 		}
 
-		state->iface = LIST_NEXT(iface, link);
+		state->iface = TAILQ_NEXT(iface, link);
 	}
 
 	return NULL;
@@ -304,9 +304,9 @@ struct iface *iface_iterator(int first)
 	static struct iface *iface = NULL;
 
 	if (first)
-		iface = LIST_FIRST(&iface_list);
+		iface = TAILQ_FIRST(&iface_list);
 	else
-		iface = LIST_NEXT(iface, link);
+		iface = TAILQ_NEXT(iface, link);
 
 	return iface;
 }
@@ -410,19 +410,37 @@ mifi_t iface_match_mif_by_name(const char *ifname, struct ifmatch *state, struct
 int iface_show(int sd, int detail)
 {
 	struct iface *iface;
+	char *p = "PHYINT";
 	char line[120];
+	int inw;
 
 	(void)detail;
 
-	snprintf(line, sizeof(line), "PHYINT           IFINDEX  VIF  MIF=\n");
+	inw = iface_ifname_maxlen();
+	if (inw < (int)strlen(p))
+ inw = (int)strlen(p);
+
+	snprintf(line, sizeof(line), " INDEX %-*s  VIF  MIF=\n", inw, p);
 	ipc_send(sd, line, strlen(line));
 
 	iface = iface_iterator(1);
 	while (iface) {
 		char buf[256];
+		char vif[6];
+		char mif[6];
 
-		snprintf(buf, sizeof(buf), "%-16s  %6d  %3d  %3d\n",
-			 iface->ifname, iface->ifindex, iface->vif, iface->mif);
+		if (iface->vif < 65535)
+			snprintf(vif, sizeof(vif), "%d", iface->vif);
+		else
+			snprintf(vif, sizeof(vif), "N/A");
+
+		if (iface->mif < 65535)
+			snprintf(mif, sizeof(mif), "%d", iface->mif);
+		else
+			snprintf(mif, sizeof(mif), "N/A");
+
+		snprintf(buf, sizeof(buf), "%6d %-*s %4s %4s\n", iface->ifindex,
+			 inw, iface->ifname, vif, mif);
 		if (ipc_send(sd, buf, strlen(buf)) < 0) {
 			smclog(LOG_ERR, "Failed sending reply to client: %s", strerror(errno));
 			return -1;

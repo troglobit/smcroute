@@ -6,7 +6,7 @@
 #include "queue.h"
 
 struct mcgroup {
-	LIST_ENTRY(mcgroup) link;
+	TAILQ_ENTRY(mcgroup) link;
 	int            unused;
 
 	char           ifname[IFNAMSIZ];

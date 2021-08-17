@@ -18,7 +18,7 @@
 #define NO_VIF   ALL_VIFS
 
 struct iface {
-	LIST_ENTRY(iface) link;
+	TAILQ_ENTRY(iface) link;
 	int      unused;		/* set on reload/SIGHUP only */
 
 	char     ifname[IFNAMSIZ];

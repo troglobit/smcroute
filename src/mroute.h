@@ -87,7 +87,7 @@ typedef unsigned short mifi_t;
 #endif
 
 struct mroute {
-	LIST_ENTRY(mroute) link;
+	TAILQ_ENTRY(mroute) link;
 	int            unused;
 
 	inet_addr_t    source;		/* originating host, may be inet_anyaddr() */

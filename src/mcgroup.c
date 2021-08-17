@@ -45,8 +45,8 @@
 /*
  * Track IGMP join, any-source and source specific
  */
-static LIST_HEAD(kmcglist, mcgroup) kern_list = LIST_HEAD_INITIALIZER();
-static LIST_HEAD(cmcglist, mcgroup) conf_list = LIST_HEAD_INITIALIZER();
+static TAILQ_HEAD(kmcglist, mcgroup) kern_list = TAILQ_HEAD_INITIALIZER(kern_list);
+static TAILQ_HEAD(cmcglist, mcgroup) conf_list = TAILQ_HEAD_INITIALIZER(conf_list);
 
 #ifdef HAVE_LINUX_FILTER_H
 /*
@@ -72,20 +72,20 @@ static struct sock_fprog fprog = {
 static int max_groups = MAX_GROUPS;
 
 struct mc_sock {
-	LIST_ENTRY(mc_sock) link;
+	TAILQ_ENTRY(mc_sock) link;
 
 	int family;			/* address family */
 	int sd;				/* socket for join/leave ops */
 	int cnt;			/* max 20 on linux */
 };
 
-LIST_HEAD(, mc_sock) mc_sock_list= LIST_HEAD_INITIALIZER();
+TAILQ_HEAD(mcslist, mc_sock) mc_sock_list= TAILQ_HEAD_INITIALIZER(mc_sock_list);
 
 static int alloc_mc_sock(int family)
 {
 	struct mc_sock *entry;
 
-	LIST_FOREACH(entry, &mc_sock_list, link) {
+	TAILQ_FOREACH(entry, &mc_sock_list, link) {
 		if (entry->cnt < max_groups && entry->family == family)
 			break;
 	}
@@ -111,7 +111,7 @@ static int alloc_mc_sock(int family)
 			smclog(LOG_WARNING, "failed setting IPv4 socket filter, continuing anyway");
 #endif
 
-		LIST_INSERT_HEAD(&mc_sock_list, entry, link);
+		TAILQ_INSERT_TAIL(&mc_sock_list, entry, link);
 	}
 
 	entry->cnt++;
@@ -124,14 +124,14 @@ static void free_mc_sock(int sd)
 {
 	struct mc_sock *entry, *tmp;
 
-	LIST_FOREACH_SAFE(entry, &mc_sock_list, link, tmp) {
+	TAILQ_FOREACH_SAFE(entry, &mc_sock_list, link, tmp) {
 		if (entry->sd == sd)
 			break;
 	}
 
 	if (entry) {
 		if (--entry->cnt == 0) {
-			LIST_REMOVE(entry, link);
+			TAILQ_REMOVE(&mc_sock_list, entry, link);
 			socket_close(entry->sd);
 			free(entry);
 		}
@@ -161,7 +161,7 @@ static void list_add(int sd, struct mcgroup *mcg)
 	*entry    = *mcg;
 	entry->sd = sd;
 
-	LIST_INSERT_HEAD(&kern_list, entry, link);
+	TAILQ_INSERT_TAIL(&kern_list, entry, link);
 }
 
 static void list_rem(int sd, struct mcgroup *mcg)
@@ -169,7 +169,7 @@ static void list_rem(int sd, struct mcgroup *mcg)
 	struct mcgroup *entry, *tmp;
 
 	(void)sd;
-	LIST_FOREACH_SAFE(entry, &kern_list, link, tmp) {
+	TAILQ_FOREACH_SAFE(entry, &kern_list, link, tmp) {
 		if (entry->iface->ifindex != mcg->iface->ifindex)
 			continue;
 
@@ -177,7 +177,7 @@ static void list_rem(int sd, struct mcgroup *mcg)
 		    inet_addr_cmp(&entry->group, &mcg->group))
 			continue;
 
-		LIST_REMOVE(entry, link);
+		TAILQ_REMOVE(&kern_list, entry, link);
 		free_mc_sock(entry->sd);
 		free(entry);
 	}
@@ -209,12 +209,12 @@ void mcgroup_exit(void)
 {
 	struct mcgroup *entry, *tmp;
 
-	LIST_FOREACH_SAFE(entry, &conf_list, link, tmp) {
-		LIST_REMOVE(entry, link);
+	TAILQ_FOREACH_SAFE(entry, &conf_list, link, tmp) {
+		TAILQ_REMOVE(&conf_list, entry, link);
 		free(entry);
 	}
-	LIST_FOREACH_SAFE(entry, &kern_list, link, tmp) {
-		LIST_REMOVE(entry, link);
+	TAILQ_FOREACH_SAFE(entry, &kern_list, link, tmp) {
+		TAILQ_REMOVE(&kern_list, entry, link);
 		free_mc_sock(entry->sd);
 		free(entry);
 	}
@@ -224,7 +224,7 @@ static struct mcgroup *find_conf(const char *ifname, inet_addr_t *source, inet_a
 {
 	struct mcgroup *entry;
 
-	LIST_FOREACH(entry, &conf_list, link) {
+	TAILQ_FOREACH(entry, &conf_list, link) {
 		if (strcmp(entry->ifname, ifname))
 			continue;
 		if (inet_addr_cmp(&entry->source, source))
@@ -242,7 +242,7 @@ static struct mcgroup *find_kern(struct mcgroup *mcg)
 {
 	struct mcgroup *entry;
 
-	LIST_FOREACH(entry, &kern_list, link) {
+	TAILQ_FOREACH(entry, &kern_list, link) {
 		if (strcmp(entry->ifname, mcg->ifname))
 			continue;
 		if (inet_addr_cmp(&entry->source, &mcg->source))
@@ -299,7 +299,7 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, int src_len
 		mcg->group   = *group;
 		mcg->len     = len;
 
-		LIST_INSERT_HEAD(&conf_list, mcg, link);
+		TAILQ_INSERT_TAIL(&conf_list, mcg, link);
 	}
 
 	iface_match_init(&state);
@@ -371,7 +371,7 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, int src_len
 	}
 
 	if (!cmd) {
-		LIST_REMOVE(mcg, link);
+		TAILQ_REMOVE(&kern_list, mcg, link);
 		free_mc_sock(mcg->sd);
 		free(mcg);
 	}
@@ -391,7 +391,7 @@ void mcgroup_reload_beg(void)
 {
 	struct mcgroup *entry;
 
-	LIST_FOREACH(entry, &conf_list, link)
+	TAILQ_FOREACH(entry, &conf_list, link)
 		entry->unused = 1;
 }
 
@@ -399,7 +399,7 @@ void mcgroup_reload_end(void)
 {
 	struct mcgroup *entry, *tmp;
 
-	LIST_FOREACH_SAFE(entry, &conf_list, link, tmp) {
+	TAILQ_FOREACH_SAFE(entry, &conf_list, link, tmp) {
 		if (!entry->unused)
 			continue;
 
@@ -414,10 +414,13 @@ int mcgroup_show(int sd, int detail)
 	struct mcgroup *entry;
 	char line[256];
  
+	if (TAILQ_EMPTY(&conf_list))
+		return 0;
+
 	snprintf(line, sizeof(line), "%-46s %-16s=\n", "GROUP (S,G)", "INBOUND");
 	ipc_send(sd, line, strlen(line));
 
-	LIST_FOREACH(entry, &conf_list, link) {
+	TAILQ_FOREACH(entry, &conf_list, link) {
 		struct iface *iface;
 		char src[INET_ADDRSTR_LEN] = "*";
 		char grp[INET_ADDRSTR_LEN];
