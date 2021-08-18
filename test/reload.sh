@@ -47,7 +47,7 @@ print "Starting smcrouted ..."
 ../src/smcrouted -f "/tmp/$NM/conf" -N -n -P "/tmp/$NM/pid" -l debug -u "/tmp/$NM/sock" &
 sleep 1
 
-../src/smcroutectl -pS "/tmp/$NM/sock" show groups
+../src/smcroutectl -pu "/tmp/$NM/sock" show groups
 show_mroute
 cat /proc/net/ip_mr_vif
 cat /proc/net/ip_mr_cache
@@ -72,7 +72,7 @@ cat "/tmp/$NM/conf"
 ../src/smcroutectl -u "/tmp/$NM/sock" reload
 sleep 1
 
-../src/smcroutectl -pS "/tmp/$NM/sock" show groups
+../src/smcroutectl -pu "/tmp/$NM/sock" show groups
 show_mroute
 cat /proc/net/ip_mr_vif
 cat /proc/net/ip_mr_cache
