@@ -257,7 +257,7 @@ int conf_mroute(struct conf *conf, int cmd, char *iif, char *source, char *group
 				rc += mroute_add_route(&mroute);
 			}
 		} else {
-			smclog(LOG_DEBUG, "mroute: deleting route froum %s (%s/%u,%s/%u)", iface_in->ifname,
+			smclog(LOG_DEBUG, "mroute: deleting route from %s (%s/%u,%s/%u)", iface_in->ifname,
 			       inet_addr2str(&mroute.source, src, sizeof(src)), mroute.src_len,
 			       inet_addr2str(&mroute.group, grp, sizeof(grp)), mroute.len);
 			rc += mroute_del_route(&mroute);
