@@ -5,6 +5,8 @@
 
 check_output()
 {
+    echo "ip mroute:"
+    ip mroute
     ip mroute |tee "/tmp/$NM/result" | grep -q "$2"
     oif=$?
     grep -q "$1" "/tmp/$NM/result"
@@ -47,10 +49,10 @@ print "Starting smcrouted ..."
 ../src/smcrouted -f "/tmp/$NM/conf" -N -n -P "/tmp/$NM/pid" -l debug -u "/tmp/$NM/sock" &
 sleep 1
 
-../src/smcroutectl -pu "/tmp/$NM/sock" show groups
-show_mroute
 cat /proc/net/ip_mr_vif
 cat /proc/net/ip_mr_cache
+../src/smcroutectl -pu "/tmp/$NM/sock" show groups
+show_mroute
 
 check_output "Iif: a1" "Oifs: b1 b3"
 
@@ -72,10 +74,10 @@ cat "/tmp/$NM/conf"
 ../src/smcroutectl -u "/tmp/$NM/sock" reload
 sleep 1
 
-../src/smcroutectl -pu "/tmp/$NM/sock" show groups
-show_mroute
 cat /proc/net/ip_mr_vif
 cat /proc/net/ip_mr_cache
+../src/smcroutectl -pu "/tmp/$NM/sock" show groups
+show_mroute
 
 check_output "Iif: a1" "Oifs: b3(ttl 3) b2(ttl 2)"
 
