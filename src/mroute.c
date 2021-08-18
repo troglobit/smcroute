@@ -46,21 +46,14 @@
 static int cache_timeout = 0;
 
 /*
- * User added/configured (*,G) matched on-demand at runtime.  See
- * mroute4_dyn_list for the (S,G) routes set from this "template".
+ * User added/configured routes, both ASM and SSM
  */
-static TAILQ_HEAD(cmrlist, mroute) mroute_asm_conf_list = TAILQ_HEAD_INITIALIZER(mroute_asm_conf_list);
+static TAILQ_HEAD(cl, mroute) conf_list = TAILQ_HEAD_INITIALIZER(conf_list);
 
 /*
- * Dynamically, on-demand, set (S,G) routes.  Tracks if the user
- * removes a configured (*,G) route.
+ * Kernel MFC
  */
-static TAILQ_HEAD(kmrlist, mroute) mroute_asm_kern_list = TAILQ_HEAD_INITIALIZER(mroute_asm_kern_list);
-
-/*
- * Tracks regular static routes, mostly for 'smcroutectl show'
- */
-static TAILQ_HEAD(smrlist, mroute) mroute_ssm_list = TAILQ_HEAD_INITIALIZER(mroute_ssm_list);
+static TAILQ_HEAD(kl, mroute) kern_list = TAILQ_HEAD_INITIALIZER(kern_list);
 
 static int  mroute4_add_vif    (struct iface *iface);
 static int  mroute_dyn_add     (struct mroute *route);
@@ -226,16 +219,12 @@ static void mroute4_disable(void)
 		return;
 
 	/* Free list of (*,G) routes on SIGHUP */
-	TAILQ_FOREACH_SAFE(entry, &mroute_asm_conf_list, link, tmp) {
-		TAILQ_REMOVE(&mroute_asm_conf_list, entry, link);
+	TAILQ_FOREACH_SAFE(entry, &conf_list, link, tmp) {
+		TAILQ_REMOVE(&conf_list, entry, link);
 		free(entry);
 	}
-	TAILQ_FOREACH_SAFE(entry, &mroute_asm_kern_list, link, tmp) {
-		TAILQ_REMOVE(&mroute_asm_kern_list, entry, link);
-		free(entry);
-	}
-	TAILQ_FOREACH_SAFE(entry, &mroute_ssm_list, link, tmp) {
-		TAILQ_REMOVE(&mroute_ssm_list, entry, link);
+	TAILQ_FOREACH_SAFE(entry, &kern_list, link, tmp) {
+		TAILQ_REMOVE(&kern_list, entry, link);
 		free(entry);
 	}
 }
@@ -291,15 +280,17 @@ static int mroute4_del_vif(struct iface *iface)
 	return 0;
 }
 
-/*
- * Used for exact (S,G) matching
- */
-static int is_exact_match4(struct mroute *a, struct mroute *b)
+static int is_exact_match(struct mroute *rule, struct mroute *cand)
 {
-	if (!inet_addr_cmp(&a->source, &b->source) &&
-	    !inet_addr_cmp(&a->group,  &b->group)  &&
-	    a->len     == b->len &&
-	    a->inbound == b->inbound)
+	if (rule->group.ss_family != cand->group.ss_family)
+		return 0;
+	if (rule->inbound != cand->inbound)
+		return 0;
+
+	if (!inet_addr_cmp(&rule->source, &cand->source) &&
+	    !inet_addr_cmp(&rule->group,  &cand->group)  &&
+	    rule->len     == cand->len                   &&
+	    rule->src_len == cand->src_len)
 		return 1;
 
 	return 0;
@@ -341,7 +332,7 @@ int is_match(struct mroute *rule, struct mroute *cand)
 	return rc;
 }
 
-static int is_mroute_static(struct mroute *route)
+static int is_ssm(struct mroute *route)
 {
 	int max_len;
 
@@ -352,6 +343,32 @@ static int is_mroute_static(struct mroute *route)
 #endif
 	max_len = 32;
 	return !is_anyaddr(&route->source) && route->src_len == max_len && route->len == max_len;
+}
+
+/* find any existing route, with matching inbound interface */
+static struct mroute *conf_find(struct mroute *route)
+{
+	struct mroute *entry;
+
+	TAILQ_FOREACH(entry, &conf_list, link) {
+		if (is_exact_match(route, entry))
+			return entry;
+	}
+
+	return NULL;
+}
+
+/* find any existing route, with matching inbound interface */
+static struct mroute *kern_find(struct mroute *route)
+{
+	struct mroute *entry;
+
+	TAILQ_FOREACH(entry, &kern_list, link) {
+		if (is_match(route, entry))
+			return entry;
+	}
+
+	return NULL;
 }
 
 static int is_active(struct mroute *route)
@@ -397,9 +414,13 @@ void mroute_expire(int max_idle)
 
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
-	TAILQ_FOREACH_SAFE(entry, &mroute_asm_kern_list, link, tmp) {
+	TAILQ_FOREACH_SAFE(entry, &kern_list, link, tmp) {
 		char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 		struct iface *iface;
+
+		/* XXX: only consider (*,G) routes, not pure (S,G), and no overlap handling for now */
+		if (conf_find(entry))
+			continue;
 
 		inet_addr2str(&entry->group, group, sizeof(group));
 		inet_addr2str(&entry->source, origin, sizeof(origin));
@@ -432,43 +453,102 @@ void mroute_expire(int max_idle)
 			/* Not used, expire */
 			smclog(LOG_DEBUG, "  -> Yup, stale route.");
 			kern_mroute_del(entry, is_active(entry));
-			TAILQ_REMOVE(&mroute_asm_kern_list, entry, link);
+			TAILQ_REMOVE(&kern_list, entry, link);
 			free(entry);
 		}
 	}
 }
 
-/* find any existing route, with matching inbound interface */
-static struct mroute *mroute_find(struct mroute *route)
+/*
+ * Install or update kernel MFC.  Installing a new route currently
+ * requires an (S,G) entry, updating only requires a (*,G), which
+ * is to handle overlaps.
+ *
+ * Currently, meaning Linux has support for (*,*) and (*,G) routing
+ * but supporting that would require quite a bit of changes.  I.e.,
+ * it's not just about removing the `!is_ssm(conf)` check ...
+ */
+static int mfc_install(struct mroute *route)
 {
-	struct mroute *entry;
+	struct mroute *kern;
+	int diff = 0;
 
-	TAILQ_FOREACH(entry, &mroute_asm_conf_list, link) {
-		if (is_match(route, entry))
-			return entry;
-	}
-	TAILQ_FOREACH(entry, &mroute_ssm_list, link) {
-		if (is_match(entry, route))
-			return entry;
+	kern = kern_find(route);
+	if (kern) {
+		for (size_t i = 0; i < NELEMS(route->ttl); i++) {
+			if (route->ttl[i] > 0 && kern->ttl[i] != route->ttl[i]) {
+				kern->ttl[i] = route->ttl[i];
+				diff++;
+			}
+		}
+	} else {
+		if (!is_ssm(route))
+			return 0;
+
+		kern = malloc(sizeof(struct mroute));
+		if (!kern) {
+			smclog(LOG_WARNING, "Cannot add kernel route: %s", strerror(errno));
+			return 1;
+		}
+
+		memcpy(kern, route, sizeof(struct mroute));
+		TAILQ_INSERT_TAIL(&kern_list, kern, link);
+		diff++;
 	}
 
-	return NULL;
+	if (diff)
+		return kern_mroute_add(kern, is_active(kern));
+
+	return 0;
 }
 
-/* Matching (S,G) but S has moved interface -- L3 topology change */
-static struct mroute *mroute_source_moved(struct mroute *route)
+static int mfc_uninstall(struct mroute *route)
 {
-	struct mroute *entry;
+	struct mroute *conf, *kern;
+	int diff = 0;
+	int rc;
 
-	TAILQ_FOREACH(entry, &mroute_ssm_list, link) {
-		if (!inet_addr_cmp(&entry->source, &route->source) &&
-		    !inet_addr_cmp(&entry->group, &route->group) &&
-		    entry->len     == route->len &&
-		    entry->src_len == route->src_len)
-			return entry;
+	kern = kern_find(route);
+	if (!kern) {
+		errno = ENOENT;
+		return -1;
 	}
 
-	return NULL;
+	if (route->unused)
+		goto cleanup;
+
+	/* First remove OIFs from route entry */
+	for (size_t i = 0; i < NELEMS(route->ttl); i++) {
+		if (route->ttl[i] > 0) {
+			kern->ttl[i] = 0;
+			diff++;
+		}
+	}
+
+	/* Then, for each matching conf we add its oifs */
+	TAILQ_FOREACH(conf, &conf_list, link) {
+		if (!is_match(kern, conf))
+			continue;
+
+		for (size_t i = 0; i < NELEMS(conf->ttl); i++) {
+			if (conf->ttl[i] > 0 && kern->ttl[i] == 0) {
+				kern->ttl[i] = conf->ttl[i];
+				diff++;
+			}
+		}
+	}
+
+	if (!diff && is_active(route))
+		return 0;
+
+	if (is_active(kern) || is_active(route))
+		return kern_mroute_add(kern, 1);
+cleanup:
+	rc = kern_mroute_del(kern, 0);
+	TAILQ_REMOVE(&kern_list, kern, link);
+	free(kern);
+
+	return rc;
 }
 
 /**
@@ -484,187 +564,36 @@ static struct mroute *mroute_source_moved(struct mroute *route)
  */
 int mroute_add_route(struct mroute *route)
 {
-	struct mroute *entry, *dyn;
-	int local = 0;
+	struct mroute *conf;
 
-	entry = mroute_find(route);
-	if (entry) {
+	conf = conf_find(route);
+	if (conf) {
 		size_t i;
 
 		/* .conf: replace found entry with new outbounds */
-		if (entry->unused) {
-			for (i = 0; i < NELEMS(entry->ttl); i++)
-				entry->ttl[i] = 0;
+		if (conf->unused) {
+			for (i = 0; i < NELEMS(conf->ttl); i++)
+				conf->ttl[i] = 0;
 		}
 
 		/* ipc: add any new outbound interafces */
-		for (i = 0; i < NELEMS(entry->ttl); i++) {
+		for (i = 0; i < NELEMS(conf->ttl); i++) {
 			if (route->ttl[i])
-				entry->ttl[i] = route->ttl[i];
+				conf->ttl[i] = route->ttl[i];
 		}
-
-		entry->unused = 1;  /* don't add to below lists again */
 	} else {
-		/* ... (S,G) matches and inbound differs, then replace route */
-		entry = mroute_source_moved(route);
-		if (entry) {
-			kern_mroute_del(entry, is_active(entry));
-			TAILQ_REMOVE(&mroute_ssm_list, entry, link);
-			free(entry);
-		}
-
-		entry = calloc(1, sizeof(struct mroute));
-		if (!entry) {
+		conf = malloc(sizeof(struct mroute));
+		if (!conf) {
 			smclog(LOG_WARNING, "Cannot add multicast route: %s", strerror(errno));
 			return 1;
 		}
 
-		local = 1;
-		memcpy(entry, route, sizeof(struct mroute));
+		memcpy(conf, route, sizeof(struct mroute));
+		TAILQ_INSERT_TAIL(&conf_list, conf, link);
 	}
 
-	/*
-	 * For (*,G) we save to a linked list to be added on-demand when
-	 * the kernel sends IGMPMSG_NOCACHE.
-	 */
-	if (!is_mroute_static(entry)) {
-		struct mroute *ssm, *tmp;
-
-		if (!entry->unused || local)
-			TAILQ_INSERT_TAIL(&mroute_asm_conf_list, entry, link);
-		entry->unused = 0;	/* unmark from reload */
-
-		/* Immediately expire any currently blocked traffic */
-		TAILQ_FOREACH_SAFE(dyn, &mroute_asm_kern_list, link, tmp) {
-			if (!is_active(dyn) && is_match(entry, dyn)) {
-				char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
-				struct iface *ifdyn;
-
-				inet_addr2str(&dyn->group, group, sizeof(group));
-				inet_addr2str(&dyn->source, origin, sizeof(origin));
-				ifdyn = iface_find_by_inbound(dyn);
-				smclog(LOG_DEBUG, "Flushing (%s,%s) on %s, new matching (*,G) rule ...",
-				       origin, group, ifdyn ? ifdyn->ifname : "UNKNOWN");
-
-				kern_mroute_del(dyn, 0);
-				TAILQ_REMOVE(&mroute_asm_kern_list, dyn, link);
-				free(dyn);
-			}
-		}
-
-		/*
-		 * Check for overalps with SSM routes, e.g, an SSM route with same
-		 * inbound, but less outbound should be complemented with the oifs
-		 * from our new (*,G)
-		 */
-		TAILQ_FOREACH(ssm, &mroute_ssm_list, link) {
-			struct mroute cand = { 0 };
-			size_t i;
-
-			if (!is_match(entry, ssm))
-				continue;
-
-			cand = *ssm;
-			for (i = 0; i < NELEMS(cand.ttl); i++)
-				cand.ttl[i] = entry->ttl[i];
-
-			/* ignore any return value, we're just speculating */
-			mroute_dyn_add(&cand);
-		}
-
-		return 0;
-	}
-
-	/*
-	 * Check for overalps with ASM routes, e.g, an ASM route with
-	 * same inbound, but more outbound should complement the oifs
-	 * from our new SSM route.
-	 */
-	TAILQ_FOREACH(dyn, &mroute_asm_conf_list, link) {
-		struct mroute cand = { 0 };
-		size_t i;
-
-		if (!is_match(dyn, entry))
-			continue;
-
-		cand = *dyn;
-		for (i = 0; i < NELEMS(cand.ttl); i++)
-			cand.ttl[i] = entry->ttl[i];
-
-		/* ignore any return value, we're just speculating */
-		mroute_dyn_add(&cand);
-	}
-
-	smclog(LOG_DEBUG, "%s(): ssm route", __func__);
-	if (!entry->unused || local)
-		TAILQ_INSERT_TAIL(&mroute_ssm_list, entry, link);
-	entry->unused = 0;	/* unmark from reload */
-
-	return kern_mroute_add(entry, 1);
-}
-
-/*
- * Removes OIs from route marked in act.
- */
-static int do_mroute_del_outbound(struct mroute *route, struct mroute *act)
-{
-	size_t i, num = 0;
-
-	/* remove any listed interafces */
-	for (i = 0; i < NELEMS(route->ttl); i++) {
-		if (!act->ttl[i])
-			continue;
-
-		route->ttl[i] = 0;
-		num++;
-	}
-
-	return num > 0;
-}
-
-/*
- * When deleting a (*,G) route, it may have spawned one or more (S,G) routes
- * that overlap with configured (S,G) routes.  The latter have precedence and
- * thus when removing spawned ones we need to always keep the configured OIFs
- */
-static int do_mroute_del_ssm_check(struct mroute *set, struct mroute *route)
-{
-	struct mroute *entry;
-
-	TAILQ_FOREACH(entry, &mroute_ssm_list, link) {
-		if (!is_exact_match(entry, set))
-			continue;
-
-		/* "active" means delete active OIFs */
-		if (is_active(route)) {
-			size_t i;
-
-			/* First remove all requested OIFs from route */
-			for (i = 0; i < NELEMS(set->ttl); i++) {
-				if (route->ttl[i])
-					set->ttl[i] = 0;
-			}
-
-			/* Then add all OIFs from SSM entry for smooth transition */
-			for (i = 0; i < NELEMS(set->ttl); i++) {
-				if (entry->ttl[i])
-					set->ttl[i] = entry->ttl[i];
-			}
-
-			kern_mroute_add(set, 1);
-		} else {
-			/*
-			 * Not "active" means user wants complete (*,G)
-			 * route removal, but we can't allow that if
-			 * there's a more specific (S,G) route set.
-			 */
-			kern_mroute_add(entry, 1);
-		}
-
-		return 0;
-	}
-
-	return 1;     /* Not found, no SSM overlap, it's OK to remove */
+	conf->unused = 0;
+	return mfc_install(conf);
 }
 
 /**
@@ -680,89 +609,36 @@ static int do_mroute_del_ssm_check(struct mroute *set, struct mroute *route)
  */
 int mroute_del_route(struct mroute *route)
 {
-	struct mroute *entry, *set, *tmp;
+	struct mroute *conf;
 	int rc = 0;
 
-	if (is_mroute_static(route)) {
-		TAILQ_FOREACH_SAFE(entry, &mroute_ssm_list, link, tmp) {
-			if (!is_exact_match(entry, route))
-				continue;
+	if (route->unused) {
+		conf = route;
+		goto cleanup;
+	}
 
-			if (!entry->unused && do_mroute_del_outbound(entry, route))
-				return kern_mroute_add(entry, 1);
-
-			rc = kern_mroute_del(entry, is_active(entry));
-			TAILQ_REMOVE(&mroute_ssm_list, entry, link);
-			free(entry);
-
-			return rc;
-		}
-
-		/* Not found in static list, check if spawned from a (*,G) rule. */
-		TAILQ_FOREACH_SAFE(entry, &mroute_asm_kern_list, link, tmp) {
-			if (!is_exact_match(entry, route))
-				continue;
-
-			if (!entry->unused && do_mroute_del_outbound(entry, route))
-				return kern_mroute_add(entry, 1);
-
-			rc = kern_mroute_del(entry, is_active(entry));
-			TAILQ_REMOVE(&mroute_asm_kern_list, entry, link);
-			free(entry);
-
-			return rc;
-		}
-
-		smclog(LOG_NOTICE, "Cannot delete multicast route: not found");
+	conf = conf_find(route);
+	if (!conf) {
 		errno = ENOENT;
 		return -1;
 	}
 
-	/* Find matching (*,G) ... and interface .. and prefix length. */
-	TAILQ_FOREACH_SAFE(entry, &mroute_asm_conf_list, link, tmp) {
-		int changed = 0;
-
-		rc = 0;
-
-		if (!is_match(entry, route) || entry->len != route->len || entry->src_len != route->src_len)
-			continue;
-
-		if (!entry->unused && do_mroute_del_outbound(entry, route))
-			changed = 1;
-
-		/* Remove all (S,G) routes spawned from the (*,G) as well ... */
-		TAILQ_FOREACH_SAFE(set, &mroute_asm_kern_list, link, tmp) {
-			if (!is_match(entry, set) || entry->len != route->len)
-				continue;
-
-			/* Check if overlapping with an SSM route, more specific wins */
-			if (do_mroute_del_ssm_check(set, route)) {
-				if (!entry->unused && do_mroute_del_outbound(set, route)) {
-					rc += kern_mroute_add(set, 1);
-				} else {
-					rc += kern_mroute_del(set, is_active(entry));
-					TAILQ_REMOVE(&mroute_asm_kern_list, set, link);
-					free(entry);
-				}
-			} else {
-				if (!is_active(set)) {
-					TAILQ_REMOVE(&mroute_asm_kern_list, set, link);
-					free(set);
-				}
-			}
+	if (is_active(route)) {
+		/* remove only the listed oifs from config */
+		for (size_t i = 0; i < NELEMS(conf->ttl); i++) {
+			if (route->ttl[i] > 0 && conf->ttl[i] != 0)
+				conf->ttl[i] = 0;
 		}
 
-		if (!changed) {
-			TAILQ_REMOVE(&mroute_asm_conf_list, entry, link);
-			free(entry);
-		}
-
-		return rc;
+		rc = mfc_uninstall(route);
+	} else {
+	cleanup:
+		TAILQ_REMOVE(&conf_list, conf, link);
+		rc = mfc_uninstall(conf);
+		free(conf);
 	}
 
-	smclog(LOG_NOTICE, "Cannot delete multicast route: not found");
-	errno = ENOENT;
-	return -1;
+	return rc;
 }
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
@@ -771,8 +647,6 @@ static int mroute6_add_mif(struct iface *iface);
 /*
  * Receive and drop ICMPv6 stuff. This is either MLD packets or upcall
  * messages sent up from the kernel.
- *
- * XXX: Currently MRT6MSG_NOCACHE messages for IPv6 (*,G) is unsupported.
  */
 static void handle_nocache6(int sd, void *arg)
 {
@@ -973,34 +847,7 @@ static int mroute6_del_mif(struct iface *iface)
 
 	return 0;
 }
-
-/*
- * Used for exact (S,G) matching
- */
-static int is_exact_match6(struct mroute *rule, struct mroute *cand)
-{
-	int result;
-
-	result =  !inet_addr_cmp(&rule->group, &cand->group);
-	result &= !inet_addr_cmp(&rule->source, &cand->source);
-
-	return result;
-}
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
-
-static int is_exact_match(struct mroute *rule, struct mroute *cand)
-{
-	if (rule->group.ss_family != cand->group.ss_family)
-		return 0;
-	if (rule->inbound != cand->inbound)
-		return 0;
-
-#ifdef HAVE_IPV6_MULTICAST_ROUTING
-	if (rule->group.ss_family == AF_INET6)
-		return is_exact_match6(rule, cand);
-#endif
-	return is_exact_match4(rule, cand);
-}
 
 /**
  * mroute_dyn_add - Add route to kernel if it matches a known (*,G) route.
@@ -1011,12 +858,12 @@ static int is_exact_match(struct mroute *rule, struct mroute *cand)
  */
 static int mroute_dyn_add(struct mroute *route)
 {
-	struct mroute *entry, *new_entry;
-	int ret;
+	struct mroute *entry;
+	int rc;
 
-	TAILQ_FOREACH(entry, &mroute_asm_conf_list, link) {
+	TAILQ_FOREACH(entry, &conf_list, link) {
 		/* Find matching (*,G) ... and interface. */
-		if (!is_match(entry, route))
+		if (is_ssm(entry) || !is_match(entry, route))
 			continue;
 
 		/* Use configured template (*,G) outbound interfaces. */
@@ -1034,23 +881,7 @@ static int mroute_dyn_add(struct mroute *route)
 		memset(route->ttl, 0, NELEMS(route->ttl) * sizeof(route->ttl[0]));
 	}
 
-	ret = kern_mroute_add(route, entry ? 1 : 0);
-	if (ret)
-		return ret;
-
-	/*
-	 * Add to list of dynamically added routes. Necessary if the user
-	 * removes the (*,G) using the command line interface rather than
-	 * updating the conf file and SIGHUP. Note: if we fail to alloc()
-	 * memory we don't do anything, just add kernel route silently.
-	 */
-	new_entry = malloc(sizeof(struct mroute));
-	if (!new_entry) {
-		smclog(LOG_ERR, "Out of memory in %s()", __func__);
-	} else {
-		memcpy(new_entry, route, sizeof(struct mroute));
-		TAILQ_INSERT_TAIL(&mroute_asm_kern_list, new_entry, link);
-	}
+	rc = mfc_install(route);
 
 	/* Signal to cache handler we've added a stop filter */
 	if (!entry) {
@@ -1058,16 +889,15 @@ static int mroute_dyn_add(struct mroute *route)
 		return -1;
 	}
 
-	return 0;
+	return rc;
 }
 
 int mroute_init(int do_vifs, int table_id, int cache_tmo)
 {
 	static int running = 0;
 
-	TAILQ_INIT(&mroute_asm_conf_list);
-	TAILQ_INIT(&mroute_asm_kern_list);
-	TAILQ_INIT(&mroute_ssm_list);
+	TAILQ_INIT(&conf_list);
+	TAILQ_INIT(&kern_list);
 
 	if (cache_tmo > 0 && !running) {
 		running++;
@@ -1086,21 +916,21 @@ void mroute_exit(void)
 }
 
 /* Used by file parser to add VIFs/MIFs after setup */
-int mroute_add_vif(char *ifname, uint8_t mrdisc, uint8_t threshold)
+int mroute_add_vif(char *ifname, uint8_t mrdisc, uint8_t ttl)
 {
 	struct ifmatch state;
 	struct iface *iface;
-	int ret = 0;
+	int rc = 0;
 
 	iface_match_init(&state);
 	while ((iface = iface_match_by_name(ifname, &state))) {
-		smclog(LOG_DEBUG, "Creating/updating multicast VIF for %s", iface->ifname);
+		smclog(LOG_DEBUG, "Creating/updating multicast VIF for %s TTL %d", iface->ifname, ttl);
 		iface->unused    = 0;
 		iface->mrdisc    = mrdisc;
-		iface->threshold = threshold;
-		ret += mroute4_add_vif(iface);
+		iface->threshold = ttl;
+		rc += mroute4_add_vif(iface);
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
-		ret += mroute6_add_mif(iface);
+		rc += mroute6_add_mif(iface);
 #endif
 	}
 
@@ -1109,7 +939,7 @@ int mroute_add_vif(char *ifname, uint8_t mrdisc, uint8_t threshold)
 		return 1;
 	}
 
-	return ret;
+	return rc;
 }
 
 /* Used by file parser to remove VIFs/MIFs after setup */
@@ -1117,14 +947,14 @@ int mroute_del_vif(char *ifname)
 {
 	struct ifmatch state;
 	struct iface *iface;
-	int ret = 0;
+	int rc = 0;
 
 	iface_match_init(&state);
 	while ((iface = iface_match_by_name(ifname, &state))) {
 		smclog(LOG_DEBUG, "Removing multicast VIFs for %s", iface->ifname);
-		ret += mroute4_del_vif(iface);
+		rc += mroute4_del_vif(iface);
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
-		ret += mroute6_del_mif(iface);
+		rc += mroute6_del_mif(iface);
 #endif
 	}
 
@@ -1133,7 +963,7 @@ int mroute_del_vif(char *ifname)
 		return 1;
 	}
 
-	return ret;
+	return rc;
 }
 
 /*
@@ -1147,11 +977,7 @@ void mroute_reload_beg(void)
 	struct iface *iface;
 	int first = 1;
 
-	TAILQ_FOREACH(entry, &mroute_ssm_list, link)
-		entry->unused = 1;
-	TAILQ_FOREACH(entry, &mroute_asm_kern_list, link)
-		entry->unused = 1;
-	TAILQ_FOREACH(entry, &mroute_asm_conf_list, link)
+	TAILQ_FOREACH(entry, &conf_list, link)
 		entry->unused = 1;
 
 	while ((iface = iface_iterator(first))) {
@@ -1166,15 +992,7 @@ void mroute_reload_end(void)
 	struct iface *iface;
 	int first = 1;
 
-	TAILQ_FOREACH_SAFE(entry, &mroute_ssm_list, link, tmp) {
-		if (entry->unused)
-			mroute_del_route(entry);
-	}
-	TAILQ_FOREACH_SAFE(entry, &mroute_asm_kern_list, link, tmp) {
-		if (entry->unused)
-			mroute_del_route(entry);
-	}
-	TAILQ_FOREACH_SAFE(entry, &mroute_asm_conf_list, link, tmp) {
+	TAILQ_FOREACH_SAFE(entry, &conf_list, link, tmp) {
 		if (entry->unused)
 			mroute_del_route(entry);
 	}
@@ -1249,24 +1067,24 @@ static int show_mroute(int sd, struct mroute *r, int inw, int detail)
 	return 0;
 }
 
-static int has_blocked(void)
+static int has_any_ssm(void)
 {
-	struct mroute *entry;
+	struct mroute *e;
 
-	TAILQ_FOREACH(entry, &mroute_asm_kern_list, link) {
-		if (!is_active(entry))
+	TAILQ_FOREACH(e, &conf_list, link) {
+		if (is_ssm(e))
 			return 1;
 	}
 
 	return 0;
 }
 
-static int has_learned(void)
+static int has_any_asm(void)
 {
-	struct mroute *entry;
+	struct mroute *e;
 
-	TAILQ_FOREACH(entry, &mroute_asm_kern_list, link) {
-		if (is_active(entry))
+	TAILQ_FOREACH(e, &conf_list, link) {
+		if (!is_ssm(e))
 			return 1;
 	}
 
@@ -1291,49 +1109,46 @@ int mroute_show(int sd, int detail)
 	} else
 		snprintf(line, sizeof(line), "%-42s %-*s  %s=\n", r, inw, i, o);
 
-	if (!TAILQ_EMPTY(&mroute_asm_conf_list)) {
+	if (has_any_asm()) {
 		char *asm_conf = "(*,G) Template Rules_\n";
 
 		ipc_send(sd, asm_conf, strlen(asm_conf));
 		ipc_send(sd, line, strlen(line));
-		TAILQ_FOREACH(entry, &mroute_asm_conf_list, link) {
-			if (show_mroute(sd, entry, inw, detail) < 0)
-				return 1;
-		}
-	}
-
-	if (has_blocked()) {
-		char *stp_kern = "Blocked Multicast_\n";
-
-		ipc_send(sd, stp_kern, strlen(stp_kern));
-		ipc_send(sd, line, strlen(line));
-		TAILQ_FOREACH(entry, &mroute_asm_kern_list, link) {
-			if (is_active(entry))
+		TAILQ_FOREACH(entry, &conf_list, link) {
+			if (is_ssm(entry))
 				continue;
 			if (show_mroute(sd, entry, inw, detail) < 0)
 				return 1;
 		}
 	}
 
-	if (has_learned()) {
-		char *asm_kern = "(S,G) Rules, Learned from (*,G) Templates_\n";
+	if (has_any_ssm()) {
+		char *ssm_list = "(S,G) Rules_\n";
+
+		ipc_send(sd, ssm_list, strlen(ssm_list));
+		ipc_send(sd, line, strlen(line));
+		TAILQ_FOREACH(entry, &conf_list, link) {
+			if (!is_ssm(entry))
+				continue;
+			if (show_mroute(sd, entry, inw, detail) < 0)
+				return 1;
+		}
+	}
+
+	if (!TAILQ_EMPTY(&kern_list)) {
+		char *asm_kern = "Kernel MFC Table_\n";
 
 		ipc_send(sd, asm_kern, strlen(asm_kern));
 		ipc_send(sd, line, strlen(line));
-		TAILQ_FOREACH(entry, &mroute_asm_kern_list, link) {
+		TAILQ_FOREACH(entry, &kern_list, link) {
 			if (!is_active(entry))
 				continue;
 			if (show_mroute(sd, entry, inw, detail) < 0)
 				return 1;
 		}
-	}
-
-	if (!TAILQ_EMPTY(&mroute_ssm_list)) {
-		char *ssm_list = "(S,G) Rules_\n";
-
-		ipc_send(sd, ssm_list, strlen(ssm_list));
-		ipc_send(sd, line, strlen(line));
-		TAILQ_FOREACH(entry, &mroute_ssm_list, link) {
+		TAILQ_FOREACH(entry, &kern_list, link) {
+			if (is_active(entry))
+				continue;
 			if (show_mroute(sd, entry, inw, detail) < 0)
 				return 1;
 		}
