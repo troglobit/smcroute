@@ -247,8 +247,9 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 	struct ipc_msg *msg;
 	int retries = 30;
 	int result = 0;
-	FILE *fp;
+	ssize_t total;
 	ssize_t len;
+	FILE *fp;
 	int sd;
 
 	msg = msg_create(cmd, argv, count);
@@ -304,19 +305,23 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 		err(EX_OSERR, "Failed creating tmpfile()");
 	}
 
+	total = 0;
 	while ((len = read(sd, buf, sizeof(buf) - 1))) {
+		total += len;
 		buf[len] = 0;
 		fwrite(buf, len, 1, fp);
 	}
 	rewind(fp);
 
-	if (cmd == 'S' || cmd == 's') {
-		while (fgets(buf, sizeof(buf), fp))
-			print(buf, 0);
-	} else {
-		if (fgets(buf, sizeof(buf), fp))
-			warnx("%s", buf);
-		result = 1;
+	if (total > 1) {
+		if (cmd == 'S' || cmd == 's') {
+			while (fgets(buf, sizeof(buf), fp))
+				print(buf, 0);
+		} else {
+			if (fgets(buf, sizeof(buf), fp))
+				warnx("%s", buf);
+			result = 1;
+		}
 	}
 
 	fclose(fp);
