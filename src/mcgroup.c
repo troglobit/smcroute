@@ -417,36 +417,44 @@ int mcgroup_show(int sd, int detail)
 	if (TAILQ_EMPTY(&conf_list))
 		return 0;
 
-	snprintf(line, sizeof(line), "%-46s %-16s=\n", "GROUP (S,G)", "INBOUND");
+	snprintf(line, sizeof(line), "%-42s %-16s=\n", "GROUP (S,G)", "INBOUND");
 	ipc_send(sd, line, strlen(line));
 
 	TAILQ_FOREACH(entry, &conf_list, link) {
-		struct iface *iface;
 		char src[INET_ADDRSTR_LEN] = "*";
 		char grp[INET_ADDRSTR_LEN];
+		struct iface *iface;
+		int max_len;
 
 		iface = iface_find_by_name(entry->ifname);
 		if (!iface)
 			continue;
+
+#ifdef HAVE_IPV6_MULTICAST_HOST
+		if (entry->group.ss_family == AF_INET6)
+			max_len = 128;
+		else
+#endif
+			max_len = 32;
 
 		if (!is_anyaddr(&entry->source))
 			inet_addr2str(&entry->source, src, sizeof(src));
 		inet_addr2str(&entry->group, grp, sizeof(grp));
 
 		snprintf(sg, sizeof(sg), "(%s", src);
-		if (entry->src_len > 0)
+		if (entry->src_len != max_len)
 			snprintf(line, sizeof(line), "/%u, ", entry->src_len);
 		else
 			snprintf(line, sizeof(line), ", ");
 		strlcat(sg, line, sizeof(sg));
 
-		if (entry->len > 0)
+		if (entry->len != max_len)
 			snprintf(line, sizeof(line), "%s/%u)", grp, entry->len);
 		else
 			snprintf(line, sizeof(line), "%s)", grp);
 		strlcat(sg, line, sizeof(sg));
 
-		snprintf(line, sizeof(line), "%-46s %s\n", sg, iface->ifname);
+		snprintf(line, sizeof(line), "%-42s %s\n", sg, iface->ifname);
 		if (ipc_send(sd, line, strlen(line)) < 0) {
 			smclog(LOG_ERR, "Failed sending reply to client: %s", strerror(errno));
 			return -1;
