@@ -3,6 +3,7 @@
 #define SMCROUTE_UTIL_H_
 
 #include "config.h"
+#include <stdio.h>
 #include <string.h>
 #include "mroute.h"
 
@@ -30,6 +31,10 @@ size_t strlcpy(char *dst, const char *src, size_t len);
 
 #ifndef HAVE_STRLCAT
 size_t strlcat(char *dst, const char *src, size_t dsize);
+#endif
+
+#ifndef HAVE_TEMPFILE
+FILE *tempfile(void);
 #endif
 
 int is_range(char *arg);

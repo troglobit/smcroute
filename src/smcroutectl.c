@@ -298,11 +298,11 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 		return 1;
 	}
 
-	fp = tmpfile();
+	fp = tempfile();
 	if (!fp) {
 		close(sd);
 		free(msg);
-		err(EX_OSERR, "Failed creating tmpfile()");
+		err(EX_OSERR, "Failed creating tempfile()");
 	}
 
 	total = 0;

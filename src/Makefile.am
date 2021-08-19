@@ -30,3 +30,4 @@ endif
 smcroutectl_SOURCES  = smcroutectl.c msg.h util.h
 smcroutectl_CFLAGS   = -W -Wall -Wextra
 smcroutectl_CPPFLAGS = -DRUNSTATEDIR=\"@runstatedir@\"
+smcroutectl_LDADD    = $(LIBS) $(LIBOBJS)
