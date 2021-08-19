@@ -76,10 +76,14 @@ static int expired(struct timer *t, struct timespec *now)
 static struct timer *compare(struct timer *a, struct timer *b)
 {
 	if (a->timeout.tv_sec <= b->timeout.tv_sec) {
-		if (a->timeout.tv_nsec <= b->timeout.tv_nsec)
-			return a;
+		if (a->timeout.tv_sec == b->timeout.tv_sec) {
+			if (a->timeout.tv_nsec <= b->timeout.tv_nsec)
+				return a;
 
-		return b;
+			return b;
+		}
+
+		return a;
 	}
 
 	return b;
