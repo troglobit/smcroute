@@ -59,7 +59,9 @@ static void set(struct timer *t, struct timespec *now)
 
 static int expired(struct timer *t, struct timespec *now)
 {
-	long round_nsec = now->tv_nsec + 250000000;
+	long round_nsec;
+
+	round_nsec = now->tv_nsec + 250000000;
 	round_nsec = round_nsec > 999999999 ? 999999999 : round_nsec;
 
 	if (t->timeout.tv_sec < now->tv_sec)
@@ -100,8 +102,8 @@ static struct timer *find(void (*cb), void *arg)
 
 static int start(struct timespec *now)
 {
+	struct itimerspec it = { 0 };
 	struct timer *next, *entry;
-	struct itimerspec it;
 
 	if (LIST_EMPTY(&timer_list))
 		return -1;
@@ -110,7 +112,6 @@ static int start(struct timespec *now)
 	LIST_FOREACH(entry, &timer_list, link)
 		next = compare(next, entry);
 
-	memset(&it, 0, sizeof(it));
 	it.it_value.tv_sec  = next->timeout.tv_sec - now->tv_sec;
 	it.it_value.tv_nsec = next->timeout.tv_nsec - now->tv_nsec;
 	if (it.it_value.tv_nsec < 0) {
@@ -130,9 +131,9 @@ static int start(struct timespec *now)
 /* callback for activity on pipe */
 static void run(int sd, void *arg)
 {
-	char dummy;
-	struct timespec now;
 	struct timer *entry, *tmp;
+	struct timespec now;
+	char dummy;
 
 	(void)arg;
 	if (read(sd, &dummy, 1) < 0)
@@ -215,8 +216,8 @@ void timer_exit(void)
  */
 int timer_add(int period, void (*cb)(void *), void *arg)
 {
-	struct timer *t;
 	struct timespec now;
+	struct timer *t;
 
 	t = find(cb, arg);
 	if (t && t->active) {
