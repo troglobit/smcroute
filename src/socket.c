@@ -111,11 +111,11 @@ int socket_create(int domain, int type, int proto, void (*cb)(int, void *), void
 		} else
 #endif /* HAVE_IPV6_MULTICAST_HOST */
 		{
-			if (setsockopt(sd, SOL_SOCKET, IP_MULTICAST_LOOP, &val, sizeof(val)))
+			if (setsockopt(sd, IPPROTO_IP, IP_MULTICAST_LOOP, &val, sizeof(val)))
 				smclog(LOG_WARNING, "failed disabling IP_MULTICAST_LOOP: %s",
 				       strerror(errno));
 #ifdef IP_MULTICAST_ALL
-			if (setsockopt(sd, SOL_SOCKET, IP_MULTICAST_ALL, &val, sizeof(val)))
+			if (setsockopt(sd, IPPROTO_IP, IP_MULTICAST_ALL, &val, sizeof(val)))
 				smclog(LOG_WARNING, "failed disabling IP_MULTICAST_ALL: %s",
 				       strerror(errno));
 #endif
