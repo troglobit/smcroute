@@ -3,12 +3,14 @@ ChangeLog
 
 All notable changes to the project are documented in this file.
 
-[v2.5.0][UNRELEASED]
---------------------
+[v2.5.0][] - 2021-08-19
+-----------------------
 
 **Highlights:** native `/etc/smcroute.d/*.conf` support and seamless
   update/removal of routes and groups by reloading `.conf` files or
   using `smcroutectl`.
+
+Tested on Linux 5.11 and FreeBSD 12.2
 
 ### Changes
 - Fully automated test suite with 15 tests covering many use cases
@@ -37,6 +39,8 @@ All notable changes to the project are documented in this file.
   removed to simplify and guarantee full function
 - Output format from `smcroutectl` has been extensively changed. E.g,
   new `/LEN` support means wider columns, but heading have also changed
+- The `.tar.xz` archive has been has been dropped as distribution format,
+  keeping only `tar.gz`
 
 ### Fixes
 - Fix #120: failed ASM/SSM IGMP join if interface has no address
@@ -536,7 +540,7 @@ Initial public release by Carsten Schill.
 
 [mrdisc]:     https://github.com/troglobit/mrdisc
 [RFC4286]:    https://tools.ietf.org/html/rfc4286
-[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.4.4...HEAD
+[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.5.0...HEAD
 [v2.5.0]:     https://github.com/troglobit/smcroute/compare/2.4.4...2.5.0
 [v2.4.4]:     https://github.com/troglobit/smcroute/compare/2.4.3...2.4.4
 [v2.4.3]:     https://github.com/troglobit/smcroute/compare/2.4.2...2.4.3
