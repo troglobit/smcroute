@@ -306,7 +306,7 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 	}
 
 	total = 0;
-	while ((len = read(sd, buf, sizeof(buf) - 1))) {
+	while ((len = read(sd, buf, sizeof(buf) - 1)) > 0) {
 		total += len;
 		buf[len] = 0;
 		fwrite(buf, len, 1, fp);
