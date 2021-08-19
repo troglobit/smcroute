@@ -16,18 +16,27 @@ All notable changes to the project are documented in this file.
 - Support for applying changes to `.conf` files without disturbing
   established flows -- i.e., seamless addition or removal of outbound
   interfaces in existing rules, or add/remove routes, without ever
-  affecting other routes, issue
+  affecting other routes, issue #103
 - Support for route replacement/update `smcroutectl`, issue #115
 - Full `(*,G)` wildcard route matching, for IPv4 and IPv6, issue #31
 - Variant wildcard route matching with source and group range matching.
   This may of course waste a lot of resources, so handle with care:
-  - `(*,G/LEN)`, issue #135 (IPv4), issue #162 (IPv6)
+  - `(*,G/LEN)`, issue #135 (IPv4), and issue #162 (IPv6)
   - `(S/LEN,G)`, issue #81
   - `(S/LEN,G/LEN)`
 - Full SSM/ASM group join support, for both IPv4 and IPv6.  Including
   joining group ranges from both `smcroutectl` and `.conf`, issue #118
   Please note, no SSM support on FreeBSD, only Linux
-- Command line option, `-F file.conf` to verify file syntax, issue #100
+- New command line option, `-F file.conf` to verify file syntax, issue #100
+- The `-I NAME` command line option has changed to `-i NAME`, compat
+  support for the previous option remains
+- The `mrdisc` flag to the `phyint` directive is now what solely
+  controls the functionality per interface.  Previously a mechanism to
+  enable/disable the functionality (if enabled) if active routes were in
+  place.  However, this did not cover `(*,G)` routes so that has been
+  removed to simplify and guarantee full function
+- Output format from `smcroutectl` has been extensively changed. E.g,
+  new `/LEN` support means wider columns, but heading have also changed
 
 ### Fixes
 - Fix #120: failed ASM/SSM IGMP join if interface has no address
@@ -35,6 +44,8 @@ All notable changes to the project are documented in this file.
 - Fix #149: `(*,G)` cache timeout callback stops, or never starts
 - Fix #151: same log entries
 - Fix #156: `smcruotectl show` does not show IPv6 routes
+- Fix stochastic timer behavior, e.g. mrdisc announcements experienced
+  interference with the `(*,G)` cache timer
 
 
 [v2.4.4][] - 2019-02-11
