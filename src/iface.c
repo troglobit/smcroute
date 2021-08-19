@@ -159,7 +159,10 @@ struct iface *iface_find_by_name(const char *ifname)
 {
 	struct iface *candidate = NULL;
 	struct iface *iface;
-	char *nm, *ptr;
+#ifdef __linux__
+	char *ptr;
+#endif
+	char *nm;
 
 	if (!ifname)
 		return NULL;
