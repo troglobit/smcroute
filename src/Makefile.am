@@ -7,7 +7,7 @@ smcrouted_SOURCES    = smcrouted.c conf.c conf.h mroute.c mroute.h iface.c \
 		       notify.c notify.h pidfile.c queue.h script.c	   \
 		       script.h socket.c socket.h timer.c timer.h util.h
 
-smcrouted_CFLAGS     = -W -Wall -Wextra -Wno-deprecated-declarations
+smcrouted_CFLAGS     = -W -Wall -Wextra -Wno-deprecated-declarations -std=gnu99
 smcrouted_CPPFLAGS   = -D_ATFILE_SOURCE -D_INCOMPLETE_XOPEN_C063
 smcrouted_CPPFLAGS  += -DSYSCONFDIR=\"@sysconfdir@\" -DRUNSTATEDIR=\"@runstatedir@\"
 smcrouted_LDADD	     = $(LIBS) $(LIBOBJS) @LIB_RT@ @LIB_PTHREAD@
@@ -28,6 +28,6 @@ smcrouted_SOURCES   += mrdisc.c mrdisc.h
 endif
 
 smcroutectl_SOURCES  = smcroutectl.c msg.h util.h
-smcroutectl_CFLAGS   = -W -Wall -Wextra
+smcroutectl_CFLAGS   = -W -Wall -Wextra -std=gnu99
 smcroutectl_CPPFLAGS = -DRUNSTATEDIR=\"@runstatedir@\"
 smcroutectl_LDADD    = $(LIBS) $(LIBOBJS)
