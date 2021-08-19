@@ -60,11 +60,9 @@
 struct ifsock {
 	LIST_ENTRY(ifsock) link;
 
-	short  vif;
-	size_t refcnt;
-
 	int    sd;
 	char   ifname[IFNAMSIZ];
+	vifi_t vif;
 };
 
 static uint8_t interval       = 20;
@@ -288,10 +286,8 @@ int mrdisc_register(char *ifname, short vif)
 	struct ifsock *entry;
 
 	LIST_FOREACH(entry, &ifsock_list, link) {
-		if (!strcmp(entry->ifname, ifname)) {
-			errno = EEXIST;
-			return -1;
-		}
+		if (!strcmp(entry->ifname, ifname))
+			goto reload;
 	}
 
 	entry = malloc(sizeof(*entry));
@@ -300,12 +296,15 @@ int mrdisc_register(char *ifname, short vif)
 		return -1;
 	}
 
-	entry->refcnt = 0;
-	entry->vif    = vif;
-	entry->sd     = -1;
+	entry->vif = vif;
 	strlcpy(entry->ifname, ifname, sizeof(entry->ifname));
 	LIST_INSERT_HEAD(&ifsock_list, entry, link);
 
+	entry->sd = inet_open(entry->ifname);
+	if (entry->sd < 0)
+		return -1;
+reload:
+	announce(entry);
 	return 0;
 }
 
@@ -317,60 +316,13 @@ int mrdisc_deregister(short vif)
 	struct ifsock *entry;
 
 	LIST_FOREACH(entry, &ifsock_list, link) {
-		if (entry->vif == vif) {
-			if (entry->refcnt)
-				inet_close(entry->sd);
-			LIST_REMOVE(entry, link);
-			free(entry);
-			return 0;
-		}
-	}
+		if (entry->vif != vif)
+			continue;
 
-	errno = ENOENT;
-	return -1;
-}
-
-/*
- * Enable multicast router discovery for inbound interface
- */
-int mrdisc_enable(short vif)
-{
-	struct ifsock *entry;
-
-	LIST_FOREACH(entry, &ifsock_list, link) {
-		if (entry->vif == vif) {
-			if (entry->refcnt == 0) {
-				entry->sd = inet_open(entry->ifname);
-				if (entry->sd < 0)
-					return -1;
-				entry->refcnt++;
-				announce(entry);
-			}
-
-			return 0;
-		}
-	}
-
-	errno = ENOENT;
-	return -1;
-}
-
-/*
- * Disable multicast router discovery for inbound interface
- */
-int mrdisc_disable(short vif)
-{
-	struct ifsock *entry;
-
-	LIST_FOREACH(entry, &ifsock_list, link) {
-		if (entry->vif == vif) {
-			if (entry->refcnt > 0)
-				entry->refcnt--;
-
-			if (entry->refcnt == 0)
-				inet_close(entry->sd);
-			return 0;
-		}
+		inet_close(entry->sd);
+		LIST_REMOVE(entry, link);
+		free(entry);
+		return 0;
 	}
 
 	errno = ENOENT;
@@ -382,14 +334,8 @@ void mrdisc_send(void *arg)
 	struct ifsock *entry;
 
 	(void)arg;
-	LIST_FOREACH(entry, &ifsock_list, link) {
-		if (entry->refcnt == 0) {
-			smclog(LOG_DEBUG, "Skipping mrdisc on inactive %s", entry->ifname);
-			continue;
-		}
-
+	LIST_FOREACH(entry, &ifsock_list, link)
 		announce(entry);
-	}
 }
 
 void mrdisc_recv(int sd, void *arg)
@@ -406,7 +352,7 @@ void mrdisc_recv(int sd, void *arg)
 	}
 
 	/* Only do a "dummy" read on inactive interfaces */
-	if (inet_recv(sd, entry->refcnt ? interval : 0))
+	if (inet_recv(sd, interval))
 		smclog(LOG_WARNING, "Failed receiving IGMP control message from %s", entry->ifname);
 }
 

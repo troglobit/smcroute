@@ -41,8 +41,8 @@ int kern_vif_del     (struct iface *iface);
 int kern_mif_add     (struct iface *iface);
 int kern_mif_del     (struct iface *iface);
 
-int kern_mroute_add  (struct mroute *route, int active);
-int kern_mroute_del  (struct mroute *route, int active);
+int kern_mroute_add  (struct mroute *route);
+int kern_mroute_del  (struct mroute *route);
 
 int kern_stats       (struct mroute *route, struct mroute_stats *ms);
 

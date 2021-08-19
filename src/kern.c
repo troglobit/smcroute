@@ -321,7 +321,7 @@ int kern_vif_del(struct iface *iface)
 	return rc;
 }
 
-static int kern_mroute4(int cmd, struct mroute *route, int active)
+static int kern_mroute4(int cmd, struct mroute *route)
 {
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
 	int op = cmd ? MRT_ADD_MFC : MRT_DEL_MFC;
@@ -355,16 +355,8 @@ static int kern_mroute4(int cmd, struct mroute *route, int active)
 		return 1;
 	}
 
-	if (active) {
-		smclog(LOG_DEBUG, "%s %s -> %s from VIF %d", cmd ? "Add" : "Del",
-		       origin, group, route->inbound);
-
-		/* Only enable/disable mrdisc for active routes, i.e. with outbound */
-		if (cmd)
-			mrdisc_enable(route->inbound);
-		else
-			mrdisc_disable(route->inbound);
-	}
+	smclog(LOG_DEBUG, "%s %s -> %s from VIF %d", cmd ? "Add" : "Del",
+	       origin, group, route->inbound);
 
 	return 0;
 }
@@ -634,7 +626,7 @@ int kern_stats(struct mroute *route, struct mroute_stats *ms)
 	return kern_stats4(route, ms);
 }
 
-int kern_mroute_add(struct mroute *route, int active)
+int kern_mroute_add(struct mroute *route)
 {
 	if (!route)
 		return errno = EINVAL;
@@ -644,10 +636,10 @@ int kern_mroute_add(struct mroute *route, int active)
 		return kern_mroute6(1, route);
 #endif
 
-	return kern_mroute4(1, route, active);
+	return kern_mroute4(1, route);
 }
 
-int kern_mroute_del(struct mroute *route, int active)
+int kern_mroute_del(struct mroute *route)
 {
 	if (!route)
 		return errno = EINVAL;
@@ -657,7 +649,7 @@ int kern_mroute_del(struct mroute *route, int active)
 		return kern_mroute6(0, route);
 #endif
 
-	return kern_mroute4(0, route, active);
+	return kern_mroute4(0, route);
 }
 
 /**

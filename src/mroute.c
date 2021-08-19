@@ -263,7 +263,7 @@ static int mroute4_add_vif(struct iface *iface)
 	if (iface->mrdisc)
 		return mrdisc_register(iface->ifname, iface->vif);
 
-	return 0;
+	return mrdisc_deregister(iface->vif);
 }
 
 static int mroute4_del_vif(struct iface *iface)
@@ -452,7 +452,7 @@ void mroute_expire(int max_idle)
 
 			/* Not used, expire */
 			smclog(LOG_DEBUG, "  -> Yup, stale route.");
-			kern_mroute_del(entry, is_active(entry));
+			kern_mroute_del(entry);
 			TAILQ_REMOVE(&kern_list, entry, link);
 			free(entry);
 		}
@@ -497,7 +497,7 @@ static int mfc_install(struct mroute *route)
 	}
 
 	if (diff)
-		return kern_mroute_add(kern, is_active(kern));
+		return kern_mroute_add(kern);
 
 	return 0;
 }
@@ -542,9 +542,9 @@ static int mfc_uninstall(struct mroute *route)
 		return 0;
 
 	if (is_active(kern) || is_active(route))
-		return kern_mroute_add(kern, 1);
+		return kern_mroute_add(kern);
 cleanup:
-	rc = kern_mroute_del(kern, 0);
+	rc = kern_mroute_del(kern);
 	TAILQ_REMOVE(&kern_list, kern, link);
 	free(kern);
 
