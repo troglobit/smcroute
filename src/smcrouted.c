@@ -19,7 +19,6 @@
 
 #include "config.h"
 
-#include <alloca.h>
 #include <err.h>
 #include <errno.h>
 #include <getopt.h>
