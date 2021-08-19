@@ -1,3 +1,13 @@
+Add Support for IPv6 MRDISC
+---------------------------
+
+[RFC4286][1] details both IPv4 and IPv6, which should not be problem
+to support in SMCRoute.  Anyone with Wireshark and a bit of patience
+could add it.  Your patch is welcome! :)
+
+[1]: https://datatracker.ietf.org/doc/html/rfc4286
+
+
 Tests must have uniquely named netns (if any)
 ---------------------------------------------
 
