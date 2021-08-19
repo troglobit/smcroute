@@ -34,13 +34,13 @@ print "Starting smcrouted ..."
 sleep 1
 
 echo "-----------------------------------------------------------------------------------"
-../src/smcroutectl -pS "/tmp/$NM/sock" show interfaces
+../src/smcroutectl -pu "/tmp/$NM/sock" show interfaces
 echo "-----------------------------------------------------------------------------------"
 ip -6 maddress
 echo "-----------------------------------------------------------------------------------"
 cat /proc/net/mcfilter6
 echo "-----------------------------------------------------------------------------------"
-../src/smcroutectl -pS "/tmp/$NM/sock" show groups
+../src/smcroutectl -pu "/tmp/$NM/sock" show groups
 
 collect a2 -c12 'dst ff04::114 or dst ff2e::42 or dst ff2e::43 or dst ff2e::44'
 

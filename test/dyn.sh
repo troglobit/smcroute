@@ -36,9 +36,9 @@ print "Starting smcrouted ..."
 sleep 1
 
 echo "-----------------------------------------------------------------------------------"
-../src/smcroutectl -pS "/tmp/$NM/sock" show interfaces
+../src/smcroutectl -pu "/tmp/$NM/sock" show interfaces
 echo "-----------------------------------------------------------------------------------"
-../src/smcroutectl -pS "/tmp/$NM/sock" show routes
+../src/smcroutectl -pu "/tmp/$NM/sock" show routes
 
 collect a2 -c21 'dst 225.1.2.1 or dst 225.1.2.201 or dst ff2e::42 or dst ff2e::7f or dst 225.3.2.1 or dst ff04::114 or dst 225.3.3.1'
 

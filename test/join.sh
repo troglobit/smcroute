@@ -37,9 +37,9 @@ print "Starting smcrouted ..."
 sleep 1
 
 echo "-----------------------------------------------------------------------------------"
-../src/smcroutectl -pS "/tmp/$NM/sock" show interfaces
+../src/smcroutectl -pu "/tmp/$NM/sock" show interfaces
 echo "-----------------------------------------------------------------------------------"
-../src/smcroutectl -pS "/tmp/$NM/sock" show groups
+../src/smcroutectl -pu "/tmp/$NM/sock" show groups
 echo "-----------------------------------------------------------------------------------"
 grep "0xe1010203 0x0a00000a" /proc/net/mcfilter
 config_ssm=$?
@@ -86,9 +86,9 @@ print "Phase 2: Join groups (IPC)"
 ../src/smcroutectl -u "/tmp/$NM/sock" join a2 ff2e::22
 
 echo "-----------------------------------------------------------------------------------"
-../src/smcroutectl -pS "/tmp/$NM/sock" show interfaces
+../src/smcroutectl -pu "/tmp/$NM/sock" show interfaces
 echo "-----------------------------------------------------------------------------------"
-../src/smcroutectl -pS "/tmp/$NM/sock" show groups
+../src/smcroutectl -pu "/tmp/$NM/sock" show groups
 echo "-----------------------------------------------------------------------------------"
 grep "0xe1010101 0x0a00000b" /proc/net/mcfilter
 dynamic_ssm=$?
@@ -135,9 +135,9 @@ print "Phase 3: Leave groups (IPC)"
 ../src/smcroutectl -u "/tmp/$NM/sock" leave a2 ff2e::42
 
 echo "-----------------------------------------------------------------------------------"
-../src/smcroutectl -pS "/tmp/$NM/sock" show interfaces
+../src/smcroutectl -pu "/tmp/$NM/sock" show interfaces
 echo "-----------------------------------------------------------------------------------"
-../src/smcroutectl -pS "/tmp/$NM/sock" show groups
+../src/smcroutectl -pu "/tmp/$NM/sock" show groups
 echo "-----------------------------------------------------------------------------------"
 grep "0xe1010203 0x0a00000a" /proc/net/mcfilter
 leave_ssm=$?
