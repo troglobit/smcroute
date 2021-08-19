@@ -77,6 +77,7 @@ sleep 1
 
 print "Starting collector on eth1@host2 ..."
 nsenter --net=host2 -- tshark -w "/tmp/$NM/pcap" -lni eth1 -c5 'dst 225.1.2.3' 2>/dev/null &
+echo $! >> "/tmp/$NM/PIDs"
 
 print "Starting emitters ..."
 nsenter --net=host1 -- ping -c 5 -W 1 -I eth1 -t 10 225.1.2.3 > /dev/null &
