@@ -417,7 +417,7 @@ int mcgroup_show(int sd, int detail)
 	if (TAILQ_EMPTY(&conf_list))
 		return 0;
 
-	snprintf(line, sizeof(line), "%-42s %-16s=\n", "GROUP (S,G)", "INBOUND");
+	snprintf(line, sizeof(line), "%-42s %-16s=\n", "GROUP (S,G)", "IIF");
 	ipc_send(sd, line, strlen(line));
 
 	TAILQ_FOREACH(entry, &conf_list, link) {

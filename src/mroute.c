@@ -1103,7 +1103,7 @@ static int has_any_asm(void)
 /* Write all (*,G) routes to client socket */
 int mroute_show(int sd, int detail)
 {
-	const char *r = "ROUTE (S,G)", *o = "OUTBOUND", *i = "INBOUND";
+	const char *r = "ROUTE (S,G)", *o = "OIFS", *i = "IIF";
 	struct mroute *entry;
 	char line[256];
 	int inw;
@@ -1114,7 +1114,7 @@ int mroute_show(int sd, int detail)
 
 	if (detail) {
 		const char *p = "PACKETS", *b = "BYTES";
-		snprintf(line, sizeof(line), "%-42s %-*s %10s %10s  %-8s=\n", r, inw, i, p, b, o);
+		snprintf(line, sizeof(line), "%-42s %-*s %10s %10s  %s=\n", r, inw, i, p, b, o);
 	} else
 		snprintf(line, sizeof(line), "%-42s %-*s  %s=\n", r, inw, i, o);
 

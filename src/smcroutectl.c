@@ -118,7 +118,7 @@ static struct ipc_msg *msg_create(uint16_t cmd, char *argv[], size_t count)
 #define ESC "\033"
 static int get_width(void)
 {
-	int ret = 74;
+	int ret = 79;
 #ifdef HAVE_TERMIOS_H
 	struct pollfd fd = { STDIN_FILENO, POLLIN, 0 };
 	struct termios tc, saved;
@@ -361,19 +361,20 @@ static int usage(int code)
 	}
 
 	printf("\nArguments:\n"
-	       "         <--------- INBOUND ---------->        <--- OUTBOUND ---->\n"
-	       "  add    IFNAME [SOURCE-IP[/LEN]] GROUP[/LEN]  IFNAME [IFNAME ...]\n"
-	       "  remove IFNAME [SOURCE-IP[/LEN]] GROUP[/LEN]\n"
+	       "         <---------- INBOUND ------------>  <- OUTBOUND ->\n"
+	       "  add    IIF [SOURCE-IP[/LEN]] GROUP[/LEN]  OIF [OIF ... ]\n"
+	       "  remove IIF [SOURCE-IP[/LEN]] GROUP[/LEN]\n"
 	       "\n"
-	       "  join   IFNAME [SOURCE-IP[/LEN]] GROUP[/LEN]\n"
-	       "  leave  IFNAME [SOURCE-IP[/LEN]] GROUP[/LEN]\n"
+	       "  join   IIF [SOURCE-IP[/LEN]] GROUP[/LEN]\n"
+	       "  leave  IIF [SOURCE-IP[/LEN]] GROUP[/LEN]\n"
 	       "\n"
 	       "  show   interfaces    Show configured multicast interfaces\n"
 	       "  show   groups        Show joined multicast groups\n"
 	       "  show   routes        Show (*,G) and (S,G) multicast routes, default\n"
 	       "\n"
-	       "NOTE: IFNAME is either an interface name or wildcard.  E.g., `eth+` matches\n"
-	       "      eth0, eth15, etc.  Wildcards are available for inbound interfaces.\n"
+	       "Note:\n"
+	       "  Inbound (IIF) and outbound (OIF) interfaces can be either an interface\n"
+	       "  name or a wildcard.  E.g., \"eth+\" matches eth0, eth15, etc.\n"
 	       "\n");
 
 	return code;
