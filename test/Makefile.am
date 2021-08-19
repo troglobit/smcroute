@@ -1,6 +1,6 @@
 EXTRA_DIST         = basic.sh bridge.sh dyn.sh expire.sh gre.sh ipv6.sh include.sh
-EXTRA_DIST        += isolated.sh join.sh joinlen.sh lib.sh multi.sh mem.sh reload.sh
-EXTRA_DIST        += poison.sh reload6.sh vlan.sh vrfy.sh
+EXTRA_DIST        += isolated.sh join.sh joinlen.sh lib.sh multi.sh mem.sh mrdisc.sh
+EXTRA_DIST        += poison.sh reload.sh reload6.sh vlan.sh vrfy.sh
 CLEANFILES         = *~ *.trs *.log
 TEST_EXTENSIONS    = .sh
 TESTS_ENVIRONMENT  = unshare -mrun
@@ -16,6 +16,7 @@ TESTS             += isolated.sh
 TESTS             += join.sh
 TESTS             += joinlen.sh
 TESTS             += mem.sh
+TESTS             += mrdisc.sh
 TESTS             += multi.sh
 TESTS             += poison.sh
 TESTS             += reload.sh
