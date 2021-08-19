@@ -54,6 +54,15 @@ show_mroute()
     ../src/smcroutectl -pd -u "/tmp/$NM/sock"
 }
 
+emitter()
+{
+    print "Starting emitter(s) on $1 ..."
+    for i in $(seq 1 $2); do
+	ping -I $1 -W 1 -t 3 225.1.2.$i >/dev/null &
+	echo $! >> "/tmp/$NM/PIDs"
+    done
+}
+
 collect()
 {
     print "Starting collector on $1 ..."

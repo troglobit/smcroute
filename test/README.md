@@ -167,6 +167,26 @@ Neither of which is really best friends with IP multicast routing.
 Tests
 -----
 
+### Advanced Routing
+
+The test use ten ingressing multicast streams, starting at 225.1.2.3.
+With a single initial SSM route matching one of the streams.  The
+remaining nine are installed in the kernel MFC with a stop-filter.
+
+ - Verify that the SSM route works
+ - Verify that no other multicast stream is forwarded
+
+Now, add an ASM route for 225.1.2.3/29 and verify that the new ASM route
+matches a subset of the installed stop-filters, changing them to proper
+SSM routes.
+
+Remove the 225.1.2.3/29 route and verify that the filters are changed
+back to stop-filters, and that the first SSM stream (which is in the
+same range) is not affected.
+
+**Topology:** Basic
+
+
 ### Basic Routing
 
 Verifies routing between two interfaces a1 and a2.  Multicast is
