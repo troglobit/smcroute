@@ -471,17 +471,9 @@ void mroute_expire(int max_idle)
 static int mfc_install(struct mroute *route)
 {
 	struct mroute *kern;
-	int diff = 0;
 
 	kern = kern_find(route);
-	if (kern) {
-		for (size_t i = 0; i < NELEMS(route->ttl); i++) {
-			if (route->ttl[i] > 0 && kern->ttl[i] != route->ttl[i]) {
-				kern->ttl[i] = route->ttl[i];
-				diff++;
-			}
-		}
-	} else {
+	if (!kern) {
 		if (!is_ssm(route))
 			return 0;
 
@@ -493,11 +485,26 @@ static int mfc_install(struct mroute *route)
 
 		memcpy(kern, route, sizeof(struct mroute));
 		TAILQ_INSERT_TAIL(&kern_list, kern, link);
-		diff++;
+
+		return kern_mroute_add(kern);
 	}
 
-	if (diff)
-		return kern_mroute_add(kern);
+	TAILQ_FOREACH(kern, &kern_list, link) {
+		int diff = 0;
+
+		if (!is_match(route, kern))
+			continue;
+
+		for (size_t i = 0; i < NELEMS(route->ttl); i++) {
+			if (route->ttl[i] > 0 && kern->ttl[i] != route->ttl[i]) {
+				kern->ttl[i] = route->ttl[i];
+				diff++;
+			}
+		}
+
+		if (diff)
+			kern_mroute_add(kern);
+	}
 
 	return 0;
 }
@@ -506,47 +513,49 @@ static int mfc_uninstall(struct mroute *route)
 {
 	struct mroute *conf, *kern;
 	int diff = 0;
-	int rc;
+	int rc = 0;
 
-	kern = kern_find(route);
-	if (!kern) {
-		errno = ENOENT;
-		return -1;
-	}
-
-	if (route->unused)
-		goto cleanup;
-
-	/* First remove OIFs from route entry */
-	for (size_t i = 0; i < NELEMS(route->ttl); i++) {
-		if (route->ttl[i] > 0) {
-			kern->ttl[i] = 0;
-			diff++;
-		}
-	}
-
-	/* Then, for each matching conf we add its oifs */
-	TAILQ_FOREACH(conf, &conf_list, link) {
-		if (!is_match(kern, conf))
+	TAILQ_FOREACH(kern, &kern_list, link) {
+		if (!is_match(route, kern))
 			continue;
 
-		for (size_t i = 0; i < NELEMS(conf->ttl); i++) {
-			if (conf->ttl[i] > 0 && kern->ttl[i] == 0) {
-				kern->ttl[i] = conf->ttl[i];
+		if (route->unused)
+			goto cleanup;
+
+		/* First remove OIFs from route entry */
+		for (size_t i = 0; i < NELEMS(route->ttl); i++) {
+			if (route->ttl[i] > 0) {
+				kern->ttl[i] = 0;
 				diff++;
 			}
 		}
+
+		/* Then, for each matching conf we add its oifs */
+		TAILQ_FOREACH(conf, &conf_list, link) {
+			if (!is_match(kern, conf))
+				continue;
+
+			for (size_t i = 0; i < NELEMS(conf->ttl); i++) {
+				if (conf->ttl[i] > 0 && kern->ttl[i] == 0) {
+					kern->ttl[i] = conf->ttl[i];
+					diff++;
+				}
+			}
+		}
+
+		if (!diff && is_active(route))
+			continue;
+
+		if (is_active(kern) || is_active(route)) {
+			rc += kern_mroute_add(kern);
+			continue;
+		}
+
+	cleanup:
+		rc += kern_mroute_del(kern);
+		TAILQ_REMOVE(&kern_list, kern, link);
+		free(kern);
 	}
-
-	if (!diff && is_active(route))
-		return 0;
-
-	if (is_active(kern) || is_active(route))
-		return kern_mroute_add(kern);
-cleanup:
-	rc = kern_mroute_del(kern);
-	TAILQ_REMOVE(&kern_list, kern, link);
-	free(kern);
 
 	return rc;
 }
