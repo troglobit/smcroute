@@ -93,7 +93,7 @@ void reload(void)
 	conf_read(conf_file, do_vifs);
 
 	mcgroup_reload_end();
-	mroute_reload_end();
+	mroute_reload_end(do_vifs);
 
 	/* Acknowledge client SIGHUP/reload */
 	notify_ready(NULL, uid, gid);

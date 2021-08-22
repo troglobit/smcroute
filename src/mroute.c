@@ -995,7 +995,7 @@ void mroute_reload_beg(void)
 	}
 }
 
-void mroute_reload_end(void)
+void mroute_reload_end(int do_vifs)
 {
 	struct mroute *entry, *tmp;
 	struct iface *iface;
@@ -1011,7 +1011,8 @@ void mroute_reload_end(void)
 		if (iface->unused) {
 			mroute_del_vif(iface->ifname);
 			iface->unused = 0;
-		}
+		} else if (do_vifs)
+			mroute_add_vif(iface->ifname, iface->mrdisc, iface->threshold);
 	}
 }
 

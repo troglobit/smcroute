@@ -116,7 +116,7 @@ int  mroute_add_route  (struct mroute *mroute);
 int  mroute_del_route  (struct mroute *mroute);
 
 void mroute_reload_beg (void);
-void mroute_reload_end (void);
+void mroute_reload_end (int do_vifs);
 
 int  mroute_show       (int sd, int detail);
 
