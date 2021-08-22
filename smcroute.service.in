@@ -1,8 +1,9 @@
 [Unit]
 Description=Static multicast routing daemon
-Documentation=man:smcroute
+Documentation=man:smcrouted
+Documentation=man:smcroute.conf
+Documentation=man:smcroutectl
 Documentation=file:@DOCDIR@/README.md
-Documentation=https://github.com/troglobit/smcroute
 # ConditionPathExists=/etc/smcroute.conf
 After=network-online.target
 Requires=network-online.target
@@ -11,7 +12,7 @@ Requires=network-online.target
 Type=@DAEMON_TYPE@
 EnvironmentFile=-@sysconfdir@/default/smcroute
 ExecStart=@SBINDIR@/smcrouted -n -s $SMCROUTED_OPTS
-ExecReload=@SBINDIR@/smcroutectl restart
+ExecReload=@SBINDIR@/smcroutectl reload
 NotifyAccess=main
 
 # Hardening settings
