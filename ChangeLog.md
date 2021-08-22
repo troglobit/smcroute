@@ -3,13 +3,16 @@ ChangeLog
 
 All notable changes to the project are documented in this file.
 
-[v2.5.1][UNRELEASED]
+[v2.5.1][] - 2021-08-22
 -----------------------
 
-Minor build fixes, mostly related to older compilers pre-C99.
+### Changes
+- Add .sha256 checksum to dist files, useful for packagers
 
 ### Fixes
+- Fix #155: systemd Notify integration, restore `NotifyAccess=main`
 - Fix #165: ftbfs on older compilers, e.g. gcc 4.8.3, use -std=gnu99
+- Fix Documentation refs in systemd unit file, new man pages
 
 
 [v2.5.0][] - 2021-08-19
@@ -549,7 +552,7 @@ Initial public release by Carsten Schill.
 
 [mrdisc]:     https://github.com/troglobit/mrdisc
 [RFC4286]:    https://tools.ietf.org/html/rfc4286
-[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.5.0...HEAD
+[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.5.1...HEAD
 [v2.5.1]:     https://github.com/troglobit/smcroute/compare/2.5.1...2.5.1
 [v2.5.0]:     https://github.com/troglobit/smcroute/compare/2.4.4...2.5.0
 [v2.4.4]:     https://github.com/troglobit/smcroute/compare/2.4.3...2.4.4
