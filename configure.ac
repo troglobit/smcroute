@@ -91,21 +91,21 @@ AS_IF([test "x$PKG_CONFIG" = "x"], [
 
 with_libsystemd=no
 AS_IF([test "x$with_systemd" = "xyes" -o "x$with_systemd" = "xauto"], [
-    PKG_CHECK_MODULES([libsystemd], [libsystemd], [with_libsystemd=yes], [true])
-    def_systemd=$($PKG_CONFIG --variable=systemdsystemunitdir systemd)
-    AS_IF([test "x$def_systemd" = "x"],
-        [AS_IF([test "x$with_systemd" = "xyes"],
-	    [AC_MSG_ERROR([systemd support requested but pkg-config unable to query systemd package])])
-	    with_systemd=no], [with_systemd="$def_systemd"])])
+	def_systemd=$($PKG_CONFIG --variable=systemdsystemunitdir systemd)
+	AS_IF([test "x$def_systemd" = "x"], [
+        	AS_IF([test "x$with_systemd" = "xyes"],[
+	    		AC_MSG_ERROR([systemd support requested but pkg-config unable to query systemd package])])
+		with_systemd=no], [with_systemd="$def_systemd"])])
 
-AS_IF([test "x$with_systemd" != "xno"],
-     [AC_SUBST([systemddir], [$with_systemd])])
+AS_IF([test "x$with_systemd" != "xno"], [
+	PKG_CHECK_MODULES([libsystemd], [libsystemd], [with_libsystemd=yes], [true])
+	AC_SUBST([systemddir], [$with_systemd])])
 AM_CONDITIONAL([HAVE_SYSTEMD], [test "x$with_systemd" != "xno"])
 
-AS_IF([test "x$with_libsystemd" != "xno"],
-     AC_DEFINE([HAVE_LIBSYSTEMD], [1], [Define to 1 if you have libsystemd-dev])
-     AC_SUBST([DAEMON_TYPE], "Notify"),
-     AC_SUBST([DAEMON_TYPE], "Simple"))
+AS_IF([test "x$with_libsystemd" != "xno"], [
+	AC_DEFINE([HAVE_LIBSYSTEMD], [1], [Define to 1 if you have libsystemd-dev])
+	AC_SUBST([DAEMON_TYPE], "Notify")], [
+	AC_SUBST([DAEMON_TYPE], "Simple")])
 AM_CONDITIONAL([HAVE_LIBSYSTEMD], [test "x$with_libsystemd" != "xno"])
 
 # Check if we need -lpthread (building statically) and -lrt (older GLIBC)
