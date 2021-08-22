@@ -269,7 +269,7 @@ static int mroute4_add_vif(struct iface *iface)
 static int mroute4_del_vif(struct iface *iface)
 {
 	if (iface->mrdisc)
-		return mrdisc_deregister(iface->vif);
+		mrdisc_deregister(iface->vif);
 
 	if (kern_vif_del(iface) && errno != ENOENT) {
 		smclog(LOG_ERR, "Failed deleting VIF for iface %s: %s", iface->ifname, strerror(errno));
