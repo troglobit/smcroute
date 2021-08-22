@@ -62,6 +62,8 @@ void iface_update(int do_vifs)
 		iface = iface_find_by_name(ifa->ifa_name);
 		if (iface) {
 			smclog(LOG_DEBUG, "Found %s, updating ...", ifa->ifa_name);
+
+			iface->flags = ifa->ifa_flags;
 			if (!iface->inaddr.s_addr && ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET)
 				iface->inaddr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
 			if (do_vifs)
