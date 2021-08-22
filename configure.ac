@@ -88,6 +88,7 @@ PKG_PROG_PKG_CONFIG
 AS_IF([test "x$PKG_CONFIG" = "x"], [
 	with_systemd=no
 	AC_MSG_WARN([Cannot find pkg-config tool, disabling systemd check.])])
+
 with_libsystemd=no
 AS_IF([test "x$with_systemd" = "xyes" -o "x$with_systemd" = "xauto"], [
     PKG_CHECK_MODULES([libsystemd], [libsystemd], [with_libsystemd=yes], [true])
@@ -95,8 +96,7 @@ AS_IF([test "x$with_systemd" = "xyes" -o "x$with_systemd" = "xauto"], [
     AS_IF([test "x$def_systemd" = "x"],
         [AS_IF([test "x$with_systemd" = "xyes"],
 	    [AC_MSG_ERROR([systemd support requested but pkg-config unable to query systemd package])])
-	    with_systemd=no], [with_systemd="$def_systemd"])]
-)
+	    with_systemd=no], [with_systemd="$def_systemd"])])
 
 AS_IF([test "x$with_systemd" != "xno"],
      [AC_SUBST([systemddir], [$with_systemd])])

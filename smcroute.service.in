@@ -12,6 +12,7 @@ Type=@DAEMON_TYPE@
 EnvironmentFile=-@sysconfdir@/default/smcroute
 ExecStart=@SBINDIR@/smcrouted -n -s $SMCROUTED_OPTS
 ExecReload=@SBINDIR@/smcroutectl restart
+NotifyAccess=main
 
 # Hardening settings
 NoNewPrivileges=true
