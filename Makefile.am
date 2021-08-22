@@ -48,4 +48,4 @@ release: release-hook distcheck
 	done
 
 # Workaround for systemd unit file duing distcheck
-DISTCHECK_CONFIGURE_FLAGS = --with-systemd=$$dc_install_base/$(systemd)
+DISTCHECK_CONFIGURE_FLAGS = --with-systemd=$$dc_install_base/$(systemd) --enable-mrdisc --enable-test
