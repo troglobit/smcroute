@@ -57,13 +57,19 @@ void iface_update(int do_vifs)
 
 	for (ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
 		struct iface *iface;
+		int ifindex;
+
+		ifindex = if_nametoindex(ifa->ifa_name);
 
 		/* Check if already added? */
 		iface = iface_find_by_name(ifa->ifa_name);
 		if (iface) {
 			smclog(LOG_DEBUG, "Found %s, updating ...", ifa->ifa_name);
+			if (ifindex != iface->ifindex)
+				mroute_del_vif(ifa->ifa_name);
 
 			iface->flags = ifa->ifa_flags;
+			iface->ifindex = ifindex;
 			if (!iface->inaddr.s_addr && ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET)
 				iface->inaddr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
 			if (do_vifs)
