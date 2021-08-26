@@ -99,28 +99,24 @@ int socket_create(int domain, int type, int proto, void (*cb)(int, void *), void
 		return -1;
 
 #ifdef HAVE_IPV6_MULTICAST_HOST
-		if (domain == AF_INET6) {
-			if (setsockopt(sd, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &val, sizeof(val)))
-				smclog(LOG_WARNING, "failed disabling IPV6_MULTICAST_LOOP: %s",
-				       strerror(errno));
+	if (domain == AF_INET6) {
+		if (setsockopt(sd, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &val, sizeof(val)))
+			smclog(LOG_WARNING, "failed disabling IPV6_MULTICAST_LOOP: %s", strerror(errno));
 #ifdef IPV6_MULTICAST_ALL
-			if (setsockopt(sd, IPPROTO_IPV6, IPV6_MULTICAST_ALL, &val, sizeof(val)))
-				smclog(LOG_WARNING, "failed disabling IPV6_MULTICAST_ALL: %s",
-				       strerror(errno));
+		if (setsockopt(sd, IPPROTO_IPV6, IPV6_MULTICAST_ALL, &val, sizeof(val)))
+			smclog(LOG_WARNING, "failed disabling IPV6_MULTICAST_ALL: %s", strerror(errno));
 #endif
-		} else
+	} else
 #endif /* HAVE_IPV6_MULTICAST_HOST */
-		{
-			if (setsockopt(sd, IPPROTO_IP, IP_MULTICAST_LOOP, &val, sizeof(val)))
-				smclog(LOG_WARNING, "failed disabling IP_MULTICAST_LOOP: %s",
-				       strerror(errno));
-#ifdef IP_MULTICAST_ALL
-			if (setsockopt(sd, IPPROTO_IP, IP_MULTICAST_ALL, &val, sizeof(val)))
-				smclog(LOG_WARNING, "failed disabling IP_MULTICAST_ALL: %s",
-				       strerror(errno));
-#endif
-		}
+	{
 
+		if (setsockopt(sd, IPPROTO_IP, IP_MULTICAST_LOOP, &val, sizeof(val)))
+			smclog(LOG_WARNING, "failed disabling IP_MULTICAST_LOOP: %s", strerror(errno));
+#ifdef IP_MULTICAST_ALL
+		if (setsockopt(sd, IPPROTO_IP, IP_MULTICAST_ALL, &val, sizeof(val)))
+			smclog(LOG_WARNING, "failed disabling IP_MULTICAST_ALL: %s", strerror(errno));
+#endif
+	}
 	if (socket_register(sd, cb, arg) < 0) {
 		close(sd);
 		return -1;
