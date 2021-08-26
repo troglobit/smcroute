@@ -44,9 +44,8 @@ static TAILQ_HEAD(iflist, iface) iface_list = TAILQ_HEAD_INITIALIZER(iface_list)
 
 /**
  * iface_update - Check of new interfaces
- * @do_vifs: If set, then mark all interfaces found as "in use"
  */
-void iface_update(int do_vifs)
+void iface_update(void)
 {
 	struct ifaddrs *ifaddr, *ifa;
 
@@ -65,15 +64,17 @@ void iface_update(int do_vifs)
 		iface = iface_find_by_name(ifa->ifa_name);
 		if (iface) {
 			smclog(LOG_DEBUG, "Found %s, updating ...", ifa->ifa_name);
-			if (ifindex != iface->ifindex)
-				mroute_del_vif(ifa->ifa_name);
-
 			iface->flags = ifa->ifa_flags;
+
+			if (ifindex != iface->ifindex || (iface->flags & IFF_MULTICAST) != IFF_MULTICAST) {
+				mcgroup_prune(ifa->ifa_name);
+				mroute_del_vif(ifa->ifa_name);
+			}
+
 			iface->ifindex = ifindex;
 			if (!iface->inaddr.s_addr && ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET)
 				iface->inaddr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
-			if (do_vifs)
-				iface->unused = 0;
+			iface->unused = 0;
 
 			continue;
 		}
@@ -110,14 +111,13 @@ void iface_update(int do_vifs)
 
 /**
  * iface_init - Probe for interaces at startup
- * @do_vifs: If set, then mark all interfaces found as "in use"
  *
  * Builds up a vector with active system interfaces.  Must be called
  * before any other interface functions in this module!
  */
-void iface_init(int do_vifs)
+void iface_init(void)
 {
-	iface_update(do_vifs);
+	iface_update();
 }
 
 /**

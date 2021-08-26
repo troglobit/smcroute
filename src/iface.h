@@ -36,9 +36,9 @@ struct ifmatch {
 	size_t match_count;
 };
 
-void          iface_init              (int do_vifs);
+void          iface_init              (void);
 void          iface_exit              (void);
-void          iface_update            (int do_vifs);
+void          iface_update            (void);
 
 struct iface *iface_iterator          (int first);
 struct iface *iface_outbound_iterator (struct mroute *route, int first);

@@ -407,6 +407,23 @@ void mcgroup_reload_end(void)
 	}
 }
 
+/*
+ * When an interface is removed from the system, or its flags are
+ * changed to exclude the MULTICAST flag, we must prune groups.
+ */
+void mcgroup_prune(char *ifname)
+{
+	struct mcgroup *entry, *tmp;
+
+	TAILQ_FOREACH_SAFE(entry, &conf_list, link, tmp) {
+		if (strcmp(entry->ifname, ifname))
+			continue;
+
+		mcgroup_action(0, entry->ifname, &entry->source, entry->src_len, &entry->group, entry->len);
+	}
+}
+
+
 /* Write all joined IGMP/MLD groups to client socket */
 int mcgroup_show(int sd, int detail)
 {

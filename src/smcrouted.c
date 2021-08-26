@@ -89,7 +89,7 @@ void reload(void)
 	mcgroup_reload_beg();
 	mroute_reload_beg();
 
-	iface_update(do_vifs);
+	iface_update();
 	conf_read(conf_file, do_vifs);
 
 	mcgroup_reload_end();
@@ -193,7 +193,7 @@ static int start_server(void)
 	/*
 	 * Build list of multicast-capable physical interfaces
 	 */
-	iface_init(do_vifs);
+	iface_init();
 
 	if (mroute_init(do_vifs, table_id, cache_tmo)) {
 		if (errno == EADDRINUSE)
@@ -470,7 +470,7 @@ int main(int argc, char *argv[])
 
 	if (conf_vrfy) {
 		smclog(LOG_INFO, "Verifying configuration file %s ...", conf_file);
-		iface_init(do_vifs);
+		iface_init();
 		c = conf_read(conf_file, do_vifs);
 		iface_exit();
 

@@ -20,6 +20,7 @@ struct mcgroup {
 
 void mcgroup_reload_beg(void);
 void mcgroup_reload_end(void);
+void mcgroup_prune     (char *ifname);
 
 void mcgroup_init      (void);
 void mcgroup_exit      (void);
