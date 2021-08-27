@@ -433,63 +433,68 @@ void mcgroup_prune(char *ifname)
 	}
 }
 
+static int show_mcgroup(int sd, struct mcgroup *entry)
+{
+	int max_len = inet_max_len(&entry->group);
+	char sg[INET_ADDRSTR_LEN * 2 + 10 + 3];
+	char src[INET_ADDRSTR_LEN] = "*";
+	char grp[INET_ADDRSTR_LEN];
+	char line[256];
+
+	if (!is_anyaddr(&entry->source))
+		inet_addr2str(&entry->source, src, sizeof(src));
+	inet_addr2str(&entry->group, grp, sizeof(grp));
+
+	snprintf(sg, sizeof(sg), "(%s", src);
+	if (entry->src_len != max_len)
+		snprintf(line, sizeof(line), "/%u, ", entry->src_len);
+	else
+		snprintf(line, sizeof(line), ", ");
+	strlcat(sg, line, sizeof(sg));
+
+	if (entry->len != max_len)
+		snprintf(line, sizeof(line), "%s/%u)", grp, entry->len);
+	else
+		snprintf(line, sizeof(line), "%s)", grp);
+	strlcat(sg, line, sizeof(sg));
+
+	snprintf(line, sizeof(line), "%-42s %s\n", sg, entry->ifname);
+	if (ipc_send(sd, line, strlen(line)) < 0) {
+		smclog(LOG_ERR, "Failed sending reply to client: %s", strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
 
 /* Write all joined IGMP/MLD groups to client socket */
 int mcgroup_show(int sd, int detail)
 {
-	char sg[INET_ADDRSTR_LEN * 2 + 10 + 3];
+	char *conf_str = "Group Memberships Table_\n";
+	char *kern_str = "Kernel Group Membership Table_\n";
 	struct mcgroup *entry;
 	char line[256];
- 
+
 	if (TAILQ_EMPTY(&conf_list))
 		return 0;
 
+	ipc_send(sd, conf_str, strlen(conf_str));
 	snprintf(line, sizeof(line), "%-42s %-16s=\n", "GROUP (S,G)", "IIF");
 	ipc_send(sd, line, strlen(line));
 
 	TAILQ_FOREACH(entry, &conf_list, link) {
-		char src[INET_ADDRSTR_LEN] = "*";
-		char grp[INET_ADDRSTR_LEN];
-		struct iface *iface;
-		int max_len;
-
-		iface = iface_find_by_name(entry->ifname);
-		if (!iface)
-			continue;
-
-#ifdef HAVE_IPV6_MULTICAST_HOST
-		if (entry->group.ss_family == AF_INET6)
-			max_len = 128;
-		else
-#endif
-			max_len = 32;
-
-		if (!is_anyaddr(&entry->source))
-			inet_addr2str(&entry->source, src, sizeof(src));
-		inet_addr2str(&entry->group, grp, sizeof(grp));
-
-		snprintf(sg, sizeof(sg), "(%s", src);
-		if (entry->src_len != max_len)
-			snprintf(line, sizeof(line), "/%u, ", entry->src_len);
-		else
-			snprintf(line, sizeof(line), ", ");
-		strlcat(sg, line, sizeof(sg));
-
-		if (entry->len != max_len)
-			snprintf(line, sizeof(line), "%s/%u)", grp, entry->len);
-		else
-			snprintf(line, sizeof(line), "%s)", grp);
-		strlcat(sg, line, sizeof(sg));
-
-		snprintf(line, sizeof(line), "%-42s %s\n", sg, iface->ifname);
-		if (ipc_send(sd, line, strlen(line)) < 0) {
-			smclog(LOG_ERR, "Failed sending reply to client: %s", strerror(errno));
-			return -1;
-		}
+		if (show_mcgroup(sd, entry) < 0)
+		    return 1;
 	}
 
-	if (detail) {
-		/* XXX: Show all from kern_list as well */
+	if (!detail)
+		return 0;
+
+	ipc_send(sd, kern_str, strlen(kern_str));
+	snprintf(line, sizeof(line), "%-42s %-16s=\n", "GROUP (S,G)", "IIF");
+	TAILQ_FOREACH(entry, &kern_list, link) {
+		if (show_mcgroup(sd, entry) < 0)
+		    return 1;
 	}
 
 	return 0;
