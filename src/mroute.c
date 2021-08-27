@@ -59,6 +59,8 @@ static int  mroute4_add_vif    (struct iface *iface);
 static int  mroute_dyn_add     (struct mroute *route);
 static int  is_match           (struct mroute *rule, struct mroute *cand);
 static int  is_exact_match     (struct mroute *rule, struct mroute *cand);
+static int  mfc_install        (struct mroute *route);
+static int  mfc_uninstall      (struct mroute *route);
 
 /* Check for kernel IGMPMSG_NOCACHE for (*,G) hits. I.e., source-less routes. */
 static void handle_nocache4(int sd, void *arg)
@@ -229,6 +231,29 @@ static void mroute4_disable(void)
 	}
 }
 
+/*
+ * Prune VIF from all existing routes and update kernel MFC.  If VIF is
+ * used as inbound, prune entire route, otherwise just the outbound.
+ */
+static void mroute4_prune_vif(int vif)
+{
+	struct mroute *entry, *tmp;
+
+	TAILQ_FOREACH_SAFE(entry, &conf_list, link, tmp) {
+		if (entry->group.ss_family != AF_INET)
+			continue;
+
+		if (entry->inbound == vif) {
+			TAILQ_REMOVE(&conf_list, entry, link);
+			entry->unused = 1;
+			mfc_uninstall(entry);
+			free(entry);
+		} else if (entry->ttl[vif] > 0) {
+			entry->ttl[vif] = 0;
+			mfc_install(entry);
+		}
+	}
+}
 
 /* Create a virtual interface from @iface so it can be used for IPv4 multicast routing. */
 static int mroute4_add_vif(struct iface *iface)
@@ -275,6 +300,9 @@ static int mroute4_del_vif(struct iface *iface)
 		smclog(LOG_ERR, "Failed deleting VIF for iface %s: %s", iface->ifname, strerror(errno));
 		return -1;
 	}
+
+	if (iface->vif >= 0 && iface->vif < ALL_VIFS)
+		mroute4_prune_vif(iface->vif);
 	iface->vif = -1;
 
 	return 0;
@@ -812,6 +840,30 @@ static void mroute6_disable(void)
 }
 
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
+/*
+ * Prune VIF from all existing routes and update kernel MFC.  If VIF is
+ * used as inbound, prune entire route, otherwise just the outbound.
+ */
+static void mroute6_prune_mif(int mif)
+{
+	struct mroute *entry, *tmp;
+
+	TAILQ_FOREACH_SAFE(entry, &conf_list, link, tmp) {
+		if (entry->group.ss_family != AF_INET6)
+			continue;
+
+		if (entry->inbound == mif) {
+			TAILQ_REMOVE(&conf_list, entry, link);
+			entry->unused = 1;
+			mfc_uninstall(entry);
+			free(entry);
+		} else if (entry->ttl[mif] > 0) {
+			entry->ttl[mif] = 0;
+			mfc_install(entry);
+		}
+	}
+}
+
 /* Create a virtual interface from @iface so it can be used for IPv6 multicast routing. */
 static int mroute6_add_mif(struct iface *iface)
 {
@@ -852,6 +904,9 @@ static int mroute6_del_mif(struct iface *iface)
 		smclog(LOG_ERR, "Failed deleting MIF for iface %s: %s", iface->ifname, strerror(errno));
 		return -1;
 	}
+
+	if (iface->mif >= 0 && iface->mif < ALL_VIFS)
+		mroute6_prune_mif(iface->mif);
 	iface->mif = -1;
 
 	return 0;
