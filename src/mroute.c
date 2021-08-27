@@ -324,6 +324,29 @@ static int is_exact_match(struct mroute *rule, struct mroute *cand)
 	return 0;
 }
 
+static int is_sg_match(struct mroute *rule, struct mroute *cand)
+{
+	int max_len = inet_max_len(&rule->group);
+	inet_addr_t a, b;
+	int rc = 0;
+
+	if (rule->group.ss_family != cand->group.ss_family)
+		return 0;
+
+	a = inet_netaddr(&rule->group, max_len);
+	b = inet_netaddr(&cand->group, max_len);
+
+	rc = !inet_addr_cmp(&a, &b);
+	if (is_anyaddr(&rule->source))
+		return rc;
+
+	a = inet_netaddr(&rule->source, max_len);
+	b = inet_netaddr(&cand->source, max_len);
+	rc &= !inet_addr_cmp(&a, &b);
+
+	return rc;
+}
+
 /*
  * Used for (*,G) matches
  *
@@ -512,20 +535,15 @@ static int mfc_install(struct mroute *route)
 	}
 
 	TAILQ_FOREACH(kern, &kern_list, link) {
-		int diff = 0;
-
-		if (!is_match(route, kern))
+		if (!is_sg_match(route, kern))
 			continue;
 
 		for (size_t i = 0; i < NELEMS(route->ttl); i++) {
-			if (route->ttl[i] > 0 && kern->ttl[i] != route->ttl[i]) {
+			if (route->ttl[i] > 0 && kern->ttl[i] != route->ttl[i])
 				kern->ttl[i] = route->ttl[i];
-				diff++;
-			}
 		}
 
-		if (diff)
-			kern_mroute_add(kern);
+		kern_mroute_add(kern);
 	}
 
 	return 0;
