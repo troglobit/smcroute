@@ -291,10 +291,12 @@ struct iface *iface_match_by_name(const char *ifname, struct ifmatch *state)
 		struct iface *iface = state->iface;
 
 		if (!strncmp(ifname, iface->ifname, match_len)) {
-			state->iface = TAILQ_NEXT(iface, link);
-			state->match_count++;
+			if (!iface->unused) {
+				state->iface = TAILQ_NEXT(iface, link);
+				state->match_count++;
 
-			return iface;
+				return iface;
+			}
 		}
 
 		state->iface = TAILQ_NEXT(iface, link);
