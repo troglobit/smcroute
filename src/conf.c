@@ -216,13 +216,12 @@ int conf_mroute(struct conf *conf, int cmd, char *iif, char *source, char *group
 	DEBUG("mroute: checking for input iface %s ...", iif);
 	while (iface_match_vif_by_name(iif, &state_in, &iface_in) != NO_VIF) {
 		char src[INET_ADDRSTR_LEN], grp[INET_ADDRSTR_LEN];
-		int i, total = 0;
 
 		vif = iface_get_vif(family, iface_in);
 		DEBUG("mroute: input iface %s has vif %d", iif, vif);
 		mroute.inbound = vif;
 
-		for (i = 0; i < num; i++) {
+		for (int i = 0; i < num; i++) {
 			iface_match_init(&state_out);
 
 			DEBUG("mroute: checking for %s ...", oif[i]);
@@ -237,7 +236,6 @@ int conf_mroute(struct conf *conf, int cmd, char *iif, char *source, char *group
 
 				/* Use configured TTL threshold for the output phyint */
 				mroute.ttl[vif] = iface->threshold;
-				total++;
 			}
 			if (!state_out.match_count)
 				WARN("mroute: outbound %s is not a known phyint, skipping", oif[i]);
@@ -247,15 +245,10 @@ int conf_mroute(struct conf *conf, int cmd, char *iif, char *source, char *group
 			continue;
 
 		if (cmd) {
-			if (!total) {
-				WARN("mroute: no outbound interfaces, cannot add multicast route.");
-				rc += 1;
-			} else {
-				smclog(LOG_DEBUG, "mroute: adding route from %s (%s/%u,%s/%u)", iface_in->ifname,
-				       inet_addr2str(&mroute.source, src, sizeof(src)), mroute.src_len,
-				       inet_addr2str(&mroute.group, grp, sizeof(grp)), mroute.len);
-				rc += mroute_add_route(&mroute);
-			}
+			smclog(LOG_DEBUG, "mroute: adding route from %s (%s/%u,%s/%u)", iface_in->ifname,
+			       inet_addr2str(&mroute.source, src, sizeof(src)), mroute.src_len,
+			       inet_addr2str(&mroute.group, grp, sizeof(grp)), mroute.len);
+			rc += mroute_add_route(&mroute);
 		} else {
 			smclog(LOG_DEBUG, "mroute: deleting route from %s (%s/%u,%s/%u)", iface_in->ifname,
 			       inet_addr2str(&mroute.source, src, sizeof(src)), mroute.src_len,
