@@ -3,6 +3,28 @@ ChangeLog
 
 All notable changes to the project are documented in this file.
 
+[v2.5.2][] - 2021-08-27
+-----------------------
+
+### Changes
+- Allow installing routes with no outbound interfaces
+- Reinitialize VIFs on reload in case of new interfaces
+- Handle cases when interfaces change ifindex, i.e. they've first been
+  removed and then re-added with the same name
+
+### Fixes
+- Fix VIF leak when deleting interfaces with MRDISC enabled
+- Fix handling when an (S,G) moves to another IIF.  This fixes issues
+  where the SMCRoute kernel cache was out of sync with the kernel MFC
+- Fix handling of lost/disabled interfaces at reload.  This fixes a
+  couple of issues where routes were not updated properly at runtime
+- Update interface flags on reload, this fixes issues when SMCRoute
+  failed to detect interfaces that had their MULTICAST flag set or
+  cleared at runtime
+. Skip `setsockopt()` for IPC sockets.  This fixes warnings in syslog
+  about failing to disable `MULTICAST_LOOP` and `MULTICAST_ALL`
+
+
 [v2.5.1][] - 2021-08-22
 -----------------------
 
@@ -552,7 +574,8 @@ Initial public release by Carsten Schill.
 
 [mrdisc]:     https://github.com/troglobit/mrdisc
 [RFC4286]:    https://tools.ietf.org/html/rfc4286
-[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.5.1...HEAD
+[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.5.2...HEAD
+[v2.5.2]:     https://github.com/troglobit/smcroute/compare/2.5.1...2.5.2
 [v2.5.1]:     https://github.com/troglobit/smcroute/compare/2.5.0...2.5.1
 [v2.5.0]:     https://github.com/troglobit/smcroute/compare/2.4.4...2.5.0
 [v2.4.4]:     https://github.com/troglobit/smcroute/compare/2.4.3...2.4.4
