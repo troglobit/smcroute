@@ -220,7 +220,6 @@ static void mroute4_disable(void)
 	if (kern_mroute_exit())
 		return;
 
-	/* Free list of (*,G) routes on SIGHUP */
 	TAILQ_FOREACH_SAFE(entry, &conf_list, link, tmp) {
 		TAILQ_REMOVE(&conf_list, entry, link);
 		free(entry);
@@ -1001,7 +1000,6 @@ int mroute_add_vif(char *ifname, uint8_t mrdisc, uint8_t ttl)
 	iface_match_init(&state);
 	while ((iface = iface_match_by_name(ifname, &state))) {
 		smclog(LOG_DEBUG, "Creating/updating multicast VIF for %s TTL %d", iface->ifname, ttl);
-		iface->unused    = 0;
 		iface->mrdisc    = mrdisc;
 		iface->threshold = ttl;
 		rc += mroute4_add_vif(iface);
@@ -1068,19 +1066,22 @@ void mroute_reload_end(int do_vifs)
 	struct iface *iface;
 	int first = 1;
 
+	while ((iface = iface_iterator(first))) {
+		first = 0;
+		if (iface->unused) {
+			mroute_del_vif(iface->ifname);
+		} else if (do_vifs)
+			mroute_add_vif(iface->ifname, iface->mrdisc, iface->threshold);
+	}
+
 	TAILQ_FOREACH_SAFE(entry, &conf_list, link, tmp) {
 		if (entry->unused)
 			mroute_del_route(entry);
 	}
 
-	while ((iface = iface_iterator(first))) {
-		first = 0;
-		if (iface->unused) {
-			mroute_del_vif(iface->ifname);
-			iface->unused = 0;
-		} else if (do_vifs)
-			mroute_add_vif(iface->ifname, iface->mrdisc, iface->threshold);
-	}
+	/* retry add if .conf changed IIF for routes, not until del (above) can we add */
+	TAILQ_FOREACH(entry, &conf_list, link)
+		mfc_install(entry);
 }
 
 static int show_mroute(int sd, struct mroute *r, int inw, int detail)
