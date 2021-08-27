@@ -292,19 +292,28 @@ static int mroute4_add_vif(struct iface *iface)
 
 static int mroute4_del_vif(struct iface *iface)
 {
+	int rc = 0;
+
 	if (iface->mrdisc)
 		mrdisc_deregister(iface->vif);
 
-	if (kern_vif_del(iface) && errno != ENOENT) {
-		smclog(LOG_ERR, "Failed deleting VIF for iface %s: %s", iface->ifname, strerror(errno));
-		return -1;
+	if (kern_vif_del(iface)) {
+		switch (errno) {
+		case ENOENT:
+		case EADDRNOTAVAIL:
+			break;
+		default:
+			smclog(LOG_ERR, "Failed deleting VIF for iface %s: %s", iface->ifname, strerror(errno));
+			break;
+		}
+		rc = -1;
 	}
 
 	if (iface->vif >= 0 && iface->vif < ALL_VIFS)
 		mroute4_prune_vif(iface->vif);
 	iface->vif = -1;
 
-	return 0;
+	return rc;
 }
 
 static int is_exact_match(struct mroute *rule, struct mroute *cand)
@@ -888,16 +897,25 @@ static int mroute6_add_mif(struct iface *iface)
 
 static int mroute6_del_mif(struct iface *iface)
 {
+	int rc = 0;
+
 	if (kern_mif_del(iface) && errno != ENOENT) {
-		smclog(LOG_ERR, "Failed deleting MIF for iface %s: %s", iface->ifname, strerror(errno));
-		return -1;
+		switch (errno) {
+		case ENOENT:
+		case EADDRNOTAVAIL:
+			break;
+		default:
+			smclog(LOG_ERR, "Failed deleting MIF for iface %s: %s", iface->ifname, strerror(errno));
+			break;
+		}
+		rc = -1;
 	}
 
 	if (iface->mif >= 0 && iface->mif < ALL_VIFS)
 		mroute6_prune_mif(iface->mif);
 	iface->mif = -1;
 
-	return 0;
+	return rc;
 }
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
