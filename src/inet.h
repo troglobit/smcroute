@@ -75,4 +75,14 @@ int                  is_anyaddr     (inet_addr_t *addr);
 
 int                  inet_iter_init (struct inet_iter *iter, inet_addr_t *addr, int len);
 int                  inet_iterator  (struct inet_iter *iter, inet_addr_t *addr);
+
+static inline int    inet_max_len   (inet_addr_t *addr)
+{
+#ifdef HAVE_IPV6_MULTICAST_HOST
+	if (addr->ss_family == AF_INET6)
+		return 128;
+#endif
+	return 32;
+}
+
 #endif /* SMCROUTE_INET_H_ */

@@ -362,14 +362,8 @@ int is_match(struct mroute *rule, struct mroute *cand)
 
 static int is_ssm(struct mroute *route)
 {
-	int max_len;
+	int max_len = inet_max_len(&route->group);
 
-#ifdef HAVE_IPV6_MULTICAST_HOST
-	if (route->group.ss_family == AF_INET6)
-		max_len = 128;
-	else
-#endif
-	max_len = 32;
 	return !is_anyaddr(&route->source) && route->src_len == max_len && route->len == max_len;
 }
 
@@ -1080,12 +1074,9 @@ static int show_mroute(int sd, struct mroute *r, int inw, int detail)
 	char sg[(INET_ADDRSTRLEN + 3) * 2 + 5];
 	char buf[MAX_MC_VIFS * 17 + 80];
 	struct iface *iface;
-	int max_len = 32;
+	int max_len;
 
-#ifdef HAVE_IPV6_MULTICAST_ROUTING
-	if (r->group.ss_family == AF_INET6)
-		max_len = 128;
-#endif
+	max_len = inet_max_len(&r->group);
 
 	if (!is_anyaddr(&r->source)) {
 		inet_addr2str(&r->source, src, sizeof(src));
