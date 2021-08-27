@@ -398,6 +398,16 @@ void mcgroup_reload_beg(void)
 void mcgroup_reload_end(void)
 {
 	struct mcgroup *entry, *tmp;
+	struct iface *iface;
+	int first = 1;
+
+	while ((iface = iface_iterator(first))) {
+		char  dummy[IFNAMSIZ];
+
+		first = 0;
+		if (iface->unused || !if_indextoname(iface->ifindex, dummy))
+			mcgroup_prune(iface->ifname);
+	}
 
 	TAILQ_FOREACH_SAFE(entry, &conf_list, link, tmp) {
 		if (!entry->unused)
