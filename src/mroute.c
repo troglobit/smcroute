@@ -975,10 +975,11 @@ int mroute_add_vif(char *ifname, uint8_t mrdisc, uint8_t ttl)
 	int rc = 0;
 
 	iface_match_init(&state);
-	while ((iface = iface_match_by_name(ifname, &state))) {
+	while ((iface = iface_match_by_name(ifname, 1, &state))) {
 		smclog(LOG_DEBUG, "Creating/updating multicast VIF for %s TTL %d", iface->ifname, ttl);
 		iface->mrdisc    = mrdisc;
 		iface->threshold = ttl;
+		iface->unused    = 0;
 		rc += mroute4_add_vif(iface);
 #ifdef HAVE_IPV6_MULTICAST_ROUTING
 		rc += mroute6_add_mif(iface);
@@ -1001,7 +1002,7 @@ int mroute_del_vif(char *ifname)
 	int rc = 0;
 
 	iface_match_init(&state);
-	while ((iface = iface_match_by_name(ifname, &state))) {
+	while ((iface = iface_match_by_name(ifname, 1, &state))) {
 		smclog(LOG_DEBUG, "Removing multicast VIFs for %s", iface->ifname);
 		rc += mroute4_del_vif(iface);
 #ifdef HAVE_IPV6_MULTICAST_ROUTING

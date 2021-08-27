@@ -140,7 +140,7 @@ static void free_mc_sock(int sd)
 
 static struct iface *match_valid_iface(const char *ifname, struct ifmatch *state)
 {
-	struct iface *iface = iface_match_by_name(ifname, state);
+	struct iface *iface = iface_match_by_name(ifname, 0, state);
 
 	if (!iface && !state->match_count)
 		smclog(LOG_DEBUG, "unknown interface %s", ifname);

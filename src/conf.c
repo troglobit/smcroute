@@ -275,7 +275,7 @@ static int conf_phyint(struct conf *conf, int enable, char *iif, int mrdisc, int
 		struct ifmatch ifm;
 
 		iface_match_init(&ifm);
-		iface = iface_match_by_name(iif, &ifm);
+		iface = iface_match_by_name(iif, 1, &ifm);
 		if (!iface)
 			return 1;
 

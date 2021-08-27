@@ -41,6 +41,7 @@
 #include "util.h"
 
 static TAILQ_HEAD(iflist, iface) iface_list = TAILQ_HEAD_INITIALIZER(iface_list);
+extern int do_vifs;
 
 /**
  * iface_update - Check of new interfaces
@@ -74,7 +75,9 @@ void iface_update(void)
 			iface->ifindex = ifindex;
 			if (!iface->inaddr.s_addr && ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET)
 				iface->inaddr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
-			iface->unused = 0;
+
+			if (do_vifs)
+				iface->unused = 0;
 
 			continue;
 		}
@@ -268,6 +271,7 @@ int ifname_is_wildcard(const char *ifname)
 /**
  * iface_match_by_name - Find matching interfaces by name pattern
  * @ifname: Interface name pattern
+ * @reload: Set while reloading .conf
  * @state: Iterator state
  *
  * Interface name patterns use iptables- syntax, i.e. perform prefix
@@ -277,7 +281,7 @@ int ifname_is_wildcard(const char *ifname)
  * Pointer to a @struct iface of the next matching interface, or %NULL if no
  * (more) interfaces exist (or are up).
  */
-struct iface *iface_match_by_name(const char *ifname, struct ifmatch *state)
+struct iface *iface_match_by_name(const char *ifname, int reload, struct ifmatch *state)
 {
 	unsigned int match_len = UINT_MAX;
 
@@ -291,7 +295,7 @@ struct iface *iface_match_by_name(const char *ifname, struct ifmatch *state)
 		struct iface *iface = state->iface;
 
 		if (!strncmp(ifname, iface->ifname, match_len)) {
-			if (!iface->unused) {
+			if (reload || !iface->unused) {
 				state->iface = TAILQ_NEXT(iface, link);
 				state->match_count++;
 
@@ -375,7 +379,7 @@ vifi_t iface_match_vif_by_name(const char *ifname, struct ifmatch *state, struct
 {
 	struct iface *iface;
 
-	while ((iface = iface_match_by_name(ifname, state))) {
+	while ((iface = iface_match_by_name(ifname, 0, state))) {
 		if (iface->vif != NO_VIF) {
 			if (found)
 				*found = iface;
@@ -404,7 +408,7 @@ mifi_t iface_match_mif_by_name(const char *ifname, struct ifmatch *state, struct
 {
 	struct iface *iface;
 
-	while ((iface = iface_match_by_name(ifname, state))) {
+	while ((iface = iface_match_by_name(ifname, 0, state))) {
 		if (iface->mif != NO_VIF) {
 			if (found)
 				*found = iface;

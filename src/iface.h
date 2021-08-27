@@ -48,7 +48,7 @@ struct iface *iface_find_by_name      (const char *ifname);
 struct iface *iface_find_by_inbound   (struct mroute *route);
 
 void          iface_match_init        (struct ifmatch *state);
-struct iface *iface_match_by_name     (const char *ifname, struct ifmatch *state);
+struct iface *iface_match_by_name     (const char *ifname, int reload, struct ifmatch *state);
 int           ifname_is_wildcard      (const char *ifname);
 
 vifi_t        iface_get_vif           (int af_family, struct iface *iface);
@@ -57,12 +57,15 @@ mifi_t        iface_match_mif_by_name (const char *ifname, struct ifmatch *state
 
 int           iface_show              (int sd, int detail);
 
+/*
+ * Check if interface exists, at all, on the system
+ */
 static inline int iface_exist(char *ifname)
 {
 	struct ifmatch ifm;
 
 	iface_match_init(&ifm);
-	return iface_match_by_name(ifname, &ifm) != NULL;
+	return iface_match_by_name(ifname, 1, &ifm) != NULL;
 }
 
 static inline int iface_ifname_maxlen(void)
