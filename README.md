@@ -227,8 +227,8 @@ details:
 
     smcroutectl help
 
-**Note:** Root privileges are required by default for `smcroutectl` due
-  to the IPC socket permissions.
+> **Note:** Root privileges are required by default for `smcroutectl` due
+> to the IPC socket permissions.
 
 
 Wildcard Routes
