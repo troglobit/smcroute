@@ -1045,8 +1045,10 @@ void mroute_reload_end(int do_vifs)
 	int first = 1;
 
 	while ((iface = iface_iterator(first))) {
+		char  dummy[IFNAMSIZ];
+
 		first = 0;
-		if (iface->unused) {
+		if (iface->unused || !if_indextoname(iface->ifindex, dummy)) {
 			mroute_del_vif(iface->ifname);
 		} else if (do_vifs)
 			mroute_add_vif(iface->ifname, iface->mrdisc, iface->threshold);
