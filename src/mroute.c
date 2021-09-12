@@ -309,9 +309,9 @@ static int mroute4_del_vif(struct iface *iface)
 		rc = -1;
 	}
 
-	if (iface->vif >= 0 && iface->vif < ALL_VIFS)
+	if (iface->vif != ALL_VIFS)
 		mroute4_prune_vif(iface->vif);
-	iface->vif = -1;
+	iface->vif = ALL_VIFS;
 
 	return rc;
 }
@@ -911,9 +911,9 @@ static int mroute6_del_mif(struct iface *iface)
 		rc = -1;
 	}
 
-	if (iface->mif >= 0 && iface->mif < ALL_VIFS)
+	if (iface->mif != ALL_VIFS)
 		mroute6_prune_mif(iface->mif);
-	iface->mif = -1;
+	iface->mif = ALL_VIFS;
 
 	return rc;
 }
