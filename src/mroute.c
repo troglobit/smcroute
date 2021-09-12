@@ -295,7 +295,7 @@ static int mroute4_del_vif(struct iface *iface)
 	int rc = 0;
 
 	if (iface->mrdisc)
-		mrdisc_deregister(iface->vif);
+		rc = mrdisc_deregister(iface->vif);
 
 	if (kern_vif_del(iface)) {
 		switch (errno) {
