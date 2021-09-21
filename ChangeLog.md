@@ -3,6 +3,21 @@ ChangeLog
 
 All notable changes to the project are documented in this file.
 
+
+[v2.5.3][UNRELEASED] - 2021-09-2x
+-----------------------
+
+### Changes
+- New tests to verify add/del of IPv4/IPv6 routes in kernel MFC
+
+### Fixes
+- Fix #166: build warning with gcc 10.2.1: "comparison is always true
+  due to limited range of data type"
+- Fix build warning with `--disable-mrdisc` configure option
+- Fix #167: cannot remove routes added with `smcroutectl add`,
+  only affects add/del at runtime with smcroutectl, not .conf reload
+
+
 [v2.5.2][] - 2021-08-27
 -----------------------
 
@@ -575,6 +590,7 @@ Initial public release by Carsten Schill.
 [mrdisc]:     https://github.com/troglobit/mrdisc
 [RFC4286]:    https://tools.ietf.org/html/rfc4286
 [UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.5.2...HEAD
+[v2.5.3]:     https://github.com/troglobit/smcroute/compare/2.5.2...2.5.3
 [v2.5.2]:     https://github.com/troglobit/smcroute/compare/2.5.1...2.5.2
 [v2.5.1]:     https://github.com/troglobit/smcroute/compare/2.5.0...2.5.1
 [v2.5.0]:     https://github.com/troglobit/smcroute/compare/2.4.4...2.5.0
