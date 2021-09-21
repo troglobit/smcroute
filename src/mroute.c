@@ -534,13 +534,23 @@ static int mfc_install(struct mroute *route)
 	return 0;
 }
 
+/*
+ * When route has an empty oif list -- attempt full removal of the
+ * route, unless there exist other configured routes that map to the
+ * same kernel MFC entry.
+ *
+ * When route oif list is *not* empty, attempt to remove only select
+ * interfaces from the MFC entry.  Again, unless other configured
+ * routes map to the same MFC entry.
+ */
 static int mfc_uninstall(struct mroute *route)
 {
-	struct mroute *conf, *kern;
+	struct mroute *conf, *kern, *tmp;
+	int removal = !is_active(route);
 	int diff = 0;
 	int rc = 0;
 
-	TAILQ_FOREACH(kern, &kern_list, link) {
+	TAILQ_FOREACH_SAFE(kern, &kern_list, link, tmp) {
 		if (!is_match(route, kern))
 			continue;
 
@@ -549,7 +559,7 @@ static int mfc_uninstall(struct mroute *route)
 
 		/* First remove OIFs from route entry */
 		for (size_t i = 0; i < NELEMS(route->ttl); i++) {
-			if (route->ttl[i] > 0) {
+			if (removal || route->ttl[i] > 0) {
 				kern->ttl[i] = 0;
 				diff++;
 			}
@@ -568,10 +578,10 @@ static int mfc_uninstall(struct mroute *route)
 			}
 		}
 
-		if (!diff && is_active(route))
+		if (!diff && !removal)
 			continue;
 
-		if (is_active(kern) || is_active(route)) {
+		if (is_active(kern) || !removal) {
 			rc += kern_mroute_add(kern);
 			continue;
 		}
@@ -668,7 +678,7 @@ int mroute_del_route(struct mroute *route)
 	} else {
 	cleanup:
 		TAILQ_REMOVE(&conf_list, conf, link);
-		rc = mfc_uninstall(conf);
+		rc = mfc_uninstall(route);
 		free(conf);
 	}
 
