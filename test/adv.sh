@@ -23,19 +23,23 @@ cat "/tmp/$NM/conf"
 print "Starting smcrouted ..."
 ../src/smcrouted -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug -u "/tmp/$NM/sock" &
 
+# Start emitters on a1 for 225.1.2.1 .. 225.1.2.10
 emitter a1 10
 show_mroute
 
+# Sanity check, the route from the conf file should work
 collect a2 -c3 'dst 225.1.2.3'
 sleep 3
 lines1=$(tshark -r "/tmp/$NM/pcap" 2>/dev/null | grep 225.1.2.3 | tee "/tmp/$NM/result" | wc -l)
 # shellcheck disable=SC2086
 [ $lines1 -lt 3 ] && FAIL
 
+# Add (*,G) routes for 225.1.2.1 .. 225.1.2.7, overlapping with previous 225.1.2.3
 print "Adding *,225.1.2.3/29 ASM routes ..."
 ../src/smcroutectl -u "/tmp/$NM/sock" add a1 225.1.2.3/29 a2
 show_mroute
 
+# Check for a sample of the added routes
 collect a2 -c6 'dst 225.1.2.6 or dst 225.1.2.3'
 sleep 3
 
@@ -46,10 +50,12 @@ cat "/tmp/$NM/result"
 # shellcheck disable=SC2086 disable=SC2166
 [ $lines1 -lt 3 -o $lines2 -lt 3 ] && FAIL
 
+# When removing (*,G) routes, the (S,G) route from the conf file should remain
 print "Removing *,225.1.2.3/29 ASM routes ..."
 ../src/smcroutectl -u "/tmp/$NM/sock" del a1 225.1.2.3/29
 show_mroute
 
+# Check for same sample, now we should no longer see 225.1.2.6, only 225.1.2.3
 collect a2 -c3 'dst 225.1.2.6 or dst 225.1.2.3'
 sleep 3
 
