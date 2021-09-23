@@ -29,6 +29,7 @@
 #endif
 
 #include "config.h"
+#include "queue.h"
 
 #include <errno.h>
 #include <string.h>
@@ -45,7 +46,6 @@
 
 #include "log.h"
 #include "mrdisc.h"
-#include "queue.h"
 #include "socket.h"
 #include "timer.h"
 #include "util.h"

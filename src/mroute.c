@@ -22,6 +22,7 @@
  */
 
 #include "config.h"
+#include "queue.h"
 
 #include <errno.h>
 #include <string.h>

@@ -21,6 +21,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
+#include "queue.h"
+
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>

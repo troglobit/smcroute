@@ -18,6 +18,7 @@
  */
 
 #include "config.h"
+#include "queue.h"
 
 #include <errno.h>
 #ifdef HAVE_FCNTL_H
@@ -34,7 +35,6 @@
 #include <sys/types.h>
 
 #include "log.h"
-#include "queue.h"
 
 struct sock {
 	LIST_ENTRY(sock) link;

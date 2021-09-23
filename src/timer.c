@@ -17,6 +17,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
+#include "queue.h"
+
 #include <errno.h>
 #include <signal.h>
 #include <string.h>		/* memset() */
@@ -26,7 +28,6 @@
 #include <time.h>
 
 #include "log.h"
-#include "queue.h"
 #include "socket.h"
 #include "timer.h"
 
