@@ -4,7 +4,7 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
-[v2.5.3][UNRELEASED] - 2021-09-2x
+[v2.5.3][] - 2021-09-23
 -----------------------
 
 ### Changes
@@ -16,6 +16,7 @@ All notable changes to the project are documented in this file.
 - Fix build warning with `--disable-mrdisc` configure option
 - Fix #167: cannot remove routes added with `smcroutectl add`,
   only affects add/del at runtime with smcroutectl, not .conf reload
+- Fix #168: build problem on Debian/kFreeBSD, used wrong queue.h
 
 
 [v2.5.2][] - 2021-08-27
@@ -589,7 +590,7 @@ Initial public release by Carsten Schill.
 
 [mrdisc]:     https://github.com/troglobit/mrdisc
 [RFC4286]:    https://tools.ietf.org/html/rfc4286
-[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.5.2...HEAD
+[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.5.3...HEAD
 [v2.5.3]:     https://github.com/troglobit/smcroute/compare/2.5.2...2.5.3
 [v2.5.2]:     https://github.com/troglobit/smcroute/compare/2.5.1...2.5.2
 [v2.5.1]:     https://github.com/troglobit/smcroute/compare/2.5.0...2.5.1
