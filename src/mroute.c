@@ -298,6 +298,9 @@ static int mroute4_del_vif(struct iface *iface)
 	if (iface->mrdisc)
 		rc = mrdisc_deregister(iface->vif);
 
+	if (iface->vif == ALL_VIFS)
+		return 0;
+
 	if (kern_vif_del(iface)) {
 		switch (errno) {
 		case ENOENT:
@@ -909,6 +912,9 @@ static int mroute6_add_mif(struct iface *iface)
 static int mroute6_del_mif(struct iface *iface)
 {
 	int rc = 0;
+
+	if (iface->mif == ALL_VIFS)
+		return 0;
 
 	if (kern_mif_del(iface) && errno != ENOENT) {
 		switch (errno) {
