@@ -449,7 +449,7 @@ void mroute_expire(int max_idle)
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
 	TAILQ_FOREACH_SAFE(entry, &kern_list, link, tmp) {
-		char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
+		char origin[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
 		struct iface *iface;
 
 		/* XXX: only consider (*,G) routes, not pure (S,G), and no overlap handling for now */
