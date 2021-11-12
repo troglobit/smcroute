@@ -1101,11 +1101,11 @@ void mroute_reload_end(int do_vifs)
 
 static int show_mroute(int sd, struct mroute *r, int inw, int detail)
 {
-	char src[INET_ADDRSTRLEN] = "*";
+	char src[INET_ADDRSTR_LEN] = "*";
 	char src_len[5] = "";
-	char grp[INET_ADDRSTRLEN];
+	char grp[INET_ADDRSTR_LEN];
 	char grp_len[5] = "";
-	char sg[(INET_ADDRSTRLEN + 3) * 2 + 5];
+	char sg[(INET_ADDRSTR_LEN + 3) * 2 + 5];
 	char buf[MAX_MC_VIFS * 17 + 80];
 	struct iface *iface;
 	int max_len;
