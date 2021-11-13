@@ -4,6 +4,20 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
+[v2.5.4][] - 2021-11-13
+-----------------------
+
+### Changes
+- Automatically extract new version from GIT tag
+
+### Fixes
+- Avoid trying to delete inactive VIFs.  Fixing an annoying bogus error:
+  *"Failed deleting VIF for iface lo: Resource temporarily unavailable"*
+- Fix #171: too small string buffer for IPv6 address causing garbled
+  output in periodic expiry callback
+- Fix too small buffer for IPv6 address in mroute display functions
+
+
 [v2.5.3][] - 2021-09-23
 -----------------------
 
@@ -590,7 +604,8 @@ Initial public release by Carsten Schill.
 
 [mrdisc]:     https://github.com/troglobit/mrdisc
 [RFC4286]:    https://tools.ietf.org/html/rfc4286
-[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.5.3...HEAD
+[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.5.4...HEAD
+[v2.5.4]:     https://github.com/troglobit/smcroute/compare/2.5.3...2.5.4
 [v2.5.3]:     https://github.com/troglobit/smcroute/compare/2.5.2...2.5.3
 [v2.5.2]:     https://github.com/troglobit/smcroute/compare/2.5.1...2.5.2
 [v2.5.1]:     https://github.com/troglobit/smcroute/compare/2.5.0...2.5.1
