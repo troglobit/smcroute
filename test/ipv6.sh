@@ -13,6 +13,7 @@ topo basic
 ip addr add 2001:1::1/64 dev a1
 ip addr add   fc00::1/64 dev a1
 ip addr add 2001:2::1/64 dev a2
+ip addr add 2001:2:3:4:6:7:12:1/64 dev a2
 ip -br a
 
 print "Creating config ..."
@@ -26,11 +27,13 @@ mroute from a1 source fc00::1 group ff04:0:0:0:0:0:0:114 to a2
 
 mgroup from a1 group ff2e::42
 mroute from a1 group ff2e::42 to a2
+
+mroute from a1 group ff2e::7 to a2
 EOF
 cat "/tmp/$NM/conf"
 
 print "Starting smcrouted ..."
-../src/smcrouted -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug -u "/tmp/$NM/sock" &
+../src/smcrouted -c 5 -f "/tmp/$NM/conf" -n -N -P "/tmp/$NM/pid" -l debug -u "/tmp/$NM/sock" &
 sleep 1
 
 echo "-----------------------------------------------------------------------------------"
@@ -53,6 +56,7 @@ ping -6 -c 3 -W 1 -I fc00::1   -t 3 ff04::114 >/dev/null
 ping -6 -c 3 -W 1 -I 2001:1::1 -t 3 ff2e::42  >/dev/null
 ping -6 -c 3 -W 1 -I 2001:1::1 -t 3 ff2e::43  >/dev/null
 ping -6 -c 3 -W 1 -I fc00::1   -t 3 ff2e::44  >/dev/null
+ping -6 -c 3 -W 1 -I 2001:2:3:4:6:7:12:1 -t 3 ff2e::7 >/dev/null
 show_mroute
 
 print "Analyzing ..."
@@ -65,6 +69,9 @@ echo " => $lines1 for group ff04::114, expected => 3"
 echo " => $lines2 for group ff2e::42,  expected => 2"
 echo " => $lines3 for group ff2e::43,  expected => 2"
 echo " => $lines4 for group ff2e::44,  expected => 3"
+
+sleep 10
+show_mroute
 
 ########################################################################### DONE
 # one frame lost due to initial (*,G) -> (S,G) route setup
