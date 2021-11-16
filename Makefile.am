@@ -1,11 +1,10 @@
 ## SMCRoute - A static multicast routing tool             -*-Makefile-*-
 ACLOCAL_AMFLAGS         = -I m4
-TAG                     = $(top_srcdir)/.git/refs/tags/$(PACKAGE_VERSION)
+SUBDIRS                 = man src
 DISTCLEANFILES		= *~ DEADJOE semantic.cache *.gdb *.elf core core.* *.d
 dist_sbin_SCRIPTS       = smcroute
 doc_DATA		= README.md COPYING smcroute.conf
 EXTRA_DIST		= README.md ChangeLog.md autogen.sh smcroute.conf smcroute.default smcroute.init
-SUBDIRS                 = man src
 
 if ENABLE_TEST
 SUBDIRS                += test
@@ -16,12 +15,25 @@ systemd_DATA            = smcroute.service
 endif
 
 ## Check if tagged in git
-$(TAG):
-	@printf "\e[1m\e[41mPlease create the \"$(PACKAGE_VERSION)\" tag first\e[0m\n"
-	@exit 1
+release-hook:
+	@if [ ! `git tag -l $(PACKAGE_VERSION) | grep $(PACKAGE_VERSION)` ]; then	\
+		echo;									\
+		printf "\e[1m\e[41mCannot find release tag $(PACKAGE_VERSION)\e[0m\n";	\
+		printf "\e[1m\e[5mDo release anyway?\e[0m "; read yorn;			\
+		if [ "$$yorn" != "y" -a "$$yorn" != "Y" ]; then				\
+			printf "OK, aborting release.\n";				\
+			exit 1;								\
+		fi;									\
+		echo;									\
+	else										\
+		echo;									\
+		printf "\e[1m\e[42mFound GIT release tag $(PACKAGE_VERSION)\e[0m\n";	\
+		printf "\e[1m\e[44m>>Remember to push tags!\e[0m\n";			\
+		echo;									\
+	fi
 
 ## Target to run when building a release
-release: $(TAG) distcheck
+release: release-hook distcheck
 	@for file in $(DIST_ARCHIVES); do		\
 		md5sum    $$file > ../$$file.md5;	\
 		sha256sum $$file > ../$$file.sha256;	\
