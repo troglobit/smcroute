@@ -1,3 +1,13 @@
+
+Refactor MRDISC Support
+-----------------------
+
+The current MRDISC implementation is fragile (see issue #175 for an
+example), and it also does not work on non-Linux systems.  So the
+implementation really needs to be refactored, not just for this but also
+for adding IPv6 support (below).
+
+
 Add Support for IPv6 MRDISC
 ---------------------------
 

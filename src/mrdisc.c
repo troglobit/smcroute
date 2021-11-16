@@ -325,8 +325,7 @@ int mrdisc_deregister(short vif)
 		return 0;
 	}
 
-	errno = ENOENT;
-	return -1;
+	return 0;
 }
 
 void mrdisc_send(void *arg)
