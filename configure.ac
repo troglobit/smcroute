@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(SMCRoute, 2.5.5-dev, https://github.com/troglobit/smcroute/issues, smcroute, https://troglobit.com/smcroute.html)
+AC_INIT(SMCRoute, 2.5.5, https://github.com/troglobit/smcroute/issues, smcroute, https://troglobit.com/smcroute.html)
 AC_CONFIG_AUX_DIR(aux)
 AM_INIT_AUTOMAKE([1.11 foreign])
 AM_SILENT_RULES([yes])

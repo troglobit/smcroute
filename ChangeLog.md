@@ -4,12 +4,17 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
-[v2.5.5][UNRELESED]
--------------------
+[v2.5.5][] - 2021-11-21
+-----------------------
 
 ### Changes
 - Revert extraction of version from GIT tag.  Incompatible with systems
-  that do `autoreconf` on a dist. tarball.
+  that do `autoreconf` on a dist. tarball
+
+### Fixes
+- Fix #175: Parse error in `/etc/smcroute.conf`.  SMCRoute fails to
+  start on interfaces with `mrdisc` disabled, when built with mrdisc
+  support and `-N` passed on command line
 
 
 [v2.5.4][] - 2021-11-13
@@ -612,7 +617,7 @@ Initial public release by Carsten Schill.
 
 [mrdisc]:     https://github.com/troglobit/mrdisc
 [RFC4286]:    https://tools.ietf.org/html/rfc4286
-[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.5.4...HEAD
+[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.5.5...HEAD
 [v2.5.5]:     https://github.com/troglobit/smcroute/compare/2.5.4...2.5.5
 [v2.5.4]:     https://github.com/troglobit/smcroute/compare/2.5.3...2.5.4
 [v2.5.3]:     https://github.com/troglobit/smcroute/compare/2.5.2...2.5.3
