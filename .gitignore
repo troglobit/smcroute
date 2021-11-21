@@ -27,3 +27,4 @@ smcroute.service
 stamp-h1
 *.tar.*
 .dirstamp
+.gdb_history
