@@ -177,6 +177,9 @@ AC_SUBST([LIB_PTHREAD])
 #       install" into account, unfortunately.
 test "x$prefix" = xNONE && prefix=$ac_default_prefix
 test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
+SYSCONFDIR=`eval echo $sysconfdir`
+SYSCONFDIR=`eval echo $SYSCONFDIR`
+AC_SUBST(SYSCONFDIR)
 SBINDIR=`eval echo $sbindir`
 SBINDIR=`eval echo $SBINDIR`
 AC_SUBST(SBINDIR)
