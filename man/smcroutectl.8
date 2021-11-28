@@ -1,5 +1,5 @@
 .\"  -*- nroff -*-
-.Dd August 15, 2021
+.Dd November 28, 2021
 .Dt SMCROUTECTL 8 SMM
 .Os
 .Sh NAME
@@ -56,6 +56,10 @@ Use plain table headings in
 .Cm show
 command output.  No ANSI control characters are used, not even for
 probing screen width.
+.It Fl t
+Skip table headings entirely in
+.Cm show
+command output.
 .It Fl u Ar FILE
 UNIX domain socket path, used for the IPC between
 .Nm smcrouted
@@ -69,10 +73,6 @@ sufficient, e.g. for testing.  The default depends on how
 .Nm
 is configured at build time, see
 .Sx FILES .
-.It Fl t
-Skip table headings entirely in
-.Cm show
-command output.
 .El
 .Sh OPERATION
 The

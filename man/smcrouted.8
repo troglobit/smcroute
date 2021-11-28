@@ -1,5 +1,5 @@
 .\"  -*- nroff -*-
-.Dd August 15, 2021
+.Dd November 28, 2021
 .Dt SMCROUTED 8 SMM
 .Os
 .Sh NAME
@@ -59,30 +59,6 @@ going through other routers.
 .Sh OPTIONS
 The following command line options are available:
 .Bl -tag -width Ds
-.It Fl n
-Run daemon in foreground, do not detach from controlling terminal
-.It Fl N
-By default
-.Nm
-enables multicast routing on all available, and multicast capable,
-interfaces in the system.  These interfaces are enumerated as VIFs,
-virtual interfaces, of which most UNIX systems have a very limited
-amount, usually 32.  This daemon option inverts the behavior so no
-interfaces are enabled by default.  Useful on systems with many
-interfaces, where multicast routing only makes use of a few.
-.Pp
-The config file setting
-.Ar phyint IFNAME enable
-is required to enable the required interfaces.
-.It Fl f Ar FILE
-Alternate configuration file, default
-.Pa /etc/smcroute.conf
-.It Fl F Ar FILE
-Check configuration file syntax, use
-.Fl l Ar LEVEL
-to increase verbosity.  Returns non-zero on error.
-.It Fl h
-Show summary of command line options and exit.
 .It Fl c Ar SEC
 Flush unused dynamic (*,G) multicast routes every
 .Ar SEC
@@ -118,6 +94,15 @@ Specify external script or command to be called when
 .Nm
 has loaded/reloaded all static multicast routes from the configuration
 file, or when a source-less (ANY) rule has been installed.
+.It Fl f Ar FILE
+Alternate configuration file, default
+.Pa /etc/smcroute.conf
+.It Fl F Ar FILE
+Check configuration file syntax, use
+.Fl l Ar LEVEL
+to increase verbosity.  Returns non-zero on error.
+.It Fl h
+Show summary of command line options and exit.
 .It Fl i Ar NAME
 Set daemon identity.  Used to create unique PID, IPC socket, and
 configuration file names, as well as set the syslog identity.  E.g.,
@@ -149,6 +134,21 @@ Modify Multicast Router Discovery (mrdisc) announcement interval.
 Default 20 sec.  This option is only available when
 .Nm
 is built with mrdisc support (Linux, and IPv4, only). RFC4286.
+.It Fl n
+Run daemon in foreground, do not detach from controlling terminal
+.It Fl N
+By default
+.Nm
+enables multicast routing on all available, and multicast capable,
+interfaces in the system.  These interfaces are enumerated as VIFs,
+virtual interfaces, of which most UNIX systems have a very limited
+amount, usually 32.  This daemon option inverts the behavior so no
+interfaces are enabled by default.  Useful on systems with many
+interfaces, where multicast routing only makes use of a few.
+.Pp
+The config file setting
+.Ar phyint IFNAME enable
+is required to enable the required interfaces.
 .It Fl p Ar USER Op :GROUP
 Drop root privileges to USER:GROUP after start and retain CAP_NET_ADMIN
 capabilities only.  The :GROUP is optional.  This option is only
