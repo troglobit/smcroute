@@ -2,13 +2,14 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(SMCRoute, 2.5.5, https://github.com/troglobit/smcroute/issues, smcroute, https://troglobit.com/smcroute.html)
+AC_INIT([SMCRoute], [2.5.5], [https://github.com/troglobit/smcroute/issues],
+	 [smcroute], [https://troglobit.com/smcroute.html])
 AC_CONFIG_AUX_DIR(aux)
 AM_INIT_AUTOMAKE([1.11 foreign])
 AM_SILENT_RULES([yes])
 
 AC_CONFIG_SRCDIR([src/smcrouted.c])
-AC_CONFIG_HEADER([config.h])
+AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile man/Makefile src/Makefile test/Makefile smcroute.service])
 
 # Older versions of autoconf (<2.58) do not have AC_CONFIG_MACRO_DIR()
@@ -22,7 +23,7 @@ AC_PROG_LN_S
 AC_PROG_INSTALL
 
 # The pidfile() code needs asprintf(), which relies on -D_GNU_SOURCE
-AC_GNU_SOURCE
+AC_USE_SYSTEM_EXTENSIONS
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -59,7 +60,6 @@ AC_ARG_WITH([systemd],
 	[with_systemd=auto])
 
 # Checks for header files.
-AC_HEADER_STDC
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h glob.h ifaddrs.h linux/sockios.h net/if.h	\
 		  netinet/in.h netinet/in_var.h net/route.h sys/capability.h	\
 		  sys/ioctl.h sys/param.h sys/prctl.h sys/socket.h sys/stat.h	\
@@ -154,14 +154,14 @@ AM_CONDITIONAL([ENABLE_TEST], [test "x$ac_enable_test" != "xno"])
 
 # Mac OS does not (yet) support SOCK_CLOEXEC
 AC_CACHE_CHECK([for SOCK_CLOEXEC support], [ac_cv_sock_cloexec],
-	[AC_TRY_RUN([
+	[AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #include <sys/types.h>
 #include <sys/socket.h>
 
 int main()
 {
     return socket(AF_INET, SOCK_STREAM|SOCK_CLOEXEC, 0) == -1;
-}], [ac_cv_sock_cloexec=yes], [ac_cv_sock_cloexec=no], [ac_cv_sock_cloexec=no])])
+}]])],[ac_cv_sock_cloexec=yes],[ac_cv_sock_cloexec=no],[ac_cv_sock_cloexec=no])])
 
 AS_IF([test "$ac_cv_sock_cloexec" = "yes" ],
    AC_DEFINE([HAVE_SOCK_CLOEXEC], 1, [Define if the SOCK_CLOEXEC flag is supported]))
