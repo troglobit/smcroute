@@ -28,11 +28,20 @@ AC_USE_SYSTEM_EXTENSIONS
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_C_INLINE
+AC_TYPE_MODE_T
+AC_TYPE_SIZE_T
+AC_TYPE_SSIZE_T
+AC_TYPE_UID_T
+AC_TYPE_UINT8_T
+AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
 
 # Checks for library functions.
 AC_FUNC_FORK
-AC_CHECK_FUNCS([atexit dup2 memset select socket strchr strerror strrchr asprintf])
+AC_FUNC_CHOWN
+AC_FUNC_MALLOC
+AC_CHECK_FUNCS([atexit clock_gettime dup2 memset select setenv socket strchr \
+	strdup strerror strncasecmp strrchr asprintf])
 
 # Check for usually missing API's
 AC_REPLACE_FUNCS([strlcpy strlcat tempfile utimensat])
@@ -60,10 +69,10 @@ AC_ARG_WITH([systemd],
 	[with_systemd=auto])
 
 # Checks for header files.
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h glob.h ifaddrs.h linux/sockios.h net/if.h	\
-		  netinet/in.h netinet/in_var.h net/route.h sys/capability.h	\
-		  sys/ioctl.h sys/param.h sys/prctl.h sys/socket.h sys/stat.h	\
-		  sys/time.h sys/types.h syslog.h termios.h unistd.h], [], [],[
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h glob.h ifaddrs.h limits.h linux/sockios.h \
+	net/if.h netinet/in.h netinet/in_var.h net/route.h paths.h stddef.h     \
+	sys/capability.h sys/ioctl.h sys/param.h sys/prctl.h sys/socket.h       \
+	sys/stat.h sys/time.h sys/types.h syslog.h termios.h unistd.h], [], [],[
 	#ifdef HAVE_SYS_SOCKET_H
 	# include <sys/socket.h>
 	#endif
