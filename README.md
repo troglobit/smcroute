@@ -246,7 +246,7 @@ Example `smcroute.conf`:
 
     phyint eth0 enable mrdisc
     phyint eth1 enable
-    phyint eth1 enable
+    phyint eth2 enable
     
     mgroup from eth0 group 225.1.2.3
     mroute from eth0 group 225.1.2.3 to eth1 eth2
