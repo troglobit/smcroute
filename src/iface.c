@@ -437,7 +437,7 @@ int iface_show(int sd, int detail)
 
 	inw = iface_ifname_maxlen();
 	if (inw < (int)strlen(p))
- inw = (int)strlen(p);
+		inw = (int)strlen(p);
 
 	snprintf(line, sizeof(line), " INDEX %-*s  VIF  MIF=\n", inw, p);
 	ipc_send(sd, line, strlen(line));
