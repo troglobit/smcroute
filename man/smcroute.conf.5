@@ -22,15 +22,15 @@ As you can tell from that caveat, any non-trivial setup requires an
 .Pp
 On most systems the configuration file(s) are available in:
 .Bl -tag -offset indent
-.It Pa /etc/smcrotue.conf
+.It Pa /etc/smcroute.conf
 The traditional location, with all routes, group joins, and interfaces.
-.It Pa /etc/smcrotue.d/*.conf
+.It Pa /etc/smcroute.d/*.conf
 Recently an
 .Cm include
 directive was added to
 .Nm ,
 which allows for including other files.  By convention
-.Pa /etc/smcrotue.d/
+.Pa /etc/smcroute.d/
 has been selected as the default in the bundled example
 .Nm .
 See more about the
