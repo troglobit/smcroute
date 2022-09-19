@@ -3,6 +3,15 @@ ChangeLog
 
 All notable changes to the project are documented in this file.
 
+[UNRELEASED][]
+--------------
+
+### Changes
+### Fixes
+- Fix #178: invalid systemd daemon type Simple/Notify vs simple/notify
+- Fix #179: type in wildcard routes section of README
+- Fix #180: minor typo in file and directory names in documentation
+
 
 [v2.5.5][] - 2021-11-21
 -----------------------
