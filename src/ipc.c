@@ -174,7 +174,7 @@ void *ipc_receive(int sd, char *buf, size_t len)
 	ssize_t sz;
 
 	sz = recv(sd, buf, len - 1, 0);
-	if (sz <= 0)
+	if (sz <= 0) {
 		if (!sz)
 			errno = ECONNRESET;
 		return NULL;
