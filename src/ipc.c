@@ -171,24 +171,25 @@ int ipc_send(int sd, char *buf, size_t len)
  */
 void *ipc_receive(int sd, char *buf, size_t len)
 {
-	size_t sz;
+	ssize_t sz;
 
 	sz = recv(sd, buf, len - 1, 0);
-	if (!sz) {
-		errno = ECONNRESET;
+	if (sz <= 0)
+		if (!sz)
+			errno = ECONNRESET;
 		return NULL;
 	}
 
 	/* successful read */
-	if (sz >= sizeof(struct ipc_msg)) {
+	if ((size_t)sz >= sizeof(struct ipc_msg)) {
 		struct ipc_msg *msg = (struct ipc_msg *)buf;
 
 		/* Make sure to always have at least one NUL, for strlen() */
 		buf[sz] = 0;
 
-		if (sz == msg->len) {
-			char *ptr;
+		if ((size_t)sz == msg->len) {
 			size_t i, count;
+			char *ptr;
 
 			/* Upper bound: smcroutectl add in1 source group out1 out2 .. out32 */
 			count = msg->count;
