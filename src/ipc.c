@@ -73,8 +73,8 @@ static void ipc_read(int sd)
 
 static void ipc_accept(int sd, void *arg)
 {
-	int client;
 	socklen_t socklen = 0;
+	int client;
 
 	(void)arg;
 	client = accept(sd, NULL, &socklen);

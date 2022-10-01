@@ -84,8 +84,8 @@ static struct ifsock *find(int sd)
 /* Checksum routine for Internet Protocol family headers */
 static unsigned short in_cksum(unsigned short *addr, int len)
 {
-	unsigned short *w = addr;
 	unsigned short answer = 0;
+	unsigned short *w = addr;
 	int nleft = len;
 	int sum = 0;
 
@@ -122,9 +122,9 @@ static void compose_addr(struct sockaddr_in *sin, char *group)
 
 static int inet_send(int sd, uint8_t type, uint8_t interval)
 {
-	ssize_t num;
-	struct igmp igmp;
 	struct sockaddr dest;
+	struct igmp igmp;
+	ssize_t num;
 
 	memset(&igmp, 0, sizeof(igmp));
 	igmp.igmp_type = type;
@@ -143,10 +143,10 @@ static int inet_send(int sd, uint8_t type, uint8_t interval)
 /* If called with interval=0, only read() */
 static int inet_recv(int sd, uint8_t interval)
 {
-	char buf[1530];
-	ssize_t num;
-	struct ip *ip;
 	struct igmp *igmp;
+	char buf[1530];
+	struct ip *ip;
+	ssize_t num;
 
 	memset(buf, 0, sizeof(buf));
 	num = read(sd, buf, sizeof(buf));
@@ -165,11 +165,11 @@ static int inet_recv(int sd, uint8_t interval)
 
 static int inet_open(char *ifname)
 {
-	char loop;
-	int sd, val, rc;
-	struct ifreq ifr;
-	struct ip_mreqn mreq;
 	unsigned char ra[4] = { IPOPT_RA, 0x04, 0x00, 0x00 };
+	struct ip_mreqn mreq;
+	struct ifreq ifr;
+	int sd, val, rc;
+	char loop;
 
 	sd = socket_create(AF_INET, SOCK_RAW, IPPROTO_IGMP, mrdisc_recv, NULL);
 	if (sd < 0) {
