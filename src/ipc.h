@@ -7,8 +7,9 @@
 int   ipc_init    (char *path);
 void  ipc_exit    (void);
 
-int   ipc_send    (int sd, char *buf, size_t len);
-void *ipc_receive (int sd, char *buf, size_t len);
+int     ipc_send   (int sd, const char *buf, size_t len);
+ssize_t ipc_receive(int sd, char *buf, size_t len, int first_call);
+int     ipc_parse  (const char *buf, size_t sz, void *msg_buf);
 
 #endif /* SMCROUTE_IPC_H_ */
 
