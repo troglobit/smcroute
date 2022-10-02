@@ -21,16 +21,26 @@
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
 #endif
+#include <time.h>
 #include <sys/time.h>		/* lutimes(), utimes(), utimensat() */
 
-int utimensat(int dirfd, const char *pathname, const struct timespec ts[2], int flags)
+int utimensat(int dirfd, const char *pathname, const struct timespec times[2], int flags)
 {
-	int ret = -1;
+	struct timespec ts[2];
 	struct timeval tv[2];
+	int ret = -1;
 
 	if (dirfd != 0) {
 		errno = ENOTSUP;
 		return -1;
+	}
+
+	if (!times) {
+		clock_gettime(CLOCK_REALTIME, &ts[0]);
+		ts[1] = ts[0];
+	} else {
+		ts[0] = times[0];
+		ts[1] = times[1];
 	}
 
 	TIMESPEC_TO_TIMEVAL(&tv[0], &ts[0]);
@@ -45,3 +55,37 @@ int utimensat(int dirfd, const char *pathname, const struct timespec ts[2], int 
 
 	return ret;
 }
+
+#ifdef UNITTEST
+#include <err.h>
+#include <stdio.h>
+#include <unistd.h>
+
+int main(int argc, char *argv[])
+{
+	char *fn;
+
+	if (argc < 2)
+		errx(1, "Usage: touch FILENAME");
+	fn = argv[1];
+
+	if (access(fn, F_OK)) {
+		FILE *fp;
+
+		fp = fopen(fn, "w");
+		if (!fp)
+			err(1, "Failed creating %s", fn);
+		fclose(fp);
+	}
+	utimensat(0, fn, NULL, 0);
+
+	return 0;
+}
+#endif
+/**
+ * Local Variables:
+ *  compile-command: "gcc -W -Wall -Wextra -I.. -DUNITTEST -o touch utimensat.c"
+ *  indent-tabs-mode: t
+ *  c-file-style: "linux"
+ * End:
+ */
