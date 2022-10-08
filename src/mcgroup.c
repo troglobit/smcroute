@@ -372,7 +372,7 @@ int mcgroup_action(int cmd, const char *ifname, inet_addr_t *source, int src_len
 	}
 
 	if (!cmd) {
-		TAILQ_REMOVE(&kern_list, mcg, link);
+		TAILQ_REMOVE(&conf_list, mcg, link);
 		free_mc_sock(mcg->sd);
 		free(mcg);
 	}
