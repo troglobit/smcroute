@@ -88,7 +88,7 @@ which needs *root privileges*, or `CAP_NET_ADMIN`.  Use `smcrouted -n`
 to run the daemon in the foreground, as required by modern init daemons
 like systemd and [Finit][].
 
-When started from systemd, `smcrouted` rusn with the `-n -s` options,
+When started from systemd, `smcrouted` runs with the `-n -s` options,
 i.e. supervised in the foreground and uses syslog for logging output.
 The default log level is `INFO`, this can be adjusted using the file
 `/etc/default/smcroute`:
