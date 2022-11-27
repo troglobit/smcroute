@@ -1,4 +1,4 @@
-EXTRA_DIST         = adv.sh basic.sh bridge.sh dyn.sh expire.sh gre.sh ipv6.sh
+EXTRA_DIST         = adv.sh basic.sh batch.sh bridge.sh dyn.sh expire.sh gre.sh ipv6.sh
 EXTRA_DIST        += include.sh isolated.sh join.sh joinlen.sh lib.sh lost.sh
 EXTRA_DIST        += multi.sh mem.sh mrcache.sh mrcache6.sh mrdisc.sh poison.sh
 EXTRA_DIST        += reload.sh reload6.sh vlan.sh vrfy.sh
@@ -9,6 +9,7 @@ TESTS_ENVIRONMENT  = unshare -mrun
 TESTS              = expire.sh
 TESTS             += adv.sh
 TESTS             += basic.sh
+TESTS             += batch.sh
 TESTS             += bridge.sh
 TESTS             += dyn.sh
 TESTS             += gre.sh
