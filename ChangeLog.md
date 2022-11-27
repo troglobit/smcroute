@@ -3,14 +3,35 @@ ChangeLog
 
 All notable changes to the project are documented in this file.
 
-[UNRELEASED][]
---------------
+[v2.5.6][UNRELEASED]
+--------------------
+
+Despite the new `smcroutectl` batch mode feature, this is primarily a
+bug fix release.  The most important fixes are #183 and #187.
 
 ### Changes
+- Add `smcroutectl` batch support, issue #189.  Based on the IPC support
+  added in issue #185, by Alexey Smirnov:
+
+        ~$ sudo smcroutectl -b <<-EOF
+               join eth0 225.1.2.3
+               add eth0 192.168.1.42 225.1.2.3 eth1 eth2
+               rem eth1 225.3.4.5 eth3
+               leave eth1 225.3.4.5
+               EOF
+        ~$
+
 ### Fixes
 - Fix #178: invalid systemd daemon type Simple/Notify vs simple/notify
-- Fix #179: type in wildcard routes section of README
+- Fix #179: typo in wildcard routes section of README
 - Fix #180: minor typo in file and directory names in documentation
+- Fix #183: casting in IPC code hides error handling of `recv()`
+- Fix #186: NULL pointer dereference in `utimensat()` replacement
+  function.  Found accidentally by Alexey Smirnov.  Only triggered on
+  systems that don't have a native `utimensat()` in their C-library, or
+  if you try to build SMCRoute without using its own build system ...
+- Fix #187: strange behavior joining/leaving the same group
+- Fix #192: typo in README
 
 
 [v2.5.5][] - 2021-11-21
