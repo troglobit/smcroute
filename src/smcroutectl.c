@@ -44,7 +44,9 @@ static char *ident = PACKAGE;
 static char *sock_file = NULL;
 static char *prognm = NULL;
 static int   heading = 1;
+static int   detail = 0;
 static int   plain = 0;
+static int   help = 0;
 
 struct arg {
 	char *name;
@@ -55,6 +57,7 @@ struct arg {
 	char *example;		/* optional */
 	int   has_detail;
 } args[] = {
+	{ NULL,      0, 'b', NULL,   "Batch mode, read commands from stdin", NULL, 0 },
 	{ NULL,      0, 'd', NULL,   "Detailed output in show command", NULL, 0 },
 	{ NULL,      1, 'i', "NAME", "Identity of routing daemon instance, default: " PACKAGE, "foo", 0 },
 	{ NULL,      1, 'I', "NAME", NULL, NULL, 0 }, /* Alias, compat with older versions */
@@ -391,64 +394,15 @@ static int version(void)
 	return 0;
 }
 
-static char *progname(const char *arg0)
+static int parse(int pos, int argc, char *argv[])
 {
-	char *nm;
-
-	nm = strrchr(arg0, '/');
-	if (nm)
-		nm++;
-	else
-		nm = (char *)arg0;
-
-	return nm;
-}
-
-int main(int argc, char *argv[])
-{
-	int help = 0, detail = 0;
-	int c, i, pos = 1, status = 0;
 	struct arg *cmd = NULL;
+	int status = 0;
+	int c;
 
-	prognm = progname(argv[0]);
-	while ((c = getopt(argc, argv, "dhI:i:ptu:v")) != EOF) {
-		switch (c) {
-		case 'd':
-			detail++;
-			break;
-
-		case 'h':
-			help++;
-			break;
-
-		case 'I':	/* compat with previous versions */
-		case 'i':
-			ident = optarg;
-			break;
-
-		case 'p':
-			plain = 1;
-			break;
-
-		case 't':
-			heading = 0;
-			break;
-
-		case 'u':
-			sock_file = optarg;
-			break;
-
-		case 'v':
-			return version();
-
-		default:
-			return usage(1);
-		}
-	}
-
-	pos = optind;
 	while (pos < argc && !cmd) {
 		char *arg = argv[pos];
+		int i;
 
 		for (i = 0; args[i].val; i++) {
 			char    *nm = args[i].name;
@@ -509,6 +463,95 @@ int main(int argc, char *argv[])
 		c -= 0x20;
 
 	return ipc_command(c, &argv[pos], argc - pos);
+}
+
+static int batch(void)
+{
+	char line[512];
+	int rc = 0;
+
+	while (fgets(line, sizeof(line), stdin)) {
+		char *ptr, *token, *args[10];
+		int num = 0;
+
+		ptr = chomp(line);
+		if (ptr[0] == '#')
+			continue;
+
+		while (num < 9 && (token = strsep(&ptr, " \t")))
+			args[num++] = token;
+
+		if (!num)
+			continue;
+
+		rc += parse(0, num, args);
+	}
+
+	return rc;
+}
+
+static char *progname(const char *arg0)
+{
+	char *nm;
+
+	nm = strrchr(arg0, '/');
+	if (nm)
+		nm++;
+	else
+		nm = (char *)arg0;
+
+	return nm;
+}
+
+int main(int argc, char *argv[])
+{
+	int batch_mode = 0;
+	int c;
+
+	prognm = progname(argv[0]);
+	while ((c = getopt(argc, argv, "bdhI:i:ptu:v")) != EOF) {
+		switch (c) {
+		case 'b':
+			batch_mode = 1;
+			break;
+
+		case 'd':
+			detail++;
+			break;
+
+		case 'h':
+			help++;
+			break;
+
+		case 'I':	/* compat with previous versions */
+		case 'i':
+			ident = optarg;
+			break;
+
+		case 'p':
+			plain = 1;
+			break;
+
+		case 't':
+			heading = 0;
+			break;
+
+		case 'u':
+			sock_file = optarg;
+			break;
+
+		case 'v':
+			return version();
+
+		default:
+			return usage(1);
+		}
+	}
+
+	if (batch_mode)
+		return batch();
+
+	return parse(optind, argc, argv);
 }
 
 /**
