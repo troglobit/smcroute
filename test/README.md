@@ -19,16 +19,17 @@ module loaded.
 
 To run the tests:
 
-	~$ cd src/smcroute
-	~/src/smcroute$ ./autogen.sh
-	~/src/smcroute$ ./configure --enable-test
-	~/src/smcroute$ make -j9
-	~/src/smcroute$ make check
+    ~$ sudo modprobe ip_gre      # if you have sudo capabilities
+    ~$ cd src/smcroute
+    ~/src/smcroute$ ./autogen.sh
+    ~/src/smcroute$ ./configure --enable-test --enable-mrdisc
+    ~/src/smcroute$ make -j9
+    ~/src/smcroute$ make check
 
 Each unit test is standalone.  To manually run select tests:
 
     ~/src/smcroute$ cd test/
-	~/src/smcroute/test$ unshare -mrun ./testname.sh
+    ~/src/smcroute/test$ unshare -mrun ./testname.sh
 
 The tools `ping` and `tshark` are used to create and listen to multicast
 streams "routed by" SMCRoute.
