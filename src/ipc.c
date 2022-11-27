@@ -43,8 +43,9 @@ extern char *ident;
 static struct sockaddr_un sun;
 static int ipc_socket = -1;
 
-/* max word count in one command:
- * smcroutectl add in1 source group out1 out2 .. out32 
+/*
+ * max word count in one command:
+ * smcroutectl add in1 source group out1 out2 .. out32
  */
 #define CMD_MAX_WORDS (MAXVIFS + 3)
 
@@ -62,34 +63,37 @@ static void ipc_read(int sd)
 
 	memset(buf, 0, sizeof(buf));
 
-	/* since client message would be big enough and couldn't fit into buffer
-	we have to make multiple iterations to receive all data */ 
-	while(1) {
+	/* 
+	 * since client message would be big enough and couldn't fit
+	 * into buffer we have to make multiple iterations to receive
+	 * all data
+	 */
+	while (1) {
 		rx_curr = ipc_receive(sd, buf + rx, sizeof(buf) - rx, first_call);
 		first_call = 0;
-		if(rx_curr <= 0) {
-			if (errno == EAGAIN)
-				return; /* no more data from client */
-			/* Skip logging client disconnects */
-			else if (errno != ECONNRESET)
+		if (rx_curr <= 0) {
+			if (errno == EAGAIN)     /* no more data from client */
+				return;
+			if (errno != ECONNRESET) /* Skip logging client disconnects */
 				smclog(LOG_WARNING, "Failed receiving IPC message from client: %s", strerror(errno));
 			return;
 		}
-
 		rx += rx_curr;
 
 		/* Make sure to always have at least one NUL, for strlen() */
 		buf[rx] = 0;
 
 		buf_ptr = buf;
-		while(rx > 0) {
+		while (rx > 0) {
 			struct ipc_msg* msg = (struct ipc_msg*)msg_buf;
+
 			/* extract one command at a time */
 			if (ipc_parse(buf_ptr, rx, msg)) {
 				if (EAGAIN == errno) {
-					/* need more data from client? 
-					move last unused bytes (if any) to the begging of the buffer 
-					and lets try to receive more data */
+					/* 
+					 * need more data from client?  move last unused bytes (if any) to
+					 * the begging of the buffer and lets try to receive more data
+					 */
 					memmove(buf, buf_ptr, rx);
 					break;
 				}
@@ -105,6 +109,7 @@ static void ipc_read(int sd)
 			} else {
 				ipc_send(sd, "", 1);
 			}
+
 			/* shift to the next command if any and reduce remaining bytes in buffer */
 			buf_ptr += msg->len;
 			rx -= msg->len;
@@ -246,10 +251,10 @@ int ipc_parse(const char *buf, size_t sz, void* msg_buf)
 	if (sz >= sizeof(struct ipc_msg)) {
 		memcpy(msg_buf, buf, sizeof(struct ipc_msg));
 		msg = (struct ipc_msg*)msg_buf;
+
 		/* enough bytes to extract just one message? */
 		if (sz >= msg->len) {
 			size_t i, count;
-			/* We are not going to modify anything here */
 			const char *ptr;
 
 			count = msg->count;
@@ -273,6 +278,7 @@ int ipc_parse(const char *buf, size_t sz, void* msg_buf)
 			return 0;
 		}
 	}
+
 	/* we've parsed all commands or not enough bytes to parse next */
 	errno = EAGAIN;
 	return 1;
