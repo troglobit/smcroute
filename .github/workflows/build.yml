@@ -29,7 +29,7 @@ jobs:
           sudo modprobe ip_gre
           sudo apt-get -y update
           sudo apt-get -y install pkg-config libsystemd-dev libcap-dev tshark iptables valgrind
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Configure
         # Build in a sub-directory so we can safely set a+w on all
         # directories.  Needed for `make check` since it runs with
@@ -67,7 +67,7 @@ jobs:
           sudo chmod a+rw /var/run/xtables.lock
           make check || (cat test/test-suite.log; false)
       - name: Upload Test Results
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: smcroute-test-${{ matrix.compiler }}
           path: test/*
