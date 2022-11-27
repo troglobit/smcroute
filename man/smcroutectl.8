@@ -8,7 +8,7 @@
 .Xr smcrouted 8
 .Sh SYNOPSIS
 .Nm smcroutectl
-.Op Fl dptv
+.Op Fl bdptv
 .Op Fl i Ar NAME
 .Op Fl u Ar FILE
 .Op Ar COMMAND
@@ -36,6 +36,16 @@ The following
 .Nm
 options are available:
 .Bl -tag -width Ds
+.It Fl b
+Batch mode, read commands from stdin.
+.Bd -unfilled -offset indent
+$ sudo smcroutectl -b <<-EOF
+	join eth0 225.1.2.3
+	add eth0 192.168.1.42 225.1.2.3 eth1 eth2
+	rem eth1 225.3.4.5 eth3
+	leave eth1 225.3.4.5
+	EOF
+.Ed
 .It Fl d
 Enable detailed output in show commands.
 .It Fl i Ar NAME
