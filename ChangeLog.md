@@ -3,11 +3,11 @@ ChangeLog
 
 All notable changes to the project are documented in this file.
 
-[v2.5.6][UNRELEASED]
---------------------
+[v2.5.6][] - 2022-11-28
+-----------------------
 
 Despite the new `smcroutectl` batch mode feature, this is primarily a
-bug fix release.  The most important fixes are #183 and #187.
+bug fix release.  Most notably #183 and #187.
 
 ### Changes
 - Add `smcroutectl` batch support, issue #189.  Based on the IPC support
@@ -647,7 +647,8 @@ Initial public release by Carsten Schill.
 
 [mrdisc]:     https://github.com/troglobit/mrdisc
 [RFC4286]:    https://tools.ietf.org/html/rfc4286
-[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.5.5...HEAD
+[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.5.6...HEAD
+[v2.5.6]:     https://github.com/troglobit/smcroute/compare/2.5.5...2.5.6
 [v2.5.5]:     https://github.com/troglobit/smcroute/compare/2.5.4...2.5.5
 [v2.5.4]:     https://github.com/troglobit/smcroute/compare/2.5.3...2.5.4
 [v2.5.3]:     https://github.com/troglobit/smcroute/compare/2.5.2...2.5.3
