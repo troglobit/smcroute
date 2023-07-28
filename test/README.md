@@ -11,11 +11,17 @@ in `$PATH`:
   - `tshark` (because `tcpdump -w foo.pcap` doesn't work in an unshare)
   - `valgrind`, for the memleak test
 
-One test makes use of `iptables`, which may not work in an `unshare(1)`,
-unless you have v1.8.7 or newer that supports the `XTABLES_LOCKFILE` env
-variable.  As a workaround you can `chmod a+rw /var/run/xtables.lock`.
-Also, the GRE test requries your system to have the `ip_gre.ko` kernel
-module loaded.
+> **Note:* one of the tests makes use of `iptables`, which may not work
+> in an `unshare(1)`, unless you have v1.8.7 or newer that supports the
+> `XTABLES_LOCKFILE` environment variable.  As a workaround you can
+> `chmod a+rw /var/run/xtables.lock`.
+>
+> Also, the GRE test requires your system to have the `ip_gre.ko` kernel
+> module loaded.  If not, the test will be skipped.
+
+
+Running
+-------
 
 To run the tests:
 
