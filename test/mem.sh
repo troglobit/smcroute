@@ -59,9 +59,14 @@ chmod +x "/tmp/$NM/ops.sh"
 "/tmp/$NM/ops.sh" &
 
 print "Checking for memory leaks ..."
-valgrind -s --leak-check=full --show-leak-kinds=all ../src/smcrouted -f "/tmp/$NM/conf" -n -N -l debug -P "/tmp/$NM/pid" -u "/tmp/$NM/sock" -D 5 2>&1 | tee "/tmp/$NM/log"
+valgrind -s --leak-check=full --show-leak-kinds=all --log-file="/tmp/$NM/valgrind.log" ../src/smcrouted -f "/tmp/$NM/conf" -n -N -l debug -P "/tmp/$NM/pid" -u "/tmp/$NM/sock" -D 5
+rc=$?
+cat "/tmp/$NM/valgrind.log" >> "/tmp/$NM/log"
 
-if grep "no leaks are possible" "/tmp/$NM/log"; then
-    OK
+wait
+[ $rc -eq 0 ] || FAIL "Failed starting valgrind, return code $rc"
+if ! grep -q "no leaks are possible" "/tmp/$NM/log"; then
+    cat "/tmp/$NM/valgrind.log"
+    FAIL "Leaks detected."
 fi
-FAIL
+OK
