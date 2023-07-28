@@ -38,7 +38,10 @@ jobs:
           set -x
           OPTS="--cache-file=/tmp/config.cache --prefix= --enable-mrdisc --enable-test"
           ./autogen.sh
-          ./configure $OPTS
+          if [ "$CC" = "clang" ]; then
+              compat_valgrind="-gdwarf-4"
+          fi
+          ./configure $OPTS CFLAGS="$compat_valgrind"
           make dist && archive=$(ls *.tar.gz)
           if [ -n "$archive" -a -f "$archive" ]; then
             tar xf "$archive"
@@ -47,9 +50,6 @@ jobs:
           fi
           mkdir -p .build/dir
           cd .build/dir
-          if [ "$CC" = "clang" ]; then
-              compat_valgrind="-gdwarf-4"
-          fi
           ../../configure $OPTS CFLAGS="$compat_valgrind"
           chmod -R a+w .
       - name: Build
