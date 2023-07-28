@@ -23,6 +23,11 @@ FAIL()
     exit 99
 }
 
+CHECK()
+{
+    [ "$@" ] || FAIL "$*"
+}
+
 OK()
 {
     print "TEST: OK"
