@@ -23,7 +23,6 @@ jobs:
           ./configure --prefix= --enable-mrdisc --enable-test
       - name: Build release ...
         run: |
-          sudo chmod a+rw /var/run/xtables.lock
           make release || (cat test/test-suite.log; false)
           ls -lF ../
           mkdir -p artifacts/

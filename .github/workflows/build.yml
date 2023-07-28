@@ -64,7 +64,6 @@ jobs:
           ~/tmp/sbin/smcroutectl -h
       - name: Run Unit Tests
         run: |
-          sudo chmod a+rw /var/run/xtables.lock
           make check || (cat test/test-suite.log; false)
       - name: Upload Test Results
         uses: actions/upload-artifact@v3
