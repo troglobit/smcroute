@@ -47,7 +47,10 @@ jobs:
           fi
           mkdir -p .build/dir
           cd .build/dir
-          ../../configure $OPTS
+          if [ "$CC" = "clang" ]; then
+              compat_valgrind="-gdwarf-4"
+          fi
+          ../../configure $OPTS CFLAGS="$compat_valgrind"
           chmod -R a+w .
       - name: Build
         run: |
