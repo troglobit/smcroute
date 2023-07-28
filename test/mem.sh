@@ -42,16 +42,16 @@ cat <<EOF > "/tmp/$NM/ops.sh"
 #!/bin/sh
 
 sleep 2
-../src/smcroutectl -dpS "/tmp/$NM/sock" reload
+../src/smcroutectl -dp -u "/tmp/$NM/sock" reload
 sleep 1
-../src/smcroutectl -dpS "/tmp/$NM/sock" add a1 225.1.2.4 a3
-../src/smcroutectl -dpS "/tmp/$NM/sock" add a1 10.0.0.1 225.1.2.5 a3
+../src/smcroutectl -dp -u "/tmp/$NM/sock" add a1 225.1.2.4 a3
+../src/smcroutectl -dp -u "/tmp/$NM/sock" add a1 10.0.0.1 225.1.2.5 a3
 echo
-../src/smcroutectl -dpS "/tmp/$NM/sock" show int
+../src/smcroutectl -dp -u "/tmp/$NM/sock" show int
 echo
-../src/smcroutectl -dpS "/tmp/$NM/sock" show gr
+../src/smcroutectl -dp -u "/tmp/$NM/sock" show gr
 echo
-../src/smcroutectl -dpS "/tmp/$NM/sock" show ro
+../src/smcroutectl -dp -u "/tmp/$NM/sock" show ro
 echo
 EOF
 cat "/tmp/$NM/ops.sh"
