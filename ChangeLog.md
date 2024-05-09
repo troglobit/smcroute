@@ -3,6 +3,15 @@ ChangeLog
 
 All notable changes to the project are documented in this file.
 
+
+[v2.5.7][] - 2024-05-09
+-----------------------
+
+### Fixes
+- Fix #207: crash when adding IPv6 multicast route on a kernel without
+  IPv6 multicast support
+
+
 [v2.5.6][] - 2022-11-28
 -----------------------
 
