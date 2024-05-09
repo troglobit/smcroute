@@ -227,6 +227,9 @@ int conf_mroute(struct conf *conf, int cmd, char *iif, char *source, char *group
 			DEBUG("mroute: checking for %s ...", oif[i]);
 			while (iface_match_vif_by_name(oif[i], &state_out, &iface) != NO_VIF) {
 				vif = iface_get_vif(family, iface);
+				if (vif == NO_VIF)
+					continue;
+
 				if (vif == mroute.inbound && cmd) {
 					/* In case of wildcard match in==out is normal, so don't complain */
 					if (!ifname_is_wildcard(iif) && !ifname_is_wildcard(oif[i]))
