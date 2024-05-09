@@ -656,7 +656,8 @@ Initial public release by Carsten Schill.
 
 [mrdisc]:     https://github.com/troglobit/mrdisc
 [RFC4286]:    https://tools.ietf.org/html/rfc4286
-[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.5.6...HEAD
+[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.5.7...HEAD
+[v2.5.7]:     https://github.com/troglobit/smcroute/compare/2.5.6...2.5.7
 [v2.5.6]:     https://github.com/troglobit/smcroute/compare/2.5.5...2.5.6
 [v2.5.5]:     https://github.com/troglobit/smcroute/compare/2.5.4...2.5.5
 [v2.5.4]:     https://github.com/troglobit/smcroute/compare/2.5.3...2.5.4
