@@ -44,13 +44,11 @@ FILE *tempfile(void)
 	fd = open(_PATH_TMP, O_TMPFILE | O_RDWR | O_EXCL | O_CLOEXEC, S_IRUSR | S_IWUSR);
 	umask(oldmask);
 	if (fd == -1) {
-            if (errno == EOPNOTSUPP) {
-                // Fall back to tmpfile() if O_TMPFILE is not supported
-                return tmpfile();
-            } else {
-                // Handle other errors, return NULL
-                return NULL;
-            }
+	    /* Fall back to tmpfile() if O_TMPFILE is not supported */
+	    if (errno == EOPNOTSUPP)
+	        return tmpfile();
+	  
+	    return NULL; 
         }
 
 	return fdopen(fd, "w+");
