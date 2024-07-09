@@ -324,7 +324,7 @@ int kern_vif_del(struct iface *iface)
 static int kern_mroute4(int cmd, struct mroute *route)
 {
 	char origin[INET_ADDRSTRLEN], group[INET_ADDRSTRLEN];
-	int op = cmd ? MRT_ADD_MFC : MRT_DEL_MFC;
+	int op = cmd ? MRT_ADD_MFC_PROXY : MRT_DEL_MFC_PROXY;
 	struct mfcctl mfcc = { 0 };
 	size_t i;
 
@@ -546,7 +546,7 @@ int kern_mif_del(struct iface *iface)
 static int kern_mroute6(int cmd, struct mroute *route)
 {
 	char origin[INET_ADDRSTR_LEN], group[INET_ADDRSTR_LEN];
-	int op = cmd ? MRT6_ADD_MFC : MRT6_DEL_MFC;
+	int op = cmd ? MRT6_ADD_MFC_PROXY : MRT6_DEL_MFC_PROXY;
 	struct mf6cctl mf6cc = { 0 };
 	size_t i;
 
