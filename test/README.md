@@ -18,7 +18,7 @@ in `$PATH`:
 > `chmod a+rw /var/run/xtables.lock`.
 >
 > Also, as of Ubuntu 24.04 blocks user namespaces for unprivileged users
-> by default, meaning you need some `sysctl` magic to set up you system
+> by default, meaning you need some `sysctl` magic to set up your system
 > see <https://github.com/YoYoGames/GameMaker-Bugs/issues/6015>:
 >
 >     sudo sysctl kernel.apparmor_restrict_unprivileged_userns=0
