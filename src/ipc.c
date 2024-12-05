@@ -82,7 +82,7 @@ static void ipc_read(int sd)
 		}
 
 		pos += rc;
-		if (pos > sizeof(buf) - 1) {
+		if (pos > (int)sizeof(buf) - 1) {
 			smclog(LOG_WARNING, "Too large IPC message, unsupported.");
 			return;
 		}
