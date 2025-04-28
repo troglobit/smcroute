@@ -65,6 +65,9 @@ jobs:
           size ~/tmp/sbin/smcroutectl
           ~/tmp/sbin/smcrouted -h
           ~/tmp/sbin/smcroutectl -h
+      - name: Enable unprivileged userns (unshare)
+        run: |
+          sudo sysctl kernel.apparmor_restrict_unprivileged_userns=0
       - name: Run Unit Tests
         run: |
           make check || (cat test/test-suite.log; false)

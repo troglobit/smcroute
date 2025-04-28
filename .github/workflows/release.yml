@@ -21,6 +21,9 @@ jobs:
         run: |
           ./autogen.sh
           ./configure --prefix= --enable-mrdisc --enable-test
+      - name: Enable unprivileged userns (unshare)
+        run: |
+          sudo sysctl kernel.apparmor_restrict_unprivileged_userns=0
       - name: Build release ...
         run: |
           make release || (cat test/test-suite.log; false)
