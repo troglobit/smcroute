@@ -4,7 +4,7 @@ EXTRA_DIST        += multi.sh mem.sh mrcache.sh mrdisc.sh poison.sh
 EXTRA_DIST        += reload.sh reload6.sh vlan.sh vrfy.sh
 CLEANFILES         = *~ *.trs *.log
 TEST_EXTENSIONS    = .sh
-TESTS_ENVIRONMENT  = unshare -mrun
+TESTS_ENVIRONMENT  = unshare -mrun --map-auto
 
 TESTS              = expire.sh
 TESTS             += adv.sh
