@@ -42,7 +42,7 @@ static const char version_info[] = PACKAGE_NAME " v" PACKAGE_VERSION;
 
 static char *ident = PACKAGE;
 static char *sock_file = NULL;
-static char *prognm = NULL;
+static const char *prognm = NULL;
 static int   heading = 1;
 static int   detail = 0;
 static int   plain = 0;
@@ -490,15 +490,15 @@ static int batch(void)
 	return rc;
 }
 
-static char *progname(const char *arg0)
+static const char *progname(const char *arg0)
 {
-	char *nm;
+	const char *nm;
 
 	nm = strrchr(arg0, '/');
 	if (nm)
 		nm++;
 	else
-		nm = (char *)arg0;
+		nm = arg0;
 
 	return nm;
 }

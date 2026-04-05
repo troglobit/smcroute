@@ -56,7 +56,7 @@ int table_id   = 0;
 
 char *script    = NULL;
 char *ident     = PACKAGE;
-char *prognm    = NULL;
+const char *prognm    = NULL;
 char *pid_file  = NULL;
 char *conf_file = NULL;
 char *sock_file = NULL;
@@ -335,15 +335,15 @@ static int usage(int code)
 	return code;
 }
 
-static char *progname(const char *arg0)
+static const char *progname(const char *arg0)
 {
-	char *nm;
+	const char *nm;
 
 	nm = strrchr(arg0, '/');
 	if (nm)
 		nm++;
 	else
-		nm = (char *)arg0;
+		nm = arg0;
 
 	return nm;
 }
