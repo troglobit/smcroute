@@ -23,6 +23,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <net/if.h>
 #include <netinet/in.h>
 
 #include "log.h"
@@ -159,6 +160,17 @@ done:
 	return rc;
 }
 
+/* Classify so the user does not need debug logging to see the cause. */
+#define WARN_UNUSABLE_PHYINT(role, ifname) do {				\
+		struct iface *_if = iface_find_by_name(ifname);		\
+		if (!_if)						\
+			WARN("mroute: " role " %s is not a known phyint", ifname); \
+		else if ((_if->flags & IFF_MULTICAST) != IFF_MULTICAST)	\
+			WARN("mroute: " role " %s is not multicast capable", ifname); \
+		else							\
+			WARN("mroute: " role " %s has no VIF, VIF table exhausted?", ifname); \
+	} while (0)
+
 int conf_mroute(struct conf *conf, int cmd, char *iif, char *source, char *group, char *oif[], int num)
 {
 	struct ifmatch state_in, state_out;
@@ -241,7 +253,7 @@ int conf_mroute(struct conf *conf, int cmd, char *iif, char *source, char *group
 				mroute.ttl[vif] = iface->threshold;
 			}
 			if (!state_out.match_count)
-				WARN("mroute: outbound %s is not a known phyint, skipping", oif[i]);
+				WARN_UNUSABLE_PHYINT("outbound", oif[i]);
 		}
 
 		if (conf_vrfy)
@@ -263,7 +275,7 @@ int conf_mroute(struct conf *conf, int cmd, char *iif, char *source, char *group
 	}
 
 	if (!state_in.match_count) {
-		WARN("mroute: inbound %s is not a known phyint", iif);
+		WARN_UNUSABLE_PHYINT("inbound", iif);
 		rc = -1;
 	}
 

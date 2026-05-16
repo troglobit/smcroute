@@ -42,8 +42,8 @@ daemon runs.  On Linux, multiple multicast routers can run simultaneously
 using different multicast routing tables.
 
 The full documentation of SMCRoute is available in the manual pages, see
-[smcrouted(8)][], [smcroutectl(8)][], and [smcroute.conf(5)][].
-
+[smcrouted(8)][], [smcroutectl(8)][], and [smcroute.conf(5)][].  Common
+error messages and their fixes are collected in [TROUBLESHOOTING.md][1].
 
 Features
 --------
@@ -392,6 +392,7 @@ author.
 [smcrouted(8)]:    https://man.troglobit.com/man8/smcrouted.8.html
 [smcroutectl(8)]:  https://man.troglobit.com/man8/smcroutectl.8.html
 [smcroute.conf(5)]:https://man.troglobit.com/man5/smcroute.conf.5.html
+[1]:               doc/TROUBLESHOOTING.md
 [Finit]:           https://github.com/troglobit/finit
 [mrouted]:         https://github.com/troglobit/mrouted
 [pimd]:            https://github.com/troglobit/pimd

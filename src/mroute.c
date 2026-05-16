@@ -185,6 +185,7 @@ static int mroute4_enable(int do_vifs, int table_id)
 		case EADDRINUSE:
 			smclog(LOG_ERR, "IPv4 multicast routing API already in use: %s",
 			       strerror(errno));
+			smclog(LOG_ERR, "Is another multicast routing daemon (igmpproxy, mcpd, pimd) running?");
 			break;
 
 		case EOPNOTSUPP:
@@ -261,7 +262,7 @@ static int mroute4_add_vif(struct iface *iface)
 	if (kern_vif_add(iface)) {
 		switch (errno) {
 		case ENOPROTOOPT:
-			smclog(LOG_INFO, "Interface %s is not multicast capable, skipping VIF.",
+			smclog(LOG_WARNING, "Interface %s is not multicast capable, skipping VIF.",
 			       iface->ifname);
 			return -1;
 
@@ -813,6 +814,7 @@ static int mroute6_enable(int do_vifs, int table_id)
 		case EADDRINUSE:
 			smclog(LOG_ERR, "IPv6 multicast routing API already in use: %s",
 			       strerror(errno));
+			smclog(LOG_ERR, "Is another multicast routing daemon (mldproxy, pim6d) running?");
 			break;
 
 		case EOPNOTSUPP:
@@ -883,7 +885,7 @@ static int mroute6_add_mif(struct iface *iface)
 	if (kern_mif_add(iface)) {
 		switch (errno) {
 		case ENOPROTOOPT:
-			smclog(LOG_INFO, "Interface %s is not multicast capable, skipping MIF.",
+			smclog(LOG_WARNING, "Interface %s is not multicast capable, skipping MIF.",
 			       iface->ifname);
 			return -1;
 
