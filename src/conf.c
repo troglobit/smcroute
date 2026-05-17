@@ -29,6 +29,7 @@
 #include "log.h"
 #include "conf.h"
 #include "iface.h"
+#include "mroute.h"
 #include "script.h"
 #include "mcgroup.h"
 #include "util.h"
@@ -154,8 +155,11 @@ int conf_mgroup(struct conf *conf, int cmd, char *iif, char *source, char *group
 	if (!src_len)
 		src_len = len_max;
 
-	if (!conf_vrfy)
+	if (!conf_vrfy) {
+		if (cmd)
+			mroute_ensure_vif(iif);
 		rc = mcgroup_action(cmd, iif, &src, src_len, &grp, grp_len);
+	}
 done:
 	return rc;
 }
@@ -223,6 +227,12 @@ int conf_mroute(struct conf *conf, int cmd, char *iif, char *source, char *group
 	}
 	if (!mroute.src_len)
 		mroute.src_len = len_max;
+
+	if (!conf_vrfy && cmd) {
+		mroute_ensure_vif(iif);
+		for (int i = 0; i < num; i++)
+			mroute_ensure_vif(oif[i]);
+	}
 
 	iface_match_init(&state_in);
 	DEBUG("mroute: checking for input iface %s ...", iif);

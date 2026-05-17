@@ -78,9 +78,6 @@ void iface_update(void)
 			if (!iface->inaddr.s_addr && ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET)
 				iface->inaddr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
 
-			if (do_vifs)
-				iface->unused = 0;
-
 			continue;
 		}
 

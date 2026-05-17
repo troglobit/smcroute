@@ -167,10 +167,8 @@ static void cache_flush(void *arg)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-static int mroute4_enable(int do_vifs, int table_id)
+static int mroute4_enable(int table_id)
 {
-	struct iface *iface;
-
 	if (kern_mroute_init(table_id, handle_nocache4, NULL)) {
 		switch (errno) {
 		case ENOPROTOOPT:
@@ -199,12 +197,6 @@ static int mroute4_enable(int do_vifs, int table_id)
 		}
 
 		return 1;
-	}
-
-	/* Create virtual interfaces (VIFs) for all IFF_MULTICAST interfaces */
-	if (do_vifs) {
-		for (iface = iface_iterator(1); iface; iface = iface_iterator(0))
-			mroute4_add_vif(iface);
 	}
 
 	return 0;
@@ -791,14 +783,11 @@ static void handle_nocache6(int sd, void *arg)
  * Returns:
  * POSIX OK(0) on success, non-zero on error with @errno set.
  */
-static int mroute6_enable(int do_vifs, int table_id)
+static int mroute6_enable(int table_id)
 {
 #ifndef HAVE_IPV6_MULTICAST_ROUTING
-	(void)do_vifs;
 	(void)table_id;
 #else
-	struct iface *iface;
-
 	if (kern_mroute6_init(table_id, handle_nocache6, NULL)) {
 		switch (errno) {
 		case ENOPROTOOPT:
@@ -828,12 +817,6 @@ static int mroute6_enable(int do_vifs, int table_id)
 		}
 
 		return 1;
-	}
-
-	/* Create virtual interfaces, IPv6 MIFs, for all IFF_MULTICAST interfaces */
-	if (do_vifs) {
-		for (iface = iface_iterator(1); iface; iface = iface_iterator(0))
-			mroute6_add_mif(iface);
 	}
 
 	return 0;
@@ -983,7 +966,7 @@ static int mroute_dyn_add(struct mroute *route)
 	return rc;
 }
 
-int mroute_init(int do_vifs, int table_id, int cache_tmo)
+int mroute_init(int table_id, int cache_tmo)
 {
 	static int running = 0;
 
@@ -996,8 +979,8 @@ int mroute_init(int do_vifs, int table_id, int cache_tmo)
 		timer_add(cache_tmo, cache_flush, NULL);
 	}
 
-	return  mroute4_enable(do_vifs, table_id) ||
-		mroute6_enable(do_vifs, table_id);
+	return  mroute4_enable(table_id) ||
+		mroute6_enable(table_id);
 }
 
 void mroute_exit(void)
@@ -1030,6 +1013,27 @@ int mroute_add_vif(char *ifname, uint8_t mrdisc, uint8_t ttl)
 	if (!state.match_count) {
 		smclog(LOG_DEBUG, "Failed adding phyint %s, no matching interfaces.", ifname);
 		return 1;
+	}
+
+	return rc;
+}
+
+/* Like mroute_add_vif() but preserves any user-set mrdisc/ttl. */
+int mroute_ensure_vif(const char *ifname)
+{
+	struct ifmatch state;
+	struct iface *iface;
+	int rc = 0;
+
+	iface_match_init(&state);
+	while ((iface = iface_match_by_name(ifname, 1, &state))) {
+		iface->unused = 0;
+		if (mroute4_add_vif(iface))
+			rc = -1;
+#ifdef HAVE_IPV6_MULTICAST_ROUTING
+		if (mroute6_add_mif(iface))
+			rc = -1;
+#endif
 	}
 
 	return rc;
@@ -1081,7 +1085,7 @@ void mroute_reload_beg(void)
 	}
 }
 
-void mroute_reload_end(int do_vifs)
+void mroute_reload_end(void)
 {
 	struct mroute *entry, *tmp;
 	struct iface *iface;
@@ -1091,10 +1095,8 @@ void mroute_reload_end(int do_vifs)
 		char  dummy[IFNAMSIZ];
 
 		first = 0;
-		if (iface->unused || !if_indextoname(iface->ifindex, dummy)) {
+		if (iface->unused || !if_indextoname(iface->ifindex, dummy))
 			mroute_del_vif(iface->ifname);
-		} else if (do_vifs)
-			mroute_add_vif(iface->ifname, iface->mrdisc, iface->threshold);
 	}
 
 	TAILQ_FOREACH_SAFE(entry, &conf_list, link, tmp) {

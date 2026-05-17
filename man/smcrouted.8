@@ -137,18 +137,16 @@ is built with mrdisc support (Linux, and IPv4, only). RFC4286.
 .It Fl n
 Run daemon in foreground, do not detach from controlling terminal
 .It Fl N
-By default
+Accepted for backwards compatibility but has no effect.
 .Nm
-enables multicast routing on all available, and multicast capable,
-interfaces in the system.  These interfaces are enumerated as VIFs,
-virtual interfaces, of which most UNIX systems have a very limited
-amount, usually 32.  This daemon option inverts the behavior so no
-interfaces are enabled by default.  Useful on systems with many
-interfaces, where multicast routing only makes use of a few.
-.Pp
-The config file setting
-.Ar phyint IFNAME enable
-is required to enable the required interfaces.
+now allocates virtual interfaces (VIFs) lazily, only for interfaces
+referenced by
+.Pa smcroute.conf
+or by an
+.Xr smcroutectl 8
+command.  Hosts with many unrelated multicast capable interfaces
+therefore no longer risk exhausting the kernel's VIF table (usually
+32 slots) just by starting the daemon.
 .It Fl p Ar USER Op :GROUP
 Drop root privileges to USER:GROUP after start and retain CAP_NET_ADMIN
 capabilities only.  The :GROUP is optional.  This option is only
@@ -225,14 +223,16 @@ When
 .Nm
 starts up it scans for available network interfaces that have the
 .Cm MULTICAST
-flag set.  Provided the
-.Fl N
-flag is not set, each interface is enumerated as a virtual interface
-(VIF) which is what the kernel's multicast routing stack uses.  The
-enumeration process on some operating systems also require each
-interface to have an IP address, but Linux and FreeBSD systems only
-require the ifindex and the MULTICAST flag.  If the interface does not
-yet exist when
+flag set.  A virtual interface (VIF) — what the kernel's multicast
+routing stack uses — is then allocated on demand, the first time an
+interface is named in
+.Pa smcroute.conf
+or in an
+.Xr smcroutectl 8
+command.  The enumeration process on some operating systems also
+requires each interface to have an IP address, but Linux and FreeBSD
+systems only require the ifindex and the MULTICAST flag.  If the
+interface does not yet exist when
 .Nm
 starts, the
 .Fl d Ar SEC
@@ -241,19 +241,14 @@ flag can be used to delay startup.  Otherwise
 needs to be reloaded (e.g., using SIGHUP) when a new interface has been
 added to the system.
 .Pp
-Since VIFs are a limited resource, most operating systems only support
-32 in total, the administrator may need to declare which interfaces to
-use for multicast routing using the
-.Pa /etc/smcroute.conf
-.Cm phyint
-directive.  It is recommended to always start
-.Nm
-with the
-.Fl N
-flag, disabling VIF creation by default, and then selectively enable
-each of the interfaces you are going to route between.  See
+VIFs are a limited resource — most operating systems only support 32
+in total — but because VIFs are now allocated on demand the limit is
+only reached if the configuration actually references that many
+interfaces.  See
 .Xr smcroute.conf 5
-for more information.
+for the
+.Cm phyint
+directive.
 .Ss Multicast Scoping
 Because multicast inherently is broadcast there is an obvious need to
 limit.  On a LAN this is usually managed automatically by bridges

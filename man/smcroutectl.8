@@ -140,16 +140,14 @@ can be any multicast capable network interface as listed by
 .Ql Cm ifconfig
 or
 .Ql Cm ip link list ,
-including tunnel interfaces and loopback.  Provided
+including tunnel interfaces and loopback.
 .Nm smcrouted
-has "enumerated" them.  See
-.Xr smcrouted 8 ,
-in particular the command line option
-.Fl N ,
-and the
+enumerates them on demand, so no
 .Xr smcroute.conf 5
 .Ql Cm phyint
-directive.
+directive is required up front; see
+.Xr smcrouted 8
+for details.
 .Pp
 To add a (*,G) route, either omit the
 .Ar SOURCE

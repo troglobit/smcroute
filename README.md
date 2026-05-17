@@ -168,22 +168,27 @@ flush connection tracking after installing a multicast route.
 
 ### Many Interfaces
 
-    smcrouted -N
-
-With the `-N` command line option SMCRoute does *not* prepare all system
-interfaces for multicast routing.  Very useful if your system has a lot
-of interfaces but only a select few are required for multicast routing.
-Use the following in `/etc/smcroute.conf` to enable interfaces:
+SMCRoute allocates kernel VIFs/MIFs on demand, only for interfaces that
+appear in `smcroute.conf` or that `smcroutectl` references at runtime.
+Hosts with many unrelated multicast-capable interfaces therefore stay
+well under the kernel's VIF/MIF limit (32 on Linux).  In typical setups
+just list the interfaces you need in `/etc/smcroute.conf`:
 
     phyint eth0 enable
     phyint eth1 enable
     phyint eth2 enable
 
-It is possible to use any interface that supports the `MULTICAST` flag.
+`mroute` and `mgroup` lines also count as references, so an explicit
+`phyint enable` is not required if the interface only appears there.
 
+It is possible to use any interface that supports the `MULTICAST` flag.
 Note, however, that depending on the UNIX kernel in use, you may have to
 have an interface address set, in the relevant address family, and the
 interface may likely also have to be `UP`.
+
+The legacy `-N` flag — which used to suppress the now-removed upfront
+VIF enumeration — is still accepted for backwards compatibility but is
+effectively a no-op.
 
 
 ### Multiple Routing Tables

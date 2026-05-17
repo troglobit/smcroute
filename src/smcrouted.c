@@ -92,7 +92,7 @@ void reload(void)
 	iface_update();
 	conf_read(conf_file, do_vifs);
 
-	mroute_reload_end(do_vifs);
+	mroute_reload_end();
 	mcgroup_reload_end();
 
 	/* Acknowledge client SIGHUP/reload */
@@ -195,7 +195,7 @@ static int start_server(void)
 	 */
 	iface_init();
 
-	if (mroute_init(do_vifs, table_id, cache_tmo)) {
+	if (mroute_init(table_id, cache_tmo)) {
 		if (errno == EADDRINUSE)
 			busy++;
 		api--;

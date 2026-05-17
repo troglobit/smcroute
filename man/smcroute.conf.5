@@ -10,14 +10,12 @@ The file
 .Nm
 is, strictly speaking, not critical to the operation of
 .Nm smcrouted .
-Some warnings may be logged, and provided the daemon is
-.Sy not
-started with
-.Fl N ,
-it enables VIFs for all interfaces it can find and then waits for
-commands from
-.Xr smcroutectl 8 .
-As you can tell from that caveat, any non-trivial setup requires an
+With no
+.Nm
+present, the daemon starts up and waits for commands from
+.Xr smcroutectl 8 ,
+allocating a VIF for each interface as it is first referenced.  Any
+non-trivial setup, however, requires an
 .Nm .
 .Pp
 On most systems the configuration file(s) are available in:
@@ -55,17 +53,25 @@ and run to the end of line.  See the
 below.
 .Bl -tag -offset indent
 .It Cm phyint Ar IFNAME Oo Cm enable | Cm disable Oc Oo Cm mrdisc Oc Oo Cm ttl-threshold Ar TTL Oc
-By default all interfaces on the system are enabled and possible to
-route between, provided they have the
-.Cm MULTICAST
-interface flag set.  The
-.Cm phyint
-directive can be used to selectively enable, or disable, interfaces from
-being mapped to virtual interfaces (VIFs), which the multicast routing
-stack actually employs.  VIFs are limited, most operating systems only
-have 32, it is recommended to disable all interfaces by default, with
-.Ql Cm smcrouted Fl N ,
-and enable them one by one using this directive.
+.Nm smcrouted
+maps interfaces to virtual interfaces (VIFs), which the multicast
+routing stack actually employs.  VIFs are allocated on demand, the
+first time an interface is referenced from
+.Nm
+or
+.Xr smcroutectl 8 ,
+so this directive is only needed when you want to set per-interface
+options such as
+.Cm ttl-threshold
+or
+.Cm mrdisc ,
+or to keep the interface allocated even though no
+.Cm mroute
+or
+.Cm mgroup
+line references it.  VIFs are a limited resource — most operating
+systems support 32 in total — so on hosts with many interfaces only
+list the ones you actually need.
 .Pp
 .Cm mrdisc
 is an IPv4 specific feature flag to enable Multicast Router Discovery
