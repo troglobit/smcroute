@@ -42,6 +42,7 @@
 #include "script.h"
 #include "socket.h"
 #include "mrdisc.h"
+#include "ifevent.h"
 #include "mroute.h"
 #include "mcgroup.h"
 #include "pending.h"
@@ -76,6 +77,7 @@ static const char version_info[] = PACKAGE_NAME " v" PACKAGE_VERSION;
 static void clean(void)
 {
 	timer_exit();
+	ifevent_exit();
 	mroute_exit();
 	mcgroup_exit();
 	ipc_exit();
@@ -221,6 +223,7 @@ static int start_server(void)
 	signal_init();
 	mcgroup_init();
 	ipc_init(sock_file);
+	ifevent_init();
 
 	conf_read(conf_file, do_vifs);
 

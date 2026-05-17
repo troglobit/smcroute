@@ -11,6 +11,7 @@ AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src/smcrouted.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile man/Makefile src/Makefile test/Makefile smcroute.service])
+AC_CANONICAL_HOST
 
 # Older versions of autoconf (<2.58) do not have AC_CONFIG_MACRO_DIR()
 m4_include([m4/misc.m4])
@@ -89,6 +90,14 @@ AS_IF([test "x$enable_mrdisc" = "xyes"],
     AC_DEFINE([ENABLE_MRDISC], 1, [Enable IPv4 multicast router discovery protocol]),
     enable_mrdisc=no)
 AM_CONDITIONAL([USE_MRDISC], [test "x$enable_mrdisc" = "xyes"])
+
+# Netlink listener for kernel link events.  Linux only, BSD route-socket
+# port tracked separately.  See src/ifevent.h.
+case "$host_os" in
+	linux*)	have_netlink=yes ;;
+	*)	have_netlink=no  ;;
+esac
+AM_CONDITIONAL([HAVE_NETLINK], [test "x$have_netlink" = "xyes"])
 
 # Required to check for libsystemd-dev
 PKG_PROG_PKG_CONFIG

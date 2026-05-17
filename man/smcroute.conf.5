@@ -165,8 +165,8 @@ To add a (*,G) route, either leave SOURCE out completely or set it to
 If
 .Cm IIF
 does not yet exist when the configuration is read, the directive is
-queued and activated on the next reload that finds the interface
-present.  Use
+queued.  On Linux it is activated automatically as soon as the
+interface arrives; on other systems on the next reload.  Use
 .Ql smcroutectl show pending
 to inspect what is waiting.  The same applies to
 .Cm mgroup

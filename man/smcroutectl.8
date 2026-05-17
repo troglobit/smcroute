@@ -227,9 +227,10 @@ lists
 .Cm mroute
 and
 .Cm mgroup
-directives whose inbound interface is not yet present on the system;
-they will be activated automatically the next time the configuration
-is reloaded after the interface appears.  Can be combined with the
+directives whose inbound interface is not yet present on the system.
+On Linux they are activated automatically as soon as the interface
+arrives (kernel netlink link events).  On other systems they are
+activated on the next configuration reload.  Can be combined with the
 .Fl d
 option to get details for each multicast route.
 .It Nm version

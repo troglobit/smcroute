@@ -1,8 +1,8 @@
 AUTOMAKE_OPTIONS     = subdir-objects
 
 sbin_PROGRAMS	     = smcrouted smcroutectl
-smcrouted_SOURCES    = smcrouted.c conf.c conf.h mroute.c mroute.h iface.c \
-		       iface.h inet.c inet.h ipc.c ipc.h kern.c kern.h	   \
+smcrouted_SOURCES    = smcrouted.c conf.c conf.h ifevent.h mroute.c mroute.h \
+		       iface.c iface.h inet.c inet.h ipc.c ipc.h kern.c kern.h \
 		       log.c log.h mcgroup.c mcgroup.h msg.c msg.h	   \
 		       notify.c notify.h pending.c pending.h pidfile.c	   \
 		       queue.h script.c script.h socket.c socket.h	   \
@@ -26,6 +26,12 @@ endif
 
 if USE_MRDISC
 smcrouted_SOURCES   += mrdisc.c mrdisc.h
+endif
+
+if HAVE_NETLINK
+smcrouted_SOURCES   += ifevent_nl.c
+else
+smcrouted_SOURCES   += ifevent_stub.c
 endif
 
 smcroutectl_SOURCES  = smcroutectl.c msg.h util.h

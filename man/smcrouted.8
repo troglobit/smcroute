@@ -241,15 +241,22 @@ directive references an interface that does not yet exist,
 .Nm
 keeps the directive on an internal pending list — visible with
 .Ql smcroutectl show pending —
-rather than dropping it with a parse error.  The pending entries are
-activated the next time the configuration is reloaded (e.g., via
+rather than dropping it with a parse error.
+.Pp
+On Linux,
+.Nm
+subscribes to kernel link events via netlink
+.Pq Cm RTNLGRP_LINK
+and activates pending entries automatically as soon as their inbound
+interface arrives — no
 .Cm SIGHUP
 or
-.Ql smcroutectl reload )
-after the interface appears.  The
+.Ql smcroutectl reload
+required.  On systems without the netlink listener the pending entries
+are activated on the next reload; the
 .Fl d Ar SEC
-flag can still be used to delay startup if a more synchronous behaviour
-is preferred.
+flag may be used to delay startup if a more synchronous behaviour is
+preferred.
 .Pp
 VIFs are a limited resource — most operating systems only support 32
 in total — but because VIFs are now allocated on demand the limit is

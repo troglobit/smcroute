@@ -191,6 +191,27 @@ VIF enumeration — is still accepted for backwards compatibility but is
 effectively a no-op.
 
 
+### Late-arriving Interfaces
+
+If an `mroute` or `mgroup` directive in `smcroute.conf` names an
+interface that does not yet exist on the system, `smcrouted` keeps the
+directive on an internal pending list rather than dropping it.  Inspect
+the list with:
+
+    smcroutectl show pending
+
+On Linux, `smcrouted` listens for kernel link events (netlink
+`RTNLGRP_LINK`) and activates pending entries automatically when their
+inbound interface arrives — no `SIGHUP` or `smcroutectl reload`
+required.  This is the recommended fix for tunnels (WireGuard,
+6LoWPAN, ...) and other late-binding interfaces.
+
+On other systems the pending entries are activated on the next reload.
+Use `smcrouted -d SEC` to delay startup, or trigger an external reload
+from your network manager, until a BSD route-socket equivalent of the
+Linux listener is implemented.
+
+
 ### Multiple Routing Tables
 
 On Linux it is possible to run multiple multicast routing daemons due to
