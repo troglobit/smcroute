@@ -219,9 +219,17 @@ Note, any routes or groups added or removed with
 will be lost.  Only the configuration set in the file
 .Pa smcroute.conf
 is activated.
-.It Nm show [groups|routes]
-Show joined multicast groups or multicast routes, defaults to show
-routes.  Can be combined with the
+.It Nm show [groups|interfaces|pending|routes]
+Show joined multicast groups, configured interfaces, pending routes
+and groups, or multicast routes — defaults to routes.
+.Cm pending
+lists
+.Cm mroute
+and
+.Cm mgroup
+directives whose inbound interface is not yet present on the system;
+they will be activated automatically the next time the configuration
+is reloaded after the interface appears.  Can be combined with the
 .Fl d
 option to get details for each multicast route.
 .It Nm version

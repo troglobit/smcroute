@@ -30,6 +30,7 @@
 #include "conf.h"
 #include "iface.h"
 #include "mroute.h"
+#include "pending.h"
 #include "script.h"
 #include "mcgroup.h"
 #include "util.h"
@@ -180,6 +181,7 @@ int conf_mroute(struct conf *conf, int cmd, char *iif, char *source, char *group
 	struct ifmatch state_in, state_out;
 	struct mroute mroute = { 0 };
 	struct iface *iface_in, *iface;
+	int oif_unresolved = 0;
 	int len_max;
 	int family;
 	int rc = 0;
@@ -262,8 +264,14 @@ int conf_mroute(struct conf *conf, int cmd, char *iif, char *source, char *group
 				/* Use configured TTL threshold for the output phyint */
 				mroute.ttl[vif] = iface->threshold;
 			}
-			if (!state_out.match_count)
-				WARN_UNUSABLE_PHYINT("outbound", oif[i]);
+			if (!state_out.match_count) {
+				int defer = cmd && !conf_vrfy && !iface_exist(oif[i]);
+
+				if (defer)
+					oif_unresolved = 1;
+				else
+					WARN_UNUSABLE_PHYINT("outbound", oif[i]);
+			}
 		}
 
 		if (conf_vrfy)
@@ -287,6 +295,8 @@ int conf_mroute(struct conf *conf, int cmd, char *iif, char *source, char *group
 	if (!state_in.match_count) {
 		WARN_UNUSABLE_PHYINT("inbound", iif);
 		rc = -1;
+	} else if (oif_unresolved) {
+		pending_add_mroute(iif, source, group, oif, num);
 	}
 
 done:
@@ -431,11 +441,11 @@ next:
 		if (iif && !iface_exist(iif)) {
 			switch (op) {
 			case MGROUP:
-				WARN("mgroup from %s matches no valid phyint, skipping ...", iif);
+				pending_add_mgroup(iif, source, group);
 				break;
 
 			case MROUTE:
-				WARN("mroute from %s matches no valid phyint, skipping ...", iif);
+				pending_add_mroute(iif, source, group, oif, num);
 				break;
 
 			default:

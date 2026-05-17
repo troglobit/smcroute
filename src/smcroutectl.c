@@ -373,6 +373,7 @@ static int usage(int code)
 	       "\n"
 	       "  show   interfaces    Show configured multicast interfaces\n"
 	       "  show   groups        Show joined multicast groups\n"
+	       "  show   pending       Show routes/groups waiting for their interface\n"
 	       "  show   routes        Show (*,G) and (S,G) multicast routes, default\n"
 	       "\n"
 	       "Note:\n"

@@ -29,6 +29,7 @@
 #include "conf.h"
 #include "log.h"
 #include "msg.h"
+#include "pending.h"
 #include "iface.h"
 #include "util.h"
 #include "mroute.h"
@@ -130,6 +131,9 @@ static int do_show(struct ipc_msg *msg, int sd, int detail)
 
 		case 'i':
 			return iface_show(sd, detail);
+
+		case 'p':
+			return pending_show(sd, detail);
 
 		default:
 			break;

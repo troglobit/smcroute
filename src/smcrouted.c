@@ -44,6 +44,7 @@
 #include "mrdisc.h"
 #include "mroute.h"
 #include "mcgroup.h"
+#include "pending.h"
 
 int background = 1;
 int do_vifs    = 1;
@@ -79,6 +80,7 @@ static void clean(void)
 	mcgroup_exit();
 	ipc_exit();
 	iface_exit();
+	pending_exit();
 	smclog(LOG_NOTICE, "Exiting.");
 }
 
@@ -88,6 +90,7 @@ void reload(void)
 
 	mcgroup_reload_beg();
 	mroute_reload_beg();
+	pending_clear();
 
 	iface_update();
 	conf_read(conf_file, do_vifs);
@@ -194,6 +197,7 @@ static int start_server(void)
 	 * Build list of multicast-capable physical interfaces
 	 */
 	iface_init();
+	pending_init();
 
 	if (mroute_init(table_id, cache_tmo)) {
 		if (errno == EADDRINUSE)

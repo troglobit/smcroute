@@ -231,15 +231,25 @@ or in an
 .Xr smcroutectl 8
 command.  The enumeration process on some operating systems also
 requires each interface to have an IP address, but Linux and FreeBSD
-systems only require the ifindex and the MULTICAST flag.  If the
-interface does not yet exist when
+systems only require the ifindex and the MULTICAST flag.
+.Pp
+If an
+.Cm mroute
+or
+.Cm mgroup
+directive references an interface that does not yet exist,
 .Nm
-starts, the
+keeps the directive on an internal pending list — visible with
+.Ql smcroutectl show pending —
+rather than dropping it with a parse error.  The pending entries are
+activated the next time the configuration is reloaded (e.g., via
+.Cm SIGHUP
+or
+.Ql smcroutectl reload )
+after the interface appears.  The
 .Fl d Ar SEC
-flag can be used to delay startup.  Otherwise
-.Nm
-needs to be reloaded (e.g., using SIGHUP) when a new interface has been
-added to the system.
+flag can still be used to delay startup if a more synchronous behaviour
+is preferred.
 .Pp
 VIFs are a limited resource — most operating systems only support 32
 in total — but because VIFs are now allocated on demand the limit is
