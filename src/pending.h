@@ -2,6 +2,8 @@
 #ifndef SMCROUTE_PENDING_H_
 #define SMCROUTE_PENDING_H_
 
+#include "show.h"
+
 void pending_init       (void);
 void pending_exit       (void);
 
@@ -15,6 +17,6 @@ void pending_clear      (void);
 /* Walk the list, retry each entry, drop the successful ones. */
 void pending_drain      (void);
 
-int  pending_show       (int sd, int detail);
+int  pending_show       (int sd, enum show_mode mode);
 
 #endif /* SMCROUTE_PENDING_H_ */

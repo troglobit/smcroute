@@ -9,6 +9,7 @@
 #include <netinet/in.h>			/* struct in_addr */
 
 #include "mroute.h"			/* vifit_t + mifi_t */
+#include "show.h"
 
 #ifndef ALL_MIFS
 #define ALL_MIFS (vifi_t)-1
@@ -55,7 +56,7 @@ vifi_t        iface_get_vif           (int af_family, struct iface *iface);
 vifi_t        iface_match_vif_by_name (const char *ifname, struct ifmatch *state, struct iface **found);
 mifi_t        iface_match_mif_by_name (const char *ifname, struct ifmatch *state, struct iface **found);
 
-int           iface_show              (int sd, int detail);
+int           iface_show              (int sd, enum show_mode mode);
 
 /*
  * Check if interface exists, at all, on the system

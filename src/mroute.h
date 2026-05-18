@@ -14,6 +14,7 @@
 #endif
 #include <netinet/ip.h>
 #include "queue.h"		/* Needed by netinet/ip_mroute.h on FreeBSD */
+#include "show.h"
 
 #ifdef HAVE_LINUX_MROUTE_H
 #define _LINUX_IN_H             /* For Linux <= 2.6.25 */
@@ -119,6 +120,6 @@ int  mroute_del_route  (struct mroute *mroute);
 void mroute_reload_beg (void);
 void mroute_reload_end (void);
 
-int  mroute_show       (int sd, int detail);
+int  mroute_show       (int sd, enum show_mode mode);
 
 #endif /* SMCROUTE_MROUTE_H_ */

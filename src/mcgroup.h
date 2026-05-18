@@ -4,6 +4,7 @@
 
 #include "inet.h"
 #include "queue.h"
+#include "show.h"
 
 struct mcgroup {
 	TAILQ_ENTRY(mcgroup) link;
@@ -27,7 +28,7 @@ void mcgroup_exit      (void);
 
 int  mcgroup_action    (int cmd, const char *ifname, inet_addr_t *source, int src_len, inet_addr_t *group, int len);
 
-int  mcgroup_show      (int sd, int detail);
+int  mcgroup_show      (int sd, enum show_mode mode);
 
 #endif /* SMCROUTE_MCGROUP_H_ */
 

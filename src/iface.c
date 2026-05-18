@@ -423,14 +423,39 @@ mifi_t iface_match_mif_by_name(const char *ifname, struct ifmatch *state, struct
 }
 
 /* Return all currently known interfaces */
-int iface_show(int sd, int detail)
+int iface_show(int sd, enum show_mode mode)
 {
 	struct iface *iface;
 	char *p = "PHYINT";
-	char line[120];
+	char line[256];
 	int inw;
 
-	(void)detail;
+	if (mode == SHOW_JSON) {
+		int first = 1;
+		const char *open = "{\"interfaces\":[";
+
+		ipc_send(sd, open, strlen(open));
+		iface = iface_iterator(1);
+		while (iface) {
+			char vif[12] = "null", mif[12] = "null";
+
+			if (iface->vif < 65535)
+				snprintf(vif, sizeof(vif), "%d", iface->vif);
+			if (iface->mif < 65535)
+				snprintf(mif, sizeof(mif), "%d", iface->mif);
+
+			snprintf(line, sizeof(line),
+				 "%s{\"index\":%d,\"name\":\"%s\",\"vif\":%s,\"mif\":%s}",
+				 first ? "" : ",", iface->ifindex,
+				 iface->ifname, vif, mif);
+			if (ipc_send(sd, line, strlen(line)) < 0)
+				return -1;
+			first = 0;
+			iface = iface_iterator(0);
+		}
+		ipc_send(sd, "]}\n", 3);
+		return 0;
+	}
 
 	inw = iface_ifname_maxlen();
 	if (inw < (int)strlen(p))

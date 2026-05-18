@@ -120,27 +120,27 @@ static int do_mroute(struct ipc_msg *msg)
 	return conf_mroute(NULL, msg->cmd == 'a' ? 1 : 0, ifname, source, group, out, num);
 }
 
-static int do_show(struct ipc_msg *msg, int sd, int detail)
+static int do_show(struct ipc_msg *msg, int sd, enum show_mode mode)
 {
 	if (msg->count > 0) {
 		char cmd = msg->argv[0][0];
 
 		switch (cmd) {
 		case 'g':
-			return mcgroup_show(sd, detail);
+			return mcgroup_show(sd, mode);
 
 		case 'i':
-			return iface_show(sd, detail);
+			return iface_show(sd, mode);
 
 		case 'p':
-			return pending_show(sd, detail);
+			return pending_show(sd, mode);
 
 		default:
 			break;
 		}
 	}
 
-	return mroute_show(sd, detail);
+	return mroute_show(sd, mode);
 }
 
 /*
@@ -173,12 +173,16 @@ int msg_do(int sd, struct ipc_msg *msg)
 		running = 0;
 		break;
 
+	case 'J':
+		result = do_show(msg, sd, SHOW_JSON);
+		break;
+
 	case 'S':
-		result = do_show(msg, sd, 1);
+		result = do_show(msg, sd, SHOW_DETAIL);
 		break;
 
 	case 's':
-		result = do_show(msg, sd, 0);
+		result = do_show(msg, sd, SHOW_BRIEF);
 		break;
 
 	default:

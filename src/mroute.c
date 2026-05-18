@@ -1109,6 +1109,54 @@ void mroute_reload_end(void)
 		mfc_install(entry);
 }
 
+static int show_mroute_json(int sd, struct mroute *r, int first)
+{
+	char src[INET_ADDRSTR_LEN] = "", grp[INET_ADDRSTR_LEN];
+	char src_field[INET_ADDRSTR_LEN + 16];
+	char grp_field[INET_ADDRSTR_LEN + 16];
+	char line[512];
+	struct iface *iface;
+	int max_len, sent_oif = 0;
+
+	max_len = inet_max_len(&r->group);
+
+	if (is_anyaddr(&r->source)) {
+		snprintf(src_field, sizeof(src_field), "null");
+	} else {
+		inet_addr2str(&r->source, src, sizeof(src));
+		if (r->src_len != max_len)
+			snprintf(src_field, sizeof(src_field), "\"%s/%u\"", src, r->src_len);
+		else
+			snprintf(src_field, sizeof(src_field), "\"%s\"", src);
+	}
+
+	inet_addr2str(&r->group, grp, sizeof(grp));
+	if (r->len != max_len)
+		snprintf(grp_field, sizeof(grp_field), "\"%s/%u\"", grp, r->len);
+	else
+		snprintf(grp_field, sizeof(grp_field), "\"%s\"", grp);
+
+	iface = iface_find_by_inbound(r);
+	snprintf(line, sizeof(line),
+		 "%s{\"source\":%s,\"group\":%s,\"iif\":\"%s\",\"oifs\":[",
+		 first ? "" : ",", src_field, grp_field,
+		 iface ? iface->ifname : "");
+	if (ipc_send(sd, line, strlen(line)) < 0)
+		return -1;
+
+	iface = iface_outbound_iterator(r, 1);
+	while (iface) {
+		snprintf(line, sizeof(line), "%s\"%s\"",
+			 sent_oif ? "," : "", iface->ifname);
+		if (ipc_send(sd, line, strlen(line)) < 0)
+			return -1;
+		sent_oif = 1;
+		iface = iface_outbound_iterator(r, 0);
+	}
+	ipc_send(sd, "]}", 2);
+	return 0;
+}
+
 static int show_mroute(int sd, struct mroute *r, int inw, int detail)
 {
 	char src[INET_ADDRSTR_LEN] = "*";
@@ -1192,12 +1240,45 @@ static int has_any_asm(void)
 }
 
 /* Write all (*,G) routes to client socket */
-int mroute_show(int sd, int detail)
+int mroute_show(int sd, enum show_mode mode)
 {
 	const char *r = "ROUTE (S,G)", *o = "OIFS", *i = "IIF";
+	int detail = mode == SHOW_DETAIL;
 	struct mroute *entry;
 	char line[256];
 	int inw;
+
+	if (mode == SHOW_JSON) {
+		int first;
+
+		ipc_send(sd, "{\"routes\":{\"asm\":[", 18);
+		first = 1;
+		TAILQ_FOREACH(entry, &conf_list, link) {
+			if (is_ssm(entry))
+				continue;
+			if (show_mroute_json(sd, entry, first) < 0)
+				return 1;
+			first = 0;
+		}
+		ipc_send(sd, "],\"ssm\":[", 9);
+		first = 1;
+		TAILQ_FOREACH(entry, &conf_list, link) {
+			if (!is_ssm(entry))
+				continue;
+			if (show_mroute_json(sd, entry, first) < 0)
+				return 1;
+			first = 0;
+		}
+		ipc_send(sd, "],\"kernel\":[", 12);
+		first = 1;
+		TAILQ_FOREACH(entry, &kern_list, link) {
+			if (show_mroute_json(sd, entry, first) < 0)
+				return 1;
+			first = 0;
+		}
+		ipc_send(sd, "]}}\n", 4);
+		return 0;
+	}
 
 	inw = iface_ifname_maxlen();
 	if (inw < (int)strlen(i))

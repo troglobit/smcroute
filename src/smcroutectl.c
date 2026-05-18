@@ -45,6 +45,7 @@ static char *sock_file = NULL;
 static const char *prognm = NULL;
 static int   heading = 1;
 static int   detail = 0;
+static int   json = 0;
 static int   plain = 0;
 static int   help = 0;
 
@@ -59,6 +60,7 @@ struct arg {
 } args[] = {
 	{ NULL,      0, 'b', NULL,   "Batch mode, read commands from stdin", NULL, 0 },
 	{ NULL,      0, 'd', NULL,   "Detailed output in show command", NULL, 0 },
+	{ NULL,      0, 'j', NULL,   "JSON output for show command", NULL, 0 },
 	{ NULL,      1, 'i', "NAME", "Identity of routing daemon instance, default: " PACKAGE, "foo", 0 },
 	{ NULL,      1, 'I', "NAME", NULL, NULL, 0 }, /* Alias, compat with older versions */
 	{ NULL,      0, 'p', NULL,   "Use plain table headings, no ctrl chars", NULL, 0 },
@@ -317,7 +319,7 @@ static int ipc_command(uint16_t cmd, char *argv[], size_t count)
 	rewind(fp);
 
 	if (total > 1) {
-		if (cmd == 'S' || cmd == 's') {
+		if (cmd == 'S' || cmd == 's' || cmd == 'J') {
 			while (fgets(buf, sizeof(buf), fp))
 				print(buf, 0);
 		} else {
@@ -456,12 +458,14 @@ static int parse(int pos, int argc, char *argv[])
 		return status;
 	}
 
+	const char show_cmd = json ? 'J' : detail ? 'S' : 's';
+
 	if (!cmd)
-		return ipc_command(detail ? 'S' : 's', NULL, 0);
+		return ipc_command(show_cmd, NULL, 0);
 
 	c = cmd->val;
-	if (detail && cmd->has_detail)
-		c -= 0x20;
+	if (cmd->has_detail)
+		c = show_cmd;
 
 	return ipc_command(c, &argv[pos], argc - pos);
 }
@@ -510,7 +514,7 @@ int main(int argc, char *argv[])
 	int c;
 
 	prognm = progname(argv[0]);
-	while ((c = getopt(argc, argv, "bdhI:i:ptu:v")) != EOF) {
+	while ((c = getopt(argc, argv, "bdhI:i:jptu:v")) != EOF) {
 		switch (c) {
 		case 'b':
 			batch_mode = 1;
@@ -527,6 +531,10 @@ int main(int argc, char *argv[])
 		case 'I':	/* compat with previous versions */
 		case 'i':
 			ident = optarg;
+			break;
+
+		case 'j':
+			json = 1;
 			break;
 
 		case 'p':

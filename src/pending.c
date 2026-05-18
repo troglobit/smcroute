@@ -316,12 +316,45 @@ static int show_one(int sd, struct pending *p)
 	return ipc_send(sd, buf, len);
 }
 
-int pending_show(int sd, int detail)
+static int show_one_json(int sd, struct pending *p, int first)
+{
+	char buf[512];
+	size_t len = 0;
+	int i;
+
+	append(buf, sizeof(buf), &len,
+	       "%s{\"kind\":\"%s\",\"iif\":\"%s\",\"source\":",
+	       first ? "" : ",", kind_name(p->kind), p->iif);
+	if (p->source)
+		append(buf, sizeof(buf), &len, "\"%s\"", p->source);
+	else
+		append(buf, sizeof(buf), &len, "null");
+	append(buf, sizeof(buf), &len, ",\"group\":\"%s\",\"oifs\":[", p->group);
+	for (i = 0; i < p->num; i++)
+		append(buf, sizeof(buf), &len, "%s\"%s\"",
+		       i == 0 ? "" : ",", p->oif[i]);
+	append(buf, sizeof(buf), &len, "]}");
+
+	return ipc_send(sd, buf, len);
+}
+
+int pending_show(int sd, enum show_mode mode)
 {
 	struct pending *p;
 	const char *header = "PENDING ROUTES AND GROUPS\n";
 
-	(void)detail;
+	if (mode == SHOW_JSON) {
+		int first = 1;
+
+		ipc_send(sd, "{\"pending\":[", 12);
+		TAILQ_FOREACH(p, &pending_list, link) {
+			if (show_one_json(sd, p, first) < 0)
+				return -1;
+			first = 0;
+		}
+		ipc_send(sd, "]}\n", 3);
+		return 0;
+	}
 
 	if (TAILQ_EMPTY(&pending_list)) {
 		header = "No pending routes or groups\n";

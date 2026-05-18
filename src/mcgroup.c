@@ -468,13 +468,73 @@ static int show_mcgroup(int sd, struct mcgroup *entry)
 	return 0;
 }
 
+static int show_mcgroup_json(int sd, struct mcgroup *entry, int first)
+{
+	int max_len = inet_max_len(&entry->group);
+	char src[INET_ADDRSTR_LEN] = "";
+	char grp[INET_ADDRSTR_LEN];
+	char src_field[INET_ADDRSTR_LEN + 16];
+	char grp_field[INET_ADDRSTR_LEN + 16];
+	char line[512];
+
+	if (is_anyaddr(&entry->source)) {
+		snprintf(src_field, sizeof(src_field), "null");
+	} else {
+		inet_addr2str(&entry->source, src, sizeof(src));
+		if (entry->src_len != max_len)
+			snprintf(src_field, sizeof(src_field), "\"%s/%u\"", src, entry->src_len);
+		else
+			snprintf(src_field, sizeof(src_field), "\"%s\"", src);
+	}
+
+	inet_addr2str(&entry->group, grp, sizeof(grp));
+	if (entry->len != max_len)
+		snprintf(grp_field, sizeof(grp_field), "\"%s/%u\"", grp, entry->len);
+	else
+		snprintf(grp_field, sizeof(grp_field), "\"%s\"", grp);
+
+	snprintf(line, sizeof(line),
+		 "%s{\"source\":%s,\"group\":%s,\"iif\":\"%s\"}",
+		 first ? "" : ",", src_field, grp_field, entry->ifname);
+	return ipc_send(sd, line, strlen(line));
+}
+
+/* Iterate from @head forward via TAILQ_NEXT; called with conf_list and
+ * kern_list which are different TAILQ_HEAD types but share the entry
+ * link layout. */
+static int show_mcgroup_list_json(int sd, struct mcgroup *head)
+{
+	struct mcgroup *entry;
+	int first = 1;
+
+	ipc_send(sd, "[", 1);
+	for (entry = head; entry; entry = TAILQ_NEXT(entry, link)) {
+		if (show_mcgroup_json(sd, entry, first) < 0)
+			return -1;
+		first = 0;
+	}
+	ipc_send(sd, "]", 1);
+	return 0;
+}
+
 /* Write all joined IGMP/MLD groups to client socket */
-int mcgroup_show(int sd, int detail)
+int mcgroup_show(int sd, enum show_mode mode)
 {
 	char *conf_str = "Group Memberships Table_\n";
 	char *kern_str = "Kernel Group Membership Table_\n";
 	struct mcgroup *entry;
 	char line[256];
+
+	if (mode == SHOW_JSON) {
+		ipc_send(sd, "{\"groups\":{\"conf\":", 18);
+		if (show_mcgroup_list_json(sd, TAILQ_FIRST(&conf_list)) < 0)
+			return -1;
+		ipc_send(sd, ",\"kernel\":", 10);
+		if (show_mcgroup_list_json(sd, TAILQ_FIRST(&kern_list)) < 0)
+			return -1;
+		ipc_send(sd, "}}\n", 3);
+		return 0;
+	}
 
 	if (TAILQ_EMPTY(&conf_list))
 		return 0;
@@ -488,7 +548,7 @@ int mcgroup_show(int sd, int detail)
 		    return 1;
 	}
 
-	if (!detail)
+	if (mode != SHOW_DETAIL)
 		return 0;
 
 	ipc_send(sd, kern_str, strlen(kern_str));
