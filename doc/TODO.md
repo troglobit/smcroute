@@ -1,4 +1,21 @@
 
+BSD route-socket equivalent of the Linux netlink listener
+---------------------------------------------------------
+
+`src/ifevent_nl.c` wakes `smcrouted` on `RTM_NEWLINK`/`RTM_DELLINK`
+events so pending mroute/mgroup directives activate automatically when
+their interface arrives.  BSD systems currently fall through to
+`src/ifevent_stub.c` (no-op) and depend on `SIGHUP`/`smcroutectl reload`
+to pick up new interfaces.
+
+A `src/ifevent_route.c` using `PF_ROUTE` / `RTM_IFINFO` / `RTM_NEWADDR`
+on BSD would slot into the existing automake conditional
+(`HAVE_NETLINK` becomes the misnomer; rename to `HAVE_IFEVENT` and
+gate it as `case $host_os in linux*|*bsd*) ...`).  The callback just
+needs to invoke `iface_update()` and `pending_drain()` — same as the
+Linux side.
+
+
 Refactor MRDISC Support
 -----------------------
 
@@ -111,7 +128,11 @@ you need to go elsewhere for your basic multicast routing needs?
 
 The idea itself is simple, listen for IGMP/MLD join/leave messages on
 enabled interfaces and add/remove routes dynamically from an `upstream`
-marked interface.
+marked interface.  The v2.6.0 pending-routes list (`src/pending.c`) and
+the netlink/route-socket event listener (`src/ifevent.h`) provide most
+of the runtime substrate: an incoming Membership Report would call
+something like `pending_add_mroute()` plus an immediate drain, with the
+upstream/downstream wiring driven by the `phyint` flags below.
 
 Possibly an `igmp` flag may be needed as well, for downstream interfaces
 we should proxy for.  Resulting `smcroute.conf` may then look like this:

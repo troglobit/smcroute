@@ -4,6 +4,39 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
+[v2.6.0][UNRELEASED] - 
+-----------------------
+
+> [!NOTE]
+> The headline of this release is that interfaces that arrive after
+> `smcrouted` has started, e.g., WireGuard, 6LoWPAN, late-binding
+> bridges and other tunnels, now activate automatically on Linux.
+
+### Changes
+
+- Add JSON output support `smcroutectl -j show [..]`, issue #198
+- Drop pre-v2.0 `smcroute` shell wrapper.  Anyone still on `smcroute -a`
+  / `smcroute -j` / etc. should migrate to `smcroute.conf` or call
+  `smcroutectl(8)` directly, issue #199
+- Clearer diagnostic messages for unusable phyints (unknown name vs.
+  not multicast capable vs. VIF table exhausted). Promoted the "not
+  multicast capable" log line from `LOG_INFO` to `LOG_WARNING` so it
+  shows at the default log level. See discussion #201
+- `mroute` and `mgroup` directives whose inbound or outbound interface
+  does not yet exist are queued on a pending list instead of being
+  dropped with parse error.  See list with `smcroutectl show pending`
+
+### Fixes
+
+- Fix #55: on Linux, `smcrouted` now subscribes to kernel netlink link
+  events (`RTNLGRP_LINK` + IPv4/IPv6 address groups) and activates any
+  pending routes/groups automatically when their inbound or outbound
+  interface arrives
+- Fix #71: VIFs and MIFs are now allocated lazily, only for interfaces
+  referenced by `smcroute.conf` or by `smcroutectl`.  The old up-front
+  enumeration regularly exhausted the kernel's 32-slot table on hosts
+  with many unrelated interfaces.  The `-N` option is now a no-op
+
 [v2.5.7][] - 2024-05-09
 -----------------------
 
@@ -657,6 +690,7 @@ Initial public release by Carsten Schill.
 [mrdisc]:     https://github.com/troglobit/mrdisc
 [RFC4286]:    https://tools.ietf.org/html/rfc4286
 [UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.5.7...HEAD
+[v2.6.0]:     https://github.com/troglobit/smcroute/compare/2.5.7...2.6.0
 [v2.5.7]:     https://github.com/troglobit/smcroute/compare/2.5.6...2.5.7
 [v2.5.6]:     https://github.com/troglobit/smcroute/compare/2.5.5...2.5.6
 [v2.5.5]:     https://github.com/troglobit/smcroute/compare/2.5.4...2.5.5
