@@ -2,7 +2,6 @@
 ACLOCAL_AMFLAGS         = -I m4
 SUBDIRS                 = man src
 DISTCLEANFILES		= *~ DEADJOE semantic.cache *.gdb *.elf core core.* *.d
-dist_sbin_SCRIPTS       = smcroute
 doc_DATA		= README.md COPYING smcroute.conf
 EXTRA_DIST		= README.md ChangeLog.md autogen.sh smcroute.conf smcroute.default smcroute.init
 
