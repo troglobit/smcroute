@@ -36,6 +36,9 @@ All notable changes to the project are documented in this file.
   referenced by `smcroute.conf` or by `smcroutectl`.  The old up-front
   enumeration regularly exhausted the kernel's 32-slot table on hosts
   with many unrelated interfaces.  The `-N` option is now a no-op
+- Fix #143: repair kernel MFC on `IGMPMSG_WRONGVIF` / `MRT6MSG_WRONGMIF`
+  by remapping the `(S,G)` entry's inbound iif when a `(*,G)` rule
+  covers the upcall's actual iif
 
 [v2.5.7][] - 2024-05-09
 -----------------------

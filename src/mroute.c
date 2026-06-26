@@ -58,6 +58,7 @@ static TAILQ_HEAD(kl, mroute) kern_list = TAILQ_HEAD_INITIALIZER(kern_list);
 
 static int  mroute4_add_vif    (struct iface *iface);
 static int  mroute_dyn_add     (struct mroute *route);
+static int  mroute_resolve     (struct mroute *route);
 static int  is_match           (struct mroute *rule, struct mroute *cand);
 static int  is_exact_match     (struct mroute *rule, struct mroute *cand);
 static int  mfc_install        (struct mroute *route);
@@ -133,8 +134,14 @@ static void handle_nocache4(int sd, void *arg)
 		break;
 
 	case IGMPMSG_WRONGVIF:
-		smclog(LOG_WARNING, "Multicast from %s, group %s, coming in on wrong VIF %u, iface %s",
-		       origin, group, mroute.inbound, iface->ifname);
+		if (mroute_resolve(&mroute) == 0) {
+			smclog(LOG_NOTICE, "Moved (%s,%s) inbound to %s after WRONGVIF",
+			       origin, group, iface->ifname);
+			script_exec(&mroute);
+		} else {
+			smclog(LOG_INFO, "Multicast from %s, group %s on wrong VIF %u, iface %s",
+			       origin, group, mroute.inbound, iface->ifname);
+		}
 		break;
 
 	case IGMPMSG_WHOLEPKT:
@@ -759,8 +766,14 @@ static void handle_nocache6(int sd, void *arg)
 		break;
 
 	case MRT6MSG_WRONGMIF:
-		smclog(LOG_WARNING, "Multicast from %s, group %s, coming in on wrong MIF %u, iface %s",
-		       origin, group, mroute.inbound, iface->ifname);
+		if (mroute_resolve(&mroute) == 0) {
+			smclog(LOG_NOTICE, "Moved (%s,%s) inbound to %s after WRONGMIF",
+			       origin, group, iface->ifname);
+			script_exec(&mroute);
+		} else {
+			smclog(LOG_INFO, "Multicast from %s, group %s on wrong MIF %u, iface %s",
+			       origin, group, mroute.inbound, iface->ifname);
+		}
 		break;
 
 	case MRT6MSG_WHOLEPKT:
@@ -923,47 +936,43 @@ static int mroute6_del_mif(struct iface *iface)
 }
 #endif /* HAVE_IPV6_MULTICAST_ROUTING */
 
-/**
- * mroute_dyn_add - Add route to kernel if it matches a known (*,G) route.
- * @route: Pointer to candidate multicast route
- *
- * Returns:
- * POSIX OK(0) on success, non-zero on error with @errno set.
+/*
+ * Look up a configured (*,G) rule whose inbound matches @route's iif
+ * and install/replace the kernel MFC entry with the rule's ttl[] mask.
+ * Shared by both NOCACHE (via mroute_dyn_add) and WRONGVIF/WRONGMIF.
+ * Returns 0 on hit, -1 with errno=ENOENT on miss (kernel entry, if
+ * any, left alone).
+ */
+static int mroute_resolve(struct mroute *route)
+{
+	struct mroute *entry;
+
+	TAILQ_FOREACH(entry, &conf_list, link) {
+		if (is_ssm(entry) || !is_match(entry, route))
+			continue;
+		memcpy(route->ttl, entry->ttl, NELEMS(route->ttl) * sizeof(route->ttl[0]));
+		mfc_install(route);
+		return 0;
+	}
+
+	errno = ENOENT;
+	return -1;
+}
+
+/*
+ * NOCACHE upcall handler.  Resolve via mroute_resolve(); on miss
+ * install a zero-ttl stop filter so the kernel stops upcalling NOCACHE
+ * for this (S,G,IIF).
  */
 static int mroute_dyn_add(struct mroute *route)
 {
-	struct mroute *entry;
-	int rc;
+	if (mroute_resolve(route) == 0)
+		return 0;
 
-	TAILQ_FOREACH(entry, &conf_list, link) {
-		/* Find matching (*,G) ... and interface. */
-		if (is_ssm(entry) || !is_match(entry, route))
-			continue;
-
-		/* Use configured template (*,G) outbound interfaces. */
-		memcpy(route->ttl, entry->ttl, NELEMS(route->ttl) * sizeof(route->ttl[0]));
-		break;
-	}
-
-	if (!entry) {
-		/*
-		 * No match, add entry without outbound interfaces
-		 * nevertheless to avoid continuous cache misses from
-		 * the kernel. Note that this still gets reported as an
-		 * error (ENOENT) below.
-		 */
-		memset(route->ttl, 0, NELEMS(route->ttl) * sizeof(route->ttl[0]));
-	}
-
-	rc = mfc_install(route);
-
-	/* Signal to cache handler we've added a stop filter */
-	if (!entry) {
-		errno = ENOENT;
-		return -1;
-	}
-
-	return rc;
+	memset(route->ttl, 0, NELEMS(route->ttl) * sizeof(route->ttl[0]));
+	mfc_install(route);
+	errno = ENOENT;
+	return -1;
 }
 
 int mroute_init(int table_id, int cache_tmo)
