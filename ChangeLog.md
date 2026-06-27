@@ -3,8 +3,7 @@ ChangeLog
 
 All notable changes to the project are documented in this file.
 
-
-[v2.6.0][UNRELEASED] - 
+[v2.6.0][] - 2026-06-27
 -----------------------
 
 > [!NOTE]
