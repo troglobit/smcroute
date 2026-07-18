@@ -164,9 +164,12 @@ static void run(int sd, void *arg)
 /* write to pipe to create an event for select() on SIGALRM */
 static void handler(int signo)
 {
+	int save_errno = errno;
+
 	(void)signo;
 	if (write(timerfd[1], "!", 1) < 0)
 		smclog(LOG_DEBUG, "Failed write(pipe): %s", strerror(errno));
+	errno = save_errno;
 }
 
 /*

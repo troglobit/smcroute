@@ -35,6 +35,7 @@ static pid_t script = 0;
 
 static void handler(int signo)
 {
+	int save_errno = errno;
 	int status;
 	pid_t pid = 1;
 
@@ -55,6 +56,7 @@ static void handler(int signo)
 				smclog(LOG_WARNING, "Script %s returned error: %d", exec, status);
 		}
 	}
+	errno = save_errno;
 }
 
 int script_init(char *script)
