@@ -15,6 +15,10 @@
 #define ALL_MIFS (vifi_t)-1
 #endif
 
+#ifndef ALL_VIFS
+#define ALL_VIFS (vifi_t)-1
+#endif
+
 #define DEFAULT_THRESHOLD 1		/* Packet TTL must be at least 1 to pass */
 #define NO_VIF   ALL_VIFS
 
