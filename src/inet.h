@@ -37,7 +37,7 @@
 typedef struct sockaddr_storage inet_addr_t;
 
 #ifndef s6_addr32
-# if   defined(__FreeBSD__)
+# if   defined(__FreeBSD__) || defined(__OpenBSD__)
 #  define s6_addr32 __u6_addr.__u6_addr32
 # elif defined(__linux__)
 #  define s6_addr32 __in6_u.__u6_addr32
