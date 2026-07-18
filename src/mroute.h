@@ -12,6 +12,9 @@
 #ifdef HAVE_NETINET_IN_VAR_H
 #include <netinet/in_var.h>
 #endif
+#ifdef HAVE_NETINET6_IN6_VAR_H
+#include <netinet6/in6_var.h>
+#endif
 #include <netinet/ip.h>
 #include "queue.h"		/* Needed by netinet/ip_mroute.h on FreeBSD */
 #include "show.h"
