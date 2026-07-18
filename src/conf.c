@@ -89,8 +89,12 @@ static char *pop_token(char **line)
 		return NULL;
 	}
 
-	*end = 0;		/* Terminate token. */
-	*line = end + 1;
+	if (*end == '\0') {
+		*line = NULL;
+	} else {
+		*end = 0;		/* Terminate token. */
+		*line = end + 1;
+	}
 
 	return token;
 }
