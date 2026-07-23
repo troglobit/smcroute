@@ -3,6 +3,29 @@ ChangeLog
 
 All notable changes to the project are documented in this file.
 
+[UNRELEASED][]
+-----------------------
+
+### Fixes
+
+- Fix #225: stack buffer overflow, and possible daemon crash, when
+  adding a `(*,G)` multicast route with the maximum number (32) of
+  outbound interfaces.  Also hardens the same code path against a
+  malformed `(S,G)` request that omits the group argument, which
+  previously read uninitialised memory
+- Fix #222: out-of-bounds read, and possible write, when parsing the
+  final token on a line in `smcroute.conf` or an IPC command, which
+  could cause spurious parse errors or a crash
+- Fix #219: on some platforms an error from a system call in the main
+  context could be reported with an unrelated error if a signal was
+  delivered mid-call
+- Portability, OpenBSD build fixes:
+  - #220: include `sys/select.h` in `socket.c` for `select(2)`
+  - #221: define `s6_addr32` the same way as on FreeBSD
+  - #223: include `netinet6/in6_var.h` for `SIOCGETSGCNT_IN6`
+  - #224: provide a fallback definition for `ALL_VIFS` when the
+    platform headers do not supply one
+
 [v2.6.0][] - 2026-06-27
 -----------------------
 
@@ -691,7 +714,8 @@ Initial public release by Carsten Schill.
 
 [mrdisc]:     https://github.com/troglobit/mrdisc
 [RFC4286]:    https://tools.ietf.org/html/rfc4286
-[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.5.7...HEAD
+[UNRELEASED]: https://github.com/troglobit/smcroute/compare/2.6.1...HEAD
+[v2.6.1]:     https://github.com/troglobit/smcroute/compare/2.6.0...2.6.1
 [v2.6.0]:     https://github.com/troglobit/smcroute/compare/2.5.7...2.6.0
 [v2.5.7]:     https://github.com/troglobit/smcroute/compare/2.5.6...2.5.7
 [v2.5.6]:     https://github.com/troglobit/smcroute/compare/2.5.5...2.5.6
