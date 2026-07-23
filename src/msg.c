@@ -100,6 +100,11 @@ static int do_mroute(struct ipc_msg *msg)
 	if (!is_multicast(&ss)) {
 		char grp[INET_ADDRSTR_LEN + 5];
 
+		if (pos >= msg->count) {
+			errno = EINVAL;
+			return 1;
+		}
+
 		strlcpy(grp, msg->argv[pos++], sizeof(grp));
 		is_range(grp);
 		if (inet_str2addr(grp, &ss) || !is_multicast(&ss)) {
