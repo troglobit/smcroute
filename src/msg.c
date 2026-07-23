@@ -114,6 +114,11 @@ static int do_mroute(struct ipc_msg *msg)
 		group  = msg->argv[1];
 	}
 
+	if (msg->count - pos > MAX_MC_VIFS) {
+		errno = EINVAL;
+		return 1;
+	}
+
 	while (pos < msg->count)
 		out[num++] = msg->argv[pos++];
 
